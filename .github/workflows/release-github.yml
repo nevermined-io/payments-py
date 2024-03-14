@@ -33,7 +33,7 @@ jobs:
           commit_message: Automated CHANGELOG.md update
           commit_options: "--no-verify --signoff"
           file_pattern: CHANGELOG.md
-          branch: master
+          branch: main
 
       - name: Publish Github Release
         uses: softprops/action-gh-release@v1
