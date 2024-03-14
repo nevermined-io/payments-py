@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "payments-py"
-version = "0.1.0"
+version = "0.0.1"
 description = ""
 authors = ["enrique <enrique@nevermined.io>"]
 readme = "README.md"
@@ -17,3 +17,7 @@ requests-mock = "^1.11.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[virtualenvs]
+create = true
+in-project = true
