@@ -11,7 +11,7 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.API_TOKEN_GITHUB }}
@@ -20,7 +20,6 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: yarn
 
       # Add the artifacts to include in the release
       - name: Set version to env
@@ -29,7 +28,7 @@ jobs:
       - name: Update CHANGELOG.md
         id: changelog
         run: |
-          yarn add --dev auto-changelog
+          npm install auto-changelog
           npx auto-changelog
 
       - name: Detect branch to commit changelog
