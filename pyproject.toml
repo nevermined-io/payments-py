@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "payments-py"
+version = "0.1.0"
+description = ""
+authors = ["enrique <enrique@nevermined.io>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.31.0"
+
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.1.1"
+requests-mock = "^1.11.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
