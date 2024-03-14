@@ -3,12 +3,12 @@ name: GitHub Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      - 'v*.*.*'
 
 jobs:
   release:
-    name: "Tagged Release"
-    runs-on: "ubuntu-latest"
+    name: 'Tagged Release'
+    runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -19,15 +19,17 @@ jobs:
       # Build process
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: 18
+          cache: yarn
 
+      # Add the artifacts to include in the release
       - name: Set version to env
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Update CHANGELOG.md
         id: changelog
         run: |
-          npm install auto-changelog
+          yarn add --dev auto-changelog
           npx auto-changelog
 
       - name: Detect branch to commit changelog
@@ -46,7 +48,7 @@ jobs:
             commit_branch=${commit_branch//[[:blank:]]/}
           fi
           commit_branch="${commit_branch//remotes\/origin\//}"
-          echo "COMMIT_BRANCH=${commit_branch}" >> $GITHUB_ENV          
+          echo "COMMIT_BRANCH=${commit_branch}" >> $GITHUB_ENV
 
       - name: Commit CHANGELOG.md
         uses: stefanzweifel/git-auto-commit-action@v4
