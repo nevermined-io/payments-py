@@ -1,8 +1,8 @@
 from typing import List, Optional
 import requests
 
-from .environments import Environment
-from .utils import snake_to_camel
+from payments_py.environments import Environment
+from payments_py.utils import snake_to_camel
 
 
 class Payments:
@@ -17,9 +17,17 @@ class Payments:
         version (str, optional): The version of the payment system.
 
     Methods:
-        createSubscription: Creates a new subscription.
-        createService: Creates a new service.
-    """
+        create_ubscription: Creates a new subscription.
+        create_service: Creates a new service.
+        create_file: Creates a new file.
+        get_asset_ddo: Gets the asset DDO.
+        get_subscription_balance: Gets the subscription balance.
+        get_service_token: Gets the service token.
+        get_subscription_details: Gets the subscription details.
+        get_service_details: Gets the service details.
+        get_file_details: Gets the file details.
+        get_checkout_subscription: Gets the checkout subscription.     
+        """
 
     def __init__(self, session_key: str, environment: Environment, marketplace_auth_token: Optional[str] = None,
                  app_id: Optional[str] = None, version: Optional[str] = None):

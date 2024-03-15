@@ -8,6 +8,9 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 requests = "^2.31.0"
+mkdocs = "^1.5.3"
+mkdocs-awesome-pages-plugin = "^2.9.2"
+lazydocs = "^0.4.8"
 
 
 [tool.poetry.group.test.dependencies]
