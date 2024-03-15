@@ -1,8 +1,8 @@
 from typing import List, Optional
 import requests
 
-from payments_py.environments import Environment
-from payments_py.utils import snake_to_camel
+from .environments import Environment
+from .utils import snake_to_camel
 
 
 class Payments:

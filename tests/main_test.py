@@ -1,7 +1,7 @@
 import pytest
 
-from payments_py.environments import Environment
-from payments_py.main import Payments
+from payments_py import Environment
+from payments_py import Payments
 import os
 
 
