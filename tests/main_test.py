@@ -9,7 +9,7 @@ session_key = os.getenv('SESSION_KEY')
 marketplace_auth_token = os.getenv('MARKETPLACE_AUTH_TOKEN')
 @pytest.fixture
 def payment():
-    return Payments(session_key=session_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0")
+    return Payments(session_key=session_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", marketplace_auth_token=marketplace_auth_token)
 
 
 def test_payment_creation(payment):
@@ -49,7 +49,7 @@ def test_get_subscription_balance(payment):
     assert response.status_code == 201
 
 # Needs the marketplace_auth_token
-# def test_get_service_token(payment):
-#     response = payment.get_service_token(service_did='did:nv:fe5d67842a507a1d22b9c9733b72cf7eb5b7a90835867e80bb18b72fd137a094')
-#     print(response.json())
-#     assert response.status_code == 201
+def test_get_service_token(payment):
+    response = payment.get_service_token(service_did='did:nv:fe5d67842a507a1d22b9c9733b72cf7eb5b7a90835867e80bb18b72fd137a094')
+    print(response.json())
+    assert response.status_code == 201

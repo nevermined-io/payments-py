@@ -236,7 +236,7 @@ class Payments:
         """
         body = {
             "accessToken": self.marketplace_auth_token,
-            "serviceDid": service_did,
+            "did": service_did,
         }
         headers = {
             'Accept': 'application/json',
