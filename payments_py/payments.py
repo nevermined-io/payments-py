@@ -254,6 +254,42 @@ class Payments:
         response = requests.post(url, headers=headers, json=body)
         return response
 
+    def get_subscription_associated_services(self, subscription_did: str):
+        """
+        Gets the subscription associated services.
+
+        Args:
+            subscription_did (str): The DID of the subscription.
+
+        Returns:
+            Response: List of DIDs of the associated services.
+        """
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/services/{subscription_did}/"
+        response = requests.get(url, headers=headers)
+        return response
+    
+    def get_subscription_associated_files(self, subscription_did: str):
+        """
+        Gets the subscription associated files.
+
+        Args:
+            subscription_did (str): The DID of the subscription.
+
+        Returns:
+            Response: List of DIDs of the associated files.
+        """
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/files/{subscription_did}/"
+        response = requests.get(url, headers=headers)
+        return response
+
     def get_subscription_details(self, subscription_did: str):
         """
         Gets the subscription details.
