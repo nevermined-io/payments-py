@@ -263,7 +263,7 @@ Gets the asset DDO.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L296"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L332"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_checkout_subscription`
 
@@ -287,7 +287,7 @@ Gets the checkout subscription.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L283"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L319"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_file_details`
 
@@ -311,7 +311,7 @@ Gets the file details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L270"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L306"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_details`
 
@@ -359,6 +359,54 @@ Gets the service token.
 
 ---
 
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L275"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `get_subscription_associated_files`
+
+```python
+get_subscription_associated_files(subscription_did: str)
+```
+
+Gets the subscription associated files. 
+
+
+
+**Args:**
+ 
+ - <b>`subscription_did`</b> (str):  The DID of the subscription. 
+
+
+
+**Returns:**
+ 
+ - <b>`Response`</b>:  List of DIDs of the associated files. 
+
+---
+
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L257"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `get_subscription_associated_services`
+
+```python
+get_subscription_associated_services(subscription_did: str)
+```
+
+Gets the subscription associated services. 
+
+
+
+**Args:**
+ 
+ - <b>`subscription_did`</b> (str):  The DID of the subscription. 
+
+
+
+**Returns:**
+ 
+ - <b>`Response`</b>:  List of DIDs of the associated services. 
+
+---
+
 <a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L211"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_subscription_balance`
@@ -387,7 +435,7 @@ Gets the subscription balance.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L257"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L293"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_subscription_details`
 
