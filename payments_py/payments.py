@@ -23,6 +23,8 @@ class Payments:
         get_asset_ddo: Gets the asset DDO.
         get_subscription_balance: Gets the subscription balance.
         get_service_token: Gets the service token.
+        get_subscription_associated_services: Gets the subscription associated services.
+        get_subscription_associated_files: Gets the subscription associated files.
         get_subscription_details: Gets the subscription details.
         get_service_details: Gets the service details.
         get_file_details: Gets the file details.
