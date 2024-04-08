@@ -270,7 +270,7 @@ class Payments:
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         }
-        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/services/{subscription_did}/"
+        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/services/{subscription_did}"
         response = requests.get(url, headers=headers)
         return response
     
@@ -288,7 +288,7 @@ class Payments:
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         }
-        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/files/{subscription_did}/"
+        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/files/{subscription_did}"
         response = requests.get(url, headers=headers)
         return response
 
