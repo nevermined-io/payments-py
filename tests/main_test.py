@@ -53,3 +53,7 @@ def test_get_service_token(payment):
     response = payment.get_service_token(service_did='did:nv:fe5d67842a507a1d22b9c9733b72cf7eb5b7a90835867e80bb18b72fd137a094')
     print(response.json())
     assert response.status_code == 201
+
+def test_order_subscription(payment):
+    response = payment.order_subscription(subscription_did='did:nv:6e898755372ac94dafd23aefbda2eae125889d03cdb7cc0eaeda0057e8e7b151')
+    assert response.status_code == 201

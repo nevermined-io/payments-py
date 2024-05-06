@@ -192,6 +192,30 @@ class Payments:
         response = requests.post(url, headers=headers, json=body)
         return response
 
+    def order_subscription(self, subscription_did: str, agreementId: Optional[str] = None):
+        """
+        Orders the subscription.
+
+        Args:
+            subscription_did (str): The DID of the subscription.
+            agreementId (str, optional): The agreement ID.
+
+        Returns:
+            Response: The response from the API call.
+        """
+        body = {
+            "sessionKey": self.session_key,
+            "subscriptionDid": subscription_did,
+            **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/order"
+        response = requests.post(url, headers=headers, json=body)
+        return response
+
     def get_asset_ddo(self, did: str):
         """
         Gets the asset DDO.
