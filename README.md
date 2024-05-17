@@ -13,7 +13,7 @@ pip install nevermined/payments-py
 
 ```
 
-Payments(session_key=session_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", session_key=your_session_key, marketplace_auth_token=your_marketplace_auth_token)
+Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0")
 
 ```
 
