@@ -10,9 +10,8 @@ class Payments:
     A class representing a payment system.
 
     Attributes:
-        session_key (str): The session key for authentication.
+        nvm_api_key (str): The nvm api key for authentication.
         environment (Environment): The environment for the payment system.
-        marketplace_auth_token (str, optional): The marketplace authentication token.
         app_id (str, optional): The application ID.
         version (str, optional): The version of the payment system.
 
@@ -20,6 +19,7 @@ class Payments:
         create_ubscription: Creates a new subscription.
         create_service: Creates a new service.
         create_file: Creates a new file.
+        order_subscription: Orders the subscription.
         get_asset_ddo: Gets the asset DDO.
         get_subscription_balance: Gets the subscription balance.
         get_service_token: Gets the service token.
@@ -31,13 +31,12 @@ class Payments:
         get_checkout_subscription: Gets the checkout subscription.     
         """
 
-    def __init__(self, session_key: str, environment: Environment, marketplace_auth_token: Optional[str] = None,
+    def __init__(self, nvm_api_key: str, environment: Environment,
                  app_id: Optional[str] = None, version: Optional[str] = None):
-        self.session_key = session_key
+        self.nvm_api_key = nvm_api_key
         self.environment = environment
         self.app_id = app_id
         self.version = version
-        self.marketplace_auth_token = marketplace_auth_token
 
     def create_subscription(self, name: str, description: str, price: int, token_address: str,
                             amount_of_credits: Optional[int], duration: Optional[int], tags: Optional[List[str]]):
@@ -57,7 +56,6 @@ class Payments:
             Response: The response from the API call.
         """
         body = {
-            "sessionKey": self.session_key,
             "name": name,
             "description": description,
             "price": price,
@@ -68,7 +66,8 @@ class Payments:
         }
         headers = {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': f'''Bearer {self.nvm_api_key}'''
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription"
         response = requests.post(url, headers=headers, json=body)
@@ -114,7 +113,6 @@ class Payments:
             Response: The response from the API call.
         """
         body = {
-            "sessionKey": self.session_key,
             "subscriptionDid": subscription_did,
             "name": name,
             "description": description,
@@ -126,7 +124,8 @@ class Payments:
         }
         headers = {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/service"
         response = requests.post(url, headers=headers, json=body)
@@ -174,7 +173,6 @@ class Payments:
             Response: The response from the API call.
         """
         body = {
-            "sessionKey": self.session_key,
             "subscriptionDid": subscription_did,
             "assetType": asset_type,
             "name": name,
@@ -186,7 +184,9 @@ class Payments:
         }
         headers = {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/file"
         response = requests.post(url, headers=headers, json=body)
@@ -204,13 +204,13 @@ class Payments:
             Response: The response from the API call.
         """
         body = {
-            "sessionKey": self.session_key,
             "subscriptionDid": subscription_did,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
         headers = {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription/order"
         response = requests.post(url, headers=headers, json=body)
@@ -234,20 +234,18 @@ class Payments:
         response = requests.get(url, headers=headers)
         return response
 
-    def get_subscription_balance(self, subscription_did: str, account_address: Optional[str] = None):
+    def get_subscription_balance(self, subscription_did: str, account_address: str):
         """
         Gets the subscription balance.
 
         Args:
             subscription_did (str): The DID of the subscription.
-            account_address: Optional[str]: The account address.
+            account_address (str): The account address.
 
         Returns:
             Response: The response from the API call.
         """
         body = {
-            "sessionKey": self.session_key,
-            "subscriptionDid": subscription_did,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
         headers = {
@@ -268,16 +266,13 @@ class Payments:
         Returns:
             Response: The response from the API call.
         """
-        body = {
-            "accessToken": self.marketplace_auth_token,
-            "did": service_did,
-        }
         headers = {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
         }
-        url = f"{self.environment.value['backend']}/api/v1/payments/service/token"
-        response = requests.post(url, headers=headers, json=body)
+        url = f"{self.environment.value['backend']}/api/v1/payments/service/token/{service_did}"
+        response = requests.get(url, headers=headers)
         return response
 
     def get_subscription_associated_services(self, subscription_did: str):
