@@ -250,7 +250,8 @@ class Payments:
         }
         headers = {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
         }
         url = (f"{self.environment.value['backend']}/api/v1/payments/subscription/balance")
         response = requests.post(url, headers=headers, json=body)
