@@ -54,3 +54,15 @@ def test_get_service_token(payment):
 def test_order_subscription(payment):
     response = payment.order_subscription(subscription_did='did:nv:debe46f1c0f3e36c853a9f093717c46eaa94df9b302731b9d06e7e07e5fd0c8b')
     assert response.status_code == 201
+
+def test_download_file(payment):
+    response = payment.download_file(file_did='did:nv:f1a974ca211e855a89b9a2049900fec29cc79cd9ca4e8d791a27836009c5b215')
+    assert response.status_code == 200
+
+def test_mint_credits(payment):
+    response = payment.mint_credits(subscription_did='did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5', amount="12", receiver='0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6')
+    assert response.status_code == 201
+
+def test_burn_credits(payment):
+    response = payment.burn_credits(subscription_did='did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5', amount="24")
+    assert response.status_code == 201

@@ -28,7 +28,10 @@ class Payments:
         get_subscription_details: Gets the subscription details.
         get_service_details: Gets the service details.
         get_file_details: Gets the file details.
-        get_checkout_subscription: Gets the checkout subscription.     
+        get_checkout_subscription: Gets the checkout subscription.
+        download_file: Downloads the file.
+        mint_credits: Mints the credits associated to a subscription and send to the receiver.
+        burn_credits: Burns credits associated to a subscription that you own.     
         """
 
     def __init__(self, nvm_api_key: str, environment: Environment,
@@ -363,3 +366,79 @@ class Payments:
         """
         url = f"{self.environment.value['frontend']}/en/subscription/checkout/${subscription_did}"
         return url
+    
+    def download_file(self, file_did: str, agreement_id: Optional[str] = None, destination: Optional[str] = None):
+        """
+        Downloads the file.
+
+        Args:
+            file_did (str): The DID of the file.
+
+        Returns:
+            Response: The url of the file.
+        """
+        body = {
+            "fileDid": file_did,
+            **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/file/download/{file_did}"
+        response = requests.post(url, headers=headers, json=body)
+        return response
+
+    def mint_credits(self, subscription_did: str, amount: str, receiver: str):
+        """
+        Mints the credits associated to a subscription and send to the receiver.
+
+        Args:
+            subscription_did (str): The DID of the subscription.
+            amount (int): The amount of credits to mint.
+            receiver (str): The receiver address of the credits.
+
+        Returns:
+            Response: The response from the API call.
+        """
+        body = {
+            "did": subscription_did,
+            "nftAmount": amount,
+            "receiver": receiver
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/credits/mint"
+        response = requests.post(url, headers=headers, json=body)
+        print(body)
+        print(url)
+        print(response)
+        return response
+    
+    def burn_credits(self, subscription_did: str, amount: str):
+        """
+        Burns credits associated to a subscription that you own.
+
+        Args:
+            subscription_did (str): The DID of the subscription.
+            amount (int): The amount of credits to burn.
+
+        Returns:
+            Response: The response from the API call.
+        """
+        body = {
+            "did": subscription_did,
+            "nftAmount": amount
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/credits/burn"
+        response = requests.post(url, headers=headers, json=body)
+        return response
