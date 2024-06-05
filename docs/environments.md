@@ -24,8 +24,6 @@ Enum class to define the different environments
  - <b>`appStaging`</b>:  Staging environment 
  - <b>`appTesting`</b>:  Testing environment 
  - <b>`appArbitrum`</b>:  Arbitrum environment 
- - <b>`appGnosis`</b>:  Gnosis environment 
- - <b>`appMatic`</b>:  Matic environment 
 
 
 
