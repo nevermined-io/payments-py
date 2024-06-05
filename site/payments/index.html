@@ -54,11 +54,15 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#method-__init__">method __init__</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-burn_credits">method burn_credits</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-create_file">method create_file</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-create_service">method create_service</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-create_subscription">method create_subscription</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-download_file">method download_file</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-get_asset_ddo">method get_asset_ddo</a>
     </li>
@@ -77,6 +81,8 @@
     <li class="toctree-l3"><a class="reference internal" href="#method-get_subscription_balance">method get_subscription_balance</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-get_subscription_details">method get_subscription_details</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-mint_credits">method mint_credits</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-order_subscription">method order_subscription</a>
     </li>
@@ -140,8 +146,11 @@
  - <b><code>get_subscription_details</code></b>:  Gets the subscription details. 
  - <b><code>get_service_details</code></b>:  Gets the service details. 
  - <b><code>get_file_details</code></b>:  Gets the file details. 
- - <b><code>get_checkout_subscription</code></b>:  Gets the checkout subscription.      </p>
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L34"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+ - <b><code>get_checkout_subscription</code></b>:  Gets the checkout subscription. 
+ - <b><code>download_file</code></b>:  Downloads the file. 
+ - <b><code>mint_credits</code></b>:  Mints the credits associated to a subscription and send to the receiver. 
+ - <b><code>burn_credits</code></b>:  Burns credits associated to a subscription that you own.      </p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L37"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
 <pre><code class="language-python">__init__(
     nvm_api_key: str,
@@ -151,7 +160,22 @@
 )
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L134"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L422"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-burn_credits"><kbd>method</kbd> <code>burn_credits</code></h3>
+<pre><code class="language-python">burn_credits(subscription_did: str, amount: str)
+</code></pre>
+<p>Burns credits associated to a subscription that you own. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>subscription_did</code></b> (str):  The DID of the subscription. </li>
+<li><b><code>amount</code></b> (int):  The amount of credits to burn. </li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>:  The response from the API call. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L137"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_file"><kbd>method</kbd> <code>create_file</code></h3>
 <pre><code class="language-python">create_file(
     subscription_did: str,
@@ -211,7 +235,7 @@
 <li><b><code>Response</code></b>:  The response from the API call. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L76"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L79"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_service"><kbd>method</kbd> <code>create_service</code></h3>
 <pre><code class="language-python">create_service(
     subscription_did: str,
@@ -269,7 +293,7 @@
 <li><b><code>Response</code></b>:  The response from the API call. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L41"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L44"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_subscription"><kbd>method</kbd> <code>create_subscription</code></h3>
 <pre><code class="language-python">create_subscription(
     name: str,
@@ -297,7 +321,25 @@
 <li><b><code>Response</code></b>:  The response from the API call. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L219"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L370"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-download_file"><kbd>method</kbd> <code>download_file</code></h3>
+<pre><code class="language-python">download_file(
+    file_did: str,
+    agreement_id: Optional[str] = None,
+    destination: Optional[str] = None
+)
+</code></pre>
+<p>Downloads the file. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>file_did</code></b> (str):  The DID of the file. </li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>:  The url of the file. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L222"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_asset_ddo"><kbd>method</kbd> <code>get_asset_ddo</code></h3>
 <pre><code class="language-python">get_asset_ddo(did: str)
 </code></pre>
@@ -311,7 +353,7 @@
 <li><b><code>Response</code></b>:  The response from the API call. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L354"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L357"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_checkout_subscription"><kbd>method</kbd> <code>get_checkout_subscription</code></h3>
 <pre><code class="language-python">get_checkout_subscription(subscription_did: str)
 </code></pre>
@@ -325,7 +367,7 @@
 <li><b><code>Response</code></b>:  The url of the checkout subscription. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L341"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L344"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_file_details"><kbd>method</kbd> <code>get_file_details</code></h3>
 <pre><code class="language-python">get_file_details(file_did: str)
 </code></pre>
@@ -339,7 +381,7 @@
 <li><b><code>Response</code></b>:  The url of the file details. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L328"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L331"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_service_details"><kbd>method</kbd> <code>get_service_details</code></h3>
 <pre><code class="language-python">get_service_details(service_did: str)
 </code></pre>
@@ -353,7 +395,7 @@
 <li><b><code>Response</code></b>:  The url of the service details. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L260"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L263"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_service_token"><kbd>method</kbd> <code>get_service_token</code></h3>
 <pre><code class="language-python">get_service_token(service_did: str)
 </code></pre>
@@ -367,7 +409,7 @@
 <li><b><code>Response</code></b>:  The response from the API call. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L297"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L300"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_subscription_associated_files"><kbd>method</kbd> <code>get_subscription_associated_files</code></h3>
 <pre><code class="language-python">get_subscription_associated_files(subscription_did: str)
 </code></pre>
@@ -381,7 +423,7 @@
 <li><b><code>Response</code></b>:  List of DIDs of the associated files. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L279"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L282"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_subscription_associated_services"><kbd>method</kbd> <code>get_subscription_associated_services</code></h3>
 <pre><code class="language-python">get_subscription_associated_services(subscription_did: str)
 </code></pre>
@@ -395,7 +437,7 @@
 <li><b><code>Response</code></b>:  List of DIDs of the associated services. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L237"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L240"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_subscription_balance"><kbd>method</kbd> <code>get_subscription_balance</code></h3>
 <pre><code class="language-python">get_subscription_balance(subscription_did: str, account_address: str)
 </code></pre>
@@ -410,7 +452,7 @@
 <li><b><code>Response</code></b>:  The response from the API call. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L315"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L318"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_subscription_details"><kbd>method</kbd> <code>get_subscription_details</code></h3>
 <pre><code class="language-python">get_subscription_details(subscription_did: str)
 </code></pre>
@@ -424,7 +466,23 @@
 <li><b><code>Response</code></b>:  The url of the subscription details. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L195"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L393"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-mint_credits"><kbd>method</kbd> <code>mint_credits</code></h3>
+<pre><code class="language-python">mint_credits(subscription_did: str, amount: str, receiver: str)
+</code></pre>
+<p>Mints the credits associated to a subscription and send to the receiver. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>subscription_did</code></b> (str):  The DID of the subscription. </li>
+<li><b><code>amount</code></b> (int):  The amount of credits to mint. </li>
+<li><b><code>receiver</code></b> (str):  The receiver address of the credits. </li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>:  The response from the API call. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L198"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-order_subscription"><kbd>method</kbd> <code>order_subscription</code></h3>
 <pre><code class="language-python">order_subscription(subscription_did: str, agreementId: Optional[str] = None)
 </code></pre>
