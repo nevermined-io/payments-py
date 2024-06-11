@@ -25,12 +25,12 @@ def test_create_subscription(payment):
 
 
 def test_create_service(payment):
-    response = payment.create_service(subscription_did='did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116', name="webservice-py", description="test", price=1000000, token_address="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", amount_of_credits=1, service_charge_type="fixed", auth_type="none")
+    response = payment.create_service(subscription_did='did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116', name="webservice-py", description="test", amount_of_credits=1, service_charge_type="fixed", auth_type="none")
     assert response.status_code == 201
 
 
 def test_create_file(payment):
-    response = payment.create_file(subscription_did='did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116', name="file-py", description="test", price=1000000, token_address="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", amount_of_credits=1, tags=["test"], asset_type='model', files=[
+    response = payment.create_file(subscription_did='did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116', name="file-py", description="test", amount_of_credits=1, tags=["test"], asset_type='model', files=[
           {
             "index": 0,
             "contentType": "text/markdown",
