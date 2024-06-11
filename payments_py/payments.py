@@ -76,7 +76,7 @@ class Payments:
         response = requests.post(url, headers=headers, json=body)
         return response
 
-    def create_service(self, subscription_did: str, name: str, description: str, price: int, token_address: str,
+    def create_service(self, subscription_did: str, name: str, description: str,
                        service_charge_type: str, auth_type: str, amount_of_credits: Optional[int] = None,
                        min_credits_to_charge: Optional[int] = None, max_credits_to_charge: Optional[int] = None,
                        username: Optional[str] = None, password: Optional[str] = None, token: Optional[str] = None,
@@ -92,8 +92,6 @@ class Payments:
             subscription_did (str): The DID of the subscription.
             name (str): The name of the service.
             description (str): The description of the service.
-            price (int): The price of the service.
-            token_address (str):The token address.
             service_charge_type (str): The charge type of the service. ->  'fixed' | 'dynamic'
             auth_type (str): The authentication type of the service. -> 'none' | 'basic' | 'oauth'
             amount_of_credits (int, optional): The amount of credits for the service.
@@ -119,8 +117,6 @@ class Payments:
             "subscriptionDid": subscription_did,
             "name": name,
             "description": description,
-            "price": price,
-            "tokenAddress": token_address,
             "serviceChargeType": service_charge_type,
             "authType": auth_type,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
@@ -135,7 +131,7 @@ class Payments:
         return response
 
     def create_file(self, subscription_did: str, asset_type: str, name: str, description: str, files: List[dict],
-                    price: int, token_address: str, data_schema: Optional[str] = None,
+                    data_schema: Optional[str] = None,
                     sample_code: Optional[str] = None,
                     files_format: Optional[str] = None, usage_example: Optional[str] = None,
                     programming_language: Optional[str] = None, framework: Optional[str] = None,
@@ -153,8 +149,6 @@ class Payments:
             name (str): The name of the file.
             description (str): The description of the file.
             files (List[dict]): The files of the file.
-            price (int): The price of the file.
-            token_address (str): The token address.
             data_schema (str, optional): The data schema of the file.
             sample_code (str, optional): The sample code of the file.
             files_format (str, optional): The files format of the file.
@@ -181,8 +175,6 @@ class Payments:
             "name": name,
             "description": description,
             "files": files,
-            "price": price,
-            "tokenAddress": token_address,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
         headers = {
