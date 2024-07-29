@@ -317,7 +317,7 @@ class Payments:
         Returns:
             Response: The url of the subscription details.
         """
-        url = f"{self.environment.value['frontend']}/en/subscription/${subscription_did}"
+        url = f"{self.environment.value['frontend']}/en/subscription/{subscription_did}"
         return url
 
     def get_service_details(self, service_did: str):
@@ -330,7 +330,7 @@ class Payments:
         Returns:
             Response: The url of the service details.
         """
-        url = f"{self.environment.value['frontend']}/en/webservice/${service_did}"
+        url = f"{self.environment.value['frontend']}/en/webservice/{service_did}"
         return url
 
     def get_file_details(self, file_did: str):
@@ -343,7 +343,7 @@ class Payments:
         Returns:
             Response: The url of the file details.
         """
-        url = f"{self.environment.value['frontend']}/en/file/${file_did}"
+        url = f"{self.environment.value['frontend']}/en/file/{file_did}"
         return url
 
     def get_checkout_subscription(self, subscription_did: str):
@@ -356,7 +356,7 @@ class Payments:
         Returns:
             Response: The url of the checkout subscription.
         """
-        url = f"{self.environment.value['frontend']}/en/subscription/checkout/${subscription_did}"
+        url = f"{self.environment.value['frontend']}/en/subscription/checkout/{subscription_did}"
         return url
     
     def download_file(self, file_did: str, agreement_id: Optional[str] = None, destination: Optional[str] = None):
