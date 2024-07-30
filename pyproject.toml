@@ -11,6 +11,7 @@ requests = "^2.31.0"
 mkdocs = "^1.5.3"
 mkdocs-awesome-pages-plugin = "^2.9.2"
 lazydocs = "^0.4.8"
+pydantic = "^2.8.2"
 
 
 [tool.poetry.group.test.dependencies]
