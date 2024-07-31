@@ -406,7 +406,7 @@ class Payments:
         response = requests.get(url, headers=headers)
         return response
 
-    def get_subscription_details(self, subscription_did: str):
+    def get_subscription_details_url(self, subscription_did: str):
         """
         Gets the subscription details.
 
@@ -419,7 +419,7 @@ class Payments:
         url = f"{self.environment.value['frontend']}/en/subscription/{subscription_did}"
         return url
 
-    def get_service_details(self, service_did: str):
+    def get_service_details_url(self, service_did: str):
         """
         Gets the service details.
 
@@ -432,7 +432,7 @@ class Payments:
         url = f"{self.environment.value['frontend']}/en/webservice/{service_did}"
         return url
 
-    def get_file_details(self, file_did: str):
+    def get_file_details_url(self, file_did: str):
         """
         Gets the file details.
 
