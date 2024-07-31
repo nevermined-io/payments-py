@@ -43,7 +43,7 @@ class Payments:
         self.version = version
 
     def create_credits_subscription(self, name: str, description: str, price: int, token_address: str,
-                            amount_of_credits: Optional[int], tags: Optional[List[str]]) -> CreateAssetResultDto:
+                            amount_of_credits: int, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
         """
         Creates a new credits subscription.
 
@@ -52,7 +52,7 @@ class Payments:
             description (str): The description of the subscription.
             price (int): The price of the subscription.
             token_address (str): The token address.
-            amount_of_credits (int, optional): The amount of credits for the subscription.
+            amount_of_credits (int): The amount of credits for the subscription.
             tags (List[str], optional): The tags associated with the subscription.
 
         Returns:
@@ -71,7 +71,7 @@ class Payments:
             "price": price,
             "tokenAddress": token_address,
             "amountOfCredits": amount_of_credits,
-            "tags": tags,
+            "tags": tags if tags else [],
             "subscriptionType": "credits"
         }
         headers = {
@@ -85,7 +85,7 @@ class Payments:
         return CreateAssetResultDto.model_validate(response.json())
 
     def create_time_subscription(self, name: str, description: str, price: int, token_address: str,
-                            duration: Optional[int], tags: Optional[List[str]]) -> CreateAssetResultDto:
+                            duration: Optional[int] = 0, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
         """
         Creates a new time subscription.
 
@@ -94,7 +94,7 @@ class Payments:
             description (str): The description of the subscription.
             price (int): The price of the subscription.
             token_address (str): The token address.
-            duration (int, optional): The duration of the subscription.
+            duration (int, optional): The duration of the subscription in days. If not provided, the subscription will be valid forever.
             tags (List[str], optional): The tags associated with the subscription.
 
         Returns:
@@ -113,7 +113,7 @@ class Payments:
             "price": price,
             "tokenAddress": token_address,
             "duration": duration,
-            "tags": tags,
+            "tags": tags if tags else [],
             "subscriptionType": "time"
 
         }

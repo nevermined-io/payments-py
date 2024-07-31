@@ -94,11 +94,9 @@ def test_download_file(payment):
     response = payment.download_file(file_did='did:nv:7e38d39405445ab3e5435d8c1c6653a00ddc425ba629789f58fbefccaa5e5a5d')
     assert isinstance(response, DownloadFileResultDto)
 
-
 def test_get_subscription_balance(payment):
     response = payment.get_subscription_balance(subscription_did='did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116', account_address='0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6')
     assert isinstance(response, BalanceResultDto)
-
 
 def test_mint_credits(payment):
     response = payment.mint_credits(subscription_did='did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5', amount="12", receiver='0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6')
