@@ -128,7 +128,7 @@ class Payments:
         return CreateAssetResultDto.model_validate(response.json())
     
     def create_service(self, subscription_did: str, name: str, description: str,
-                       service_charge_type: str, auth_type: str, amount_of_credits: Optional[int] = None,
+                       service_charge_type: str, auth_type: str, amount_of_credits: int = 1,
                        min_credits_to_charge: Optional[int] = None, max_credits_to_charge: Optional[int] = None,
                        username: Optional[str] = None, password: Optional[str] = None, token: Optional[str] = None,
                        endpoints: Optional[List[dict]] = None,
@@ -145,9 +145,9 @@ class Payments:
             description (str): The description of the service.
             service_charge_type (str): The charge type of the service. Options: 'fixed', 'dynamic'
             auth_type (str): The authentication type of the service. Options: 'none', 'basic', 'oauth'
-            amount_of_credits (int, optional): The amount of credits for the service.
-            min_credits_to_charge (int, optional): The minimum credits to charge for the service.
-            max_credits_to_charge (int, optional): The maximum credits to charge for the service.
+            amount_of_credits int: The amount of credits for the service.
+            min_credits_to_charge (int, optional): The minimum credits to charge for the service. Only required for dynamic services.
+            max_credits_to_charge (int, optional): The maximum credits to charge for the service. Only required for dynamic services.
             username (str, optional): The username for authentication.
             password (str, optional): The password for authentication.
             token (str, optional): The token for authentication.
