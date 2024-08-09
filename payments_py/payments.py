@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional
 import requests
 
@@ -458,14 +459,14 @@ class Payments:
         url = f"{self.environment.value['frontend']}/en/subscription/checkout/{subscription_did}"
         return url
     
-    def download_file(self, file_did: str, agreement_id: Optional[str] = None, destination: Optional[str] = None) -> DownloadFileResultDto:
+    def download_file(self, file_did: str, destination: str, agreement_id: Optional[str] = None) -> DownloadFileResultDto:
         """
         Downloads the file.
 
         Args:
             file_did (str): The DID of the file.
             agreement_id (str, optional): The agreement ID.
-            destination (str, optional): The destination of the file.
+            destination str: The destination of the file.
 
         Returns:
             Response: The url of the file.
@@ -482,7 +483,7 @@ class Payments:
         """
         body = {
             "fileDid": file_did,
-            **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
+            "agreementId": agreement_id if agreement_id else '0x',
         }
         headers = {
             'Accept': 'application/json',
@@ -490,10 +491,27 @@ class Payments:
             'Authorization': f'Bearer {self.nvm_api_key}'
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/file/download"
-        response = requests.post(url, headers=headers, json=body)
-        response.raise_for_status()
 
-        return DownloadFileResultDto.model_validate(response.json())
+        try:
+            with requests.post(url, headers=headers, json=body, stream=True) as r:
+                r.raise_for_status()
+                content_disposition = r.headers.get('Content-Disposition')
+                if content_disposition:
+                    filename = content_disposition.split('filename=')[-1].strip('"')
+                else:
+                    filename = 'downloaded_file'
+
+                if os.path.isdir(destination):
+                    destination = os.path.join(destination, filename)
+
+                with open(destination, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+        
+            return DownloadFileResultDto.model_validate({"success": True })
+        except requests.exceptions.HTTPError as e:
+            return DownloadFileResultDto.model_validate({"success": False })
 
     def mint_credits(self, subscription_did: str, amount: str, receiver: str) -> MintResultDto:
         """
@@ -558,6 +576,5 @@ class Payments:
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/credits/burn"
         response = requests.post(url, headers=headers, json=body)
-        print(response.json())
         response.raise_for_status()
         return BurnResultDto(userOpHash=response.json()['userOpHash'], success=response.json()['success'], amount=amount)

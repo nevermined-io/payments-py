@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L6"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L5"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `SubscriptionType`
 An enumeration. 
@@ -22,7 +22,7 @@ An enumeration.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L11"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L10"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `BalanceResultDto`
 
@@ -57,7 +57,7 @@ Returns the set of fields that have been explicitly set on this model instance.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L27"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L26"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `MintResultDto`
 
@@ -92,7 +92,7 @@ Returns the set of fields that have been explicitly set on this model instance.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L41"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L40"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `BurnResultDto`
 
@@ -127,7 +127,7 @@ Returns the set of fields that have been explicitly set on this model instance.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L55"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L54"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `CreateAssetResultDto`
 
@@ -162,7 +162,7 @@ Returns the set of fields that have been explicitly set on this model instance.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L65"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L64"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `DownloadFileResultDto`
 
@@ -197,7 +197,7 @@ Returns the set of fields that have been explicitly set on this model instance.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L75"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L74"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `OrderSubscriptionResultDto`
 
@@ -232,7 +232,7 @@ Returns the set of fields that have been explicitly set on this model instance.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L87"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L86"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `ServiceTokenResultDto`
 

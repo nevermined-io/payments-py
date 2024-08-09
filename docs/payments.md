@@ -11,7 +11,7 @@
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L9"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L10"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `Payments`
 A class representing a payment system. 
@@ -45,7 +45,7 @@ Methods:
 
 
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L38"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L39"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -67,7 +67,7 @@ __init__(
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L532"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L550"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `burn_credits`
 
@@ -103,7 +103,7 @@ Burns credits associated with a subscription that you own.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L45"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L46"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_credits_subscription`
 
@@ -113,8 +113,8 @@ create_credits_subscription(
     description: str,
     price: int,
     token_address: str,
-    amount_of_credits: Optional[int],
-    tags: Optional[List[str]]
+    amount_of_credits: int,
+    tags: Optional[List[str]] = None
 ) → CreateAssetResultDto
 ```
 
@@ -128,7 +128,7 @@ Creates a new credits subscription.
  - <b>`description`</b> (str):  The description of the subscription. 
  - <b>`price`</b> (int):  The price of the subscription. 
  - <b>`token_address`</b> (str):  The token address. 
- - <b>`amount_of_credits`</b> (int, optional):  The amount of credits for the subscription. 
+ - <b>`amount_of_credits`</b> (int):  The amount of credits for the subscription. 
  - <b>`tags`</b> (List[str], optional):  The tags associated with the subscription. 
 
 
@@ -150,7 +150,7 @@ Creates a new credits subscription.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L191"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L192"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_file`
 
@@ -225,7 +225,7 @@ Creates a new file.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L130"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L131"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_service`
 
@@ -236,7 +236,7 @@ create_service(
     description: str,
     service_charge_type: str,
     auth_type: str,
-    amount_of_credits: Optional[int] = None,
+    amount_of_credits: int = 1,
     min_credits_to_charge: Optional[int] = None,
     max_credits_to_charge: Optional[int] = None,
     username: Optional[str] = None,
@@ -264,9 +264,9 @@ Creates a new service.
  - <b>`description`</b> (str):  The description of the service. 
  - <b>`service_charge_type`</b> (str):  The charge type of the service. Options: 'fixed', 'dynamic' 
  - <b>`auth_type`</b> (str):  The authentication type of the service. Options: 'none', 'basic', 'oauth' 
- - <b>`amount_of_credits`</b> (int, optional):  The amount of credits for the service. 
- - <b>`min_credits_to_charge`</b> (int, optional):  The minimum credits to charge for the service. 
- - <b>`max_credits_to_charge`</b> (int, optional):  The maximum credits to charge for the service. 
+ - <b>`amount_of_credits int`</b>:  The amount of credits for the service. 
+ - <b>`min_credits_to_charge`</b> (int, optional):  The minimum credits to charge for the service. Only required for dynamic services. 
+ - <b>`max_credits_to_charge`</b> (int, optional):  The maximum credits to charge for the service. Only required for dynamic services. 
  - <b>`username`</b> (str, optional):  The username for authentication. 
  - <b>`password`</b> (str, optional):  The password for authentication. 
  - <b>`token`</b> (str, optional):  The token for authentication. 
@@ -298,7 +298,7 @@ Creates a new service.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L87"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L88"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_time_subscription`
 
@@ -308,8 +308,8 @@ create_time_subscription(
     description: str,
     price: int,
     token_address: str,
-    duration: Optional[int],
-    tags: Optional[List[str]]
+    duration: Optional[int] = 0,
+    tags: Optional[List[str]] = None
 ) → CreateAssetResultDto
 ```
 
@@ -323,7 +323,7 @@ Creates a new time subscription.
  - <b>`description`</b> (str):  The description of the subscription. 
  - <b>`price`</b> (int):  The price of the subscription. 
  - <b>`token_address`</b> (str):  The token address. 
- - <b>`duration`</b> (int, optional):  The duration of the subscription. 
+ - <b>`duration`</b> (int, optional):  The duration of the subscription in days. If not provided, the subscription will be valid forever. 
  - <b>`tags`</b> (List[str], optional):  The tags associated with the subscription. 
 
 
@@ -345,15 +345,15 @@ Creates a new time subscription.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L461"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L462"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `download_file`
 
 ```python
 download_file(
     file_did: str,
-    agreement_id: Optional[str] = None,
-    destination: Optional[str] = None
+    destination: str,
+    agreement_id: Optional[str] = None
 ) → DownloadFileResultDto
 ```
 
@@ -365,7 +365,7 @@ Downloads the file.
  
  - <b>`file_did`</b> (str):  The DID of the file. 
  - <b>`agreement_id`</b> (str, optional):  The agreement ID. 
- - <b>`destination`</b> (str, optional):  The destination of the file. 
+ - <b>`destination str`</b>:  The destination of the file. 
 
 
 
@@ -390,7 +390,7 @@ Downloads the file.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L287"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L288"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_asset_ddo`
 
@@ -414,7 +414,7 @@ Gets the asset DDO.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L448"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L449"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_checkout_subscription`
 
@@ -438,12 +438,12 @@ Gets the checkout subscription.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L435"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L436"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
-### <kbd>method</kbd> `get_file_details`
+### <kbd>method</kbd> `get_file_details_url`
 
 ```python
-get_file_details(file_did: str)
+get_file_details_url(file_did: str)
 ```
 
 Gets the file details. 
@@ -462,12 +462,12 @@ Gets the file details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L422"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L423"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
-### <kbd>method</kbd> `get_service_details`
+### <kbd>method</kbd> `get_service_details_url`
 
 ```python
-get_service_details(service_did: str)
+get_service_details_url(service_did: str)
 ```
 
 Gets the service details. 
@@ -486,7 +486,7 @@ Gets the service details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L346"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L347"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_token`
 
@@ -521,7 +521,7 @@ Gets the service token.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L391"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L392"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_subscription_associated_files`
 
@@ -545,7 +545,7 @@ Gets the subscription associated files.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L373"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L374"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_subscription_associated_services`
 
@@ -569,7 +569,7 @@ Gets the subscription associated services.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L305"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L306"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_subscription_balance`
 
@@ -610,12 +610,12 @@ Expected Response: {  "subscriptionType": "credits",  "isOwner": True,  "isSubsc
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L409"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L410"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
-### <kbd>method</kbd> `get_subscription_details`
+### <kbd>method</kbd> `get_subscription_details_url`
 
 ```python
-get_subscription_details(subscription_did: str)
+get_subscription_details_url(subscription_did: str)
 ```
 
 Gets the subscription details. 
@@ -634,7 +634,7 @@ Gets the subscription details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L498"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L516"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `mint_credits`
 
@@ -671,7 +671,7 @@ Mints the credits associated with a subscription and sends them to the receiver.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L255"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L256"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `order_subscription`
 

@@ -13,11 +13,11 @@ nvm_api_key = os.getenv('NVM_API_KEY')
 
 @pytest.fixture
 def payment():
-    return Payments(nvm_api_key=nvm_api_key, environment=Environment.local, app_id="your_app_id", version="1.0.0")
+    return Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0")
 
 
 def test_payment_creation(payment):
-    assert payment.environment == Environment.local
+    assert payment.environment == Environment.appStaging
     assert payment.app_id == "your_app_id"
     assert payment.version == "1.0.0"
     assert payment.nvm_api_key == nvm_api_key
@@ -87,11 +87,11 @@ def test_get_service_token(payment):
     assert isinstance(response, ServiceTokenResultDto)
 
 def test_order_subscription(payment):
-    response = payment.order_subscription(subscription_did='did:nv:debe46f1c0f3e36c853a9f093717c46eaa94df9b302731b9d06e7e07e5fd0c8b')
+    response = payment.order_subscription(subscription_did='did:nv:b508b82ccb0572feb52ed0f0af11b3c56358500e937b4900e36500e8e3588315')
     assert isinstance(response, OrderSubscriptionResultDto)
 
 def test_download_file(payment):
-    response = payment.download_file(file_did='did:nv:7e38d39405445ab3e5435d8c1c6653a00ddc425ba629789f58fbefccaa5e5a5d')
+    response = payment.download_file(file_did='did:nv:64e669c1a433ec68e242494a9471176c977c38bef2e8b09c109530263b0df65f', destination='/tmp')
     assert isinstance(response, DownloadFileResultDto)
 
 def test_get_subscription_balance(payment):
