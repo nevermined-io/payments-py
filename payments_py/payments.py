@@ -2,7 +2,7 @@ import os
 from typing import List, Optional
 import requests
 
-from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderSubscriptionResultDto, ServiceTokenResultDto
+from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, CreateStepsDto, CreateTaskDto, DownloadFileResultDto, MintResultDto, NewStepDto, OrderSubscriptionResultDto, ServiceTokenResultDto, UpdateStepDto
 from payments_py.environments import Environment
 from payments_py.utils import snake_to_camel
 
@@ -578,3 +578,180 @@ class Payments:
         response = requests.post(url, headers=headers, json=body)
         response.raise_for_status()
         return BurnResultDto(userOpHash=response.json()['userOpHash'], success=response.json()['success'], amount=amount)
+    
+    ## AI module
+
+    def get_owner_agents_tasks(self, status: Optional[str] = None):
+        """
+        Gets the tasks of the owner agents.
+
+        Args:
+            status (str): The status of the tasks. It could be 'Pending', 'In_Progress', 'Completed', 'Failed', 'Not_Ready'.
+
+        Returns:
+            Response: The response from the API call.
+        Example:
+            response = your_instance.get_owner_agents_tasks()
+            print(response)
+        """
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/agents"
+        if status is not None:
+            url += f"?status={status}"
+        response = requests.get(url, headers=headers)
+        return response
+    
+    def get_agents_steps(self, dids: str, status: Optional[str] = None, ):
+        """
+        Gets the steps of the agents.
+
+        Args:
+            dids (str): Comma separated list of dids
+            status (str): The status of the steps. It could be 'Pending', 'In_Progress', 'Completed', 'Failed', 'Not_Ready'.
+        Returns:
+            Response: The response from the API call.
+        Example:
+            response = your_instance.get_agents_steps(status="Completed", dids="did:nv:abc123")
+            print(response)
+        """
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/agents/steps?dids={dids}"
+        if status is not None:
+            url += f"&status={status}"
+        response = requests.get(url, headers=headers)
+        return response
+    
+    def get_task_steps(self, did: str, task_id: str, status: Optional[str] = None):
+        """
+        Gets the steps of the task.
+
+        Args:
+            did (str): The DID of the task.
+            task_id (str): The ID of the task.
+            status (str): The status of the steps. It could be 'Pending', 'In_Progress', 'Completed', 'Failed', 'Not_Ready'.
+        Returns:
+            Response: The response from the API call.
+        Example:
+            response = your_instance.get_task_steps(did="did:nv:abc123", task_id="123456")
+            print(response)
+        """
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}/steps"
+        if status is not None:
+            url += f"?status={status}"
+        response = requests.get(url, headers=headers)
+        return response
+    
+    def add_steps(self, did:str, task_id: str, steps: List[CreateStepsDto]):
+        """
+        Adds steps to the task.
+
+        Args:
+            did (str): The DID of the task.
+            task_id (str): The ID of the task.
+            steps (List[dict]): The steps to add.
+        Returns:
+            Response: The response from the API call.
+        Example:
+            response = your_instance.add_steps(did="did:nv:abc123", task_id="123456", steps=[{"name": "Step 1", "status": "Pending"}])
+            print(response)
+        """
+        body = {
+            "steps": steps
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}/steps"
+        response = requests.post(url, headers=headers, json=body)
+        return response
+    
+    def update_step(self, did:str, task_id: str, step_id: str, steps: List[UpdateStepDto]):
+        """
+        Updates the step.
+
+        Args:
+            did (str): The DID of the task.
+            task_id (str): The ID of the task.
+            step_id (str): The ID of the step.
+            steps (List[dict]): The steps to add.
+        Returns:
+            Response: The response from the API call.
+        Example:
+            response = your_instance.update_step(did="did:nv:abc123", task_id="123456", step_id="654321", status="Completed")
+            print(response)
+        """
+        body = {
+            "steps": steps
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}/step/{step_id}"
+        response = requests.put(url, headers=headers, json=body)
+        return response
+    
+    def request_agent_task(self, did:str, input: CreateTaskDto):
+        """
+        Requests the agent task.
+
+        Args:
+            did (str): The DID of the task.
+            input (CreateTaskDto): The input for the task.
+        Returns:
+            Response: The response from the API call.
+        Example:
+            response = your_instance.request_agent_task(did="did:nv:abc123", input={"query": "What's the weather in NY now?"})
+            print(response)
+        """
+        body = {
+            "input": input
+        }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}'
+        }
+        url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks"
+        response = requests.post(url, headers=headers, json=body)
+        return response
+    
+    def get_task(self, did: str, task_id: str, user_id: str):
+        """
+        Gets the task.
+
+        Args:
+            did (str): The DID of the task.
+            task_id (str): The ID of the task.
+            user_id (str): The ID of the user.
+        Returns:
+            Response: The response from the API call.
+        Example:
+            response = your_instance.get_task(did="did:nv:abc123", task_id="123456", user_id="123")
+            print(response)
+        """
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.nvm_api_key}',
+            'NVM-User-id': user_id
+        }
+        url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}"
+        response = requests.get(url, headers=headers)
+        return response
