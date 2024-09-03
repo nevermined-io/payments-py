@@ -14,4 +14,5 @@ class Environment(Enum):
     appStaging = {"frontend": "https://staging.nevermined.app", "backend": "https://one-backend.staging.nevermined.app"}
     appTesting = {"frontend": "https://testing.nevermined.app", "backend": "https://one-backend.testing.nevermined.app"}
     appArbitrum = {"frontend": "https://nevermined.app", "backend": "https://one-backend.arbitrum.nevermined.app"}
+    appPeaq = {"frontend": "https://peaq.nevermined.app", "backend": "https://one-backend.peaq.nevermined.app"}
     # Define more environments as needed...
