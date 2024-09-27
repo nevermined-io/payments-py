@@ -2,12 +2,14 @@ import os
 from typing import List, Optional
 import requests
 
-from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, CreateStepsDto, CreateTaskDto, DownloadFileResultDto, MintResultDto, NewStepDto, OrderSubscriptionResultDto, ServiceTokenResultDto, UpdateStepDto
+from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderSubscriptionResultDto, ServiceTokenResultDto
 from payments_py.environments import Environment
+from payments_py.protocol.nvm_backend import BackendApiOptions, NVMBackendApi
+from payments_py.protocol.query_api import AIQueryApi
 from payments_py.utils import snake_to_camel
 
 
-class Payments:
+class Payments(NVMBackendApi):
     """
     A class representing a payment system.
 
@@ -37,11 +39,14 @@ class Payments:
         """
 
     def __init__(self, nvm_api_key: str, environment: Environment,
-                 app_id: Optional[str] = None, version: Optional[str] = None):
+                 app_id: Optional[str] = None, version: Optional[str] = None, ai_protocol: bool = False, headers: Optional[dict] = None, web_socket_options: Optional[dict] = None):
+        super().__init__(BackendApiOptions(environment, api_key=nvm_api_key, headers=headers, web_socket_options=web_socket_options))
         self.nvm_api_key = nvm_api_key
         self.environment = environment
         self.app_id = app_id
         self.version = version
+        if ai_protocol:
+            self.ai_protocol = AIQueryApi(BackendApiOptions(environment))
 
     def create_credits_subscription(self, name: str, description: str, price: int, token_address: str,
                             amount_of_credits: int, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
@@ -75,13 +80,8 @@ class Payments:
             "tags": tags if tags else [],
             "subscriptionType": "credits"
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'''Bearer {self.nvm_api_key}'''
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
 
@@ -118,13 +118,8 @@ class Payments:
             "subscriptionType": "time"
 
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'''Bearer {self.nvm_api_key}'''
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
@@ -179,13 +174,8 @@ class Payments:
             "authType": auth_type,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/service"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, data=body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
@@ -242,14 +232,8 @@ class Payments:
             "files": files,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/file"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, data=body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
@@ -275,13 +259,8 @@ class Payments:
             "subscriptionDid": subscription_did,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription/order"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, data=body)
         response.raise_for_status()
         return OrderSubscriptionResultDto.model_validate(response.json())
 
@@ -295,12 +274,7 @@ class Payments:
         Returns:
             Response: The response from the API call.
         """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
-        url = f"{self.environment.value['backend']}/api/v1/payments/asset/ddo/{did}"
-        response = requests.get(url, headers=headers)
+        response = self.get(f"{self.environment.value['backend']}/api/v1/payments/asset/ddo/{did}")
         return response
 
     def get_subscription_balance(self, subscription_did: str, account_address: str) -> BalanceResultDto:
@@ -334,13 +308,8 @@ class Payments:
         body = {
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = (f"{self.environment.value['backend']}/api/v1/payments/subscription/balance")
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return BalanceResultDto.model_validate(response.json())
     
@@ -361,13 +330,8 @@ class Payments:
             response = your_instance.get_service_token(service_did="did:nv:xyz789")
             print(response)
         """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/service/token/{service_did}"
-        response = requests.get(url, headers=headers)
+        response = self.get(url)
         response.raise_for_status() 
         return ServiceTokenResultDto.model_validate(response.json()['token'])
     
@@ -381,12 +345,8 @@ class Payments:
         Returns:
             Response: List of DIDs of the associated services.
         """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription/services/{subscription_did}"
-        response = requests.get(url, headers=headers)
+        response = self.get(url)
         return response
     
     def get_subscription_associated_files(self, subscription_did: str):
@@ -399,12 +359,8 @@ class Payments:
         Returns:
             Response: List of DIDs of the associated files.
         """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription/files/{subscription_did}"
-        response = requests.get(url, headers=headers)
+        response = self.get(url)
         return response
 
     def get_subscription_details_url(self, subscription_did: str):
@@ -537,13 +493,8 @@ class Payments:
             "nftAmount": amount,
             "receiver": receiver
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/credits/mint"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return MintResultDto(userOpHash=response.json()['userOpHash'], success=response.json()['success'], amount=amount)
     
@@ -569,170 +520,165 @@ class Payments:
             "did": subscription_did,
             "nftAmount": amount
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/credits/burn"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return BurnResultDto(userOpHash=response.json()['userOpHash'], success=response.json()['success'], amount=amount)
     
     ## AI module
 
-    def get_owner_agents_tasks(self, status: Optional[str] = None):
-        """
-        Gets the tasks of the owner agents.
+    # def get_owner_agents_tasks(self, status: Optional[str] = None):
+    #     """
+    #     Gets the tasks of the owner agents.
 
-        Args:
-            status (str): The status of the tasks. It could be 'Pending', 'In_Progress', 'Completed', 'Failed', 'Not_Ready'.
+    #     Args:
+    #         status (str): The status of the tasks. It could be 'Pending', 'In_Progress', 'Completed', 'Failed', 'Not_Ready'.
 
-        Returns:
-            Response: The response from the API call.
-        Example:
-            response = your_instance.get_owner_agents_tasks()
-            print(response)
-        """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
-        url = f"{self.environment.value['backend']}/api/v1/agents"
-        if status is not None:
-            url += f"?status={status}"
-        response = requests.get(url, headers=headers)
-        return response
+    #     Returns:
+    #         Response: The response from the API call.
+    #     Example:
+    #         response = your_instance.get_owner_agents_tasks()
+    #         print(response)
+    #     """
+    #     headers = {
+    #         'Accept': 'application/json',
+    #         'Content-Type': 'application/json',
+    #         'Authorization': f'Bearer {self.nvm_api_key}'
+    #     }
+    #     url = f"{self.environment.value['backend']}/api/v1/agents"
+    #     if status is not None:
+    #         url += f"?status={status}"
+    #     response = requests.get(url, headers=headers)
+    #     return response
     
-    def get_agents_steps(self, dids: str, status: Optional[str] = None, ):
-        """
-        Gets the steps of the agents.
+    # def get_agents_steps(self, dids: str, status: Optional[str] = None, ):
+    #     """
+    #     Gets the steps of the agents.
 
-        Args:
-            dids (str): Comma separated list of dids
-            status (str): The status of the steps. It could be 'Pending', 'In_Progress', 'Completed', 'Failed', 'Not_Ready'.
-        Returns:
-            Response: The response from the API call.
-        Example:
-            response = your_instance.get_agents_steps(status="Completed", dids="did:nv:abc123")
-            print(response)
-        """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
-        url = f"{self.environment.value['backend']}/api/v1/agents/steps?dids={dids}"
-        if status is not None:
-            url += f"&status={status}"
-        response = requests.get(url, headers=headers)
-        return response
+    #     Args:
+    #         dids (str): Comma separated list of dids
+    #         status (str): The status of the steps. It could be 'Pending', 'In_Progress', 'Completed', 'Failed', 'Not_Ready'.
+    #     Returns:
+    #         Response: The response from the API call.
+    #     Example:
+    #         response = your_instance.get_agents_steps(status="Completed", dids="did:nv:abc123")
+    #         print(response)
+    #     """
+    #     headers = {
+    #         'Accept': 'application/json',
+    #         'Content-Type': 'application/json',
+    #         'Authorization': f'Bearer {self.nvm_api_key}'
+    #     }
+    #     url = f"{self.environment.value['backend']}/api/v1/agents/steps?dids={dids}"
+    #     if status is not None:
+    #         url += f"&status={status}"
+    #     response = requests.get(url, headers=headers)
+    #     return response
     
-    def get_task_steps(self, did: str, task_id: str, status: Optional[str] = None):
-        """
-        Gets the steps of the task.
+    # def get_task_steps(self, did: str, task_id: str, status: Optional[str] = None):
+    #     """
+    #     Gets the steps of the task.
 
-        Args:
-            did (str): The DID of the task.
-            task_id (str): The ID of the task.
-            status (str): The status of the steps. It could be 'Pending', 'In_Progress', 'Completed', 'Failed', 'Not_Ready'.
-        Returns:
-            Response: The response from the API call.
-        Example:
-            response = your_instance.get_task_steps(did="did:nv:abc123", task_id="123456")
-            print(response)
-        """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
-        url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}/steps"
-        if status is not None:
-            url += f"?status={status}"
-        response = requests.get(url, headers=headers)
-        return response
+    #     Args:
+    #         did (str): The DID of the task.
+    #         task_id (str): The ID of the task.
+    #         status (str): The status of the steps. It could be 'Pending', 'In_Progress', 'Completed', 'Failed', 'Not_Ready'.
+    #     Returns:
+    #         Response: The response from the API call.
+    #     Example:
+    #         response = your_instance.get_task_steps(did="did:nv:abc123", task_id="123456")
+    #         print(response)
+    #     """
+    #     headers = {
+    #         'Accept': 'application/json',
+    #         'Content-Type': 'application/json',
+    #         'Authorization': f'Bearer {self.nvm_api_key}'
+    #     }
+    #     url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}/steps"
+    #     if status is not None:
+    #         url += f"?status={status}"
+    #     response = requests.get(url, headers=headers)
+    #     return response
     
-    def add_steps(self, did:str, task_id: str, steps: List[CreateStepsDto]):
-        """
-        Adds steps to the task.
+    # def add_steps(self, did:str, task_id: str, steps: List[CreateStepsDto]):
+    #     """
+    #     Adds steps to the task.
 
-        Args:
-            did (str): The DID of the task.
-            task_id (str): The ID of the task.
-            steps (List[dict]): The steps to add.
-        Returns:
-            Response: The response from the API call.
-        Example:
-            response = your_instance.add_steps(did="did:nv:abc123", task_id="123456", steps=[{"name": "Step 1", "status": "Pending"}])
-            print(response)
-        """
-        body = {
-            "steps": steps
-        }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
-        url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}/steps"
-        response = requests.post(url, headers=headers, json=body)
-        return response
+    #     Args:
+    #         did (str): The DID of the task.
+    #         task_id (str): The ID of the task.
+    #         steps (List[dict]): The steps to add.
+    #     Returns:
+    #         Response: The response from the API call.
+    #     Example:
+    #         response = your_instance.add_steps(did="did:nv:abc123", task_id="123456", steps=[{"name": "Step 1", "status": "Pending"}])
+    #         print(response)
+    #     """
+    #     body = {
+    #         "steps": steps
+    #     }
+    #     headers = {
+    #         'Accept': 'application/json',
+    #         'Content-Type': 'application/json',
+    #         'Authorization': f'Bearer {self.nvm_api_key}'
+    #     }
+    #     url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}/steps"
+    #     response = requests.post(url, headers=headers, json=body)
+    #     return response
     
-    def update_step(self, did:str, task_id: str, step_id: str, steps: List[UpdateStepDto]):
-        """
-        Updates the step.
+    # def update_step(self, did:str, task_id: str, step_id: str, steps: List[UpdateStepDto]):
+    #     """
+    #     Updates the step.
 
-        Args:
-            did (str): The DID of the task.
-            task_id (str): The ID of the task.
-            step_id (str): The ID of the step.
-            steps (List[dict]): The steps to add.
-        Returns:
-            Response: The response from the API call.
-        Example:
-            response = your_instance.update_step(did="did:nv:abc123", task_id="123456", step_id="654321", status="Completed")
-            print(response)
-        """
-        body = {
-            "steps": steps
-        }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
-        url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}/step/{step_id}"
-        response = requests.put(url, headers=headers, json=body)
-        return response
+    #     Args:
+    #         did (str): The DID of the task.
+    #         task_id (str): The ID of the task.
+    #         step_id (str): The ID of the step.
+    #         steps (List[dict]): The steps to add.
+    #     Returns:
+    #         Response: The response from the API call.
+    #     Example:
+    #         response = your_instance.update_step(did="did:nv:abc123", task_id="123456", step_id="654321", status="Completed")
+    #         print(response)
+    #     """
+    #     body = {
+    #         "steps": steps
+    #     }
+    #     headers = {
+    #         'Accept': 'application/json',
+    #         'Content-Type': 'application/json',
+    #         'Authorization': f'Bearer {self.nvm_api_key}'
+    #     }
+    #     url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks/{task_id}/step/{step_id}"
+    #     response = requests.put(url, headers=headers, json=body)
+    #     return response
     
-    def request_agent_task(self, did:str, input: CreateTaskDto):
-        """
-        Requests the agent task.
+    # def request_agent_task(self, did:str, input: CreateTaskDto):
+    #     """
+    #     Requests the agent task.
 
-        Args:
-            did (str): The DID of the task.
-            input (CreateTaskDto): The input for the task.
-        Returns:
-            Response: The response from the API call.
-        Example:
-            response = your_instance.request_agent_task(did="did:nv:abc123", input={"query": "What's the weather in NY now?"})
-            print(response)
-        """
-        body = {
-            "input": input
-        }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
-        url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks"
-        response = requests.post(url, headers=headers, json=body)
-        return response
+    #     Args:
+    #         did (str): The DID of the task.
+    #         input (CreateTaskDto): The input for the task.
+    #     Returns:
+    #         Response: The response from the API call.
+    #     Example:
+    #         response = your_instance.request_agent_task(did="did:nv:abc123", input={"query": "What's the weather in NY now?"})
+    #         print(response)
+    #     """
+    #     body = {
+    #         "input": input
+    #     }
+    #     headers = {
+    #         'Accept': 'application/json',
+    #         'Content-Type': 'application/json',
+    #         'Authorization': f'Bearer {self.nvm_api_key}'
+    #     }
+    #     url = f"{self.environment.value['backend']}/api/v1/agents/{did}/tasks"
+    #     response = requests.post(url, headers=headers, json=body)
+    #     return response
     
-    def get_task(self, did: str, task_id: str, user_id: str):
+    # def get_task(self, did: str, task_id: str, user_id: str):
         """
         Gets the task.
 

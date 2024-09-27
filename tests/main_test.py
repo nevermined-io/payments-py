@@ -13,7 +13,7 @@ nvm_api_key = os.getenv('NVM_API_KEY')
 
 @pytest.fixture
 def payment():
-    return Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0")
+    return Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=False)
 
 
 def test_payment_creation(payment):

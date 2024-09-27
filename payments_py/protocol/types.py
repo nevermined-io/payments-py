@@ -3,13 +3,8 @@ from typing import Optional, List, Dict, Any
 from enum import Enum
 from datetime import datetime
 
-# Enum for AgentExecutionStatus
-class AgentExecutionStatus(Enum):
-    PENDING = "Pending"
-    IN_PROGRESS = "In_Progress"
-    NOT_READY = "Not_Ready"
-    COMPLETED = "Completed"
-    FAILED = "Failed"
+from payments_py.data_models import AgentExecutionStatus
+
 
 # Artifact data class
 @dataclass

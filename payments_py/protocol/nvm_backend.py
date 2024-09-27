@@ -1,21 +1,22 @@
+import re
 import requests
 import socketio
 import jwt
 from typing import Optional, Dict, List, Any
 
+from payments_py.environments import Environment
+
 
 class BackendApiOptions:
     def __init__(self,
-                 backend_host: str,
-                 bearer_token: str,
-                 web_socket_host: Optional[str] = None,
-                 proxy_host: Optional[str] = None,
+                 environment: Environment,
+                 api_key: Optional[str] = None,
                  headers: Optional[Dict[str, str]] = None,
                  web_socket_options: Optional[Dict[str, Any]] = None):
-        self.backend_host = backend_host
-        self.bearer_token = bearer_token
-        self.web_socket_host = web_socket_host
-        self.proxy_host = proxy_host
+        self.api_key = api_key
+        self.backend_host = environment.value['backend']
+        self.web_socket_host = environment.value['websocket']
+        self.proxy_host = environment.value['proxy']
         self.headers = headers or {}
         self.web_socket_options = web_socket_options or {}
 
@@ -37,14 +38,22 @@ class NVMBackendApi:
         self.opts = opts
         self.socket_client = None
         self.room_id = None
+        self.has_key = False
+        self._default_socket_options = BackendWebSocketOptions(
+            transports=['websocket'],
+            transport_options={
+                'websocket': {
+                    'extraHeaders': {}
+                }
+            }
+        )
 
         default_headers = {
             'Accept': 'application/json',
             **(opts.headers or {}),
-            **({'Authorization': f'Bearer {opts.bearer_token}'} if opts.bearer_token else {})
+            **({'Authorization': f'Bearer {opts.api_key}'} if opts.api_key else {})
         }
 
-        # Setup WebSocket Options
         if opts.web_socket_options and opts.web_socket_options.get('bearer_token'):
             opts.web_socket_options['transport_options'] = {
                 'websocket': {
@@ -52,71 +61,67 @@ class NVMBackendApi:
                 }
             }
 
-        # Merge default socket options
-        self._default_socket_options = {
-            'transports': ['websocket'],
-            'transportOptions': {
-                'websocket': {
-                    'extraHeaders': {},
-                },
-            },
-        }
-
         self.opts.headers = default_headers
         self.opts.web_socket_options = {
-            **self._default_socket_options,
+            **self._default_socket_options.__dict__,
             **(opts.web_socket_options or {})
         }
 
-        # Validate JWT
         try:
-            decoded_jwt = jwt.decode(self.opts.bearer_token, options={"verify_signature": False})
-            client_id = decoded_jwt.get('sub')
-            if not client_id or not client_id.startswith('0x') or len(client_id) != 42:
-                raise ValueError(f"Invalid ClientId from Bearer token: {client_id}")
-            self.room_id = f"room:{client_id}"
-        except jwt.DecodeError as error:
-            raise ValueError(f"Error parsing bearer token: {str(error)}")
+            if self.opts.api_key and len(self.opts.api_key) > 0:
+                decoded_jwt = jwt.decode(self.opts.api_key, options={"verify_signature": False})
+                client_id = decoded_jwt.get('sub')
+                
+                # Check if the client_id exists and does not match the specified pattern
+                if client_id and not re.match(r'^0x[a-fA-F0-9]{40}$', client_id):
+                    self.room_id = f"room:{client_id}"
+                    self.has_key = True
+        except Exception:
+            self.has_key = False
+            self.room_id = None 
 
-        # Validate URL
         try:
-            self.opts.backend_host = self.opts.backend_host.rstrip('/')
+            backend_url = self.opts.backend_host.rstrip('/')
+            self.opts.backend_host = backend_url
         except Exception as error:
             raise ValueError(f"Invalid URL: {self.opts.backend_host} - {str(error)}")
 
-    def connect_socket(self):
+    async def connect_socket(self):
+        if not self.has_key:
+            raise ValueError('Unable to subscribe to the server because a key was not provided')
+
         if self.socket_client and self.socket_client.connected:
             return
+
         try:
-            print(f"Connecting to websocket server: {self.opts.web_socket_host}")
+            print(f"nvm-backend:: Connecting to websocket server: {self.opts.web_socket_host}")
             self.socket_client = socketio.Client()
             self.socket_client.connect(self.opts.web_socket_host, **self.opts.web_socket_options)
-            print(f"is connected: {self.socket_client.connected}")
+            print('is connected: ', self.socket_client.connected)
         except Exception as error:
-            raise ConnectionError(
-                f"Unable to initialize websocket client: {self.opts.web_socket_host} - {str(error)}"
-            )
+            raise ConnectionError(f"Unable to initialize websocket client: {self.opts.web_socket_host} - {str(error)}")
 
     def disconnect_socket(self):
         if self.socket_client and self.socket_client.connected:
             self.socket_client.disconnect()
 
-    def _subscribe(self, callback):
-        self.connect_socket()
-        self.socket_client.on('connect', lambda: print("Subscribed:: Connected to the server"))
-        print(f"Joining room: {self.room_id}")
+    async def _subscribe(self, callback):
+        await self.connect_socket()
+        self.socket_client.on('connect', lambda: print("nvm-backend:: Subscribe:: Connected to the server"))
+        print(f"nvm-backend:: Joining room: {self.room_id}")
         self.socket_client.on(self.room_id, callback)
-        print(f"Joined room: {self.room_id}")
+        print(f"nvm-backend:: Joined room: {self.room_id}")
 
-    def _emit_events(self, data: Any):
-        self.connect_socket()
+    async def _emit_events(self, data: Any):
+        await self.connect_socket()
         self.socket_client.emit(self.room_id, data)
 
     def disconnect(self):
         self.disconnect_socket()
-        print("Disconnected from the server")
+        print("nvm-backend:: Disconnected from the server")
 
-    def parse_url(self, uri: str):
+    def parse_url(self, uri: str) -> str:
+        print(f"nvm-backend:: Parsing URL: {uri}")
         return f"{self.opts.proxy_host}{uri}" if self.opts.proxy_host else f"{self.opts.backend_host}{uri}"
 
     def set_bearer_token(self, token: str):
@@ -124,33 +129,32 @@ class NVMBackendApi:
 
     def get(self, url: str):
         try:
-            response = requests.get(self.parse_url(url), headers=self.opts.headers)
+            response = requests.get(url, headers=self.opts.headers)
             response.raise_for_status()
-            return response.json()
+            return response
         except requests.exceptions.HTTPError as err:
             return {"data": err.response.json(), "status": err.response.status_code, "headers": err.response.headers}
 
     def post(self, url: str, data: Any):
         try:
-            print(f"Sending POST: {self.parse_url(url)}")
-            response = requests.post(self.parse_url(url), json=data, headers=self.opts.headers)
+            response = requests.post(url, json=data, headers=self.opts.headers)
             response.raise_for_status()
-            return response.json()
+            return response
         except requests.exceptions.HTTPError as err:
             return {"data": err.response.json(), "status": err.response.status_code, "headers": err.response.headers}
 
     def put(self, url: str, data: Any):
         try:
-            response = requests.put(self.parse_url(url), json=data, headers=self.opts.headers)
+            response = requests.put(url, json=data, headers=self.opts.headers)
             response.raise_for_status()
-            return response.json()
+            return response
         except requests.exceptions.HTTPError as err:
             return {"data": err.response.json(), "status": err.response.status_code, "headers": err.response.headers}
 
     def delete(self, url: str, data: Any):
         try:
-            response = requests.delete(self.parse_url(url), json=data, headers=self.opts.headers)
+            response = requests.delete(url, json=data, headers=self.opts.headers)
             response.raise_for_status()
-            return response.json()
+            return response
         except requests.exceptions.HTTPError as err:
             return {"data": err.response.json(), "status": err.response.status_code, "headers": err.response.headers}
