@@ -4,8 +4,8 @@ import requests
 
 from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderSubscriptionResultDto, ServiceTokenResultDto
 from payments_py.environments import Environment
-from payments_py.protocol.nvm_backend import BackendApiOptions, NVMBackendApi
-from payments_py.protocol.query_api import AIQueryApi
+from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
+from payments_py.ai_query_api import AIQueryApi
 from payments_py.utils import snake_to_camel
 
 

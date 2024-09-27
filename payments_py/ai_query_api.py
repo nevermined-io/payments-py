@@ -1,6 +1,6 @@
 from typing import Any, List, Optional
 from payments_py.data_models import AgentExecutionStatus
-from payments_py.protocol.nvm_backend import BackendApiOptions, NVMBackendApi
+from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 import asyncio
 
 
