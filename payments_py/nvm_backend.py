@@ -1,3 +1,5 @@
+import asyncio
+import json
 import re
 import requests
 import socketio
@@ -5,6 +7,8 @@ import jwt
 from typing import Optional, Dict, List, Any
 
 from payments_py.environments import Environment
+
+sio = socketio.AsyncClient(logger=False, engineio_logger=False)
 
 
 class BackendApiOptions:
@@ -21,32 +25,12 @@ class BackendApiOptions:
         self.web_socket_options = web_socket_options or {}
 
 
-class BackendWebSocketOptions:
-    def __init__(self,
-                 path: Optional[str] = None,
-                 transports: Optional[List[str]] = None,
-                 bearer_token: Optional[str] = None,
-                 transport_options: Optional[Dict[str, Any]] = None):
-        self.path = path
-        self.transports = transports or ['websocket']
-        self.bearer_token = bearer_token
-        self.transport_options = transport_options or {'websocket': {'extraHeaders': {}}}
-
-
 class NVMBackendApi:
     def __init__(self, opts: BackendApiOptions):
         self.opts = opts
-        self.socket_client = None
+        self.socket_client = sio
         self.room_id = None
         self.has_key = False
-        self._default_socket_options = BackendWebSocketOptions(
-            transports=['websocket'],
-            transport_options={
-                'websocket': {
-                    'extraHeaders': {}
-                }
-            }
-        )
 
         default_headers = {
             'Accept': 'application/json',
@@ -63,7 +47,6 @@ class NVMBackendApi:
 
         self.opts.headers = default_headers
         self.opts.web_socket_options = {
-            **self._default_socket_options.__dict__,
             **(opts.web_socket_options or {})
         }
 
@@ -73,7 +56,7 @@ class NVMBackendApi:
                 client_id = decoded_jwt.get('sub')
                 
                 # Check if the client_id exists and does not match the specified pattern
-                if client_id and not re.match(r'^0x[a-fA-F0-9]{40}$', client_id):
+                if client_id:# and not re.match(r'^0x[a-fA-F0-9]{40}$', client_id):
                     self.room_id = f"room:{client_id}"
                     self.has_key = True
         except Exception:
@@ -85,44 +68,87 @@ class NVMBackendApi:
             self.opts.backend_host = backend_url
         except Exception as error:
             raise ValueError(f"Invalid URL: {self.opts.backend_host} - {str(error)}")
-
+    
     async def connect_socket(self):
         if not self.has_key:
             raise ValueError('Unable to subscribe to the server because a key was not provided')
 
         if self.socket_client and self.socket_client.connected:
             return
-
+        
         try:
             print(f"nvm-backend:: Connecting to websocket server: {self.opts.web_socket_host}")
-            self.socket_client = socketio.Client()
-            self.socket_client.connect(self.opts.web_socket_host, **self.opts.web_socket_options)
-            print('is connected: ', self.socket_client.connected)
+            # self.socket_client = socketio.AsyncClient(logger=True, engineio_logger=True)
+            await self.socket_client.connect(self.opts.web_socket_host, headers=self.opts.headers, transports=["websocket"])
+            print(f"nvm-backend:: Connected: {self.socket_client.connected}")
         except Exception as error:
             raise ConnectionError(f"Unable to initialize websocket client: {self.opts.web_socket_host} - {str(error)}")
 
-    def disconnect_socket(self):
+    async def disconnect_socket(self):
         if self.socket_client and self.socket_client.connected:
             self.socket_client.disconnect()
 
-    async def _subscribe(self, callback):
+
+    # @sio.on('connect')
+    # async def on_connect(self):
+    #     print('nvm-backend:: Connected XXXXXX')
+    
+
+    async def _subscribe(self, callback, events: Optional[str]=None):
         await self.connect_socket()
-        self.socket_client.on('connect', lambda: print("nvm-backend:: Subscribe:: Connected to the server"))
+        if not self.socket_client.connected:
+            raise ConnectionError('Failed to connect to the WebSocket server.')
+        
+        async def event_handler(data):
+            parsed_data = json.loads(data)    
+            print(f"nvm-backend:: Received event: {parsed_data}")
+            received_event_type = parsed_data.get('event')
+            if isinstance(events, list):
+                if received_event_type in events:
+                    print(f"Received {received_event_type} event from list: {parsed_data}")
+                    await callback(parsed_data['data'])
+                else:
+                    print(f"Ignoring event {received_event_type} (expecting one of {events})")
+            else:
+                print(f"Ignoring event {received_event_type} (expecting {events})")
+
+        
+        # Register event listener for the room
+        self.socket_client.on(self.room_id, event_handler)
+        
+        # self.socket_client.on(self.room_id, callback)
         print(f"nvm-backend:: Joining room: {self.room_id}")
-        self.socket_client.on(self.room_id, callback)
+        
+        # Join the room
+        await self.join_room(self.room_id)
         print(f"nvm-backend:: Joined room: {self.room_id}")
 
-    async def _emit_events(self, data: Any):
-        await self.connect_socket()
-        self.socket_client.emit(self.room_id, data)
 
-    def disconnect(self):
-        self.disconnect_socket()
+    async def _emit_events(self, data: Any):
+        print(f"nvm-backend:: Emitting events to room: {self.room_id}")
+        # print(f"nvm-backend:: Emitting data: {data}")
+        await self.connect_socket()
+        # await self.socket_client.emit('room_message', {"room": self.room_id, "data": data})
+
+        await self.socket_client.emit(event=self.room_id, data=data)
+
+
+    async def join_room(self, room_id):
+        print(f"event:: Joining room: {room_id}")
+        await self.socket_client.emit('join_room', { "room": room_id })
+
+
+    async def disconnect(self):
+        await self.disconnect_socket()
         print("nvm-backend:: Disconnected from the server")
 
-    def parse_url(self, uri: str) -> str:
-        print(f"nvm-backend:: Parsing URL: {uri}")
-        return f"{self.opts.proxy_host}{uri}" if self.opts.proxy_host else f"{self.opts.backend_host}{uri}"
+    def parse_url_to_proxy(self, uri: str) -> str:
+        # print(f"nvm-backend:: Parsing URL: {uri}")
+        return f"{self.opts.proxy_host}{uri}"
+    
+    def parse_url_to_backend(self, uri: str) -> str:
+        # print(f"nvm-backend:: Parsing URL: {uri}")
+        return f"{self.opts.backend_host}{uri}"
 
     def set_bearer_token(self, token: str):
         self.opts.headers['Authorization'] = f'Bearer {token}'
