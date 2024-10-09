@@ -72,14 +72,44 @@ class Payments(NVMBackendApi):
             response = your_instance.create_credits_subscription(name="Basic Plan", description="100 credits subscription", price=1, token_address="0x1234", amount_of_credits=100, tags=["basic"])
             print(response)
         """
+        metadata = {
+            'main': {
+                'name': name,
+                'type': 'subscription',
+                'license': 'No License Specified',
+                'files': [],
+                'ercType': 1155,
+                'nftType': "nft1155-credit",
+                'subscription': {
+                    'subscriptionType': 'credits',
+                },
+            },
+            'additionalInformation': {
+                'description': description,
+                'tags': tags if tags else [],
+                'customData': {
+                    'dateMeasure': 'days',
+                    'plan': 'custom',
+                    'subscriptionLimitType': 'credits',
+                },
+            },
+        }
+        service_attributes = [
+            {
+                'serviceType': 'nft-sales',
+                'price': price,
+                'nft': {
+                    'amount': amount_of_credits,
+                    'nftTransfer': False,
+                },
+            },
+        ]
+            
         body = {
-            "name": name,
-            "description": description,
             "price": price,
             "tokenAddress": token_address,
-            "amountOfCredits": amount_of_credits,
-            "tags": tags if tags else [],
-            "subscriptionType": "credits"
+            "metadata": metadata,
+            "serviceAttributes": service_attributes,
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription"
         response = self.post(url, body)
@@ -109,27 +139,57 @@ class Payments(NVMBackendApi):
             response = your_instance.create_time_subscription(name="Yearly Plan", description="Annual subscription", price=1200, token_address="0x5678", duration=365, tags=["yearly", "premium"])
             print(response)
         """
+        metadata = {
+            'main': {
+                'name': name,
+                'type': 'subscription',
+                'license': 'No License Specified',
+                'files': [],
+                'ercType': 1155,
+                'nftType': "nft1155-credit",
+                'subscription': {
+                    'subscriptionType': 'time',
+                },
+            },
+            'additionalInformation': {
+                'description': description,
+                'tags': tags if tags else [],
+                'customData': {
+                    'dateMeasure': 'days',
+                    'plan': 'custom',
+                    'subscriptionLimitType': 'time',
+                },
+            },
+        }
+
+        service_attributes = [
+            {
+                'serviceType': 'nft-sales',
+                'price': price,
+                'nft': {
+                    'duration': duration,
+                    'amount': 1,
+                    'nftTransfer': False,
+                },
+            },
+        ]
         body = {
-            "name": name,
-            "description": description,
+            "metadata": metadata,
+            "serviceAttributes": service_attributes,
             "price": price,
             "tokenAddress": token_address,
-            "duration": duration,
-            "tags": tags if tags else [],
-            "subscriptionType": "time"
-
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription"
         response = self.post(url, body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
-    def create_service(self, subscription_did: str, name: str, description: str,
+    def create_service(self, subscription_did: str, service_type: str, name: str, description: str,
                        service_charge_type: str, auth_type: str, amount_of_credits: int = 1,
-                       min_credits_to_charge: Optional[int] = None, max_credits_to_charge: Optional[int] = None,
+                       min_credits_to_charge: Optional[int] = 1, max_credits_to_charge: Optional[int] = 1,
                        username: Optional[str] = None, password: Optional[str] = None, token: Optional[str] = None,
                        endpoints: Optional[List[dict]] = None,
-                       open_endpoints: Optional[List[str]] = None, open_api_url: Optional[str] = None,
+                       open_endpoints: Optional[List[str]] = [], open_api_url: Optional[str] = None,
                        integration: Optional[str] = None, sample_link: Optional[str] = None,
                        api_description: Optional[str] = None, curation: Optional[dict] = None,
                        tags: Optional[List[str]] = None) -> CreateAssetResultDto:
@@ -138,6 +198,7 @@ class Payments(NVMBackendApi):
 
         Args:
             subscription_did (str): The DID of the subscription.
+            service_type (str): The type of the service. Options: 'service', 'agent', 'assistant'
             name (str): The name of the service.
             description (str): The description of the service.
             service_charge_type (str): The charge type of the service. Options: 'fixed', 'dynamic'
@@ -167,13 +228,71 @@ class Payments(NVMBackendApi):
             response = your_instance.create_service(subscription_did="did:nv:abc123", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none")
             print(response)
         """
+        metadata = {
+            'main':{
+                'name': name,
+                'license': 'No License Specified',
+                'type': service_type,
+                'files': [],
+                'ercType': 'nft1155',
+                'nftType': 'nft1155Credit',
+                'subscription': {
+                    'timeMeasure': 'days',
+                    'subscriptionType': 'credits', 
+                },
+                'webService': {
+                    'endpoints': endpoints,
+                    'openEndpoints': open_endpoints,
+                    'internalAttributes': {
+                        'authentication': {
+                            'type': auth_type if auth_type else 'none',
+                            **({
+                                'username': username,
+                                'password': password
+                            } if auth_type == 'basic' else {}),
+                            **({
+                                'token': token
+                            } if auth_type == 'oauth' else {}),
+                        },
+                        **({
+                            'headers': [{'Authorization': f'Bearer {token}'}]
+                        } if auth_type == 'oauth' and token else {}),
+                    },
+                    'chargeType': service_charge_type,
+                },
+        },
+        # 'curation': curation if curation else {},
+        'additionalInformation': {
+            'description': description,
+            'tags': tags if tags else [],
+            'customData': {
+                'openApiUrl': open_api_url,
+                'integration': integration,
+                'sampleLink': sample_link,
+                'apiDescription': api_description,
+                'plan': 'custom',
+                'serviceChargeType': service_charge_type,
+            },
+        }
+
+        }
+        service_attributes = [
+            {
+                'serviceType': 'nft-access',
+                'nft': {
+                    'amount': amount_of_credits if amount_of_credits else None,
+                    'tokenId': subscription_did,
+                    'minCreditsToCharge': min_credits_to_charge,
+                    'minCreditsRequired': min_credits_to_charge,
+                    'maxCreditsToCharge': max_credits_to_charge,
+                    'nftTransfer': False,
+                },
+            },
+        ]
         body = {
+            "metadata": metadata,
+            "serviceAttributes": service_attributes,
             "subscriptionDid": subscription_did,
-            "name": name,
-            "description": description,
-            "serviceChargeType": service_charge_type,
-            "authType": auth_type,
-            **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/service"
         response = self.post(url, data=body)
@@ -225,13 +344,52 @@ class Payments(NVMBackendApi):
             response = your_instance.create_file(subscription_did="did:nv:xyz789", asset_type="dataset", name="Sample Dataset", description="A sample dataset", files=[{"name": "file1.csv", "url": "https://example.com/file1.csv"}])
             print(response)
         """
+        metadata = {
+            'main': {
+                'name': name,
+                'license': 'No License Specified',
+                'type': asset_type,
+                'files': files,
+                'ercType': 'nft1155',
+                'nftType': 'nft1155Credit',
+            },
+            # 'curation': curation if curation else {},
+            'additionalInformation': {
+                'description': description,
+                'tags': tags if tags else [],
+                'customData': {
+                # coverFile: coverFile?.[0],
+                # conditionsFile: conditionsFile?.[0],
+                # sampleData: sampleData?.[0],
+                'dataSchema': data_schema ,
+                'sampleCode': sample_code,
+                'usageExample': usage_example,
+                'filesFormat': files_format ,
+                'programmingLanguage': programming_language ,
+                'framework': framework,
+                'task': task,
+                'architecture': task,
+                'trainingDetails': training_details,
+                'variations': variations ,
+                'fineTunable': fine_tunable,
+                'plan': 'custom',
+                },
+            },
+        }
+        service_attributes = [
+            {
+                'serviceType': 'nft-access',
+                'nft': {
+                    'tokenId': subscription_did,
+                    'amount': amount_of_credits if amount_of_credits else None,
+                    'nftTransfer': False,
+                },
+            },
+        ]
         body = {
+            "metadata": metadata,
+            "serviceAttributes": service_attributes,
             "subscriptionDid": subscription_did,
-            "assetType": asset_type,
-            "name": name,
-            "description": description,
-            "files": files,
-            **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/file"
         response = self.post(url, data=body)
