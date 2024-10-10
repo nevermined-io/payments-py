@@ -112,7 +112,7 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     assert builder.room_id
 
 
-    order_response = subscriber.order_subscription(subscription.did)
+    order_response = subscriber.order_subscription(subscription_did=subscription.did)
     assert isinstance(order_response, OrderSubscriptionResultDto)
     print('Subscription ordered:', order_response.success)
 
