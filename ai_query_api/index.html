@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Nevermined" /><link rel="canonical" href="https://github.com/nevermined-io/payments-py/ai_query_api/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Ai query api - payments-py</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Ai query api";
+        var mkdocs_page_input_path = "ai_query_api.md";
+        var mkdocs_page_url = "/nevermined-io/payments-py/ai_query_api/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> payments-py
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Overview</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Ai query api</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#global-variables">Global Variables</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#class-aiqueryapi">class AIQueryApi</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#method-__init__">method __init__</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-create_steps">method create_steps</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-create_task">method create_task</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_service_token">method get_service_token</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_steps">method get_steps</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_steps_from_task">method get_steps_from_task</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_task_with_steps">method get_task_with_steps</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_tasks_from_agents">method get_tasks_from_agents</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-search_tasks">method search_tasks</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-subscribe">method subscribe</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-update_step">method update_step</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../data_models/">Data models</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../environments/">Environments</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../nvm_backend/">Nvm backend</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../payments/">Payments</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../utils/">Utils</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">payments-py</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Ai query api</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!-- markdownlint-disable -->
+
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h1 id="module-ai_query_api"><kbd>module</kbd> <code>ai_query_api</code></h1>
+<h2 id="global-variables"><strong>Global Variables</strong></h2>
+<ul>
+<li><strong>SEARCH_TASKS_ENDPOINT</strong></li>
+<li><strong>CREATE_STEPS_ENDPOINT</strong></li>
+<li><strong>UPDATE_STEP_ENDPOINT</strong></li>
+<li><strong>GET_AGENTS_ENDPOINT</strong></li>
+<li><strong>GET_BUILDER_STEPS_ENDPOINT</strong></li>
+<li><strong>GET_TASK_STEPS_ENDPOINT</strong></li>
+<li><strong>TASK_ENDPOINT</strong></li>
+<li><strong>GET_TASK_ENDPOINT</strong></li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L16"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-aiqueryapi"><kbd>class</kbd> <code>AIQueryApi</code></h2>
+<p>Represents the AI Query API. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>opts</code></b> (BackendApiOptions):  The backend API options </li>
+</ul>
+<p>Methods: 
+ - <b><code>create_task</code></b>:  Creates a task for an agent to execute 
+ - <b><code>create_steps</code></b>:  Creates steps for a task 
+ - <b><code>update_step</code></b>:  Updates a step 
+ - <b><code>search_tasks</code></b>:  Searches for tasks 
+ - <b><code>get_task_with_steps</code></b>:  Gets a task with its steps 
+ - <b><code>get_steps_from_task</code></b>:  Gets the steps from a task 
+ - <b><code>get_steps</code></b>:  Gets the steps 
+ - <b><code>get_tasks_from_agents</code></b>:  Gets the tasks from the agents 
+ - <b><code>get_service_token</code></b>:  Gets the service token </p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L34"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
+<pre><code class="language-python">__init__(opts: BackendApiOptions)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L71"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-create_steps"><kbd>method</kbd> <code>create_steps</code></h3>
+<pre><code class="language-python">create_steps(did: str, task_id: str, steps: Any)
+</code></pre>
+<p>Creates steps for a task. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+<li><b><code>steps</code></b> (Any):  The steps to create. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L53"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-create_task"><kbd>method</kbd> <code>create_task</code></h3>
+<pre><code class="language-python">create_task(did: str, task: Any, jwt: Optional[str] = None)
+</code></pre>
+<p>Creates a task for an agent to execute. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task</code></b> (Any):  The task to create. </li>
+<li><b><code>jwt</code></b> (Optional[str]):  The JWT token. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L166"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_service_token"><kbd>method</kbd> <code>get_service_token</code></h3>
+<pre><code class="language-python">get_service_token(service_did: str) → ServiceTokenResultDto
+</code></pre>
+<p>Gets the service token. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>service_did</code></b> (str):  The DID of the service. </li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>ServiceTokenResultDto</code></b>:  The result of the creation operation. </li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>HTTPError</code></b>:  If the API call fails. </li>
+</ul>
+<p><strong>Example:</strong>
+ response = your_instance.get_service_token(service_did="did:nv:xyz789") print(response) </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L143"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_steps"><kbd>method</kbd> <code>get_steps</code></h3>
+<pre><code class="language-python">get_steps(
+    status: AgentExecutionStatus = &lt;AgentExecutionStatus.Pending: 'Pending'&gt;,
+    dids: List[str] = []
+)
+</code></pre>
+<p>Gets the steps. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>status</code></b> (AgentExecutionStatus):  The status of the steps. </li>
+<li><b><code>dids</code></b> (List[str]):  The list of DIDs. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L129"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_steps_from_task"><kbd>method</kbd> <code>get_steps_from_task</code></h3>
+<pre><code class="language-python">get_steps_from_task(did: str, task_id: str, status: Optional[str] = None)
+</code></pre>
+<p>Gets the steps from a task. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+<li><b><code>status</code></b> (Optional[str]):  The status of the steps. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L117"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_task_with_steps"><kbd>method</kbd> <code>get_task_with_steps</code></h3>
+<pre><code class="language-python">get_task_with_steps(did: str, task_id: str, jwt: Optional[str] = None)
+</code></pre>
+<p>Gets a task with its steps. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+<li><b><code>jwt</code></b> (Optional[str]):  The JWT token. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L160"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_tasks_from_agents"><kbd>method</kbd> <code>get_tasks_from_agents</code></h3>
+<pre><code class="language-python">get_tasks_from_agents()
+</code></pre>
+<p>Gets the tasks from the agents. </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L108"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-search_tasks"><kbd>method</kbd> <code>search_tasks</code></h3>
+<pre><code class="language-python">search_tasks(search_params: Any)
+</code></pre>
+<p>Searches for tasks. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>search_params</code></b> (Any):  The search parameters. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L38"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-subscribe"><kbd>method</kbd> <code>subscribe</code></h3>
+<pre><code class="language-python">subscribe(callback: Any, events: Optional[str] = None)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L84"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-update_step"><kbd>method</kbd> <code>update_step</code></h3>
+<pre><code class="language-python">update_step(
+    did: str,
+    task_id: str,
+    step_id: str,
+    step: Any,
+    jwt: Optional[str] = None
+)
+</code></pre>
+<p>Updates a step. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+<li><b><code>step_id</code></b> (str):  The step ID. </li>
+<li><b><code>step</code></b> (Any):  The step to update. </li>
+<li><b><code>jwt</code></b> (Optional[str]):  The JWT token. </li>
+</ul>
+<hr />
+<p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href=".." class="btn btn-neutral float-left" title="Overview"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../data_models/" class="btn btn-neutral float-right" title="Data models">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../data_models/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
