@@ -4,10 +4,12 @@ import requests
 
 from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderSubscriptionResultDto, ServiceTokenResultDto
 from payments_py.environments import Environment
+from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
+from payments_py.ai_query_api import AIQueryApi
 from payments_py.utils import snake_to_camel
 
 
-class Payments:
+class Payments(NVMBackendApi):
     """
     A class representing a payment system.
 
@@ -16,6 +18,9 @@ class Payments:
         environment (Environment): The environment for the payment system.
         app_id (str, optional): The application ID.
         version (str, optional): The version of the payment system.
+        ai_protocol (bool): Indicates if the AI protocol is enabled.
+        headers (dict, optional): The headers for the payment system.
+        web_socket_options (dict, optional): The web socket options for the payment system.
 
     Methods:
         create_ubscription: Creates a new subscription.
@@ -34,14 +39,19 @@ class Payments:
         download_file: Downloads the file.
         mint_credits: Mints the credits associated to a subscription and send to the receiver.
         burn_credits: Burns credits associated to a subscription that you own.     
-        """
+        ai_protocol: The AI Query API.
+    """
 
     def __init__(self, nvm_api_key: str, environment: Environment,
-                 app_id: Optional[str] = None, version: Optional[str] = None):
+                 app_id: Optional[str] = None, version: Optional[str] = None, ai_protocol: bool = False, headers: Optional[dict] = None, web_socket_options: Optional[dict] = None):
+        self.backend_options = BackendApiOptions(environment, api_key=nvm_api_key, headers=headers, web_socket_options=web_socket_options)
+        super().__init__(self.backend_options)
         self.nvm_api_key = nvm_api_key
         self.environment = environment
         self.app_id = app_id
         self.version = version
+        if ai_protocol:
+            self.ai_protocol = AIQueryApi(self.backend_options)
 
     def create_credits_subscription(self, name: str, description: str, price: int, token_address: str,
                             amount_of_credits: int, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
@@ -66,22 +76,47 @@ class Payments:
             response = your_instance.create_credits_subscription(name="Basic Plan", description="100 credits subscription", price=1, token_address="0x1234", amount_of_credits=100, tags=["basic"])
             print(response)
         """
+        metadata = {
+            'main': {
+                'name': name,
+                'type': 'subscription',
+                'license': 'No License Specified',
+                'files': [],
+                'ercType': 1155,
+                'nftType': "nft1155-credit",
+                'subscription': {
+                    'subscriptionType': 'credits',
+                },
+            },
+            'additionalInformation': {
+                'description': description,
+                'tags': tags if tags else [],
+                'customData': {
+                    'dateMeasure': 'days',
+                    'plan': 'custom',
+                    'subscriptionLimitType': 'credits',
+                },
+            },
+        }
+        service_attributes = [
+            {
+                'serviceType': 'nft-sales',
+                'price': price,
+                'nft': {
+                    'amount': amount_of_credits,
+                    'nftTransfer': False,
+                },
+            },
+        ]
+            
         body = {
-            "name": name,
-            "description": description,
             "price": price,
             "tokenAddress": token_address,
-            "amountOfCredits": amount_of_credits,
-            "tags": tags if tags else [],
-            "subscriptionType": "credits"
-        }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'''Bearer {self.nvm_api_key}'''
+            "metadata": metadata,
+            "serviceAttributes": service_attributes,
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
 
@@ -108,45 +143,72 @@ class Payments:
             response = your_instance.create_time_subscription(name="Yearly Plan", description="Annual subscription", price=1200, token_address="0x5678", duration=365, tags=["yearly", "premium"])
             print(response)
         """
+        metadata = {
+            'main': {
+                'name': name,
+                'type': 'subscription',
+                'license': 'No License Specified',
+                'files': [],
+                'ercType': 1155,
+                'nftType': "nft1155-credit",
+                'subscription': {
+                    'subscriptionType': 'time',
+                },
+            },
+            'additionalInformation': {
+                'description': description,
+                'tags': tags if tags else [],
+                'customData': {
+                    'dateMeasure': 'days',
+                    'plan': 'custom',
+                    'subscriptionLimitType': 'time',
+                },
+            },
+        }
+
+        service_attributes = [
+            {
+                'serviceType': 'nft-sales',
+                'price': price,
+                'nft': {
+                    'duration': duration,
+                    'amount': 1,
+                    'nftTransfer': False,
+                },
+            },
+        ]
         body = {
-            "name": name,
-            "description": description,
+            "metadata": metadata,
+            "serviceAttributes": service_attributes,
             "price": price,
             "tokenAddress": token_address,
-            "duration": duration,
-            "tags": tags if tags else [],
-            "subscriptionType": "time"
-
-        }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'''Bearer {self.nvm_api_key}'''
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
-    def create_service(self, subscription_did: str, name: str, description: str,
+    def create_service(self, subscription_did: str, service_type: str, name: str, description: str,
                        service_charge_type: str, auth_type: str, amount_of_credits: int = 1,
-                       min_credits_to_charge: Optional[int] = None, max_credits_to_charge: Optional[int] = None,
+                       min_credits_to_charge: Optional[int] = 1, max_credits_to_charge: Optional[int] = 1,
                        username: Optional[str] = None, password: Optional[str] = None, token: Optional[str] = None,
                        endpoints: Optional[List[dict]] = None,
-                       open_endpoints: Optional[List[str]] = None, open_api_url: Optional[str] = None,
+                       open_endpoints: Optional[List[str]] = [], open_api_url: Optional[str] = None,
                        integration: Optional[str] = None, sample_link: Optional[str] = None,
-                       api_description: Optional[str] = None, curation: Optional[dict] = None,
-                       tags: Optional[List[str]] = None) -> CreateAssetResultDto:
+                       api_description: Optional[str] = None,
+                       tags: Optional[List[str]] = None, is_nevermined_hosted: Optional[bool] = None, implements_query_protocol: Optional[bool]=None,
+                       query_protocol_version: Optional[str]= None, service_host: Optional[str]= None) -> CreateAssetResultDto:
         """
         Creates a new service.
 
         Args:
             subscription_did (str): The DID of the subscription.
+            service_type (str): The type of the service. Options: 'service', 'agent', 'assistant'
             name (str): The name of the service.
             description (str): The description of the service.
             service_charge_type (str): The charge type of the service. Options: 'fixed', 'dynamic'
             auth_type (str): The authentication type of the service. Options: 'none', 'basic', 'oauth'
-            amount_of_credits int: The amount of credits for the service.
+            amount_of_credits (int): The amount of credits for the service.
             min_credits_to_charge (int, optional): The minimum credits to charge for the service. Only required for dynamic services.
             max_credits_to_charge (int, optional): The maximum credits to charge for the service. Only required for dynamic services.
             username (str, optional): The username for authentication.
@@ -158,8 +220,11 @@ class Payments:
             integration (str, optional): The integration type of the service.
             sample_link (str, optional): The sample link of the service.
             api_description (str, optional): The API description of the service.
-            curation (dict, optional): The curation information of the service.
             tags (List[str], optional): The tags associated with the service.
+            is_nevermined_hosted (bool, optional): Indicates if the service is hosted by Nevermined.
+            implements_query_protocol (bool, optional): Indicates if the service implements the query protocol.
+            query_protocol_version (str, optional): The version of the query protocol implemented by the service.
+            service_host (str, optional): The host of the service.
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -168,24 +233,80 @@ class Payments:
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.create_service(subscription_did="did:nv:abc123", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none")
+            response = your_instance.create_service(subscription_did="did:nv:abc123", service_type="service", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none")
             print(response)
         """
-        body = {
-            "subscriptionDid": subscription_did,
-            "name": name,
-            "description": description,
-            "serviceChargeType": service_charge_type,
-            "authType": auth_type,
-            **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
+        metadata = {
+            'main':{
+                'name': name,
+                'license': 'No License Specified',
+                'type': service_type,
+                'files': [],
+                'ercType': 'nft1155',
+                'nftType': 'nft1155Credit',
+                'subscription': {
+                    'timeMeasure': 'days',
+                    'subscriptionType': 'credits', 
+                },
+                'webService': {
+                    'endpoints': endpoints,
+                    'openEndpoints': open_endpoints,
+                    'internalAttributes': {
+                        'authentication': {
+                            'type': auth_type if auth_type else 'none',
+                            **({
+                                'username': username,
+                                'password': password
+                            } if auth_type == 'basic' else {}),
+                            **({
+                                'token': token
+                            } if auth_type == 'oauth' else {}),
+                        },
+                        **({
+                            'headers': [{'Authorization': f'Bearer {token}'}]
+                        } if auth_type == 'oauth' and token else {}),
+                    },
+                    'chargeType': service_charge_type,
+                    'isNeverminedHosted': is_nevermined_hosted,
+                    'implementsQueryProtocol': implements_query_protocol,
+                    'queryProtocolVersion': query_protocol_version,
+                    'serviceHost': self.environment.value['backend'] if is_nevermined_hosted else service_host,
+                },
+        },
+        'additionalInformation': {
+            'description': description,
+            'tags': tags if tags else [],
+            'customData': {
+                'openApiUrl': open_api_url,
+                'integration': integration,
+                'sampleLink': sample_link,
+                'apiDescription': api_description,
+                'plan': 'custom',
+                'serviceChargeType': service_charge_type,
+            },
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
+
+        }
+        service_attributes = [
+            {
+                'serviceType': 'nft-access',
+                'nft': {
+                    'amount': amount_of_credits if amount_of_credits else None,
+                    'tokenId': subscription_did,
+                    'minCreditsToCharge': min_credits_to_charge,
+                    'minCreditsRequired': min_credits_to_charge,
+                    'maxCreditsToCharge': max_credits_to_charge,
+                    'nftTransfer': False,
+                },
+            },
+        ]
+        body = {
+            "metadata": metadata,
+            "serviceAttributes": service_attributes,
+            "subscriptionDid": subscription_did,
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/service"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, data=body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
@@ -197,8 +318,7 @@ class Payments:
                     task: Optional[str] = None, training_details: Optional[str] = None,
                     variations: Optional[str] = None,
                     fine_tunable: Optional[bool] = None, amount_of_credits: Optional[int] = None,
-                    min_credits_to_charge: Optional[int] = None, max_credits_to_charge: Optional[int] = None,
-                    curation: Optional[dict] = None, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
+                    tags: Optional[List[str]] = None) -> CreateAssetResultDto:
         """
         Creates a new file.
 
@@ -219,10 +339,8 @@ class Payments:
             variations (str, optional): The variations of the file.
             fine_tunable (bool, optional): The fine tunable of the file.
             amount_of_credits (int, optional): The amount of credits for the file.
-            min_credits_to_charge (int, optional): The minimum credits to charge for the file.
-            max_credits_to_charge (int, optional): The maximum credits to charge for the file.
-            curation (dict, optional): The curation information of the file.
             tags (List[str], optional): The tags associated with the file.
+            
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -234,22 +352,54 @@ class Payments:
             response = your_instance.create_file(subscription_did="did:nv:xyz789", asset_type="dataset", name="Sample Dataset", description="A sample dataset", files=[{"name": "file1.csv", "url": "https://example.com/file1.csv"}])
             print(response)
         """
-        body = {
-            "subscriptionDid": subscription_did,
-            "assetType": asset_type,
-            "name": name,
-            "description": description,
-            "files": files,
-            **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
+        metadata = {
+            'main': {
+                'name': name,
+                'license': 'No License Specified',
+                'type': asset_type,
+                'files': files,
+                'ercType': 'nft1155',
+                'nftType': 'nft1155Credit',
+            },
+            'additionalInformation': {
+                'description': description,
+                'tags': tags if tags else [],
+                'customData': {
+                # coverFile: coverFile?.[0],
+                # conditionsFile: conditionsFile?.[0],
+                # sampleData: sampleData?.[0],
+                'dataSchema': data_schema ,
+                'sampleCode': sample_code,
+                'usageExample': usage_example,
+                'filesFormat': files_format ,
+                'programmingLanguage': programming_language ,
+                'framework': framework,
+                'task': task,
+                'architecture': task,
+                'trainingDetails': training_details,
+                'variations': variations ,
+                'fineTunable': fine_tunable,
+                'plan': 'custom',
+                },
+            },
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-
+        service_attributes = [
+            {
+                'serviceType': 'nft-access',
+                'nft': {
+                    'tokenId': subscription_did,
+                    'amount': amount_of_credits if amount_of_credits else None,
+                    'nftTransfer': False,
+                },
+            },
+        ]
+        body = {
+            "metadata": metadata,
+            "serviceAttributes": service_attributes,
+            "subscriptionDid": subscription_did,
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/file"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, data=body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
@@ -275,13 +425,8 @@ class Payments:
             "subscriptionDid": subscription_did,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription/order"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, data=body)
         response.raise_for_status()
         return OrderSubscriptionResultDto.model_validate(response.json())
 
@@ -295,12 +440,7 @@ class Payments:
         Returns:
             Response: The response from the API call.
         """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
-        url = f"{self.environment.value['backend']}/api/v1/payments/asset/ddo/{did}"
-        response = requests.get(url, headers=headers)
+        response = self.get(f"{self.environment.value['backend']}/api/v1/payments/asset/ddo/{did}")
         return response
 
     def get_subscription_balance(self, subscription_did: str, account_address: str) -> BalanceResultDto:
@@ -334,13 +474,8 @@ class Payments:
         body = {
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = (f"{self.environment.value['backend']}/api/v1/payments/subscription/balance")
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return BalanceResultDto.model_validate(response.json())
     
@@ -361,13 +496,8 @@ class Payments:
             response = your_instance.get_service_token(service_did="did:nv:xyz789")
             print(response)
         """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/service/token/{service_did}"
-        response = requests.get(url, headers=headers)
+        response = self.get(url)
         response.raise_for_status() 
         return ServiceTokenResultDto.model_validate(response.json()['token'])
     
@@ -381,12 +511,8 @@ class Payments:
         Returns:
             Response: List of DIDs of the associated services.
         """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription/services/{subscription_did}"
-        response = requests.get(url, headers=headers)
+        response = self.get(url)
         return response
     
     def get_subscription_associated_files(self, subscription_did: str):
@@ -399,12 +525,8 @@ class Payments:
         Returns:
             Response: List of DIDs of the associated files.
         """
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription/files/{subscription_did}"
-        response = requests.get(url, headers=headers)
+        response = self.get(url)
         return response
 
     def get_subscription_details_url(self, subscription_did: str):
@@ -537,13 +659,8 @@ class Payments:
             "nftAmount": amount,
             "receiver": receiver
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/credits/mint"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return MintResultDto(userOpHash=response.json()['userOpHash'], success=response.json()['success'], amount=amount)
     
@@ -569,12 +686,7 @@ class Payments:
             "did": subscription_did,
             "nftAmount": amount
         }
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.nvm_api_key}'
-        }
         url = f"{self.environment.value['backend']}/api/v1/payments/credits/burn"
-        response = requests.post(url, headers=headers, json=body)
+        response = self.post(url, body)
         response.raise_for_status()
         return BurnResultDto(userOpHash=response.json()['userOpHash'], success=response.json()['success'], amount=amount)

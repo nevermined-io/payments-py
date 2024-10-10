@@ -13,7 +13,7 @@ nvm_api_key = os.getenv('NVM_API_KEY')
 
 @pytest.fixture
 def payment():
-    return Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0")
+    return Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=False)
 
 
 def test_payment_creation(payment):
@@ -49,6 +49,7 @@ def test_create_credits_subscription(payment):
 def test_create_service(payment):
     response = payment.create_service(
         subscription_did='did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116',
+        service_type='service',
         name="webservice-py",
         description="test",
         amount_of_credits=1,
