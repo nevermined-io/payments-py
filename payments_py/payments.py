@@ -18,6 +18,9 @@ class Payments(NVMBackendApi):
         environment (Environment): The environment for the payment system.
         app_id (str, optional): The application ID.
         version (str, optional): The version of the payment system.
+        ai_protocol (bool): Indicates if the AI protocol is enabled.
+        headers (dict, optional): The headers for the payment system.
+        web_socket_options (dict, optional): The web socket options for the payment system.
 
     Methods:
         create_ubscription: Creates a new subscription.
@@ -36,7 +39,8 @@ class Payments(NVMBackendApi):
         download_file: Downloads the file.
         mint_credits: Mints the credits associated to a subscription and send to the receiver.
         burn_credits: Burns credits associated to a subscription that you own.     
-        """
+        ai_protocol: The AI Query API.
+    """
 
     def __init__(self, nvm_api_key: str, environment: Environment,
                  app_id: Optional[str] = None, version: Optional[str] = None, ai_protocol: bool = False, headers: Optional[dict] = None, web_socket_options: Optional[dict] = None):
