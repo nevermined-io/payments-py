@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
@@ -74,13 +74,7 @@ class AIQueryApi(NVMBackendApi):
 
     def get_task_with_steps(self, did: str, task_id: str, jwt: Optional[str] = None):
         endpoint = self.parse_url_to_proxy(GET_TASK_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
-        if jwt:
-            self.set_bearer_token(jwt)
-            return self.get(endpoint)
-        else:
-            token = self.get_service_token(did)
-            self.set_bearer_token(token.accessToken)
-            return self.get(endpoint)
+        return self.get(endpoint)
 
     def get_steps_from_task(self, did: str, task_id: str, status: Optional[str] = None):
         endpoint = self.parse_url_to_backend(GET_TASK_STEPS_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
@@ -120,5 +114,6 @@ class AIQueryApi(NVMBackendApi):
         """
         url = f"{self.opts.backend_host}/api/v1/payments/service/token/{service_did}"
         response = self.get(url)
+        print('get_service_token::', response)
         response.raise_for_status() 
         return ServiceTokenResultDto.model_validate(response.json()['token'])

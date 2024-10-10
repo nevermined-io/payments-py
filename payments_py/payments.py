@@ -191,8 +191,9 @@ class Payments(NVMBackendApi):
                        endpoints: Optional[List[dict]] = None,
                        open_endpoints: Optional[List[str]] = [], open_api_url: Optional[str] = None,
                        integration: Optional[str] = None, sample_link: Optional[str] = None,
-                       api_description: Optional[str] = None, curation: Optional[dict] = None,
-                       tags: Optional[List[str]] = None) -> CreateAssetResultDto:
+                       api_description: Optional[str] = None,
+                       tags: Optional[List[str]] = None, is_nevermined_hosted: Optional[bool] = None, implements_query_protocol: Optional[bool]=None,
+                       query_protocol_version: Optional[str]= None, service_host: Optional[str]= None) -> CreateAssetResultDto:
         """
         Creates a new service.
 
@@ -203,7 +204,7 @@ class Payments(NVMBackendApi):
             description (str): The description of the service.
             service_charge_type (str): The charge type of the service. Options: 'fixed', 'dynamic'
             auth_type (str): The authentication type of the service. Options: 'none', 'basic', 'oauth'
-            amount_of_credits int: The amount of credits for the service.
+            amount_of_credits (int): The amount of credits for the service.
             min_credits_to_charge (int, optional): The minimum credits to charge for the service. Only required for dynamic services.
             max_credits_to_charge (int, optional): The maximum credits to charge for the service. Only required for dynamic services.
             username (str, optional): The username for authentication.
@@ -215,8 +216,11 @@ class Payments(NVMBackendApi):
             integration (str, optional): The integration type of the service.
             sample_link (str, optional): The sample link of the service.
             api_description (str, optional): The API description of the service.
-            curation (dict, optional): The curation information of the service.
             tags (List[str], optional): The tags associated with the service.
+            is_nevermined_hosted (bool, optional): Indicates if the service is hosted by Nevermined.
+            implements_query_protocol (bool, optional): Indicates if the service implements the query protocol.
+            query_protocol_version (str, optional): The version of the query protocol implemented by the service.
+            service_host (str, optional): The host of the service.
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -225,7 +229,7 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.create_service(subscription_did="did:nv:abc123", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none")
+            response = your_instance.create_service(subscription_did="did:nv:abc123", service_type="service", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none")
             print(response)
         """
         metadata = {
@@ -259,9 +263,12 @@ class Payments(NVMBackendApi):
                         } if auth_type == 'oauth' and token else {}),
                     },
                     'chargeType': service_charge_type,
+                    'isNeverminedHosted': is_nevermined_hosted,
+                    'implementsQueryProtocol': implements_query_protocol,
+                    'queryProtocolVersion': query_protocol_version,
+                    'serviceHost': self.environment.value['backend'] if is_nevermined_hosted else service_host,
                 },
         },
-        # 'curation': curation if curation else {},
         'additionalInformation': {
             'description': description,
             'tags': tags if tags else [],
@@ -307,8 +314,7 @@ class Payments(NVMBackendApi):
                     task: Optional[str] = None, training_details: Optional[str] = None,
                     variations: Optional[str] = None,
                     fine_tunable: Optional[bool] = None, amount_of_credits: Optional[int] = None,
-                    min_credits_to_charge: Optional[int] = None, max_credits_to_charge: Optional[int] = None,
-                    curation: Optional[dict] = None, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
+                    tags: Optional[List[str]] = None) -> CreateAssetResultDto:
         """
         Creates a new file.
 
@@ -329,10 +335,8 @@ class Payments(NVMBackendApi):
             variations (str, optional): The variations of the file.
             fine_tunable (bool, optional): The fine tunable of the file.
             amount_of_credits (int, optional): The amount of credits for the file.
-            min_credits_to_charge (int, optional): The minimum credits to charge for the file.
-            max_credits_to_charge (int, optional): The maximum credits to charge for the file.
-            curation (dict, optional): The curation information of the file.
             tags (List[str], optional): The tags associated with the file.
+            
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -353,7 +357,6 @@ class Payments(NVMBackendApi):
                 'ercType': 'nft1155',
                 'nftType': 'nft1155Credit',
             },
-            # 'curation': curation if curation else {},
             'additionalInformation': {
                 'description': description,
                 'tags': tags if tags else [],
