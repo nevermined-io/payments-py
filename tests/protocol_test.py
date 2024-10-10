@@ -27,14 +27,14 @@ def ai_query_api_build_fixture():
 def ai_query_api_subscriber_fixture():
     return Payments(nvm_api_key=nvm_api_key2, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key2})
 
-def test_AIQueryApi_creation(ai_query_api_fixture):
-    ai_query_api = ai_query_api_fixture
+def test_AIQueryApi_creation(ai_query_api_build_fixture):
+    ai_query_api = ai_query_api_build_fixture
     assert ai_query_api.opts.backend_host == Environment.appStaging.value['backend']
     assert ai_query_api.opts.api_key == nvm_api_key
     assert ai_query_api.opts.proxy_host == Environment.appStaging.value['proxy']    
     assert ai_query_api.opts.web_socket_host == Environment.appStaging.value['websocket']
     assert ai_query_api.opts.web_socket_options['bearer_token'] == nvm_api_key
-    assert ai_query_api.socket_client is None
+    assert ai_query_api.socket_client
     assert ai_query_api.room_id
 
 
