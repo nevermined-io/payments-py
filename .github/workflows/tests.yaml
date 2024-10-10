@@ -24,5 +24,8 @@ jobs:
       run: |
         poetry build
     - name: Test
+      env:
+        NVM_API_KEY: ${{ secrets.NVM_API_KEY }}
+        NVM_API_KEY2: ${{ secrets.NVM_API_KEY2 }}
       run: |
         poetry run pytest
