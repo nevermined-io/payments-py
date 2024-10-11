@@ -8,7 +8,7 @@ from typing import Optional, Dict, List, Any, Union
 
 from payments_py.environments import Environment
 
-sio = socketio.AsyncClient(logger=False, engineio_logger=False)
+sio = socketio.AsyncClient(logger=True, engineio_logger=True)
 
 
 class BackendApiOptions:
@@ -113,9 +113,9 @@ class NVMBackendApi:
 
     async def _emit_events(self, data: Any):
         await self.connect_socket()
-        print(f"nvm-backend:: Emitting steps that were pending: {data}")
         for x in data:
-            await self.socket_client.emit('step-updated', data=x)
+            print(f"nvm-backend:: Emitting step: {x}")
+            await self.socket_client.emit(event='_emit-steps', data=x)
 
 
     async def join_room(self, room_ids: Optional[Union[str, List[str]]] = None):

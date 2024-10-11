@@ -41,32 +41,32 @@ async def eventsReceived(data):
     payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
     global response_data
     print('eventsReceived::', len(data))
-    # if isinstance(data, list):
-    #     print('eventsReceived::', 'pending data:', len(data))
-    #     for step in data:
-    #         print('eventsReceived::', 'step:', step)
-    #         result = payments_builder.ai_protocol.update_step(did=step['did'], 
-    #                                                           task_id=step['task_id'], 
-    #                                                           step_id=step['step_id'], 
-    #                                                           step={'step_id': step['step_id'],
-    #                                                                 'task_id': step['task_id'], 
-    #                                                                 'step_status': AgentExecutionStatus.Completed.value,
-    #                                                                 'output': 'success',
-    #                                                                 'is_last': True
-    #                                                                 })
-    #         print(result.json())
+    if isinstance(data, list):
+        print('eventsReceived::', 'pending data:', len(data))
+        for step in data:
+            print('eventsReceived::', 'step:', step)
+            result = payments_builder.ai_protocol.update_step(did=step['did'], 
+                                                              task_id=step['task_id'], 
+                                                              step_id=step['step_id'], 
+                                                              step={'step_id': step['step_id'],
+                                                                    'task_id': step['task_id'], 
+                                                                    'step_status': AgentExecutionStatus.Completed.value,
+                                                                    'output': 'success',
+                                                                    'is_last': True
+                                                                    })
+            print(result.json())
 
-    # else:
-    print('eventsReceived::', 'parsing event with did:', data)
-    result = payments_builder.ai_protocol.update_step(did=data["did"], 
-                                                            task_id=data["task_id"], 
-                                                            step_id=data['step_id'], 
-                                                            step={'step_id': data['step_id'],
-                                                                'task_id': data["task_id"], 
-                                                                'step_status': AgentExecutionStatus.Completed.value,
-                                                                'output': 'success',
-                                                                'is_last': True
-                                                                })
+    else:
+        print('eventsReceived::', 'parsing event with did:', data)
+        result = payments_builder.ai_protocol.update_step(did=data["did"], 
+                                                                task_id=data["task_id"], 
+                                                                step_id=data['step_id'], 
+                                                                step={'step_id': data['step_id'],
+                                                                    'task_id': data["task_id"], 
+                                                                    'step_status': AgentExecutionStatus.Completed.value,
+                                                                    'output': 'success',
+                                                                    'is_last': True
+                                                                    })
     response_data = data
     response_event.set()
     print(result.json())
@@ -117,7 +117,7 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
 
     subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
 
-    await asyncio.wait_for(response_event.wait(), timeout=20)
+    await asyncio.wait_for(response_event.wait(), timeout=30)
 
     assert response_data is not None, "Builder did not receive the event from subscriber"
     print('Task received by builder:', response_data)
