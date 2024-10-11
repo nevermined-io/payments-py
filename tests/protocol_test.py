@@ -72,7 +72,7 @@ async def eventsReceived(data):
     print(result.json())
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="module")
 async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
