@@ -4,7 +4,7 @@ import re
 import requests
 import socketio
 import jwt
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Union
 
 from payments_py.environments import Environment
 
@@ -88,54 +88,47 @@ class NVMBackendApi:
         if self.socket_client and self.socket_client.connected:
             self.socket_client.disconnect()
 
-
-    # @sio.on('connect')
-    # async def on_connect(self):
-    #     print('nvm-backend:: Connected XXXXXX')
-    
-
-    async def _subscribe(self, callback, events: Optional[str]=None):
+    async def _subscribe(self, callback, did: Optional[str]=None, events: Optional[str]=None):
         await self.connect_socket()
         if not self.socket_client.connected:
             raise ConnectionError('Failed to connect to the WebSocket server.')
         
         async def event_handler(data):
-            parsed_data = json.loads(data)    
-            print(f"nvm-backend:: Received event: {parsed_data}")
-            received_event_type = parsed_data.get('event')
-            if isinstance(events, list):
-                if received_event_type in events:
-                    print(f"Received {received_event_type} event from list: {parsed_data}")
-                    await callback(parsed_data['data'])
-                else:
-                    print(f"Ignoring event {received_event_type} (expecting one of {events})")
-            else:
-                print(f"Ignoring event {received_event_type} (expecting {events})")
+            parsed_data = json.loads(data)
+            await callback(parsed_data)    
 
+        if did:
+            await self.join_room(f"room:{did}")
+        else:
+            await self.join_room()
         
-        # Register event listener for the room
-        self.socket_client.on(self.room_id, event_handler)
-        
-        # self.socket_client.on(self.room_id, callback)
-        print(f"nvm-backend:: Joining room: {self.room_id}")
-        
-        # Join the room
-        await self.join_room(self.room_id)
-        print(f"nvm-backend:: Joined room: {self.room_id}")
+        if events:
+            for event in events:
+                print(f"nvm-backend:: Subscribing to event: {event}")
+                self.socket_client.on(event, event_handler)
+        else:
+            self.socket_client.on('step-updated', event_handler)  
+            self.socket_client.on('task-updated', event_handler)  
 
 
     async def _emit_events(self, data: Any):
-        print(f"nvm-backend:: Emitting events to room: {self.room_id}")
-        # print(f"nvm-backend:: Emitting data: {data}")
         await self.connect_socket()
-        # await self.socket_client.emit('room_message', {"room": self.room_id, "data": data})
+        print(f"nvm-backend:: Emitting steps that were pending: {data}")
+        for x in data:
+            await self.socket_client.emit('step-updated', data=x)
 
-        await self.socket_client.emit(event=self.room_id, data=data)
 
-
-    async def join_room(self, room_id):
-        print(f"event:: Joining room: {room_id}")
-        await self.socket_client.emit('join_room', { "room": room_id })
+    async def join_room(self, room_ids: Optional[Union[str, List[str]]] = None):
+        print(f"event:: Joining rooms: {room_ids} and {self.room_id}")
+        
+        data = { 'joinAccountRoom': True }
+        
+        if room_ids:
+            data['joinAgentRooms'] = [room_ids] if isinstance(room_ids, str) else room_ids
+        
+        await self.socket_client.emit('_join-rooms', json.dumps(data))
+        
+        print(f"event:: Joined rooms: {room_ids} and {self.room_id}")
 
 
     async def disconnect(self):
