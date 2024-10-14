@@ -78,8 +78,11 @@ class NVMBackendApi:
         
         try:
             print(f"nvm-backend:: Connecting to websocket server: {self.opts.web_socket_host}")
-            # self.socket_client = socketio.AsyncClient(logger=True, engineio_logger=True)
             await self.socket_client.connect(self.opts.web_socket_host, headers=self.opts.headers, transports=["websocket"])
+            for i in range(5):
+                await asyncio.sleep(1)  
+                if self.socket_client.connected:
+                    break
             print(f"nvm-backend:: Connected: {self.socket_client.connected}")
         except Exception as error:
             raise ConnectionError(f"Unable to initialize websocket client: {self.opts.web_socket_host} - {str(error)}")
