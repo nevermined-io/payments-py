@@ -105,7 +105,7 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     assert agent.did.startswith("did:")
     print('Agent service created:', agent.did)
 
-    await builder.ai_protocol.subscribe(eventsReceived)
+    await builder.ai_protocol.subscribe(eventsReceived, agent.did, ['step-updated'])
     assert builder.ai_protocol.socket_client.connected
     assert builder.room_id
 
