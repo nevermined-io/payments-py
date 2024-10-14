@@ -35,20 +35,16 @@ class AIQueryApi(NVMBackendApi):
         super().__init__(opts)
         self.opts = opts
 
-    async def subscribe(self, callback: Any, events: Optional[str]=None):
-        await self._subscribe(callback, events)
+    async def subscribe(self, callback: Any, did: Optional[str]=None, events: Optional[str]=None):
+        await self._subscribe(callback, did, events)
         print('query-api:: Connected to the server')
-        pending_steps = self.get_steps(AgentExecutionStatus.Pending)
-        
-        if callback is not None:
-            await callback(pending_steps.json()['steps'])
-        # print('query-api:: Pending steps:', pending_steps.json())
-        await self._emit_events(pending_steps.json())
-        # await self.socket_client.wait()
-
-        # return pending_steps.json()    
-    
-        
+        try: 
+            pending_steps = self.get_steps(AgentExecutionStatus.Pending)
+            # if callback is not None:
+            #     await callback(pending_steps.json()['steps'])
+            await self._emit_events(pending_steps.json()['steps'])
+        except Exception as e:
+            print('query-api:: Unable to get pending events', e)
 
     def create_task(self, did: str, task: Any, jwt: Optional[str] = None):
         """

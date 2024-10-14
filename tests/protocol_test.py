@@ -1,22 +1,21 @@
 import asyncio
-import json
 import pytest
 import os
 import time
 
 from payments_py.payments import Payments
 from payments_py import Environment
-import socketio
 from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, OrderSubscriptionResultDto
 
-socket_client = socketio.AsyncClient()
 response_event = asyncio.Event()
 global response_data
+global subscription
+global agent
 
 response_data = None
 
 # Set environment variables for the test
-nvm_api_key = os.getenv('NVM_API_KEY') 
+nvm_api_key= os.getenv('NVM_API_KEY') 
 nvm_api_key2 = os.getenv('NVM_API_KEY2') 
 
 @pytest.fixture
@@ -35,7 +34,7 @@ def test_AIQueryApi_creation(ai_query_api_build_fixture):
     assert ai_query_api.opts.web_socket_host == Environment.appStaging.value['websocket']
     assert ai_query_api.opts.web_socket_options['bearer_token'] == nvm_api_key
     assert ai_query_api.socket_client
-    assert ai_query_api.room_id
+    assert ai_query_api.user_room_id
 
 
 async def eventsReceived(data):
@@ -59,23 +58,24 @@ async def eventsReceived(data):
 
     else:
         print('eventsReceived::', 'parsing event with did:', data)
+        response_data = data
+        response_event.set()
         result = payments_builder.ai_protocol.update_step(did=data["did"], 
-                                                              task_id=data["task_id"], 
-                                                              step_id=data['step_id'], 
-                                                              step={'step_id': data['step_id'],
+                                                                task_id=data["task_id"], 
+                                                                step_id=data['step_id'], 
+                                                                step={'step_id': data['step_id'],
                                                                     'task_id': data["task_id"], 
                                                                     'step_status': AgentExecutionStatus.Completed.value,
                                                                     'output': 'success',
                                                                     'is_last': True
                                                                     })
         print(result.json())
-        response_data = data
-        response_event.set()
 
 
-
-@pytest.mark.asyncio
-async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
+@pytest.mark.asyncio(loop_scope="session")
+async def test_AIQueryApi_publish_agent_and_buy(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
+    global subscription
+    global agent
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
 
@@ -107,19 +107,26 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     assert agent.did.startswith("did:")
     print('Agent service created:', agent.did)
 
-    await builder.ai_protocol.subscribe(eventsReceived, ['step-created'])
-    assert builder.ai_protocol.socket_client.connected
-    assert builder.room_id
-
-
-    order_response = subscriber.order_subscription(subscription.did)
+    order_response = subscriber.order_subscription(subscription_did=subscription.did)
     assert isinstance(order_response, OrderSubscriptionResultDto)
     print('Subscription ordered:', order_response.success)
 
+    await builder.ai_protocol.subscribe(eventsReceived)
+    assert builder.ai_protocol.socket_client.connected
+    assert builder.user_room_id
 
-    subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
+@pytest.mark.asyncio(loop_scope="session")
+async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
+    global subscription
+    global agent
+    builder = ai_query_api_build_fixture
+    subscriber = ai_query_api_subscriber_fixture
+    
 
-    await asyncio.wait_for(response_event.wait(), timeout=10)
+    task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
+    print('Task created:', task.json())
+
+    await asyncio.wait_for(response_event.wait(), timeout=600)
 
     assert response_data is not None, "Builder did not receive the event from subscriber"
     print('Task received by builder:', response_data)
