@@ -42,7 +42,7 @@ class AIQueryApi(NVMBackendApi):
             pending_steps = self.get_steps(AgentExecutionStatus.Pending)
             if callback is not None:
                 await callback(pending_steps.json()['steps'])
-            # await self._emit_events(pending_steps.json()['steps'])
+            await self._emit_events(pending_steps.json()['steps'])
         except Exception as e:
             print('query-api:: Unable to get pending events', e)
 

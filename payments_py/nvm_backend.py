@@ -113,9 +113,10 @@ class NVMBackendApi:
 
     async def _emit_events(self, data: Any):
         await self.connect_socket()
-        for x in data:
-            print(f"nvm-backend:: Emitting step: {x}")
-            await self.socket_client.emit(event='_emit-steps', data=x)
+        if data:
+            for x in data:
+                print(f"nvm-backend:: Emitting step: {x}")
+                await self.socket_client.emit(event='_emit-steps', data=x)
 
 
     async def join_room(self, room_ids: Optional[Union[str, List[str]]] = None):
