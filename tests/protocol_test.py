@@ -1,15 +1,12 @@
 import asyncio
-import json
 import pytest
 import os
 import time
 
 from payments_py.payments import Payments
 from payments_py import Environment
-import socketio
 from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, OrderSubscriptionResultDto
 
-socket_client = socketio.AsyncClient()
 response_event = asyncio.Event()
 global response_data
 
@@ -73,7 +70,7 @@ async def eventsReceived(data):
         print(result.json())
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio(loop_scope="session")
 async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
@@ -106,11 +103,9 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     assert agent.did.startswith("did:")
     print('Agent service created:', agent.did)
 
-    await builder.ai_protocol.subscribe(eventsReceived, None, ['step-updated'])
+    await builder.ai_protocol.subscribe(eventsReceived)
     assert builder.ai_protocol.socket_client.connected
     assert builder.user_room_id
-
-    time.sleep(20)
 
     order_response = subscriber.order_subscription(subscription_did=subscription.did)
     assert isinstance(order_response, OrderSubscriptionResultDto)
