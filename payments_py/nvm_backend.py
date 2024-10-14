@@ -108,7 +108,6 @@ class NVMBackendApi:
                 self.socket_client.on(event, event_handler)
         else:
             self.socket_client.on('step-updated', event_handler)  
-            self.socket_client.on('task-updated', event_handler)  
 
 
     async def _emit_events(self, data: Any):

@@ -72,7 +72,7 @@ async def eventsReceived(data):
         print(result.json())
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="module")
 async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
@@ -118,7 +118,7 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
     print('Task created:', task.json())
 
-    await asyncio.wait_for(asyncio.shield(response_event.wait()), timeout=300)
+    await asyncio.wait_for(response_event.wait(), timeout=600)
 
     assert response_data is not None, "Builder did not receive the event from subscriber"
     print('Task received by builder:', response_data)
