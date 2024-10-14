@@ -122,7 +122,8 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
     
-
+    time.sleep(10)
+    print('Sleeping for 10 seconds to allow the builder to subscribe to the server')
     task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
     print('Task created:', task.json())
 
