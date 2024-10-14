@@ -98,7 +98,7 @@ class NVMBackendApi:
             await callback(parsed_data)    
 
         if did:
-            await self.join_room(f"room:{did}")
+            await self.join_room(did)
         else:
             await self.join_room()
         
