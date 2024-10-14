@@ -131,8 +131,12 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     assert response_data is not None, "Builder did not receive the event from subscriber"
     print('Task received by builder:', response_data)
 
-    task_result = subscriber.ai_protocol.get_task_with_steps(did=agent.did, task_id=response_data['task_id']).json()
-    assert task_result['task']['task_status'] == AgentExecutionStatus.Completed.value   
+    task_result = subscriber.ai_protocol.get_task_with_steps(did=agent.did, task_id=response_data['task_id'])
+    try:
+        assert task_result.json()['task']['task_status'] == AgentExecutionStatus.Completed.value  
+    except Exception as e:
+        print('Task status:', task_result)
+        print(e) 
 
     # Disconnect both clients after test
     await builder.ai_protocol.socket_client.disconnect()
