@@ -88,7 +88,9 @@ class NVMBackendApi:
         if self.socket_client and self.socket_client.connected:
             self.socket_client.disconnect()
 
-    async def _subscribe(self, callback, did: Optional[str]=None, events: Optional[str]=None):
+    async def _subscribe(self, callback, join_account_room: bool = True, join_agent_rooms: Optional[Union[str, List[str]]] = None, subscribe_event_types: Optional[List[str]] = None):
+        if not join_account_room and not join_agent_rooms:
+            raise ValueError('No rooms to join in configuration')
         await self.connect_socket()
         if not self.socket_client.connected:
             raise ConnectionError('Failed to connect to the WebSocket server.')
@@ -97,13 +99,10 @@ class NVMBackendApi:
             parsed_data = json.loads(data)
             await callback(parsed_data)    
 
-        if did:
-            await self.join_room(did)
-        else:
-            await self.join_room()
-        
-        if events:
-            for event in events:
+        await self.join_room(join_account_room, join_agent_rooms)
+
+        if subscribe_event_types:
+            for event in subscribe_event_types:
                 print(f"nvm-backend:: Subscribing to event: {event}")
                 self.socket_client.on(event, event_handler)
         else:
@@ -118,10 +117,10 @@ class NVMBackendApi:
                 await self.socket_client.emit(event='_emit-steps', data=json.dumps(x))
 
 
-    async def join_room(self, room_ids: Optional[Union[str, List[str]]] = None):
+    async def join_room(self, join_account_room: bool, room_ids: Optional[Union[str, List[str]]] = None):
         print(f"event:: Joining rooms: {room_ids} and {self.user_room_id}")
         
-        data = { 'joinAccountRoom': True }
+        data = { 'joinAccountRoom': join_account_room }
         
         if room_ids:
             data['joinAgentRooms'] = [room_ids] if isinstance(room_ids, str) else room_ids

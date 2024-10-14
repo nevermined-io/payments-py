@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
@@ -35,16 +35,17 @@ class AIQueryApi(NVMBackendApi):
         super().__init__(opts)
         self.opts = opts
 
-    async def subscribe(self, callback: Any, did: Optional[str]=None, events: Optional[str]=None):
-        await self._subscribe(callback, did, events)
+    async def subscribe(self, callback: Any, join_account_room: bool = True, join_agent_rooms: Optional[Union[str, List[str]]] = None, subscribe_event_types: Optional[List[str]] = None, get_pending_events_on_subscribe: bool = True):
+        await self._subscribe(callback, join_account_room,join_agent_rooms,  subscribe_event_types)
         print('query-api:: Connected to the server')
-        try: 
-            pending_steps = self.get_steps(AgentExecutionStatus.Pending)
-            # if callback is not None:
-            #     await callback(pending_steps.json()['steps'])
-            await self._emit_events(pending_steps.json()['steps'])
-        except Exception as e:
-            print('query-api:: Unable to get pending events', e)
+        if get_pending_events_on_subscribe:
+            try: 
+                pending_steps = self.get_steps(AgentExecutionStatus.Pending)
+                # if callback is not None:
+                #     await callback(pending_steps.json()['steps'])
+                await self._emit_events(pending_steps.json()['steps'])
+            except Exception as e:
+                print('query-api:: Unable to get pending events', e)
 
     def create_task(self, did: str, task: Any, jwt: Optional[str] = None):
         """
