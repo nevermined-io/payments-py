@@ -58,6 +58,8 @@ async def eventsReceived(data):
 
     else:
         print('eventsReceived::', 'parsing event with did:', data)
+        response_data = data
+        response_event.set()
         result = payments_builder.ai_protocol.update_step(did=data["did"], 
                                                                 task_id=data["task_id"], 
                                                                 step_id=data['step_id'], 
@@ -67,8 +69,6 @@ async def eventsReceived(data):
                                                                     'output': 'success',
                                                                     'is_last': True
                                                                     })
-        response_data = data
-        response_event.set()
         print(result.json())
 
 
