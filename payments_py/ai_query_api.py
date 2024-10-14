@@ -29,7 +29,6 @@ class AIQueryApi(NVMBackendApi):
         get_steps_from_task: Gets the steps from a task
         get_steps: Gets the steps
         get_tasks_from_agents: Gets the tasks from the agents
-        get_service_token: Gets the service token
     """
     def __init__(self, opts: BackendApiOptions):
         super().__init__(opts)
@@ -100,8 +99,6 @@ class AIQueryApi(NVMBackendApi):
             print('update_step::', e)
             return None
 
-
-
     def search_tasks(self, search_params: Any):
         """
         Searches for tasks.
@@ -160,25 +157,4 @@ class AIQueryApi(NVMBackendApi):
         """
         return self.get(self.parse_url(GET_AGENTS_ENDPOINT))
     
-    def get_service_token(self, service_did: str) -> ServiceTokenResultDto:
-        """
-        Gets the service token.
 
-        Args:
-            service_did (str): The DID of the service.
-
-        Returns:
-            ServiceTokenResultDto: The result of the creation operation.
-
-        Raises:
-            HTTPError: If the API call fails.
-
-        Example:
-            response = your_instance.get_service_token(service_did="did:nv:xyz789")
-            print(response)
-        """
-        url = f"{self.opts.backend_host}/api/v1/payments/service/token/{service_did}"
-        response = self.get(url)
-        print('get_service_token::', response)
-        response.raise_for_status() 
-        return ServiceTokenResultDto.model_validate(response.json()['token'])

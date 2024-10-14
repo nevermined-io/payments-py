@@ -6,6 +6,7 @@ import socketio
 import jwt
 from typing import Optional, Dict, List, Any, Union
 
+from payments_py.data_models import ServiceTokenResultDto
 from payments_py.environments import Environment
 
 sio = socketio.AsyncClient(logger=True, engineio_logger=True)
@@ -78,8 +79,11 @@ class NVMBackendApi:
         
         try:
             print(f"nvm-backend:: Connecting to websocket server: {self.opts.web_socket_host}")
-            # self.socket_client = socketio.AsyncClient(logger=True, engineio_logger=True)
             await self.socket_client.connect(self.opts.web_socket_host, headers=self.opts.headers, transports=["websocket"])
+            for i in range(5):
+                await asyncio.sleep(1)  
+                if self.socket_client.connected:
+                    break
             print(f"nvm-backend:: Connected: {self.socket_client.connected}")
         except Exception as error:
             raise ConnectionError(f"Unable to initialize websocket client: {self.opts.web_socket_host} - {str(error)}")
@@ -108,14 +112,12 @@ class NVMBackendApi:
         else:
             self.socket_client.on('step-updated', event_handler)  
 
-
     async def _emit_events(self, data: Any):
         await self.connect_socket()
         if data:
             for x in data:
                 print(f"nvm-backend:: Emitting step: {x}")
                 await self.socket_client.emit(event='_emit-steps', data=json.dumps(x))
-
 
     async def join_room(self, join_account_room: bool, room_ids: Optional[Union[str, List[str]]] = None):
         print(f"event:: Joining rooms: {room_ids} and {self.user_room_id}")
@@ -128,7 +130,6 @@ class NVMBackendApi:
         await self.socket_client.emit('_join-rooms', json.dumps(data))
         
         print(f"event:: Joined rooms: {room_ids} and {self.user_room_id}")
-
 
     async def disconnect(self):
         await self.disconnect_socket()
@@ -176,3 +177,25 @@ class NVMBackendApi:
             return response
         except requests.exceptions.HTTPError as err:
             return {"data": err.response.json(), "status": err.response.status_code, "headers": err.response.headers}
+
+    def get_service_token(self, service_did: str) -> ServiceTokenResultDto:
+        """
+        Gets the service token.
+
+        Args:
+            service_did (str): The DID of the service.
+
+        Returns:
+            ServiceTokenResultDto: The result of the creation operation.
+
+        Raises:
+            HTTPError: If the API call fails.
+
+        Example:
+            response = your_instance.get_service_token(service_did="did:nv:xyz789")
+            print(response)
+        """
+        url = f"{self.opts.backend_host}/api/v1/payments/service/token/{service_did}"
+        response = self.get(url)
+        response.raise_for_status() 
+        return ServiceTokenResultDto.model_validate(response.json()['token'])
