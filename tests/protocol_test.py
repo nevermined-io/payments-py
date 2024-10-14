@@ -2,6 +2,7 @@ import asyncio
 import json
 import pytest
 import os
+import time
 
 from payments_py.payments import Payments
 from payments_py import Environment
@@ -109,6 +110,7 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     assert builder.ai_protocol.socket_client.connected
     assert builder.user_room_id
 
+    time.sleep(10)
 
     order_response = subscriber.order_subscription(subscription_did=subscription.did)
     assert isinstance(order_response, OrderSubscriptionResultDto)
