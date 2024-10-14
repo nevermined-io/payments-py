@@ -29,7 +29,7 @@ class NVMBackendApi:
     def __init__(self, opts: BackendApiOptions):
         self.opts = opts
         self.socket_client = sio
-        self.room_id = None
+        self.user_room_id = None
         self.has_key = False
 
         default_headers = {
@@ -57,11 +57,11 @@ class NVMBackendApi:
                 
                 # Check if the client_id exists and does not match the specified pattern
                 if client_id:# and not re.match(r'^0x[a-fA-F0-9]{40}$', client_id):
-                    self.room_id = f"room:{client_id}"
+                    self.user_room_id = f"room:{client_id}"
                     self.has_key = True
         except Exception:
             self.has_key = False
-            self.room_id = None 
+            self.user_room_id = None 
 
         try:
             backend_url = self.opts.backend_host.rstrip('/')
@@ -120,7 +120,7 @@ class NVMBackendApi:
 
 
     async def join_room(self, room_ids: Optional[Union[str, List[str]]] = None):
-        print(f"event:: Joining rooms: {room_ids} and {self.room_id}")
+        print(f"event:: Joining rooms: {room_ids} and {self.user_room_id}")
         
         data = { 'joinAccountRoom': True }
         
@@ -129,7 +129,7 @@ class NVMBackendApi:
         
         await self.socket_client.emit('_join-rooms', json.dumps(data))
         
-        print(f"event:: Joined rooms: {room_ids} and {self.room_id}")
+        print(f"event:: Joined rooms: {room_ids} and {self.user_room_id}")
 
 
     async def disconnect(self):

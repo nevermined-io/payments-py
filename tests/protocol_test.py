@@ -34,7 +34,7 @@ def test_AIQueryApi_creation(ai_query_api_build_fixture):
     assert ai_query_api.opts.web_socket_host == Environment.appStaging.value['websocket']
     assert ai_query_api.opts.web_socket_options['bearer_token'] == nvm_api_key
     assert ai_query_api.socket_client
-    assert ai_query_api.room_id
+    assert ai_query_api.user_room_id
 
 
 async def eventsReceived(data):
@@ -72,7 +72,7 @@ async def eventsReceived(data):
         print(result.json())
 
 
-@pytest.mark.asyncio(loop_scope="module")
+@pytest.mark.asyncio
 async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
@@ -107,7 +107,7 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
 
     await builder.ai_protocol.subscribe(eventsReceived, None, ['step-updated'])
     assert builder.ai_protocol.socket_client.connected
-    assert builder.room_id
+    assert builder.user_room_id
 
 
     order_response = subscriber.order_subscription(subscription_did=subscription.did)
@@ -118,7 +118,7 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
     print('Task created:', task.json())
 
-    await asyncio.wait_for(response_event.wait(), timeout=300)
+    await asyncio.wait_for(asyncio.shield(response_event.wait()), timeout=300)
 
     assert response_data is not None, "Builder did not receive the event from subscriber"
     print('Task received by builder:', response_data)
