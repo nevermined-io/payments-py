@@ -151,6 +151,7 @@ class NVMBackendApi:
     def get(self, url: str):
         try:
             response = requests.get(url, headers=self.opts.headers)
+            print(f"nvm-backend:: GET {url} - {response}")
             response.raise_for_status()
             return response
         except requests.exceptions.HTTPError as err:
