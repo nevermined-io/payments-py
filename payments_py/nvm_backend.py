@@ -8,7 +8,7 @@ from typing import Optional, Dict, List, Any, Union
 
 from payments_py.environments import Environment
 
-sio = socketio.AsyncClient(logger=False, engineio_logger=False)
+sio = socketio.AsyncClient(logger=True, engineio_logger=True)
 
 
 class BackendApiOptions:
