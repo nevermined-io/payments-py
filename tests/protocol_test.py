@@ -9,6 +9,8 @@ from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, 
 
 response_event = asyncio.Event()
 global response_data
+global subscription
+global agent
 
 response_data = None
 
@@ -71,7 +73,9 @@ async def eventsReceived(data):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
+async def test_AIQueryApi_publish_agent_and_buy(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
+    global subscription
+    global agent
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
 
@@ -103,14 +107,21 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     assert agent.did.startswith("did:")
     print('Agent service created:', agent.did)
 
-    await builder.ai_protocol.subscribe(eventsReceived)
-    assert builder.ai_protocol.socket_client.connected
-    assert builder.user_room_id
-
     order_response = subscriber.order_subscription(subscription_did=subscription.did)
     assert isinstance(order_response, OrderSubscriptionResultDto)
     print('Subscription ordered:', order_response.success)
 
+    await builder.ai_protocol.subscribe(eventsReceived)
+    assert builder.ai_protocol.socket_client.connected
+    assert builder.user_room_id
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
+    global subscription
+    global agent
+    builder = ai_query_api_build_fixture
+    subscriber = ai_query_api_subscriber_fixture
+    
 
     task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
     print('Task created:', task.json())
