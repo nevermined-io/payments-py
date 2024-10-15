@@ -120,7 +120,7 @@ class NVMBackendApi:
 
     async def join_room(self, join_account_room: bool, room_ids: Optional[Union[str, List[str]]] = None):
         print(f"event:: Joining rooms: {room_ids} and {self.user_room_id}")
-        
+
         data = { 'joinAccountRoom': join_account_room }
         
         if room_ids:
@@ -160,20 +160,16 @@ class NVMBackendApi:
 
 
     def put(self, url: str, data: Any):
-        try:
-            response = requests.put(url, json=data, headers=self.opts.headers)
-            response.raise_for_status()
-            return response
-        except requests.exceptions.HTTPError as err:
-            return {"data": err.response.json(), "status": err.response.status_code, "headers": err.response.headers}
-
+        response = requests.put(url, json=data, headers=self.opts.headers)
+        if response.status_code >= 400:
+            raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
+        return response
+      
     def delete(self, url: str, data: Any):
-        try:
-            response = requests.delete(url, json=data, headers=self.opts.headers)
-            response.raise_for_status()
-            return response
-        except requests.exceptions.HTTPError as err:
-            return {"data": err.response.json(), "status": err.response.status_code, "headers": err.response.headers}
+        response = requests.delete(url, json=data, headers=self.opts.headers)
+        if response.status_code >= 400:
+            raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
+        return response
 
     def get_service_token(self, service_did: str) -> ServiceTokenResultDto:
         """
