@@ -9,6 +9,7 @@ UPDATE_STEP_ENDPOINT = '/api/v1/agents/{did}/tasks/{taskId}/step/{stepId}'
 GET_AGENTS_ENDPOINT = '/api/v1/agents'
 GET_BUILDER_STEPS_ENDPOINT = '/api/v1/agents/steps'
 GET_TASK_STEPS_ENDPOINT = '/api/v1/agents/{did}/tasks/{taskId}/steps'
+GET_STEP_ENDPOINT = '/api/v1/agents/{did}/tasks/{taskId}/step/{stepId}'
 TASK_ENDPOINT = '/api/v1/agents/{did}/tasks'
 GET_TASK_ENDPOINT = '/api/v1/agents/{did}/tasks/{taskId}'
 
@@ -29,13 +30,14 @@ class AIQueryApi(NVMBackendApi):
         get_steps_from_task: Gets the steps from a task
         get_steps: Gets the steps
         get_tasks_from_agents: Gets the tasks from the agents
+        get_step: Gets a step details
     """
     def __init__(self, opts: BackendApiOptions):
         super().__init__(opts)
         self.opts = opts
 
     async def subscribe(self, callback: Any, join_account_room: bool = True, join_agent_rooms: Optional[Union[str, List[str]]] = None, subscribe_event_types: Optional[List[str]] = None, get_pending_events_on_subscribe: bool = True):
-        await self._subscribe(callback, join_account_room,join_agent_rooms,  subscribe_event_types)
+        await self._subscribe(callback, join_account_room, join_agent_rooms, subscribe_event_types)
         print('query-api:: Connected to the server')
         if get_pending_events_on_subscribe:
             try: 
@@ -130,6 +132,18 @@ class AIQueryApi(NVMBackendApi):
         endpoint = self.parse_url_to_backend(GET_TASK_STEPS_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         if status:
             endpoint += f'?status={status}'
+        return self.get(endpoint)
+    
+    def get_step(self, did: str, task_id: str, step_id: str):
+        """
+        Gets a step.
+
+        Args:
+            did (str): The DID of the service.
+            task_id (str): The task ID.
+            step_id (str): The step ID.
+        """
+        endpoint = self.parse_url_to_backend(GET_STEP_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id).replace('{stepId}', step_id)
         return self.get(endpoint)
 
     def get_steps(self,

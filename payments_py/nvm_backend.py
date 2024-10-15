@@ -146,20 +146,18 @@ class NVMBackendApi:
         self.opts.headers['Authorization'] = f'Bearer {token}'
 
     def get(self, url: str):
-        try:
-            response = requests.get(url, headers=self.opts.headers)
-            response.raise_for_status()
-            return response
-        except requests.exceptions.HTTPError as err:
-            return {"data": err.response.json(), "status": err.response.status_code, "headers": err.response.headers}
+        response = requests.get(url, headers=self.opts.headers)            
+        if response.status_code >= 400:
+            raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
+        return response
+
 
     def post(self, url: str, data: Any):
-        try:
-            response = requests.post(url, json=data, headers=self.opts.headers)
-            response.raise_for_status()
-            return response
-        except requests.exceptions.HTTPError as err:
-            return {"data": err.response.json(), "status": err.response.status_code, "headers": err.response.headers}
+        response = requests.post(url, json=data, headers=self.opts.headers)
+        if response.status_code >= 400:
+            raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
+        return response
+
 
     def put(self, url: str, data: Any):
         try:
@@ -196,5 +194,4 @@ class NVMBackendApi:
         """
         url = f"{self.opts.backend_host}/api/v1/payments/service/token/{service_did}"
         response = self.get(url)
-        response.raise_for_status() 
         return ServiceTokenResultDto.model_validate(response.json()['token'])
