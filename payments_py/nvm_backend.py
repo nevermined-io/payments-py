@@ -6,7 +6,7 @@ import socketio
 import jwt
 from typing import Optional, Dict, List, Any, Union
 
-from payments_py.data_models import ServiceTokenResultDto
+from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
 from payments_py.environments import Environment
 
 sio = socketio.AsyncClient(logger=True, engineio_logger=True)
@@ -112,12 +112,11 @@ class NVMBackendApi:
         else:
             self.socket_client.on('step-updated', event_handler)  
 
-    async def _emit_events(self, data: Any):
+    async def _emit_step_events(self, status: AgentExecutionStatus = AgentExecutionStatus.Pending, dids: List[str] = []):
         await self.connect_socket()
-        if data:
-            for x in data:
-                print(f"nvm-backend:: Emitting step: {x}")
-                await self.socket_client.emit(event='_emit-steps', data=json.dumps(x))
+        message = { status, dids }
+        print(f"nvm-backend:: Emitting step: {json.dumps(message)}")
+        await self.socket_client.emit(event='_emit-steps', data=json.dumps(message))
 
     async def join_room(self, join_account_room: bool, room_ids: Optional[Union[str, List[str]]] = None):
         print(f"event:: Joining rooms: {room_ids} and {self.user_room_id}")
