@@ -39,9 +39,6 @@ class AIQueryApi(NVMBackendApi):
         print('query-api:: Connected to the server')
         if get_pending_events_on_subscribe:
             try: 
-                # pending_steps = self.get_steps(AgentExecutionStatus.Pending)
-                # if callback is not None:
-                #     await callback(pending_steps.json()['steps'])
                 if(get_pending_events_on_subscribe and join_agent_rooms): 
                     await self._emit_step_events(AgentExecutionStatus.Pending, join_agent_rooms)
             except Exception as e:
