@@ -111,19 +111,23 @@ async def test_AIQueryApi_publish_agent_and_buy(ai_query_api_build_fixture, ai_q
     assert isinstance(order_response, OrderSubscriptionResultDto)
     print('Subscription ordered:', order_response.success)
 
-    await builder.ai_protocol.subscribe(eventsReceived)
-    assert builder.ai_protocol.socket_client.connected
-    assert builder.user_room_id
-
 @pytest.mark.asyncio(loop_scope="session")
 async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
     global subscription
     global agent
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
+
+    subscription_task = asyncio.create_task(builder.ai_protocol.subscribe(eventsReceived))
+
+    # Ensure the WebSocket connection is established
+    for i in range(5):
+        await asyncio.sleep(1)  # Wait for 1 second between each attempt
+        if builder.ai_protocol.socket_client.connected:
+            break
+    assert builder.ai_protocol.socket_client.connected, "WebSocket connection failed"
+    assert builder.user_room_id, "User room ID is not set"
     
-    time.sleep(10)
-    print('Sleeping for 10 seconds to allow the builder to subscribe to the server')
     task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
     print('Task created:', task.json())
 
@@ -142,3 +146,9 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     # Disconnect both clients after test
     await builder.ai_protocol.socket_client.disconnect()
     await subscriber.ai_protocol.socket_client.disconnect()
+
+    subscription_task.cancel()
+    try:
+        await subscription_task
+    except asyncio.CancelledError:
+        pass
