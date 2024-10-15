@@ -8,10 +8,8 @@ from payments_py import Environment
 from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, OrderSubscriptionResultDto
 
 response_event = asyncio.Event()
+room_joined_event = asyncio.Event()
 global response_data
-global subscription
-global agent
-
 response_data = None
 
 # Set environment variables for the test
@@ -71,11 +69,12 @@ async def eventsReceived(data):
                                                                     })
         print(result.json())
 
+async def on_join_rooms(data):
+    print("Joined room:", data)
+    room_joined_event.set()
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_AIQueryApi_publish_agent_and_buy(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
-    global subscription
-    global agent
+async def test_AIQueryApi_create_task_in_subscription_purchased(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
 
@@ -111,19 +110,19 @@ async def test_AIQueryApi_publish_agent_and_buy(ai_query_api_build_fixture, ai_q
     assert isinstance(order_response, OrderSubscriptionResultDto)
     print('Subscription ordered:', order_response.success)
 
-    await builder.ai_protocol.subscribe(eventsReceived)
-    assert builder.ai_protocol.socket_client.connected
-    assert builder.user_room_id
+    subscription_task = asyncio.create_task(builder.ai_protocol.subscribe(eventsReceived))
 
-@pytest.mark.asyncio(loop_scope="session")
-async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
-    global subscription
-    global agent
-    builder = ai_query_api_build_fixture
-    subscriber = ai_query_api_subscriber_fixture
+    # Ensure the WebSocket connection is established
+    for i in range(5):
+        await asyncio.sleep(1)  # Wait for 1 second between each attempt
+        if builder.ai_protocol.socket_client.connected:
+            break
+    assert builder.ai_protocol.socket_client.connected, "WebSocket connection failed"
+    assert builder.user_room_id, "User room ID is not set"
+
+    builder.ai_protocol.socket_client.on("_join-rooms_", on_join_rooms)
+    await asyncio.wait_for(room_joined_event.wait(), timeout=10)
     
-    time.sleep(10)
-    print('Sleeping for 10 seconds to allow the builder to subscribe to the server')
     task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
     print('Task created:', task.json())
 
@@ -142,3 +141,9 @@ async def test_AIQueryApi_create_task(ai_query_api_build_fixture, ai_query_api_s
     # Disconnect both clients after test
     await builder.ai_protocol.socket_client.disconnect()
     await subscriber.ai_protocol.socket_client.disconnect()
+
+    subscription_task.cancel()
+    try:
+        await subscription_task
+    except asyncio.CancelledError:
+        pass
