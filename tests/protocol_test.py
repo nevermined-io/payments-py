@@ -1,7 +1,6 @@
 import asyncio
 import pytest
 import os
-import time
 
 from payments_py.payments import Payments
 from payments_py import Environment
@@ -110,6 +109,8 @@ async def test_AIQueryApi_create_task_in_subscription_purchased(ai_query_api_bui
     assert isinstance(order_response, OrderSubscriptionResultDto)
     print('Subscription ordered:', order_response.success)
 
+    balance_before_task = subscriber.get_subscription_balance(subscription_did=subscription.did, account_address="0x496D42f45a2C2Dc460c6605A2b414698232F123f")
+
     subscription_task = asyncio.create_task(builder.ai_protocol.subscribe(eventsReceived))
 
     # Ensure the WebSocket connection is established
@@ -137,6 +138,18 @@ async def test_AIQueryApi_create_task_in_subscription_purchased(ai_query_api_bui
     except Exception as e:
         print('Task status:', task_result)
         print(e) 
+    
+    print('Wait for credits to be burned')
+    await asyncio.sleep(10)
+
+    balance2 = subscriber.get_subscription_balance(subscription_did=subscription.did, account_address="0x496D42f45a2C2Dc460c6605A2b414698232F123f")
+    print('Subscription balance2:', balance2)
+    assert int(balance2.balance) == int(balance_before_task.balance) - 2
+
+    with pytest.raises(Exception) as excinfo:
+        task = subscriber.ai_protocol.create_task(did=agent.did, task={})
+    exception_args = excinfo.value.args[0] 
+    assert exception_args['status'] == 401
 
     # Disconnect both clients after test
     await builder.ai_protocol.socket_client.disconnect()
