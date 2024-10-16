@@ -56,7 +56,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-create_task">method create_task</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#method-get_service_token">method get_service_token</a>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_step">method get_step</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-get_steps">method get_steps</a>
     </li>
@@ -132,11 +132,12 @@
 <li><strong>GET_AGENTS_ENDPOINT</strong></li>
 <li><strong>GET_BUILDER_STEPS_ENDPOINT</strong></li>
 <li><strong>GET_TASK_STEPS_ENDPOINT</strong></li>
+<li><strong>GET_STEP_ENDPOINT</strong></li>
 <li><strong>TASK_ENDPOINT</strong></li>
 <li><strong>GET_TASK_ENDPOINT</strong></li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L16"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L17"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h2 id="class-aiqueryapi"><kbd>class</kbd> <code>AIQueryApi</code></h2>
 <p>Represents the AI Query API. </p>
 <p><strong>Args:</strong></p>
@@ -152,13 +153,13 @@
  - <b><code>get_steps_from_task</code></b>:  Gets the steps from a task 
  - <b><code>get_steps</code></b>:  Gets the steps 
  - <b><code>get_tasks_from_agents</code></b>:  Gets the tasks from the agents 
- - <b><code>get_service_token</code></b>:  Gets the service token </p>
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L34"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+ - <b><code>get_step</code></b>:  Gets a step details </p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L35"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
 <pre><code class="language-python">__init__(opts: BackendApiOptions)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L71"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L67"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_steps"><kbd>method</kbd> <code>create_steps</code></h3>
 <pre><code class="language-python">create_steps(did: str, task_id: str, steps: Any)
 </code></pre>
@@ -170,7 +171,7 @@
 <li><b><code>steps</code></b> (Any):  The steps to create. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L53"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L49"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_task"><kbd>method</kbd> <code>create_task</code></h3>
 <pre><code class="language-python">create_task(did: str, task: Any, jwt: Optional[str] = None)
 </code></pre>
@@ -182,27 +183,19 @@
 <li><b><code>jwt</code></b> (Optional[str]):  The JWT token. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L166"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h3 id="method-get_service_token"><kbd>method</kbd> <code>get_service_token</code></h3>
-<pre><code class="language-python">get_service_token(service_did: str) → ServiceTokenResultDto
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L137"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_step"><kbd>method</kbd> <code>get_step</code></h3>
+<pre><code class="language-python">get_step(did: str, task_id: str, step_id: str)
 </code></pre>
-<p>Gets the service token. </p>
+<p>Gets a step. </p>
 <p><strong>Args:</strong></p>
 <ul>
-<li><b><code>service_did</code></b> (str):  The DID of the service. </li>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+<li><b><code>step_id</code></b> (str):  The step ID. </li>
 </ul>
-<p><strong>Returns:</strong></p>
-<ul>
-<li><b><code>ServiceTokenResultDto</code></b>:  The result of the creation operation. </li>
-</ul>
-<p><strong>Raises:</strong></p>
-<ul>
-<li><b><code>HTTPError</code></b>:  If the API call fails. </li>
-</ul>
-<p><strong>Example:</strong>
- response = your_instance.get_service_token(service_did="did:nv:xyz789") print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L143"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L149"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_steps"><kbd>method</kbd> <code>get_steps</code></h3>
 <pre><code class="language-python">get_steps(
     status: AgentExecutionStatus = &lt;AgentExecutionStatus.Pending: 'Pending'&gt;,
@@ -216,7 +209,7 @@
 <li><b><code>dids</code></b> (List[str]):  The list of DIDs. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L129"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L123"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_steps_from_task"><kbd>method</kbd> <code>get_steps_from_task</code></h3>
 <pre><code class="language-python">get_steps_from_task(did: str, task_id: str, status: Optional[str] = None)
 </code></pre>
@@ -228,7 +221,7 @@
 <li><b><code>status</code></b> (Optional[str]):  The status of the steps. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L117"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L111"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_task_with_steps"><kbd>method</kbd> <code>get_task_with_steps</code></h3>
 <pre><code class="language-python">get_task_with_steps(did: str, task_id: str, jwt: Optional[str] = None)
 </code></pre>
@@ -240,13 +233,13 @@
 <li><b><code>jwt</code></b> (Optional[str]):  The JWT token. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L160"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L166"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_tasks_from_agents"><kbd>method</kbd> <code>get_tasks_from_agents</code></h3>
 <pre><code class="language-python">get_tasks_from_agents()
 </code></pre>
 <p>Gets the tasks from the agents. </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L108"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L102"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-search_tasks"><kbd>method</kbd> <code>search_tasks</code></h3>
 <pre><code class="language-python">search_tasks(search_params: Any)
 </code></pre>
@@ -256,12 +249,18 @@
 <li><b><code>search_params</code></b> (Any):  The search parameters. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L38"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L39"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-subscribe"><kbd>method</kbd> <code>subscribe</code></h3>
-<pre><code class="language-python">subscribe(callback: Any, events: Optional[str] = None)
+<pre><code class="language-python">subscribe(
+    callback: Any,
+    join_account_room: bool = True,
+    join_agent_rooms: Optional[str, List[str]] = None,
+    subscribe_event_types: Optional[List[str]] = None,
+    get_pending_events_on_subscribe: bool = True
+)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L84"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L80"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-update_step"><kbd>method</kbd> <code>update_step</code></h3>
 <pre><code class="language-python">update_step(
     did: str,

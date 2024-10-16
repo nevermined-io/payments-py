@@ -17,7 +17,7 @@
 
 <a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L6"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
-## <kbd>class</kbd> `SubscriptionType`
+## <kbd>class</kbd> `PlanType`
 An enumeration. 
 
 
@@ -203,7 +203,7 @@ Returns the set of fields that have been explicitly set on this model instance.
 
 <a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L75"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
-## <kbd>class</kbd> `OrderSubscriptionResultDto`
+## <kbd>class</kbd> `OrderPlanResultDto`
 
 
 

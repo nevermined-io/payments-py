@@ -24,10 +24,10 @@
 - [`data_models.ExecutionOptions`](./data_models.md#class-executionoptions): Represents options for executing a task or step, such as input, status, and output.
 - [`data_models.ExecutionOutput`](./data_models.md#class-executionoutput): Represents the output of a task or step execution.
 - [`data_models.MintResultDto`](./data_models.md#class-mintresultdto)
-- [`data_models.OrderSubscriptionResultDto`](./data_models.md#class-ordersubscriptionresultdto)
+- [`data_models.OrderPlanResultDto`](./data_models.md#class-orderplanresultdto)
+- [`data_models.PlanType`](./data_models.md#class-plantype): An enumeration.
 - [`data_models.ServiceTokenResultDto`](./data_models.md#class-servicetokenresultdto)
 - [`data_models.Step`](./data_models.md#class-step): Represents a step in the execution of a task.
-- [`data_models.SubscriptionType`](./data_models.md#class-subscriptiontype): An enumeration.
 - [`data_models.Task`](./data_models.md#class-task): Represents a task that an agent should execute, composed of multiple steps.
 - [`environments.Environment`](./environments.md#class-environment): Enum class to define the different environments
 - [`nvm_backend.BackendApiOptions`](./nvm_backend.md#class-backendapioptions)
