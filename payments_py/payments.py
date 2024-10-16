@@ -473,6 +473,7 @@ class Payments(NVMBackendApi):
             }
         """
         body = {
+            "subscriptionDid": plan_did,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
         url = (f"{self.environment.value['backend']}/api/v1/payments/subscription/balance")
