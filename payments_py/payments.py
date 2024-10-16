@@ -479,7 +479,13 @@ class Payments(NVMBackendApi):
         url = (f"{self.environment.value['backend']}/api/v1/payments/subscription/balance")
         response = self.post(url, body)
         response.raise_for_status()
-        return BalanceResultDto.model_validate(response.json())
+        balance = {
+            "planType": response.json()['subscriptionType'],
+            "isOwner": response.json()['isOwner'],
+            "isSubscriptor": response.json()['isSubscriptor'],
+            "balance": response.json()['balance']
+        }
+        return BalanceResultDto.model_validate(balance)
     
     def get_service_token(self, service_did: str) -> ServiceTokenResultDto:
         """
