@@ -114,7 +114,7 @@ def test_get_plan_balance(payment):
     mock_response = Mock()
     mock_response.status_code = 201
     mock_response.json.return_value = {
-        "planType": "credits",
+        "subscriptionType": "credits",
         "isOwner": True,
         "isSubscriptor": True,
         "balance": "10000000"
@@ -132,7 +132,7 @@ def test_get_plan_balance_invalid_response(payment):
     mock_response = Mock()
     mock_response.status_code = 201
     mock_response.json.return_value = {
-        "planType": "invalid",  # Assuming "invalid" is not a valid PlanType
+        "subscriptionType": "invalid",  # Assuming "invalid" is not a valid PlanType
         "isOwner": True,
         "isSubscriptor": True,
         "balance": 10000000
