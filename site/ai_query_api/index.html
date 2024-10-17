@@ -56,8 +56,6 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-create_task">method create_task</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#method-get_step">method get_step</a>
-    </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-get_steps">method get_steps</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-get_steps_from_task">method get_steps_from_task</a>
@@ -65,6 +63,8 @@
     <li class="toctree-l3"><a class="reference internal" href="#method-get_task_with_steps">method get_task_with_steps</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-get_tasks_from_agents">method get_tasks_from_agents</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-search_step">method search_step</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-search_tasks">method search_tasks</a>
     </li>
@@ -127,12 +127,12 @@
 <h2 id="global-variables"><strong>Global Variables</strong></h2>
 <ul>
 <li><strong>SEARCH_TASKS_ENDPOINT</strong></li>
+<li><strong>SEARCH_STEPS_ENDPOINT</strong></li>
 <li><strong>CREATE_STEPS_ENDPOINT</strong></li>
 <li><strong>UPDATE_STEP_ENDPOINT</strong></li>
 <li><strong>GET_AGENTS_ENDPOINT</strong></li>
 <li><strong>GET_BUILDER_STEPS_ENDPOINT</strong></li>
 <li><strong>GET_TASK_STEPS_ENDPOINT</strong></li>
-<li><strong>GET_STEP_ENDPOINT</strong></li>
 <li><strong>TASK_ENDPOINT</strong></li>
 <li><strong>GET_TASK_ENDPOINT</strong></li>
 </ul>
@@ -153,7 +153,7 @@
  - <b><code>get_steps_from_task</code></b>:  Gets the steps from a task 
  - <b><code>get_steps</code></b>:  Gets the steps 
  - <b><code>get_tasks_from_agents</code></b>:  Gets the tasks from the agents 
- - <b><code>get_step</code></b>:  Gets a step details </p>
+ - <b><code>search_step</code></b>:  Searches for steps </p>
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L35"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
 <pre><code class="language-python">__init__(opts: BackendApiOptions)
@@ -183,19 +183,7 @@
 <li><b><code>jwt</code></b> (Optional[str]):  The JWT token. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L137"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h3 id="method-get_step"><kbd>method</kbd> <code>get_step</code></h3>
-<pre><code class="language-python">get_step(did: str, task_id: str, step_id: str)
-</code></pre>
-<p>Gets a step. </p>
-<p><strong>Args:</strong></p>
-<ul>
-<li><b><code>did</code></b> (str):  The DID of the service. </li>
-<li><b><code>task_id</code></b> (str):  The task ID. </li>
-<li><b><code>step_id</code></b> (str):  The step ID. </li>
-</ul>
-<hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L149"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L146"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_steps"><kbd>method</kbd> <code>get_steps</code></h3>
 <pre><code class="language-python">get_steps(
     status: AgentExecutionStatus = &lt;AgentExecutionStatus.Pending: 'Pending'&gt;,
@@ -233,11 +221,21 @@
 <li><b><code>jwt</code></b> (Optional[str]):  The JWT token. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L166"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L163"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_tasks_from_agents"><kbd>method</kbd> <code>get_tasks_from_agents</code></h3>
 <pre><code class="language-python">get_tasks_from_agents()
 </code></pre>
 <p>Gets the tasks from the agents. </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L137"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-search_step"><kbd>method</kbd> <code>search_step</code></h3>
+<pre><code class="language-python">search_step(search_params: Any)
+</code></pre>
+<p>Searches for steps. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>search_params</code></b> (Any):  The search parameters. </li>
+</ul>
 <hr />
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L102"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-search_tasks"><kbd>method</kbd> <code>search_tasks</code></h3>

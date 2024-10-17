@@ -10,12 +10,12 @@
 **Global Variables**
 ---------------
 - **SEARCH_TASKS_ENDPOINT**
+- **SEARCH_STEPS_ENDPOINT**
 - **CREATE_STEPS_ENDPOINT**
 - **UPDATE_STEP_ENDPOINT**
 - **GET_AGENTS_ENDPOINT**
 - **GET_BUILDER_STEPS_ENDPOINT**
 - **GET_TASK_STEPS_ENDPOINT**
-- **GET_STEP_ENDPOINT**
 - **TASK_ENDPOINT**
 - **GET_TASK_ENDPOINT**
 
@@ -42,7 +42,7 @@ Methods:
  - <b>`get_steps_from_task`</b>:  Gets the steps from a task 
  - <b>`get_steps`</b>:  Gets the steps 
  - <b>`get_tasks_from_agents`</b>:  Gets the tasks from the agents 
- - <b>`get_step`</b>:  Gets a step details 
+ - <b>`search_step`</b>:  Searches for steps 
 
 <a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L35"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
@@ -103,27 +103,7 @@ Creates a task for an agent to execute.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L137"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
-
-### <kbd>method</kbd> `get_step`
-
-```python
-get_step(did: str, task_id: str, step_id: str)
-```
-
-Gets a step. 
-
-
-
-**Args:**
- 
- - <b>`did`</b> (str):  The DID of the service. 
- - <b>`task_id`</b> (str):  The task ID. 
- - <b>`step_id`</b> (str):  The step ID. 
-
----
-
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L149"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L146"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_steps`
 
@@ -185,7 +165,7 @@ Gets a task with its steps.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L166"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L163"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_tasks_from_agents`
 
@@ -194,6 +174,24 @@ get_tasks_from_agents()
 ```
 
 Gets the tasks from the agents. 
+
+---
+
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L137"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `search_step`
+
+```python
+search_step(search_params: Any)
+```
+
+Searches for steps. 
+
+
+
+**Args:**
+ 
+ - <b>`search_params`</b> (Any):  The search parameters. 
 
 ---
 
