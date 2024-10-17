@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional, Union
+import asyncio
+from typing import Any, List, Optional, Union
 from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
@@ -45,6 +46,8 @@ class AIQueryApi(NVMBackendApi):
                     await self._emit_step_events(AgentExecutionStatus.Pending, join_agent_rooms)
             except Exception as e:
                 print('query-api:: Unable to get pending events', e)
+        await asyncio.Event().wait()
+
 
     def create_task(self, did: str, task: Any, jwt: Optional[str] = None):
         """
