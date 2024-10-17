@@ -1,6 +1,4 @@
-import asyncio
 import json
-import re
 import requests
 import socketio
 import jwt
@@ -114,7 +112,7 @@ class NVMBackendApi:
 
     async def _emit_step_events(self, status: AgentExecutionStatus = AgentExecutionStatus.Pending, dids: List[str] = []):
         await self.connect_socket()
-        message = { status, dids }
+        message = { "status": status.value, "dids": dids }
         print(f"nvm-backend:: Emitting step: {json.dumps(message)}")
         await self.socket_client.emit(event='_emit-steps', data=json.dumps(message))
 
