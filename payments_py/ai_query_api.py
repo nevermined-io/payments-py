@@ -3,13 +3,13 @@ from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
 # Define API Endpoints
-SEARCH_TASKS_ENDPOINT = '/api/v1/agents/search'
+SEARCH_TASKS_ENDPOINT = '/api/v1/agents/search/tasks'
+SEARCH_STEPS_ENDPOINT = '/api/v1/agents/search/steps'
 CREATE_STEPS_ENDPOINT = '/api/v1/agents/{did}/tasks/{taskId}/steps'
 UPDATE_STEP_ENDPOINT = '/api/v1/agents/{did}/tasks/{taskId}/step/{stepId}'
 GET_AGENTS_ENDPOINT = '/api/v1/agents'
 GET_BUILDER_STEPS_ENDPOINT = '/api/v1/agents/steps'
 GET_TASK_STEPS_ENDPOINT = '/api/v1/agents/{did}/tasks/{taskId}/steps'
-GET_STEP_ENDPOINT = '/api/v1/agents/{did}/tasks/{taskId}/step/{stepId}'
 TASK_ENDPOINT = '/api/v1/agents/{did}/tasks'
 GET_TASK_ENDPOINT = '/api/v1/agents/{did}/tasks/{taskId}'
 
@@ -30,7 +30,7 @@ class AIQueryApi(NVMBackendApi):
         get_steps_from_task: Gets the steps from a task
         get_steps: Gets the steps
         get_tasks_from_agents: Gets the tasks from the agents
-        get_step: Gets a step details
+        search_step: Searches for steps
     """
     def __init__(self, opts: BackendApiOptions):
         super().__init__(opts)
@@ -134,17 +134,14 @@ class AIQueryApi(NVMBackendApi):
             endpoint += f'?status={status}'
         return self.get(endpoint)
     
-    def get_step(self, did: str, task_id: str, step_id: str):
+    def search_step(self, search_params: Any):
         """
-        Gets a step.
+        Searches for steps.
 
         Args:
-            did (str): The DID of the service.
-            task_id (str): The task ID.
-            step_id (str): The step ID.
+            search_params (Any): The search parameters.
         """
-        endpoint = self.parse_url_to_backend(GET_STEP_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id).replace('{stepId}', step_id)
-        return self.get(endpoint)
+        return self.post(self.parse_url_to_backend(SEARCH_STEPS_ENDPOINT), search_params)
 
     def get_steps(self,
                         status: AgentExecutionStatus = AgentExecutionStatus.Pending,
