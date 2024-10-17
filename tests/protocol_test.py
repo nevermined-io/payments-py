@@ -4,7 +4,7 @@ import os
 
 from payments_py.payments import Payments
 from payments_py import Environment
-from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, OrderSubscriptionResultDto
+from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, OrderPlanResultDto
 
 response_event = asyncio.Event()
 room_joined_event = asyncio.Event()
@@ -73,24 +73,24 @@ async def on_join_rooms(data):
     room_joined_event.set()
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_AIQueryApi_create_task_in_subscription_purchased(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
+async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
 
-    subscription = builder.create_credits_subscription(
-        name="Subscription with agent",
+    plan = builder.create_credits_plan(
+        name="Plan with agent",
         description="test",
         price=0,
         token_address="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
         amount_of_credits=100,
         tags=["test"]
     )
-    assert isinstance(subscription, CreateAssetResultDto)
-    assert subscription.did.startswith("did:")
-    print('Subscription created:', subscription.did)
+    assert isinstance(plan, CreateAssetResultDto)
+    assert plan.did.startswith("did:")
+    print('Plan created:', plan.did)
 
     agent = builder.create_service(
-        subscription_did=subscription.did,
+        plan_did=plan.did,
         service_type='agent',
         name="Agent service",
         description="test",
@@ -105,11 +105,11 @@ async def test_AIQueryApi_create_task_in_subscription_purchased(ai_query_api_bui
     assert agent.did.startswith("did:")
     print('Agent service created:', agent.did)
 
-    order_response = subscriber.order_subscription(subscription_did=subscription.did)
-    assert isinstance(order_response, OrderSubscriptionResultDto)
-    print('Subscription ordered:', order_response.success)
+    order_response = subscriber.order_plan(plan_did=plan.did)
+    assert isinstance(order_response, OrderPlanResultDto)
+    print('Plan ordered:', order_response.success)
 
-    balance_before_task = subscriber.get_subscription_balance(subscription_did=subscription.did, account_address="0x496D42f45a2C2Dc460c6605A2b414698232F123f")
+    balance_before_task = subscriber.get_plan_balance(plan_did=plan.did, account_address="0x496D42f45a2C2Dc460c6605A2b414698232F123f")
 
     subscription_task = asyncio.create_task(builder.ai_protocol.subscribe(eventsReceived))
 
@@ -142,8 +142,8 @@ async def test_AIQueryApi_create_task_in_subscription_purchased(ai_query_api_bui
     print('Wait for credits to be burned')
     await asyncio.sleep(10)
 
-    balance2 = subscriber.get_subscription_balance(subscription_did=subscription.did, account_address="0x496D42f45a2C2Dc460c6605A2b414698232F123f")
-    print('Subscription balance2:', balance2)
+    balance2 = subscriber.get_plan_balance(plan_did=plan.did, account_address="0x496D42f45a2C2Dc460c6605A2b414698232F123f")
+    print('Plan balance2:', balance2)
     assert int(balance2.balance) == int(balance_before_task.balance) - 2
 
     with pytest.raises(Exception) as excinfo:

@@ -2,7 +2,7 @@ import os
 from typing import List, Optional
 import requests
 
-from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderSubscriptionResultDto, ServiceTokenResultDto
+from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto
 from payments_py.environments import Environment
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 from payments_py.ai_query_api import AIQueryApi
@@ -23,22 +23,23 @@ class Payments(NVMBackendApi):
         web_socket_options (dict, optional): The web socket options for the payment system.
 
     Methods:
-        create_ubscription: Creates a new subscription.
+        create_credits_plan: Creates a new credits plan.
+        create_time_plan: Creates a new time plan.
         create_service: Creates a new service.
         create_file: Creates a new file.
-        order_subscription: Orders the subscription.
+        order_plan: Orders the plan.
         get_asset_ddo: Gets the asset DDO.
-        get_subscription_balance: Gets the subscription balance.
+        get_plan_balance: Gets the plan balance.
         get_service_token: Gets the service token.
-        get_subscription_associated_services: Gets the subscription associated services.
-        get_subscription_associated_files: Gets the subscription associated files.
-        get_subscription_details: Gets the subscription details.
+        get_plan_associated_services: Gets the plan associated services.
+        get_plan_associated_files: Gets the plan associated files.
+        get_plan_details: Gets the plan details.
         get_service_details: Gets the service details.
         get_file_details: Gets the file details.
-        get_checkout_subscription: Gets the checkout subscription.
+        get_checkout_plan: Gets the checkout plan.
         download_file: Downloads the file.
-        mint_credits: Mints the credits associated to a subscription and send to the receiver.
-        burn_credits: Burns credits associated to a subscription that you own.     
+        mint_credits: Mints the credits associated to a plan and send to the receiver.
+        burn_credits: Burns credits associated to a plan that you own.     
         ai_protocol: The AI Query API.
     """
 
@@ -53,18 +54,18 @@ class Payments(NVMBackendApi):
         if ai_protocol:
             self.ai_protocol = AIQueryApi(self.backend_options)
 
-    def create_credits_subscription(self, name: str, description: str, price: int, token_address: str,
+    def create_credits_plan(self, name: str, description: str, price: int, token_address: str,
                             amount_of_credits: int, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
         """
-        Creates a new credits subscription.
+        Creates a new credits plan.
 
         Args:
-            name (str): The name of the subscription.
-            description (str): The description of the subscription.
-            price (int): The price of the subscription.
+            name (str): The name of the plan.
+            description (str): The description of the plan.
+            price (int): The price of the plan.
             token_address (str): The token address.
-            amount_of_credits (int): The amount of credits for the subscription.
-            tags (List[str], optional): The tags associated with the subscription.
+            amount_of_credits (int): The amount of credits for the plan.
+            tags (List[str], optional): The tags associated with the plan.
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -73,7 +74,7 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.create_credits_subscription(name="Basic Plan", description="100 credits subscription", price=1, token_address="0x1234", amount_of_credits=100, tags=["basic"])
+            response = your_instance.create_credits_plan(name="Basic Plan", description="100 credits plan", price=1, token_address="0x1234", amount_of_credits=100, tags=["basic"])
             print(response)
         """
         metadata = {
@@ -120,18 +121,18 @@ class Payments(NVMBackendApi):
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
 
-    def create_time_subscription(self, name: str, description: str, price: int, token_address: str,
+    def create_time_plan(self, name: str, description: str, price: int, token_address: str,
                             duration: Optional[int] = 0, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
         """
-        Creates a new time subscription.
+        Creates a new time plan.
 
         Args:
-            name (str): The name of the subscription.
-            description (str): The description of the subscription.
-            price (int): The price of the subscription.
+            name (str): The name of the plan.
+            description (str): The description of the plan.
+            price (int): The price of the plan.
             token_address (str): The token address.
-            duration (int, optional): The duration of the subscription in days. If not provided, the subscription will be valid forever.
-            tags (List[str], optional): The tags associated with the subscription.
+            duration (int, optional): The duration of the plan in days. If not provided, the plan will be valid forever.
+            tags (List[str], optional): The tags associated with the plan.
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -140,7 +141,7 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.create_time_subscription(name="Yearly Plan", description="Annual subscription", price=1200, token_address="0x5678", duration=365, tags=["yearly", "premium"])
+            response = your_instance.create_time_plan(name="Yearly Plan", description="Annual plan", price=1200, token_address="0x5678", duration=365, tags=["yearly", "premium"])
             print(response)
         """
         metadata = {
@@ -188,7 +189,7 @@ class Payments(NVMBackendApi):
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
-    def create_service(self, subscription_did: str, service_type: str, name: str, description: str,
+    def create_service(self, plan_did: str, service_type: str, name: str, description: str,
                        service_charge_type: str, auth_type: str, amount_of_credits: int = 1,
                        min_credits_to_charge: Optional[int] = 1, max_credits_to_charge: Optional[int] = 1,
                        username: Optional[str] = None, password: Optional[str] = None, token: Optional[str] = None,
@@ -202,7 +203,7 @@ class Payments(NVMBackendApi):
         Creates a new service.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
             service_type (str): The type of the service. Options: 'service', 'agent', 'assistant'
             name (str): The name of the service.
             description (str): The description of the service.
@@ -233,7 +234,7 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.create_service(subscription_did="did:nv:abc123", service_type="service", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none")
+            response = your_instance.create_service(plan_did="did:nv:abc123", service_type="service", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none")
             print(response)
         """
         metadata = {
@@ -292,7 +293,7 @@ class Payments(NVMBackendApi):
                 'serviceType': 'nft-access',
                 'nft': {
                     'amount': amount_of_credits if amount_of_credits else None,
-                    'tokenId': subscription_did,
+                    'tokenId': plan_did,
                     'minCreditsToCharge': min_credits_to_charge,
                     'minCreditsRequired': min_credits_to_charge,
                     'maxCreditsToCharge': max_credits_to_charge,
@@ -303,14 +304,14 @@ class Payments(NVMBackendApi):
         body = {
             "metadata": metadata,
             "serviceAttributes": service_attributes,
-            "subscriptionDid": subscription_did,
+            "subscriptionDid": plan_did,
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/service"
         response = self.post(url, data=body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
-    def create_file(self, subscription_did: str, asset_type: str, name: str, description: str, files: List[dict],
+    def create_file(self, plan_did: str, asset_type: str, name: str, description: str, files: List[dict],
                     data_schema: Optional[str] = None,
                     sample_code: Optional[str] = None,
                     files_format: Optional[str] = None, usage_example: Optional[str] = None,
@@ -323,7 +324,7 @@ class Payments(NVMBackendApi):
         Creates a new file.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
             asset_type (str): The type of the asset. -> 'algorithm' | 'model' | 'dataset' | 'file'
             name (str): The name of the file.
             description (str): The description of the file.
@@ -349,7 +350,7 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.create_file(subscription_did="did:nv:xyz789", asset_type="dataset", name="Sample Dataset", description="A sample dataset", files=[{"name": "file1.csv", "url": "https://example.com/file1.csv"}])
+            response = your_instance.create_file(plan_did="did:nv:xyz789", asset_type="dataset", name="Sample Dataset", description="A sample dataset", files=[{"name": "file1.csv", "url": "https://example.com/file1.csv"}])
             print(response)
         """
         metadata = {
@@ -387,7 +388,7 @@ class Payments(NVMBackendApi):
             {
                 'serviceType': 'nft-access',
                 'nft': {
-                    'tokenId': subscription_did,
+                    'tokenId': plan_did,
                     'amount': amount_of_credits if amount_of_credits else None,
                     'nftTransfer': False,
                 },
@@ -396,39 +397,39 @@ class Payments(NVMBackendApi):
         body = {
             "metadata": metadata,
             "serviceAttributes": service_attributes,
-            "subscriptionDid": subscription_did,
+            "subscriptionDid": plan_did,
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/file"
         response = self.post(url, data=body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
-    def order_subscription(self, subscription_did: str, agreementId: Optional[str] = None) -> OrderSubscriptionResultDto:
+    def order_plan(self, plan_did: str, agreementId: Optional[str] = None) -> OrderPlanResultDto:
         """
-        Orders the subscription.
+        Orders the plan.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
             agreementId (str, optional): The agreement ID.
 
         Returns:
-            OrderSubscriptionResultDto: The result of the order operation, containing the agreement ID and success status.
+            OrderPlanResultDto: The result of the order operation, containing the agreement ID and success status.
 
         Raises:
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.order_subscription(subscription_did="did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116")
+            response = your_instance.order_plan(plan_did="did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116")
             print(response)
         """
         body = {
-            "subscriptionDid": subscription_did,
+            "subscriptionDid": plan_did,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription/order"
         response = self.post(url, data=body)
         response.raise_for_status()
-        return OrderSubscriptionResultDto.model_validate(response.json())
+        return OrderPlanResultDto.model_validate(response.json())
 
     def get_asset_ddo(self, did: str):
         """
@@ -443,12 +444,12 @@ class Payments(NVMBackendApi):
         response = self.get(f"{self.environment.value['backend']}/api/v1/payments/asset/ddo/{did}")
         return response
 
-    def get_subscription_balance(self, subscription_did: str, account_address: str) -> BalanceResultDto:
+    def get_plan_balance(self, plan_did: str, account_address: str) -> BalanceResultDto:
         """
-        Gets the subscription balance.
+        Gets the plan balance.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
             account_address (str): The account address.
 
         Returns:
@@ -458,26 +459,33 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
             
         Example:
-            response = your_instance.get_subscription_balance(subscription_did="did:example:123456", account_address="0xABC123")
+            response = your_instance.get_plan_balance(plan_did="did:example:123456", account_address="0xABC123")
             response.raise_for_status()
             balance = BalanceResultDto.model_validate(response.json())
             print(balance)
 
         Expected Response:
             {
-                "subscriptionType": "credits",
+                "planType": "credits",
                 "isOwner": True,
                 "isSubscriptor": True,
                 "balance": 10000000
             }
         """
         body = {
+            "subscriptionDid": plan_did,
             **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
         }
         url = (f"{self.environment.value['backend']}/api/v1/payments/subscription/balance")
         response = self.post(url, body)
         response.raise_for_status()
-        return BalanceResultDto.model_validate(response.json())
+        balance = {
+            "planType": response.json()['subscriptionType'],
+            "isOwner": response.json()['isOwner'],
+            "isSubscriptor": response.json()['isSubscriptor'],
+            "balance": response.json()['balance']
+        }
+        return BalanceResultDto.model_validate(balance)
     
     def get_service_token(self, service_did: str) -> ServiceTokenResultDto:
         """
@@ -501,45 +509,45 @@ class Payments(NVMBackendApi):
         response.raise_for_status() 
         return ServiceTokenResultDto.model_validate(response.json()['token'])
     
-    def get_subscription_associated_services(self, subscription_did: str):
+    def get_plan_associated_services(self, plan_did: str):
         """
-        Gets the subscription associated services.
+        Gets the plan associated services.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
 
         Returns:
             Response: List of DIDs of the associated services.
         """
-        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/services/{subscription_did}"
+        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/services/{plan_did}"
         response = self.get(url)
         return response
     
-    def get_subscription_associated_files(self, subscription_did: str):
+    def get_plan_associated_files(self, plan_did: str):
         """
-        Gets the subscription associated files.
+        Gets the plan associated files.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
 
         Returns:
             Response: List of DIDs of the associated files.
         """
-        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/files/{subscription_did}"
+        url = f"{self.environment.value['backend']}/api/v1/payments/subscription/files/{plan_did}"
         response = self.get(url)
         return response
 
-    def get_subscription_details_url(self, subscription_did: str):
+    def get_plan_details_url(self, plan_did: str):
         """
-        Gets the subscription details.
+        Gets the plan details.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
 
         Returns:
-            Response: The url of the subscription details.
+            Response: The url of the plan details.
         """
-        url = f"{self.environment.value['frontend']}/en/subscription/{subscription_did}"
+        url = f"{self.environment.value['frontend']}/en/subscription/{plan_did}"
         return url
 
     def get_service_details_url(self, service_did: str):
@@ -568,17 +576,17 @@ class Payments(NVMBackendApi):
         url = f"{self.environment.value['frontend']}/en/file/{file_did}"
         return url
 
-    def get_checkout_subscription(self, subscription_did: str):
+    def get_checkout_plan(self, plan_did: str):
         """
-        Gets the checkout subscription.
+        Gets the checkout plan.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
 
         Returns:
-            Response: The url of the checkout subscription.
+            Response: The url of the checkout plan.
         """
-        url = f"{self.environment.value['frontend']}/en/subscription/checkout/{subscription_did}"
+        url = f"{self.environment.value['frontend']}/en/subscription/checkout/{plan_did}"
         return url
     
     def download_file(self, file_did: str, destination: str, agreement_id: Optional[str] = None) -> DownloadFileResultDto:
@@ -635,12 +643,12 @@ class Payments(NVMBackendApi):
         except requests.exceptions.HTTPError as e:
             return DownloadFileResultDto.model_validate({"success": False })
 
-    def mint_credits(self, subscription_did: str, amount: str, receiver: str) -> MintResultDto:
+    def mint_credits(self, plan_did: str, amount: str, receiver: str) -> MintResultDto:
         """
-        Mints the credits associated with a subscription and sends them to the receiver.
+        Mints the credits associated with a plan and sends them to the receiver.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
             amount (str): The amount of credits to mint.
             receiver (str): The receiver address of the credits.
 
@@ -651,11 +659,11 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.mint_credits(subscription_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12", receiver="0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6")
+            response = your_instance.mint_credits(plan_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12", receiver="0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6")
             print(response)
         """
         body = {
-            "did": subscription_did,
+            "did": plan_did,
             "nftAmount": amount,
             "receiver": receiver
         }
@@ -664,12 +672,12 @@ class Payments(NVMBackendApi):
         response.raise_for_status()
         return MintResultDto(userOpHash=response.json()['userOpHash'], success=response.json()['success'], amount=amount)
     
-    def burn_credits(self, subscription_did: str, amount: str) -> BurnResultDto:
+    def burn_credits(self, plan_did: str, amount: str) -> BurnResultDto:
         """
-        Burns credits associated with a subscription that you own.
+        Burns credits associated with a plan that you own.
 
         Args:
-            subscription_did (str): The DID of the subscription.
+            plan_did (str): The DID of the plan.
             amount (str): The amount of credits to burn.
 
         Returns:
@@ -679,11 +687,11 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.burn_credits(subscription_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12")
+            response = your_instance.burn_credits(plan_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12")
             print(response)
         """
         body = {
-            "did": subscription_did,
+            "did": plan_did,
             "nftAmount": amount
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/credits/burn"

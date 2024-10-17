@@ -24,6 +24,7 @@ Enum class to define the different environments
  - <b>`appStaging`</b>:  Staging environment 
  - <b>`appTesting`</b>:  Testing environment 
  - <b>`appArbitrum`</b>:  Arbitrum environment 
+ - <b>`appPeaq`</b>:  Peaq network 
 
 
 

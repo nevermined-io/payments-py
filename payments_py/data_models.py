@@ -3,21 +3,21 @@ from enum import Enum
 from typing import Dict, List, Optional, Union, Any
 from datetime import datetime
 
-class SubscriptionType(str, Enum):
+class PlanType(str, Enum):
     CREDITS = 'credits'
     TIME = 'time'
     BOTH = 'both'
 
 class BalanceResultDto(BaseModel):
-    subscriptionType: SubscriptionType = Field(..., description="Subscription type.")
-    isOwner: bool = Field(..., description="Is the account owner of the subscription.")
-    isSubscriptor: bool = Field(..., description="If the user is not the owner but has purchased the subscription.")
+    planType: PlanType = Field(..., description="Plan type.")
+    isOwner: bool = Field(..., description="Is the account owner of the plan.")
+    isSubscriptor: bool = Field(..., description="If the user is not the owner but has purchased the plan.")
     balance: Union[int, str] = Field(..., description="The balance of the account.")
     
     model_config = ConfigDict(
         json_schema_extra = {
             "example": {
-                "subscriptionType": "credits",
+                "planType": "credits",
                 "isOwner": True,
                 "isSubscriptor": True,
                 "balance": 10000000
@@ -72,7 +72,7 @@ class DownloadFileResultDto(BaseModel):
             }
         })
 
-class OrderSubscriptionResultDto(BaseModel):
+class OrderPlanResultDto(BaseModel):
     agreementId: str = Field(..., description="The agreement ID.")
     success: bool = Field(..., description="True if the operation was succesfull.")
 
