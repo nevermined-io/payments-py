@@ -21,9 +21,9 @@ Enum class to define the different environments
 **Attributes:**
  
  - <b>`local`</b>:  Local environment 
- - <b>`appStaging`</b>:  Staging environment 
- - <b>`appTesting`</b>:  Testing environment 
- - <b>`appArbitrum`</b>:  Arbitrum environment 
+ - <b>`staging`</b>:  Staging environment 
+ - <b>`testing`</b>:  Testing environment 
+ - <b>`arbitrum`</b>:  Arbitrum environment 
  - <b>`appPeaq`</b>:  Peaq network 
 
 

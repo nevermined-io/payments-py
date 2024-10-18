@@ -17,25 +17,25 @@ nvm_api_key2 = os.getenv('NVM_API_KEY2')
 
 @pytest.fixture
 def ai_query_api_build_fixture():
-    return Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
+    return Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
 
 @pytest.fixture
 def ai_query_api_subscriber_fixture():
-    return Payments(nvm_api_key=nvm_api_key2, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key2})
+    return Payments(nvm_api_key=nvm_api_key2, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key2})
 
 def test_AIQueryApi_creation(ai_query_api_build_fixture):
     ai_query_api = ai_query_api_build_fixture
-    assert ai_query_api.opts.backend_host == Environment.appStaging.value['backend']
+    assert ai_query_api.opts.backend_host == Environment.staging.value['backend']
     assert ai_query_api.opts.api_key == nvm_api_key
-    assert ai_query_api.opts.proxy_host == Environment.appStaging.value['proxy']    
-    assert ai_query_api.opts.web_socket_host == Environment.appStaging.value['websocket']
+    assert ai_query_api.opts.proxy_host == Environment.staging.value['proxy']    
+    assert ai_query_api.opts.web_socket_host == Environment.staging.value['websocket']
     assert ai_query_api.opts.web_socket_options['bearer_token'] == nvm_api_key
     assert ai_query_api.socket_client
     assert ai_query_api.user_room_id
 
 
 async def eventsReceived(data):
-    payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
+    payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
     global response_data
     print('eventsReceived::', len(data))
     if isinstance(data, list):
