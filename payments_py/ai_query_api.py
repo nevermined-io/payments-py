@@ -179,8 +179,7 @@ class AIQueryApi(NVMBackendApi):
 
     def get_step(self,  step_id: str):
         """
-        It retrieves all the steps that the agent needs to execute to complete the different tasks assigned.
-        This method is used by the AI Agent to retrieve information about the steps part of tasks created by users to the agents owned by the user.
+        Get the details of a step.
 
         Args:
             did (str): The DID of the service.
@@ -194,7 +193,8 @@ class AIQueryApi(NVMBackendApi):
                         status: AgentExecutionStatus = AgentExecutionStatus.Pending,
                         dids: List[str] = []):
         """
-        Gets the steps.
+        It retrieves all the steps that the agent needs to execute to complete the different tasks assigned.
+        This method is used by the AI Agent to retrieve information about the steps part of tasks created by users to the agents owned by the user.
 
         Args:
             status (AgentExecutionStatus): The status of the steps.
