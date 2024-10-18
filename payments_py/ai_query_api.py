@@ -32,6 +32,7 @@ class AIQueryApi(NVMBackendApi):
         get_steps: Gets the steps
         get_tasks_from_agents: Gets the tasks from the agents
         search_step: Searches for steps
+        get_step: Gets the details of a step
     """
     def __init__(self, opts: BackendApiOptions):
         super().__init__(opts)
@@ -150,7 +151,13 @@ class AIQueryApi(NVMBackendApi):
             jwt (Optional[str]): The JWT token.
         """
         endpoint = self.parse_url_to_proxy(GET_TASK_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
-        return self.get(endpoint)
+        if jwt:
+            self.set_bearer_token(jwt)
+            return self.get(endpoint)
+        else:
+            token = self.get_service_token(did)
+            self.set_bearer_token(token.accessToken)
+            return self.get(endpoint)
 
     def get_steps_from_task(self, did: str, task_id: str, status: Optional[str] = None):
         """
