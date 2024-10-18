@@ -124,7 +124,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     builder.ai_protocol.socket_client.on("_join-rooms_", on_join_rooms)
     await asyncio.wait_for(room_joined_event.wait(), timeout=10)
     
-    task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
+    task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task'})
     print('Task created:', task.json())
 
     await asyncio.wait_for(response_event.wait(), timeout=120)
@@ -149,7 +149,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     with pytest.raises(Exception) as excinfo:
         task = subscriber.ai_protocol.create_task(did=agent.did, task={})
     exception_args = excinfo.value.args[0] 
-    assert exception_args['status'] == 401
+    assert exception_args['status'] == 400
 
     # Disconnect both clients after test
     await builder.ai_protocol.socket_client.disconnect()

@@ -86,12 +86,12 @@ connect_socket()
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L175"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L182"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `delete`
 
 ```python
-delete(url: str, data: Any)
+delete(url: str, data: Any, headers: Optional[Dict[str, str]] = None)
 ```
 
 
@@ -128,12 +128,12 @@ disconnect_socket()
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L155"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L156"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get`
 
 ```python
-get(url: str)
+get(url: str, headers: Optional[Dict[str, str]] = None)
 ```
 
 
@@ -142,7 +142,7 @@ get(url: str)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L181"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L190"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_token`
 
@@ -191,7 +191,21 @@ join_room(join_account_room: bool, room_ids: Optional[str, List[str]] = None)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L148"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L150"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `parse_headers`
+
+```python
+parse_headers(additional_headers: dict[str, str]) → dict[str, str]
+```
+
+
+
+
+
+---
+
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L147"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `parse_url_to_backend`
 
@@ -219,12 +233,12 @@ parse_url_to_proxy(uri: str) → str
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L162"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L165"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `post`
 
 ```python
-post(url: str, data: Any)
+post(url: str, data: Any, headers: Optional[Dict[str, str]] = None)
 ```
 
 
@@ -233,26 +247,12 @@ post(url: str, data: Any)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L169"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L174"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `put`
 
 ```python
-put(url: str, data: Any)
-```
-
-
-
-
-
----
-
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L152"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
-
-### <kbd>method</kbd> `set_bearer_token`
-
-```python
-set_bearer_token(token: str)
+put(url: str, data: Any, headers: Optional[Dict[str, str]] = None)
 ```
 
 

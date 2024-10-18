@@ -82,6 +82,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-join_room">method join_room</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-parse_headers">method parse_headers</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-parse_url_to_backend">method parse_url_to_backend</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-parse_url_to_proxy">method parse_url_to_proxy</a>
@@ -89,8 +91,6 @@
     <li class="toctree-l3"><a class="reference internal" href="#method-post">method post</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-put">method put</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#method-set_bearer_token">method set_bearer_token</a>
     </li>
         </ul>
     </li>
@@ -165,9 +165,9 @@
 <pre><code class="language-python">connect_socket()
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L175"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L182"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-delete"><kbd>method</kbd> <code>delete</code></h3>
-<pre><code class="language-python">delete(url: str, data: Any)
+<pre><code class="language-python">delete(url: str, data: Any, headers: Optional[Dict[str, str]] = None)
 </code></pre>
 <hr />
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L140"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
@@ -180,12 +180,12 @@
 <pre><code class="language-python">disconnect_socket()
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L155"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L156"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get"><kbd>method</kbd> <code>get</code></h3>
-<pre><code class="language-python">get(url: str)
+<pre><code class="language-python">get(url: str, headers: Optional[Dict[str, str]] = None)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L181"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L190"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_service_token"><kbd>method</kbd> <code>get_service_token</code></h3>
 <pre><code class="language-python">get_service_token(service_did: str) → ServiceTokenResultDto
 </code></pre>
@@ -210,7 +210,12 @@
 <pre><code class="language-python">join_room(join_account_room: bool, room_ids: Optional[str, List[str]] = None)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L148"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L150"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-parse_headers"><kbd>method</kbd> <code>parse_headers</code></h3>
+<pre><code class="language-python">parse_headers(additional_headers: dict[str, str]) → dict[str, str]
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L147"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-parse_url_to_backend"><kbd>method</kbd> <code>parse_url_to_backend</code></h3>
 <pre><code class="language-python">parse_url_to_backend(uri: str) → str
 </code></pre>
@@ -220,19 +225,14 @@
 <pre><code class="language-python">parse_url_to_proxy(uri: str) → str
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L162"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L165"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-post"><kbd>method</kbd> <code>post</code></h3>
-<pre><code class="language-python">post(url: str, data: Any)
+<pre><code class="language-python">post(url: str, data: Any, headers: Optional[Dict[str, str]] = None)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L169"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L174"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-put"><kbd>method</kbd> <code>put</code></h3>
-<pre><code class="language-python">put(url: str, data: Any)
-</code></pre>
-<hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L152"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h3 id="method-set_bearer_token"><kbd>method</kbd> <code>set_bearer_token</code></h3>
-<pre><code class="language-python">set_bearer_token(token: str)
+<pre><code class="language-python">put(url: str, data: Any, headers: Optional[Dict[str, str]] = None)
 </code></pre>
 <hr />
 <p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
