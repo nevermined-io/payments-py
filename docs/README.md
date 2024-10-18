@@ -30,7 +30,7 @@
 - [`data_models.Step`](./data_models.md#class-step): Represents a step in the execution of a task.
 - [`data_models.Task`](./data_models.md#class-task): Represents a task that an agent should execute, composed of multiple steps.
 - [`environments.Environment`](./environments.md#class-environment): Enum class to define the different environments
-- [`nvm_backend.BackendApiOptions`](./nvm_backend.md#class-backendapioptions)
+- [`nvm_backend.BackendApiOptions`](./nvm_backend.md#class-backendapioptions): Represents the backend API options.
 - [`nvm_backend.NVMBackendApi`](./nvm_backend.md#class-nvmbackendapi)
 - [`payments.Payments`](./payments.md#class-payments): A class representing a payment system.
 

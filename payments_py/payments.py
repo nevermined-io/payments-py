@@ -57,7 +57,15 @@ class Payments(NVMBackendApi):
     def create_credits_plan(self, name: str, description: str, price: int, token_address: str,
                             amount_of_credits: int, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
         """
-        Creates a new credits plan.
+        It allows to an AI Builder to create a Payment Plan on Nevermined based on Credits.
+        A Nevermined Credits Plan limits the access by the access/usage of the Plan.
+        With them, AI Builders control the number of requests that can be made to an agent or service.
+        Every time a user accesses any resouce associated to the Payment Plan, the usage consumes from a capped amount of credits.
+        When the user consumes all the credits, the plan automatically expires and the user needs to top up to continue using the service.
+
+        This method is oriented to AI Builders.
+
+        https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
         Args:
             name (str): The name of the plan.
@@ -124,7 +132,14 @@ class Payments(NVMBackendApi):
     def create_time_plan(self, name: str, description: str, price: int, token_address: str,
                             duration: Optional[int] = 0, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
         """
-        Creates a new time plan.
+        It allows to an AI Builder to create a Payment Plan on Nevermined based on Time.
+        A Nevermined Time Plan limits the access by the a specific amount of time.
+        With them, AI Builders can specify the duration of the Payment Plan (1 month, 1 year, etc.).
+        When the time period is over, the plan automatically expires and the user needs to renew it.
+
+        This method is oriented to AI Builders
+
+        https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
         Args:
             name (str): The name of the plan.
@@ -200,7 +215,14 @@ class Payments(NVMBackendApi):
                        tags: Optional[List[str]] = None, is_nevermined_hosted: Optional[bool] = None, implements_query_protocol: Optional[bool]=None,
                        query_protocol_version: Optional[str]= None, service_host: Optional[str]= None) -> CreateAssetResultDto:
         """
-        Creates a new service.
+        It creates a new AI Agent or Service on Nevermined.
+        The agent/service must be associated to a Payment Plan. Users that are subscribers of a payment plan can access the agent/service.
+        Depending on the Payment Plan and the configuration of the agent/service, the usage of the agent/service will consume credits.
+        When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent/service.
+        
+        This method is oriented to AI Builders
+        
+        https://docs.nevermined.app/docs/tutorials/builders/register-agent
 
         Args:
             plan_did (str): The DID of the plan.
@@ -321,7 +343,14 @@ class Payments(NVMBackendApi):
                     fine_tunable: Optional[bool] = None, amount_of_credits: Optional[int] = None,
                     tags: Optional[List[str]] = None) -> CreateAssetResultDto:
         """
-        Creates a new file.
+        It creates a new asset with file associated to it.
+        The file asset must be associated to a Payment Plan. Users that are subscribers of a payment plan can download the files attached to it.
+        Depending on the Payment Plan and the configuration of the file asset, the download will consume credits.
+        When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue downloading the files.
+        
+        This method is oriented to AI Builders
+        
+        https://docs.nevermined.app/docs/tutorials/builders/register-file-asset
 
         Args:
             plan_did (str): The DID of the plan.
@@ -406,7 +435,9 @@ class Payments(NVMBackendApi):
     
     def order_plan(self, plan_did: str, agreementId: Optional[str] = None) -> OrderPlanResultDto:
         """
-        Orders the plan.
+        Orders a Payment Plan. The user needs to have enough balance in the token selected by the owner of the Payment Plan.
+
+        The payment is done using Crypto. Payments using Fiat can be done via the Nevermined App.
 
         Args:
             plan_did (str): The DID of the plan.
@@ -433,10 +464,13 @@ class Payments(NVMBackendApi):
 
     def get_asset_ddo(self, did: str):
         """
-        Gets the asset DDO.
+        Get the Metadata (aka Decentralized Document or DDO) for a given asset identifier (DID).
+
+        https://docs.nevermined.io/docs/architecture/specs/Spec-DID
+        https://docs.nevermined.io/docs/architecture/specs/Spec-METADATA
 
         Args:
-            did (str): The DID of the asset.
+            did (str): The unique identifier (aka DID) of the asset (payment plan, agent, file, etc).
 
         Returns:
             Response: The response from the API call.
@@ -446,7 +480,7 @@ class Payments(NVMBackendApi):
 
     def get_plan_balance(self, plan_did: str, account_address: str) -> BalanceResultDto:
         """
-        Gets the plan balance.
+        Get the balance of an account for a Payment Plan.
 
         Args:
             plan_did (str): The DID of the plan.
@@ -489,7 +523,10 @@ class Payments(NVMBackendApi):
     
     def get_service_token(self, service_did: str) -> ServiceTokenResultDto:
         """
-        Gets the service token.
+        Get the required configuration for accessing a remote service agent.
+        This configuration includes:
+            - The JWT access token
+            - The Proxy url that can be used to query the agent/service.
 
         Args:
             service_did (str): The DID of the service.
@@ -511,7 +548,7 @@ class Payments(NVMBackendApi):
     
     def get_plan_associated_services(self, plan_did: str):
         """
-        Gets the plan associated services.
+        Get array of services/agent DIDs associated with a payment plan.
 
         Args:
             plan_did (str): The DID of the plan.
@@ -525,7 +562,7 @@ class Payments(NVMBackendApi):
     
     def get_plan_associated_files(self, plan_did: str):
         """
-        Gets the plan associated files.
+        Get array of files DIDs associated with a payment plan.
 
         Args:
             plan_did (str): The DID of the plan.
@@ -674,7 +711,9 @@ class Payments(NVMBackendApi):
     
     def burn_credits(self, plan_did: str, amount: str) -> BurnResultDto:
         """
-        Burns credits associated with a plan that you own.
+        Burn credits for a given Payment Plan DID.
+
+        This method is only can be called by the owner of the Payment Plan.
 
         Args:
             plan_did (str): The DID of the plan.

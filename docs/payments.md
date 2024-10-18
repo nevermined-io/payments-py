@@ -73,7 +73,7 @@ __init__(
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L675"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L712"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `burn_credits`
 
@@ -81,7 +81,9 @@ __init__(
 burn_credits(plan_did: str, amount: str) → BurnResultDto
 ```
 
-Burns credits associated with a plan that you own. 
+Burn credits for a given Payment Plan DID. 
+
+This method is only can be called by the owner of the Payment Plan. 
 
 
 
@@ -124,7 +126,11 @@ create_credits_plan(
 ) → CreateAssetResultDto
 ```
 
-Creates a new credits plan. 
+It allows to an AI Builder to create a Payment Plan on Nevermined based on Credits. A Nevermined Credits Plan limits the access by the access/usage of the Plan. With them, AI Builders control the number of requests that can be made to an agent or service. Every time a user accesses any resouce associated to the Payment Plan, the usage consumes from a capped amount of credits. When the user consumes all the credits, the plan automatically expires and the user needs to top up to continue using the service. 
+
+This method is oriented to AI Builders. 
+
+https://docs.nevermined.app/docs/tutorials/builders/create-plan 
 
 
 
@@ -156,7 +162,7 @@ Creates a new credits plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L314"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L336"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_file`
 
@@ -182,7 +188,11 @@ create_file(
 ) → CreateAssetResultDto
 ```
 
-Creates a new file. 
+It creates a new asset with file associated to it. The file asset must be associated to a Payment Plan. Users that are subscribers of a payment plan can download the files attached to it. Depending on the Payment Plan and the configuration of the file asset, the download will consume credits. When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue downloading the files. 
+
+This method is oriented to AI Builders 
+
+https://docs.nevermined.app/docs/tutorials/builders/register-file-asset 
 
 
 
@@ -227,7 +237,7 @@ Creates a new file.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L192"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L207"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_service`
 
@@ -259,7 +269,11 @@ create_service(
 ) → CreateAssetResultDto
 ```
 
-Creates a new service. 
+It creates a new AI Agent or Service on Nevermined. The agent/service must be associated to a Payment Plan. Users that are subscribers of a payment plan can access the agent/service. Depending on the Payment Plan and the configuration of the agent/service, the usage of the agent/service will consume credits. When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent/service. 
+
+This method is oriented to AI Builders 
+
+https://docs.nevermined.app/docs/tutorials/builders/register-agent 
 
 
 
@@ -308,7 +322,7 @@ Creates a new service.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L124"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L132"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_time_plan`
 
@@ -323,7 +337,11 @@ create_time_plan(
 ) → CreateAssetResultDto
 ```
 
-Creates a new time plan. 
+It allows to an AI Builder to create a Payment Plan on Nevermined based on Time. A Nevermined Time Plan limits the access by the a specific amount of time. With them, AI Builders can specify the duration of the Payment Plan (1 month, 1 year, etc.). When the time period is over, the plan automatically expires and the user needs to renew it. 
+
+This method is oriented to AI Builders 
+
+https://docs.nevermined.app/docs/tutorials/builders/create-plan 
 
 
 
@@ -355,7 +373,7 @@ Creates a new time plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L592"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L629"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `download_file`
 
@@ -400,7 +418,7 @@ Downloads the file.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L434"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L465"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_asset_ddo`
 
@@ -408,13 +426,15 @@ Downloads the file.
 get_asset_ddo(did: str)
 ```
 
-Gets the asset DDO. 
+Get the Metadata (aka Decentralized Document or DDO) for a given asset identifier (DID). 
+
+https://docs.nevermined.io/docs/architecture/specs/Spec-DID https://docs.nevermined.io/docs/architecture/specs/Spec-METADATA 
 
 
 
 **Args:**
  
- - <b>`did`</b> (str):  The DID of the asset. 
+ - <b>`did`</b> (str):  The unique identifier (aka DID) of the asset (payment plan, agent, file, etc). 
 
 
 
@@ -424,7 +444,7 @@ Gets the asset DDO.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L579"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L616"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_checkout_plan`
 
@@ -448,7 +468,7 @@ Gets the checkout plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L566"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L603"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_file_details_url`
 
@@ -472,7 +492,7 @@ Gets the file details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L526"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L563"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_associated_files`
 
@@ -480,7 +500,7 @@ Gets the file details.
 get_plan_associated_files(plan_did: str)
 ```
 
-Gets the plan associated files. 
+Get array of files DIDs associated with a payment plan. 
 
 
 
@@ -496,7 +516,7 @@ Gets the plan associated files.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L512"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L549"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_associated_services`
 
@@ -504,7 +524,7 @@ Gets the plan associated files.
 get_plan_associated_services(plan_did: str)
 ```
 
-Gets the plan associated services. 
+Get array of services/agent DIDs associated with a payment plan. 
 
 
 
@@ -520,7 +540,7 @@ Gets the plan associated services.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L447"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L481"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_balance`
 
@@ -528,7 +548,7 @@ Gets the plan associated services.
 get_plan_balance(plan_did: str, account_address: str) → BalanceResultDto
 ```
 
-Gets the plan balance. 
+Get the balance of an account for a Payment Plan. 
 
 
 
@@ -558,7 +578,7 @@ Expected Response: {  "planType": "credits",  "isOwner": True,  "isSubscriptor":
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L540"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L577"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_details_url`
 
@@ -582,7 +602,7 @@ Gets the plan details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L553"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L590"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_details_url`
 
@@ -606,7 +626,7 @@ Gets the service details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L490"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L524"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_token`
 
@@ -614,7 +634,9 @@ Gets the service details.
 get_service_token(service_did: str) → ServiceTokenResultDto
 ```
 
-Gets the service token. 
+Get the required configuration for accessing a remote service agent. This configuration includes: 
+    - The JWT access token 
+    - The Proxy url that can be used to query the agent/service. 
 
 
 
@@ -641,7 +663,7 @@ Gets the service token.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L646"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L683"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `mint_credits`
 
@@ -678,7 +700,7 @@ Mints the credits associated with a plan and sends them to the receiver.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L407"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L436"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `order_plan`
 
@@ -689,7 +711,9 @@ order_plan(
 ) → OrderPlanResultDto
 ```
 
-Orders the plan. 
+Orders a Payment Plan. The user needs to have enough balance in the token selected by the owner of the Payment Plan. 
+
+The payment is done using Crypto. Payments using Fiat can be done via the Nevermined App. 
 
 
 
