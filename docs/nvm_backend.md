@@ -11,14 +11,21 @@
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L15"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L13"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `BackendApiOptions`
+Represents the backend API options. 
 
 
 
+**Args:**
+ 
+ - <b>`environment`</b> (Environment):  The environment. 
+ - <b>`api_key`</b> (Optional[str]):  The Nevermined API Key. This key identify your user and is required to interact with the Nevermined API. You can get your API key by logging in to the Nevermined App. See https://docs.nevermined.app/docs/tutorials/integration/nvm-api-keys 
+ - <b>`headers`</b> (Optional[Dict[str, str]]):  Additional headers to send with the requests 
+ - <b>`web_socket_options`</b> (Optional[Dict[str, Any]]):  Configuration of the websocket connection 
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L16"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L23"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -41,14 +48,14 @@ __init__(
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L29"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L36"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `NVMBackendApi`
 
 
 
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L30"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L37"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -65,7 +72,7 @@ __init__(opts: BackendApiOptions)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L73"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L80"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `connect_socket`
 
@@ -79,7 +86,7 @@ connect_socket()
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L168"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L175"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `delete`
 
@@ -93,7 +100,7 @@ delete(url: str, data: Any)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L133"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L140"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `disconnect`
 
@@ -107,7 +114,7 @@ disconnect()
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L91"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L98"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `disconnect_socket`
 
@@ -121,7 +128,7 @@ disconnect_socket()
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L148"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L155"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get`
 
@@ -135,7 +142,7 @@ get(url: str)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L174"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L181"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_token`
 
@@ -170,7 +177,7 @@ Gets the service token.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L121"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L128"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `join_room`
 
@@ -184,7 +191,7 @@ join_room(join_account_room: bool, room_ids: Optional[str, List[str]] = None)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L141"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L148"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `parse_url_to_backend`
 
@@ -198,7 +205,7 @@ parse_url_to_backend(uri: str) → str
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L137"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L144"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `parse_url_to_proxy`
 
@@ -212,7 +219,7 @@ parse_url_to_proxy(uri: str) → str
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L155"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L162"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `post`
 
@@ -226,7 +233,7 @@ post(url: str, data: Any)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L162"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L169"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `put`
 
@@ -240,7 +247,7 @@ put(url: str, data: Any)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L145"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L152"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `set_bearer_token`
 

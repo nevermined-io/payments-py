@@ -11,6 +11,15 @@ sio = socketio.AsyncClient(logger=True, engineio_logger=True)
 
 
 class BackendApiOptions:
+    """
+    Represents the backend API options.
+
+    Args:
+        environment (Environment): The environment.
+        api_key (Optional[str]): The Nevermined API Key. This key identify your user and is required to interact with the Nevermined API. You can get your API key by logging in to the Nevermined App. See https://docs.nevermined.app/docs/tutorials/integration/nvm-api-keys
+        headers (Optional[Dict[str, str]]): Additional headers to send with the requests
+        web_socket_options (Optional[Dict[str, Any]]): Configuration of the websocket connection
+    """
     def __init__(self,
                  environment: Environment,
                  api_key: Optional[str] = None,
