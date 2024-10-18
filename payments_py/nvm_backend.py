@@ -142,38 +142,47 @@ class NVMBackendApi:
         print("nvm-backend:: Disconnected from the server")
 
     def parse_url_to_proxy(self, uri: str) -> str:
-        # print(f"nvm-backend:: Parsing URL: {uri}")
         return f"{self.opts.proxy_host}{uri}"
     
     def parse_url_to_backend(self, uri: str) -> str:
-        # print(f"nvm-backend:: Parsing URL: {uri}")
         return f"{self.opts.backend_host}{uri}"
+    
+    def parse_headers(self, additional_headers: dict[str, str]) -> dict[str, str]:
+        return {
+            **self.opts.headers,
+            **additional_headers,
+        }
 
-    def set_bearer_token(self, token: str):
-        self.opts.headers['Authorization'] = f'Bearer {token}'
+    def get(self, url: str, headers: Optional[Dict[str, str]] = None):
+        headers = self.parse_headers(headers or {})
 
-    def get(self, url: str):
-        response = requests.get(url, headers=self.opts.headers)            
+        response = requests.get(url, headers=headers) 
         if response.status_code >= 400:
             raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
         return response
 
 
-    def post(self, url: str, data: Any):
-        response = requests.post(url, json=data, headers=self.opts.headers)
+    def post(self, url: str, data: Any, headers: Optional[Dict[str, str]] = None):
+        headers = self.parse_headers(headers or {})
+
+        response = requests.post(url, json=data, headers=headers)
         if response.status_code >= 400:
             raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
         return response
 
 
-    def put(self, url: str, data: Any):
-        response = requests.put(url, json=data, headers=self.opts.headers)
+    def put(self, url: str, data: Any, headers: Optional[Dict[str, str]] = None):
+        headers = self.parse_headers(headers or {})
+        
+        response = requests.put(url, json=data, headers=headers)
         if response.status_code >= 400:
             raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
         return response
       
-    def delete(self, url: str, data: Any):
-        response = requests.delete(url, json=data, headers=self.opts.headers)
+    def delete(self, url: str, data: Any, headers: Optional[Dict[str, str]] = None):
+        headers = self.parse_headers(headers or {})
+        
+        response = requests.delete(url, json=data, headers=headers)
         if response.status_code >= 400:
             raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
         return response

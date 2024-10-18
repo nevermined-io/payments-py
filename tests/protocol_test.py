@@ -17,25 +17,25 @@ nvm_api_key2 = os.getenv('NVM_API_KEY2')
 
 @pytest.fixture
 def ai_query_api_build_fixture():
-    return Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
+    return Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
 
 @pytest.fixture
 def ai_query_api_subscriber_fixture():
-    return Payments(nvm_api_key=nvm_api_key2, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key2})
+    return Payments(nvm_api_key=nvm_api_key2, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key2})
 
 def test_AIQueryApi_creation(ai_query_api_build_fixture):
     ai_query_api = ai_query_api_build_fixture
-    assert ai_query_api.opts.backend_host == Environment.appStaging.value['backend']
+    assert ai_query_api.opts.backend_host == Environment.staging.value['backend']
     assert ai_query_api.opts.api_key == nvm_api_key
-    assert ai_query_api.opts.proxy_host == Environment.appStaging.value['proxy']    
-    assert ai_query_api.opts.web_socket_host == Environment.appStaging.value['websocket']
+    assert ai_query_api.opts.proxy_host == Environment.staging.value['proxy']    
+    assert ai_query_api.opts.web_socket_host == Environment.staging.value['websocket']
     assert ai_query_api.opts.web_socket_options['bearer_token'] == nvm_api_key
     assert ai_query_api.socket_client
     assert ai_query_api.user_room_id
 
 
 async def eventsReceived(data):
-    payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.appStaging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
+    payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
     global response_data
     print('eventsReceived::', len(data))
     if isinstance(data, list):
@@ -124,7 +124,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     builder.ai_protocol.socket_client.on("_join-rooms_", on_join_rooms)
     await asyncio.wait_for(room_joined_event.wait(), timeout=10)
     
-    task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task', 'additional_params': {'param1': 'value1', 'param2': 'value2'}})
+    task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task'})
     print('Task created:', task.json())
 
     await asyncio.wait_for(response_event.wait(), timeout=120)
@@ -149,7 +149,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     with pytest.raises(Exception) as excinfo:
         task = subscriber.ai_protocol.create_task(did=agent.did, task={})
     exception_args = excinfo.value.args[0] 
-    assert exception_args['status'] == 401
+    assert exception_args['status'] == 400
 
     # Disconnect both clients after test
     await builder.ai_protocol.socket_client.disconnect()
@@ -160,3 +160,16 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
         await subscription_task
     except asyncio.CancelledError:
         pass
+
+# @pytest.mark.asyncio(loop_scope="session")
+# async def test_AI_send_task(ai_query_api_build_fixture):
+#     builder = ai_query_api_build_fixture
+#     task = builder.ai_protocol.create_task('did:nv:a8983b06c0f25fb4064fc61d6527c84ca1813e552bfad5fa1c974caa3c5ccf49', 
+#                                               {'query': 'https://www.youtube.com/watch?v=-_4GZnGl55c&t=5s', 'name': 'Summarize video'})
+#     print('Task created:', task.json())
+
+# @pytest.mark.asyncio(loop_scope="session")
+# async def test_AI_send_task2(ai_query_api_build_fixture):
+#     builder = ai_query_api_build_fixture
+#     task = builder.ai_protocol.get_task_with_steps(did='did:nv:a8983b06c0f25fb4064fc61d6527c84ca1813e552bfad5fa1c974caa3c5ccf49', task_id='task-cd5a90e6-688f-45a3-a299-1845d10db625')
+#     print('Task result:', task.json())
