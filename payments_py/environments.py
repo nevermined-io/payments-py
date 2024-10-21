@@ -17,4 +17,18 @@ class Environment(Enum):
     arbitrum = {"frontend": "https://nevermined.app", "backend": "https://one-backend.arbitrum.nevermined.app", "websocket": "wss://one-backend.arbitrum.nevermined.app", "proxy": "https://proxy.arbitrum.nevermined.app"}
     appPeaq = {"frontend": "https://peaq.nevermined.app", "backend": "https://one-backend.peaq.nevermined.app"}
 
-    # Define more environments as needed...
+    @classmethod
+    def get_environment(cls, name):
+        """
+        Get the environment by name
+
+        Args:
+            name (str): The name of the environment
+
+        Example:
+            env = Environment.get_environment('local')
+        """
+        try:
+            return cls[name].value
+        except KeyError:
+            raise ValueError(f"Environment '{name}' is not defined.")
