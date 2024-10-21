@@ -32,6 +32,7 @@ class AIQueryApi(NVMBackendApi):
         get_steps: Gets the steps
         get_tasks_from_agents: Gets the tasks from the agents
         search_step: Searches for steps
+        get_step: Gets the details of a step
     """
     def __init__(self, opts: BackendApiOptions):
         super().__init__(opts)
@@ -60,7 +61,7 @@ class AIQueryApi(NVMBackendApi):
         await asyncio.Event().wait()
 
 
-    def create_task(self, did: str, task: Any, jwt: Optional[str] = None):
+    def create_task(self, did: str, task: Any):
         """
         Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent.
         This method is used by subscribers of a Payment Plan required to access a specific AI Agent or Service. Users who are not subscribers won't be able to create AI Tasks for that Agent.
@@ -70,7 +71,6 @@ class AIQueryApi(NVMBackendApi):
         Args:
             did (str): The DID of the service.
             task (Any): The task to create.
-            jwt (Optional[str]): The JWT token.
 
         Example:
             task = {
@@ -83,13 +83,8 @@ class AIQueryApi(NVMBackendApi):
             print('Task created:', task.json())
         """
         endpoint = self.parse_url_to_proxy(TASK_ENDPOINT).replace('{did}', did)
-        if jwt:
-            self.set_bearer_token(jwt)
-            return self.post(endpoint, task)
-        else:
-            token = self.get_service_token(did)
-            self.set_bearer_token(token.accessToken)
-            return self.post(endpoint, task)
+        token = self.get_service_token(did)
+        return self.post(endpoint, task, headers={'Authorization': f'Bearer {token.accessToken}'})
 
     def create_steps(self, did: str, task_id: str, steps: Any):
         """
@@ -105,7 +100,7 @@ class AIQueryApi(NVMBackendApi):
         endpoint = self.parse_url_to_backend(CREATE_STEPS_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         return self.post(endpoint, steps)
 
-    def update_step(self, did: str, task_id: str, step_id: str, step: Any, jwt: Optional[str] = None):
+    def update_step(self, did: str, task_id: str, step_id: str, step: Any):
         """
         It updates the step with the new information.
         This method is used by the AI Agent to update the status and output of an step. This method can not be called by a subscriber.
@@ -115,15 +110,10 @@ class AIQueryApi(NVMBackendApi):
             task_id (str): The task ID.
             step_id (str): The step ID.
             step (Any): The step object to update. https://docs.nevermined.io/docs/protocol/query-protocol#steps-attributes
-            jwt (Optional[str]): The JWT token.
         """
         endpoint = self.parse_url_to_backend(UPDATE_STEP_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id).replace('{stepId}', step_id)
         try:
-            if jwt:
-                self.set_bearer_token(jwt)
-                return self.put(endpoint, step)
-            else:
-                return self.put(endpoint, step)
+            return self.put(endpoint, step)
         except Exception as e:
             print('update_step::', e)
             return None
@@ -137,7 +127,7 @@ class AIQueryApi(NVMBackendApi):
         """    
         return self.post(self.parse_url_to_backend(SEARCH_TASKS_ENDPOINT), search_params)
 
-    def get_task_with_steps(self, did: str, task_id: str, jwt: Optional[str] = None):
+    def get_task_with_steps(self, did: str, task_id: str):
         """
         It returns the full task and the steps resulted of the execution of the task.
 
@@ -147,10 +137,11 @@ class AIQueryApi(NVMBackendApi):
         Args:
             did (str): The DID of the service.
             task_id (str): The task ID.
-            jwt (Optional[str]): The JWT token.
         """
         endpoint = self.parse_url_to_proxy(GET_TASK_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
-        return self.get(endpoint)
+        token = self.get_service_token(did)
+        return self.get(endpoint, headers={'Authorization': f'Bearer {token.accessToken}'})
+
 
     def get_steps_from_task(self, did: str, task_id: str, status: Optional[str] = None):
         """
