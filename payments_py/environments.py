@@ -29,6 +29,6 @@ class Environment(Enum):
             env = Environment.get_environment('local')
         """
         try:
-            return cls[name].value
+            return cls[name]
         except KeyError:
             raise ValueError(f"Environment '{name}' is not defined.")
