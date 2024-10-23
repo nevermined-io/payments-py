@@ -6,7 +6,7 @@ from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAsset
 from payments_py.environments import Environment
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 from payments_py.ai_query_api import AIQueryApi
-from payments_py.utils import snake_to_camel
+from payments_py.utils import get_ai_hub_open_api_url, get_query_protocol_endpoints, snake_to_camel
 
 
 class Payments(NVMBackendApi):
@@ -433,6 +433,82 @@ class Payments(NVMBackendApi):
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
+    def create_agent(self, plan_did: str, name: str, description: str, service_charge_type: str, auth_type: str,
+                        amount_of_credits: int = 1, min_credits_to_charge: Optional[int] = 1, max_credits_to_charge: Optional[int] = 1,
+                        username: Optional[str] = None, password: Optional[str] = None, token: Optional[str] = None,
+                        endpoints: Optional[List[dict]] = None,
+                        open_endpoints: Optional[List[str]] = [], open_api_url: Optional[str] = None,
+                        integration: Optional[str] = None, sample_link: Optional[str] = None,
+                        api_description: Optional[str] = None,
+                        tags: Optional[List[str]] = None, use_ai_hub: Optional[bool] = None, implements_query_protocol: Optional[bool]=None,
+                        query_protocol_version: Optional[str]= None, service_host: Optional[str]= None) -> CreateAssetResultDto:
+        """
+        It creates a new AI Agent on Nevermined.
+        The agent must be associated to a Payment Plan. Users that are subscribers of a payment plan can access the agent.
+        Depending on the Payment Plan and the configuration of the agent, the usage of the agent will consume credits.
+        When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent.
+
+        This method is oriented to AI Builders
+
+        https://docs.nevermined.app/docs/tutorials/builders/register-agent
+
+        Args:
+
+            plan_did (str): The DID of the plan.
+            name (str): The name of the agent.
+            description (str): The description of the agent.
+            service_charge_type (str): The charge type of the agent. Options: 'fixed', 'dynamic'
+            auth_type (str): The authentication type of the agent. Options: 'none', 'basic', 'oauth'
+            amount_of_credits (int): The amount of credits for the agent.
+            min_credits_to_charge (int, optional): The minimum credits to charge for the agent. Only required for dynamic agents.
+            max_credits_to_charge (int, optional): The maximum credits to charge for the agent. Only required for dynamic agents.
+            username (str, optional): The username for authentication.
+            password (str, optional): The password for authentication.
+            token (str, optional): The token for authentication.
+            endpoints (List[Dict[str, str]], optional): The endpoints of the agent.
+            open_endpoints (List[str], optional): The open endpoints of the agent.
+            open_api_url (str, optional): The OpenAPI URL of the agent.
+            integration (str, optional): The integration type of the agent.
+            sample_link (str, optional): The sample link of the agent.
+            api_description (str, optional): The API description of the agent.
+            tags (List[str], optional): The tags associated with the agent.
+            use_ai_hub (bool, optional): If the agent is using the AI Hub. If true, the agent will be configured to use the AI Hub endpoints.
+            implements_query_protocol (bool, optional): Indicates if the agent implements the query protocol.
+            query_protocol_version (str, optional): The version of the query protocol implemented by the agent.
+            service_host (str, optional): The host of the agent.
+        """
+        if(use_ai_hub):
+            service_host = self.environment.value['backend']
+            implements_query_protocol = True
+            open_api_url = get_ai_hub_open_api_url(service_host)
+            endpoints = get_query_protocol_endpoints(service_host)
+
+
+        return self.create_service(plan_did, 
+                            'agent', 
+                            name, 
+                            description, 
+                            service_charge_type, 
+                            auth_type, 
+                            amount_of_credits, 
+                            min_credits_to_charge, 
+                            max_credits_to_charge, 
+                            username, 
+                            password, 
+                            token, 
+                            endpoints, 
+                            open_endpoints, 
+                            open_api_url, 
+                            integration, 
+                            sample_link, 
+                            api_description, 
+                            tags, 
+                            use_ai_hub, 
+                            implements_query_protocol, 
+                            query_protocol_version,
+                            service_host)
+
+
     def order_plan(self, plan_did: str, agreementId: Optional[str] = None) -> OrderPlanResultDto:
         """
         Orders a Payment Plan. The user needs to have enough balance in the token selected by the owner of the Payment Plan.
