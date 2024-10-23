@@ -37,7 +37,12 @@ def test_AIQueryApi_creation(ai_query_api_build_fixture):
 async def eventsReceived(data):
     payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
     global response_data
+    step = payments_builder.ai_protocol.get_step(data['step_id'])
     print('eventsReceived::', len(data))
+    if(step['step_status'] != AgentExecutionStatus.Pending.value):
+        print('Step status is not pending')
+        return
+    
     if isinstance(data, list):
         print('eventsReceived::', 'pending data:', len(data))
         for step in data:
@@ -89,18 +94,27 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     assert plan.did.startswith("did:")
     print('Plan created:', plan.did)
 
-    agent = builder.create_service(
+    agent = builder.create_agent(
         plan_did=plan.did,
-        service_type='agent',
         name="Agent service",
         description="test",
         amount_of_credits=1,
         service_charge_type="fixed",
         auth_type="none",
-        is_nevermined_hosted=True,
-        implements_query_protocol=True,
-        query_protocol_version='v1'
+        use_ai_hub=True,
     )
+    # agent = builder.create_service(
+    #     plan_did=plan.did,
+    #     service_type='agent',
+    #     name="Agent service",
+    #     description="test",
+    #     amount_of_credits=1,
+    #     service_charge_type="fixed",
+    #     auth_type="none",
+    #     is_nevermined_hosted=True,
+    #     implements_query_protocol=True,
+    #     query_protocol_version='v1'
+    # )
     assert isinstance(agent, CreateAssetResultDto)
     assert agent.did.startswith("did:")
     print('Agent service created:', agent.did)
