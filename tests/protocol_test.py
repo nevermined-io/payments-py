@@ -176,14 +176,14 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
         pass
 
 # @pytest.mark.asyncio(loop_scope="session")
-# async def test_AI_send_task(ai_query_api_build_fixture):
-#     builder = ai_query_api_build_fixture
+# async def test_AI_send_task(ai_query_api_subscriber_fixture):
+#     builder = ai_query_api_subscriber_fixture
 #     task = builder.ai_protocol.create_task('did:nv:7d86045034ea8a14c133c487374a175c56a9c6144f6395581435bc7f1dc9e0cc', 
-#                                               {'query': 'https://www.youtube.com/watch?v=SB7eoaVw4Sk', 'name': 'Summarize video'})
+#                                               {'query': 'https://www.youtube.com/watch?v=0q_BrgesfF4', 'name': 'Summarize video'})
 #     print('Task created:', task.json())
 
 # @pytest.mark.asyncio(loop_scope="session")
-# async def test_AI_send_task2(ai_query_api_build_fixture):
-#     builder = ai_query_api_build_fixture
-#     task = builder.ai_protocol.get_task_with_steps(did='did:nv:a8983b06c0f25fb4064fc61d6527c84ca1813e552bfad5fa1c974caa3c5ccf49', task_id='task-cd5a90e6-688f-45a3-a299-1845d10db625')
+# async def test_AI_send_task2(ai_query_api_subscriber_fixture):
+#     builder = ai_query_api_subscriber_fixture
+#     task = builder.ai_protocol.get_task_with_steps(did='did:nv:7d86045034ea8a14c133c487374a175c56a9c6144f6395581435bc7f1dc9e0cc', task_id='task-6b16b12e-3aa2-43c3-a756-a150b07665e2')
 #     print('Task result:', task.json())
