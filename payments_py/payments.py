@@ -508,7 +508,6 @@ class Payments(NVMBackendApi):
                             query_protocol_version,
                             service_host)
 
-
     def order_plan(self, plan_did: str, agreementId: Optional[str] = None) -> OrderPlanResultDto:
         """
         Orders a Payment Plan. The user needs to have enough balance in the token selected by the owner of the Payment Plan.
