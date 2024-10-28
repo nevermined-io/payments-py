@@ -112,8 +112,6 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
 
     subscription_task = asyncio.create_task(builder.ai_protocol.subscribe(eventsReceived))
 
-    print('Is event set?', builder.connected_event.is_set())
-
     # Ensure the WebSocket connection is established
     for i in range(5):
         await asyncio.sleep(1)  # Wait for 1 second between each attempt
