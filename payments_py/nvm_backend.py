@@ -3,7 +3,6 @@ import requests
 import socketio
 import jwt
 from typing import Optional, Dict, List, Any, Union
-import asyncio
 
 from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
 from payments_py.environments import Environment
@@ -38,7 +37,6 @@ class NVMBackendApi:
     def __init__(self, opts: BackendApiOptions):
         self.opts = opts
         self.socket_client = sio
-        self.connected_event = asyncio.Event()  
         self.user_room_id = None
         self.has_key = False
         self.callback = None
