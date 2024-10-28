@@ -54,8 +54,6 @@ class AIQueryApi(NVMBackendApi):
         await self.connect_socket()        
         await asyncio.Event().wait()
 
-
-
     def create_task(self, did: str, task: Any):
         """
         Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent.

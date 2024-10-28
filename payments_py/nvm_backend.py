@@ -93,8 +93,6 @@ class NVMBackendApi:
         self.get_pending_events_on_subscribe = get_pending_events_on_subscribe
         self.socket_client.on('_connected', self.connect_handler)
 
-
-
     async def connect_socket(self):
         if not self.has_key:
             raise ValueError('Unable to subscribe to the server because a key was not provided')
