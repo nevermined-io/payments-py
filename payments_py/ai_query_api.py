@@ -50,14 +50,11 @@ class AIQueryApi(NVMBackendApi):
             subscribe_event_types (Optional[List[str]]): The event types to subscribe to.
             get_pending_events_on_subscribe (bool): If True, it will get the pending events on subscribe.
         """
-        self.callback = callback
-        self.join_account_room = join_account_room
-        self.join_agent_rooms = join_agent_rooms
-        self.subscribe_event_types = subscribe_event_types
-        self.get_pending_events_on_subscribe = get_pending_events_on_subscribe
-        
+        self.set_subscriber(callback=callback, join_account_room=join_account_room, join_agent_rooms=join_agent_rooms, subscribe_event_types=subscribe_event_types, get_pending_events_on_subscribe=get_pending_events_on_subscribe)
         await self.connect_socket()        
         await asyncio.Event().wait()
+
+
 
     def create_task(self, did: str, task: Any):
         """

@@ -39,13 +39,13 @@ class NVMBackendApi:
         self.opts = opts
         self.socket_client = sio
         self.connected_event = asyncio.Event()  
-        self.socket_client.on('connect', self.connect_handler)
         self.user_room_id = None
         self.has_key = False
         self.callback = None
         self.join_account_room = None
         self.join_agent_rooms = None
         self.subscribe_event_types = None
+        self.get_pending_events_on_subscribe = None
         
         default_headers = {
             'Accept': 'application/json',
@@ -83,7 +83,18 @@ class NVMBackendApi:
             self.opts.backend_host = backend_url
         except Exception as error:
             raise ValueError(f"Invalid URL: {self.opts.backend_host} - {str(error)}")
-       
+
+
+    def set_subscriber(self, callback, join_account_room, join_agent_rooms, subscribe_event_types, get_pending_events_on_subscribe):
+        self.callback = callback
+        self.join_account_room = join_account_room
+        self.join_agent_rooms = join_agent_rooms
+        self.subscribe_event_types = subscribe_event_types
+        self.get_pending_events_on_subscribe = get_pending_events_on_subscribe
+        self.socket_client.on('_connected', self.connect_handler)
+
+
+
     async def connect_socket(self):
         if not self.has_key:
             raise ValueError('Unable to subscribe to the server because a key was not provided')
@@ -106,13 +117,11 @@ class NVMBackendApi:
         if self.socket_client and self.socket_client.connected:
             self.socket_client.disconnect()
 
-    async def connect_handler(self):
-        while self.socket_client.connected == False:
-            print('Connecting...')
-            await asyncio.sleep(1)
+    async def connect_handler(self, data):
         await self._subscribe()
         if self.get_pending_events_on_subscribe:
             try: 
+                print('Emiting pending events')
                 if(self.get_pending_events_on_subscribe and self.join_agent_rooms): 
                     await self._emit_step_events(AgentExecutionStatus.Pending, self.join_agent_rooms)
             except Exception as e:

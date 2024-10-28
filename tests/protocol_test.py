@@ -7,7 +7,6 @@ from payments_py import Environment
 from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, OrderPlanResultDto
 
 response_event = asyncio.Event()
-room_joined_event = asyncio.Event()
 global response_data
 response_data = None
 
@@ -73,9 +72,6 @@ async def eventsReceived(data):
                                                                     })
         print(result.json())
 
-async def on_join_rooms(data):
-    print("Joined room:", data)
-    room_joined_event.set()
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
@@ -103,18 +99,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
         auth_type="none",
         use_ai_hub=True,
     )
-    # agent = builder.create_service(
-    #     plan_did=plan.did,
-    #     service_type='agent',
-    #     name="Agent service",
-    #     description="test",
-    #     amount_of_credits=1,
-    #     service_charge_type="fixed",
-    #     auth_type="none",
-    #     is_nevermined_hosted=True,
-    #     implements_query_protocol=True,
-    #     query_protocol_version='v1'
-    # )
+
     assert isinstance(agent, CreateAssetResultDto)
     assert agent.did.startswith("did:")
     print('Agent service created:', agent.did)
@@ -135,8 +120,6 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     assert builder.ai_protocol.socket_client.connected, "WebSocket connection failed"
     assert builder.user_room_id, "User room ID is not set"
 
-    builder.ai_protocol.socket_client.on("_join-rooms_", on_join_rooms)
-    await asyncio.wait_for(room_joined_event.wait(), timeout=10)
     
     task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task'})
     print('Task created:', task.json())
