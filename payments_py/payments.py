@@ -20,8 +20,6 @@ class Payments(NVMBackendApi):
         version (str, optional): The version of the payment system.
         ai_protocol (bool): Indicates if the AI protocol is enabled.
         headers (dict, optional): The headers for the payment system.
-        web_socket_options (dict, optional): The web socket options for the payment system.
-
     Methods:
         create_credits_plan: Creates a new credits plan.
         create_time_plan: Creates a new time plan.
@@ -44,8 +42,8 @@ class Payments(NVMBackendApi):
     """
 
     def __init__(self, nvm_api_key: str, environment: Environment,
-                 app_id: Optional[str] = None, version: Optional[str] = None, ai_protocol: bool = False, headers: Optional[dict] = None, web_socket_options: Optional[dict] = None):
-        self.backend_options = BackendApiOptions(environment, api_key=nvm_api_key, headers=headers, web_socket_options=web_socket_options)
+                 app_id: Optional[str] = None, version: Optional[str] = None, ai_protocol: bool = False, headers: Optional[dict] = None):
+        self.backend_options = BackendApiOptions(environment, api_key=nvm_api_key, headers=headers)
         super().__init__(self.backend_options)
         self.nvm_api_key = nvm_api_key
         self.environment = environment

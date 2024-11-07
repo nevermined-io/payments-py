@@ -18,19 +18,17 @@ class BackendApiOptions:
         environment (Environment): The environment.
         api_key (Optional[str]): The Nevermined API Key. This key identify your user and is required to interact with the Nevermined API. You can get your API key by logging in to the Nevermined App. See https://docs.nevermined.app/docs/tutorials/integration/nvm-api-keys
         headers (Optional[Dict[str, str]]): Additional headers to send with the requests
-        web_socket_options (Optional[Dict[str, Any]]): Configuration of the websocket connection
     """
     def __init__(self,
                  environment: Environment,
                  api_key: Optional[str] = None,
                  headers: Optional[Dict[str, str]] = None,
-                 web_socket_options: Optional[Dict[str, Any]] = None):
+                ):
         self.api_key = api_key
         self.backend_host = environment.value['backend']
         self.web_socket_host = environment.value['websocket']
         self.proxy_host = environment.value['proxy']
         self.headers = headers or {}
-        self.web_socket_options = web_socket_options or {}
 
 
 class NVMBackendApi:
@@ -50,18 +48,7 @@ class NVMBackendApi:
             **(opts.headers or {}),
             **({'Authorization': f'Bearer {opts.api_key}'} if opts.api_key else {})
         }
-
-        if opts.web_socket_options and opts.web_socket_options.get('bearer_token'):
-            opts.web_socket_options['transport_options'] = {
-                'websocket': {
-                    'extraHeaders': {'Authorization': f'Bearer {opts.web_socket_options["bearer_token"]}'}
-                }
-            }
-
         self.opts.headers = default_headers
-        self.opts.web_socket_options = {
-            **(opts.web_socket_options or {})
-        }
 
         try:
             if self.opts.api_key and len(self.opts.api_key) > 0:
@@ -100,7 +87,8 @@ class NVMBackendApi:
         
         try:
             print(f"nvm-backend:: Connecting to websocket server: {self.opts.web_socket_host}")
-            await self.socket_client.connect(self.opts.web_socket_host, headers=self.opts.headers, transports=["websocket"])
+            auth = {"token" : f'Bearer {self.opts.api_key}' if self.opts.api_key else {} }
+            await self.socket_client.connect(self.opts.web_socket_host, auth=auth, transports=["websocket"])
             for i in range(5):
                 await self.socket_client.sleep(1)  
                 if self.socket_client.connected:
