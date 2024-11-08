@@ -25,10 +25,7 @@ A class representing a payment system.
  - <b>`app_id`</b> (str, optional):  The application ID. 
  - <b>`version`</b> (str, optional):  The version of the payment system. 
  - <b>`ai_protocol`</b> (bool):  Indicates if the AI protocol is enabled. 
- - <b>`headers`</b> (dict, optional):  The headers for the payment system. 
- - <b>`web_socket_options`</b> (dict, optional):  The web socket options for the payment system. 
-
-Methods: 
+ - <b>`headers`</b> (dict, optional):  The headers for the payment system. Methods: 
  - <b>`create_credits_plan`</b>:  Creates a new credits plan. 
  - <b>`create_time_plan`</b>:  Creates a new time plan. 
  - <b>`create_service`</b>:  Creates a new service. 
@@ -48,7 +45,7 @@ Methods:
  - <b>`burn_credits`</b>:  Burns credits associated to a plan that you own.      
  - <b>`ai_protocol`</b>:  The AI Query API. 
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L46"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L44"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -59,8 +56,7 @@ __init__(
     app_id: Optional[str] = None,
     version: Optional[str] = None,
     ai_protocol: bool = False,
-    headers: Optional[dict] = None,
-    web_socket_options: Optional[dict] = None
+    headers: Optional[dict] = None
 )
 ```
 
@@ -73,7 +69,7 @@ __init__(
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L712"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L785"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `burn_credits`
 
@@ -111,7 +107,75 @@ This method is only can be called by the owner of the Payment Plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L57"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L434"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `create_agent`
+
+```python
+create_agent(
+    plan_did: str,
+    name: str,
+    description: str,
+    service_charge_type: str,
+    auth_type: str,
+    amount_of_credits: int = 1,
+    min_credits_to_charge: Optional[int] = 1,
+    max_credits_to_charge: Optional[int] = 1,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
+    token: Optional[str] = None,
+    endpoints: Optional[List[dict]] = None,
+    open_endpoints: Optional[List[str]] = [],
+    open_api_url: Optional[str] = None,
+    integration: Optional[str] = None,
+    sample_link: Optional[str] = None,
+    api_description: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    use_ai_hub: Optional[bool] = None,
+    implements_query_protocol: Optional[bool] = None,
+    query_protocol_version: Optional[str] = None,
+    service_host: Optional[str] = None
+) → CreateAssetResultDto
+```
+
+It creates a new AI Agent on Nevermined. The agent must be associated to a Payment Plan. Users that are subscribers of a payment plan can access the agent. Depending on the Payment Plan and the configuration of the agent, the usage of the agent will consume credits. When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent. 
+
+This method is oriented to AI Builders 
+
+https://docs.nevermined.app/docs/tutorials/builders/register-agent 
+
+
+
+**Args:**
+ 
+
+
+ - <b>`plan_did`</b> (str):  The DID of the plan. 
+ - <b>`name`</b> (str):  The name of the agent. 
+ - <b>`description`</b> (str):  The description of the agent. 
+ - <b>`service_charge_type`</b> (str):  The charge type of the agent. Options: 'fixed', 'dynamic' 
+ - <b>`auth_type`</b> (str):  The authentication type of the agent. Options: 'none', 'basic', 'oauth' 
+ - <b>`amount_of_credits`</b> (int):  The amount of credits for the agent. 
+ - <b>`min_credits_to_charge`</b> (int, optional):  The minimum credits to charge for the agent. Only required for dynamic agents. 
+ - <b>`max_credits_to_charge`</b> (int, optional):  The maximum credits to charge for the agent. Only required for dynamic agents. 
+ - <b>`username`</b> (str, optional):  The username for authentication. 
+ - <b>`password`</b> (str, optional):  The password for authentication. 
+ - <b>`token`</b> (str, optional):  The token for authentication. 
+ - <b>`endpoints`</b> (List[Dict[str, str]], optional):  The endpoints of the agent. 
+ - <b>`open_endpoints`</b> (List[str], optional):  The open endpoints of the agent. 
+ - <b>`open_api_url`</b> (str, optional):  The OpenAPI URL of the agent. 
+ - <b>`integration`</b> (str, optional):  The integration type of the agent. 
+ - <b>`sample_link`</b> (str, optional):  The sample link of the agent. 
+ - <b>`api_description`</b> (str, optional):  The API description of the agent. 
+ - <b>`tags`</b> (List[str], optional):  The tags associated with the agent. 
+ - <b>`use_ai_hub`</b> (bool, optional):  If the agent is using the AI Hub. If true, the agent will be configured to use the AI Hub endpoints. 
+ - <b>`implements_query_protocol`</b> (bool, optional):  Indicates if the agent implements the query protocol. 
+ - <b>`query_protocol_version`</b> (str, optional):  The version of the query protocol implemented by the agent. 
+ - <b>`service_host`</b> (str, optional):  The host of the agent. 
+
+---
+
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L55"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_credits_plan`
 
@@ -162,7 +226,7 @@ https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L336"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L334"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_file`
 
@@ -237,7 +301,7 @@ https://docs.nevermined.app/docs/tutorials/builders/register-file-asset
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L207"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L205"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_service`
 
@@ -322,7 +386,7 @@ https://docs.nevermined.app/docs/tutorials/builders/register-agent
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L132"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L130"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_time_plan`
 
@@ -373,7 +437,7 @@ https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L629"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L702"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `download_file`
 
@@ -418,7 +482,7 @@ Downloads the file.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L465"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L538"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_asset_ddo`
 
@@ -444,7 +508,7 @@ https://docs.nevermined.io/docs/architecture/specs/Spec-DID https://docs.nevermi
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L616"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L689"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_checkout_plan`
 
@@ -468,7 +532,7 @@ Gets the checkout plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L603"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L676"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_file_details_url`
 
@@ -492,7 +556,7 @@ Gets the file details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L563"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L636"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_associated_files`
 
@@ -516,7 +580,7 @@ Get array of files DIDs associated with a payment plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L549"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L622"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_associated_services`
 
@@ -540,7 +604,7 @@ Get array of services/agent DIDs associated with a payment plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L481"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L554"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_balance`
 
@@ -578,7 +642,7 @@ Expected Response: {  "planType": "credits",  "isOwner": True,  "isSubscriptor":
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L577"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L650"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_details_url`
 
@@ -602,7 +666,7 @@ Gets the plan details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L590"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L663"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_details_url`
 
@@ -626,7 +690,7 @@ Gets the service details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L524"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L597"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_token`
 
@@ -663,7 +727,7 @@ Get the required configuration for accessing a remote service agent. This config
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L683"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L756"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `mint_credits`
 
@@ -700,7 +764,7 @@ Mints the credits associated with a plan and sends them to the receiver.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L436"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L509"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `order_plan`
 

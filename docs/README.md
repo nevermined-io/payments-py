@@ -36,6 +36,10 @@
 
 ## Functions
 
+- [`utils.generate_step_id`](./utils.md#function-generate_step_id): Generate a random ID.
+- [`utils.get_ai_hub_open_api_url`](./utils.md#function-get_ai_hub_open_api_url): Get the AI Hub Open API URL.
+- [`utils.get_query_protocol_endpoints`](./utils.md#function-get_query_protocol_endpoints): Get the query protocol endpoints.
+- [`utils.is_id_valid`](./utils.md#function-is_id_valid): Check if the ID is valid.
 - [`utils.snake_to_camel`](./utils.md#function-snake_to_camel): Convert snake_case to camelCase.
 
 

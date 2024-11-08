@@ -16,11 +16,11 @@ nvm_api_key2 = os.getenv('NVM_API_KEY2')
 
 @pytest.fixture
 def ai_query_api_build_fixture():
-    return Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
+    return Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True)
 
 @pytest.fixture
 def ai_query_api_subscriber_fixture():
-    return Payments(nvm_api_key=nvm_api_key2, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key2})
+    return Payments(nvm_api_key=nvm_api_key2, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True)
 
 def test_AIQueryApi_creation(ai_query_api_build_fixture):
     ai_query_api = ai_query_api_build_fixture
@@ -28,13 +28,12 @@ def test_AIQueryApi_creation(ai_query_api_build_fixture):
     assert ai_query_api.opts.api_key == nvm_api_key
     assert ai_query_api.opts.proxy_host == Environment.staging.value['proxy']    
     assert ai_query_api.opts.web_socket_host == Environment.staging.value['websocket']
-    assert ai_query_api.opts.web_socket_options['bearer_token'] == nvm_api_key
     assert ai_query_api.socket_client
     assert ai_query_api.user_room_id
 
 
 async def eventsReceived(data):
-    payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True, web_socket_options={'bearer_token': nvm_api_key})
+    payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True)
     global response_data
     step = payments_builder.ai_protocol.get_step(data['step_id'])
     print('eventsReceived::', len(data))
@@ -161,12 +160,28 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
 # @pytest.mark.asyncio(loop_scope="session")
 # async def test_AI_send_task(ai_query_api_subscriber_fixture):
 #     builder = ai_query_api_subscriber_fixture
-#     task = builder.ai_protocol.create_task('did:nv:7d86045034ea8a14c133c487374a175c56a9c6144f6395581435bc7f1dc9e0cc', 
-#                                               {'query': 'https://www.youtube.com/watch?v=0q_BrgesfF4', 'name': 'Summarize video'})
-#     print('Task created:', task.json())
+#     task = builder.ai_protocol.create_task('did:nv:268cc4cb5d9d6531f25b9e750b6aa4d96cc5a514116e3afcf41fe4ca0a27dad0', 
+#                                               {'query': 'https://www.youtube.com/watch?v=-yGk3P5LWAA', 'name': 'Summarize video'})
+#     print('Task created:', task.json()['task']['task_id'])
+#     task_id = task.json()['task']['task_id']
+
+#     final_task_result = None 
+#     while True:
+#         task_result = builder.ai_protocol.get_task_with_steps(did='did:nv:268cc4cb5d9d6531f25b9e750b6aa4d96cc5a514116e3afcf41fe4ca0a27dad0', task_id=task_id)
+#         task_status = task_result.json()['task']['task_status']
+        
+#         if task_status != 'Pending':
+#             final_task_result = task_result
+#             break
+#         else:
+#             print('Task still pending...')
+#             await asyncio.sleep(1)
+
+#     # Print the final result after the loop
+#     print('Task completed:', final_task_result.json())  
 
 # @pytest.mark.asyncio(loop_scope="session")
 # async def test_AI_send_task2(ai_query_api_subscriber_fixture):
 #     builder = ai_query_api_subscriber_fixture
-#     task = builder.ai_protocol.get_task_with_steps(did='did:nv:7d86045034ea8a14c133c487374a175c56a9c6144f6395581435bc7f1dc9e0cc', task_id='task-6b16b12e-3aa2-43c3-a756-a150b07665e2')
+#     task = builder.ai_protocol.get_task_with_steps(did='did:nv:c48ee23c3eab23d0094dbe2ae7d01a1ddb6394e85dca8614f7de84d8e4eb4ee1', task_id='task-7cd4dbd7-5055-4340-8bb2-78169a6f4e33')
 #     print('Task result:', task.json())

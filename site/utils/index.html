@@ -68,6 +68,14 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#function-snake_to_camel">function snake_to_camel</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-generate_step_id">function generate_step_id</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-is_id_valid">function is_id_valid</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-get_query_protocol_endpoints">function get_query_protocol_endpoints</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-get_ai_hub_open_api_url">function get_ai_hub_open_api_url</a>
+    </li>
     </ul>
                 </li>
               </ul>
@@ -99,12 +107,40 @@
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h1 id="module-utils"><kbd>module</kbd> <code>utils</code></h1>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L1"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L3"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h2 id="function-snake_to_camel"><kbd>function</kbd> <code>snake_to_camel</code></h2>
 <pre><code class="language-python">snake_to_camel(name)
 </code></pre>
 <p>Convert snake_case to camelCase. </p>
 <p>:param name: str :return: str </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L14"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-generate_step_id"><kbd>function</kbd> <code>generate_step_id</code></h2>
+<pre><code class="language-python">generate_step_id()
+</code></pre>
+<p>Generate a random ID. </p>
+<p>:return: str </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L23"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-is_id_valid"><kbd>function</kbd> <code>is_id_valid</code></h2>
+<pre><code class="language-python">is_id_valid(id)
+</code></pre>
+<p>Check if the ID is valid. </p>
+<p>:param id: str :return: bool </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L40"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-get_query_protocol_endpoints"><kbd>function</kbd> <code>get_query_protocol_endpoints</code></h2>
+<pre><code class="language-python">get_query_protocol_endpoints(server_host: str)
+</code></pre>
+<p>Get the query protocol endpoints. </p>
+<p>:return: dict </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L52"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-get_ai_hub_open_api_url"><kbd>function</kbd> <code>get_ai_hub_open_api_url</code></h2>
+<pre><code class="language-python">get_ai_hub_open_api_url(server_host: str)
+</code></pre>
+<p>Get the AI Hub Open API URL. </p>
+<p>:return: str </p>
 <hr />
 <p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
               
