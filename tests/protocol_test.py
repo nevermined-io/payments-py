@@ -1,4 +1,5 @@
 import asyncio
+import json
 import pytest
 import os
 
@@ -157,6 +158,47 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     except asyncio.CancelledError:
         pass
 
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_AIQueryApi_log(ai_query_api_build_fixture, ai_query_api_subscriber_fixture):
+    builder = ai_query_api_build_fixture
+    subscriber = ai_query_api_subscriber_fixture
+
+    join_event = asyncio.Event()
+    def on_join_task(*args):
+        print("_join-task_ event received")
+        join_event.set()
+
+
+    await subscriber.connect_socket()
+    subscriber.socket_client.on('_join-tasks_', on_join_task)
+
+    await subscriber.socket_client.emit('_join-tasks', json.dumps({ "tasks": ['task-d9d8096a-0c97-42d1-8d6c-ff1481d72ed0']}))
+    await asyncio.wait_for(join_event.wait(), timeout=10)
+    assert join_event.is_set(), "Join-task event was not received."
+
+
+
+
+    log_task_event = asyncio.Event()
+    def on_log_task_send(*args):
+        print("task-log event received")
+        log_task_event.set()
+
+    subscriber.socket_client.on('task-log', on_log_task_send)
+
+
+    await builder.connect_socket()
+    await builder.ai_protocol.log_task('task-d9d8096a-0c97-42d1-8d6c-ff1481d72ed0', 'message', 'info')
+    await asyncio.wait_for(log_task_event.wait(), timeout=10)
+    assert log_task_event.is_set(), "Task-log event was not received."
+
+    await builder.disconnect_socket()
+    await subscriber.disconnect_socket()
+    assert not builder.socket_client.connected, "Builder socket is still open."
+    assert not subscriber.socket_client.connected, "Subscriber socket is still open."
+
 # @pytest.mark.asyncio(loop_scope="session")
 # async def test_AI_send_task(ai_query_api_subscriber_fixture):
 #     builder = ai_query_api_subscriber_fixture
@@ -185,3 +227,4 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
 #     builder = ai_query_api_subscriber_fixture
 #     task = builder.ai_protocol.get_task_with_steps(did='did:nv:c48ee23c3eab23d0094dbe2ae7d01a1ddb6394e85dca8614f7de84d8e4eb4ee1', task_id='task-7cd4dbd7-5055-4340-8bb2-78169a6f4e33')
 #     print('Task result:', task.json())
+

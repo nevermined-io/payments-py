@@ -1,6 +1,7 @@
 import asyncio
+import json
 from typing import Any, List, Optional, Union
-from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
+from payments_py.data_models import AgentExecutionStatus
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
 # Define API Endpoints
@@ -53,6 +54,30 @@ class AIQueryApi(NVMBackendApi):
         self.set_subscriber(callback=callback, join_account_room=join_account_room, join_agent_rooms=join_agent_rooms, subscribe_event_types=subscribe_event_types, get_pending_events_on_subscribe=get_pending_events_on_subscribe)
         await self.connect_socket()        
         await asyncio.Event().wait()
+
+    async def log_task(self, task_id: str, message: str, level: str, step_id: Optional[str]=None, task_status: Optional[AgentExecutionStatus]=None):
+        """
+        It send a log message with the status of a task and a message with relevant information for the subscriber.
+        This method is used by AI agents to log messages.
+
+        Args:
+            task_id (str): The task ID.
+            message (str): Message that will be logged
+            level (str): Log level. info, warn, debug, error...
+            step_id (str): The step ID.
+            task_status (Optional[str]): The status of the task.
+
+        """
+        data = {
+            "task_id": task_id,
+            "message": message,
+            "level": level,
+            **({"step_id": step_id} if step_id is not None else {}),
+            **({"task_status": task_status} if task_status is not None else {})
+        }
+        await self.connect_socket()
+        await self.socket_client.emit('_task-log', json.dumps(data))
+
 
     def create_task(self, did: str, task: Any):
         """
@@ -134,7 +159,6 @@ class AIQueryApi(NVMBackendApi):
         endpoint = self.parse_url_to_proxy(GET_TASK_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         token = self.get_service_token(did)
         return self.get(endpoint, headers={'Authorization': f'Bearer {token.accessToken}'})
-
 
     def get_steps_from_task(self, did: str, task_id: str, status: Optional[str] = None):
         """
