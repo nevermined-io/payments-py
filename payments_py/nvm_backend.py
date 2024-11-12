@@ -67,13 +67,14 @@ class NVMBackendApi:
             raise ValueError(f"Invalid URL: {self.opts.backend_host} - {str(error)}")
 
 
-    def set_subscriber(self, callback, join_account_room, join_agent_rooms, subscribe_event_types, get_pending_events_on_subscribe):
+    async def connect_socket_subscriber(self, callback, join_account_room, join_agent_rooms, subscribe_event_types, get_pending_events_on_subscribe):
         self.callback = callback
         self.join_account_room = join_account_room
         self.join_agent_rooms = join_agent_rooms
         self.subscribe_event_types = subscribe_event_types
         self.get_pending_events_on_subscribe = get_pending_events_on_subscribe
-        self.socket_client.on('_connected', self.connect_handler)
+        self.socket_client.on('_connected', self._subscribe)
+        await self.connect_socket()
 
     async def connect_socket(self):
         if not self.has_key:
@@ -96,19 +97,9 @@ class NVMBackendApi:
 
     async def disconnect_socket(self):
         if self.socket_client and self.socket_client.connected:
-            await self.socket_client.disconnect()
+            await self.socket_client.disconnect()    
 
-    async def connect_handler(self, data):
-        await self._subscribe()
-        if self.get_pending_events_on_subscribe:
-            try: 
-                print('Emiting pending events')
-                if(self.get_pending_events_on_subscribe and self.join_agent_rooms): 
-                    await self._emit_step_events(AgentExecutionStatus.Pending, self.join_agent_rooms)
-            except Exception as e:
-                print('query-api:: Unable to get pending events', e)            
-
-    async def _subscribe(self):
+    async def _subscribe(self, data):
         if not self.join_account_room and not self.join_agent_rooms:
             raise ValueError('No rooms to join in configuration')
         if not self.socket_client.connected:
@@ -126,6 +117,14 @@ class NVMBackendApi:
                 self.socket_client.on(event, event_handler)
         else:
             self.socket_client.on('step-updated', event_handler)  
+        if self.get_pending_events_on_subscribe:
+            try: 
+                print('Emiting pending events')
+                if(self.get_pending_events_on_subscribe and self.join_agent_rooms): 
+                    await self._emit_step_events(AgentExecutionStatus.Pending, self.join_agent_rooms)
+            except Exception as e:
+                print('query-api:: Unable to get pending events', e)
+            
             
     async def _emit_step_events(self, status: AgentExecutionStatus = AgentExecutionStatus.Pending, dids: List[str] = []):
         message = { "status": status.value, "dids": dids }

@@ -51,8 +51,7 @@ class AIQueryApi(NVMBackendApi):
             subscribe_event_types (Optional[List[str]]): The event types to subscribe to.
             get_pending_events_on_subscribe (bool): If True, it will get the pending events on subscribe.
         """
-        self.set_subscriber(callback=callback, join_account_room=join_account_room, join_agent_rooms=join_agent_rooms, subscribe_event_types=subscribe_event_types, get_pending_events_on_subscribe=get_pending_events_on_subscribe)
-        await self.connect_socket()        
+        await self.connect_socket_subscriber(callback=callback, join_account_room=join_account_room, join_agent_rooms=join_agent_rooms, subscribe_event_types=subscribe_event_types, get_pending_events_on_subscribe=get_pending_events_on_subscribe)
         await asyncio.Event().wait()
 
     async def log_task(self, task_log: TaskLog):
@@ -68,7 +67,7 @@ class AIQueryApi(NVMBackendApi):
         await self.socket_client.emit('_task-log', json.dumps(data))
 
 
-    def create_task(self, did: str, task: Task):
+    async def create_task(self, did: str, task: Task, _callback: Optional[Any]=None):
         """
         Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent.
         This method is used by subscribers of a Payment Plan required to access a specific AI Agent or Service. Users who are not subscribers won't be able to create AI Tasks for that Agent.
@@ -78,6 +77,8 @@ class AIQueryApi(NVMBackendApi):
         Args:
             did (str): The DID of the service.
             task (Task): The task to create.
+            _callback (Any): The callback to execute when a new task log event is received (optional)
+
 
         Example:
             task = {
@@ -91,7 +92,10 @@ class AIQueryApi(NVMBackendApi):
         """
         endpoint = self.parse_url_to_proxy(TASK_ENDPOINT).replace('{did}', did)
         token = self.get_service_token(did)
-        return self.post(endpoint, task, headers={'Authorization': f'Bearer {token.accessToken}'})
+        result = self.post(endpoint, task, headers={'Authorization': f'Bearer {token.accessToken}'})
+        if(result.status_code == 201 and _callback):
+            await self.subscribe_task_logs(_callback, [result["task"]["task_id"]])
+        return result
 
     def create_steps(self, did: str, task_id: str, steps: List[Step]):
         """
@@ -212,4 +216,25 @@ class AIQueryApi(NVMBackendApi):
         """
         return self.get(self.parse_url(GET_AGENTS_ENDPOINT))
     
+    async def subscribe_task_logs(self, callback: Any, tasks: List[str]):
+        try: 
+            if not tasks:
+                raise Exception('No task rooms to join in configuration')
+            await self.connect_socket()
+            
+            await self.socket_client.on('_connected', self._on_connected(callback, tasks))
+        except Exception as error:
+            raise Exception(f"Unable to initialize websocket client: {self.web_socket_host} - {str(error)}")
 
+    
+    def _on_connected(self, callback: Any, tasks: List[str]):
+        async def handle_connected_event(*args):
+            print(f"connectTasksSocket:: Joining tasks: {tasks}")
+            await self.socket_client.emit('_join-tasks', {'tasks': tasks})
+
+            async def handle_task_log_event(data: Any):
+                callback(data)
+
+            await self.socket_client.on('task-log', handle_task_log_event)
+
+        return handle_connected_event    
