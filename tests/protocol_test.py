@@ -121,7 +121,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     assert builder.user_room_id, "User room ID is not set"
 
     
-    task = subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task'})
+    task = await subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task'})
     print('Task created:', task.json())
 
     await asyncio.wait_for(response_event.wait(), timeout=120)
@@ -144,7 +144,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     assert int(balance2.balance) == int(balance_before_task.balance) - 2
 
     with pytest.raises(Exception) as excinfo:
-        task = subscriber.ai_protocol.create_task(did=agent.did, task={})
+        task = await subscriber.ai_protocol.create_task(did=agent.did, task={})
     exception_args = excinfo.value.args[0] 
     assert exception_args['status'] == 400
 
