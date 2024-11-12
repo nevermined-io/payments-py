@@ -7,9 +7,6 @@ from typing import Optional, Dict, List, Any, Union
 from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
 from payments_py.environments import Environment
 
-sio = socketio.AsyncClient(logger=True, engineio_logger=True)
-
-
 class BackendApiOptions:
     """
     Represents the backend API options.
@@ -34,7 +31,7 @@ class BackendApiOptions:
 class NVMBackendApi:
     def __init__(self, opts: BackendApiOptions):
         self.opts = opts
-        self.socket_client = sio
+        self.socket_client = socketio.AsyncClient(logger=True, engineio_logger=True)
         self.user_room_id = None
         self.has_key = False
         self.callback = None
@@ -99,7 +96,7 @@ class NVMBackendApi:
 
     async def disconnect_socket(self):
         if self.socket_client and self.socket_client.connected:
-            self.socket_client.disconnect()
+            await self.socket_client.disconnect()
 
     async def connect_handler(self, data):
         await self._subscribe()
@@ -171,7 +168,6 @@ class NVMBackendApi:
             raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
         return response
 
-
     def post(self, url: str, data: Any, headers: Optional[Dict[str, str]] = None):
         headers = self.parse_headers(headers or {})
 
@@ -179,7 +175,6 @@ class NVMBackendApi:
         if response.status_code >= 400:
             raise Exception({"data": response.json(), "status": response.status_code, "headers": response.headers})
         return response
-
 
     def put(self, url: str, data: Any, headers: Optional[Dict[str, str]] = None):
         headers = self.parse_headers(headers or {})

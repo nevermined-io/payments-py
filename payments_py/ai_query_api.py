@@ -1,6 +1,7 @@
 import asyncio
+import json
 from typing import Any, List, Optional, Union
-from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
+from payments_py.data_models import AgentExecutionStatus, Step, TaskLog, Task
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
 # Define API Endpoints
@@ -54,7 +55,20 @@ class AIQueryApi(NVMBackendApi):
         await self.connect_socket()        
         await asyncio.Event().wait()
 
-    def create_task(self, did: str, task: Any):
+    async def log_task(self, task_log: TaskLog):
+        """
+        It send a log message with the status of a task and a message with relevant information for the subscriber.
+        This method is used by AI agents to log messages.
+
+        Args:
+            task_log (TaskLog): An instance containing log details.
+        """
+        data = task_log.model_dump(exclude_none=True)
+        await self.connect_socket()
+        await self.socket_client.emit('_task-log', json.dumps(data))
+
+
+    def create_task(self, did: str, task: Task):
         """
         Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent.
         This method is used by subscribers of a Payment Plan required to access a specific AI Agent or Service. Users who are not subscribers won't be able to create AI Tasks for that Agent.
@@ -63,7 +77,7 @@ class AIQueryApi(NVMBackendApi):
         
         Args:
             did (str): The DID of the service.
-            task (Any): The task to create.
+            task (Task): The task to create.
 
         Example:
             task = {
@@ -79,7 +93,7 @@ class AIQueryApi(NVMBackendApi):
         token = self.get_service_token(did)
         return self.post(endpoint, task, headers={'Authorization': f'Bearer {token.accessToken}'})
 
-    def create_steps(self, did: str, task_id: str, steps: Any):
+    def create_steps(self, did: str, task_id: str, steps: List[Step]):
         """
         It creates the step/s required to complete an AI Task.
         This method is used by the AI Agent to create the steps required to complete the AI Task.
@@ -88,12 +102,12 @@ class AIQueryApi(NVMBackendApi):
         
             did (str): The DID of the service.
             task_id (str): The task ID.
-            steps (Any): The steps to create.
+            steps (List[Step]): The steps to create.
         """
         endpoint = self.parse_url_to_backend(CREATE_STEPS_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         return self.post(endpoint, steps)
 
-    def update_step(self, did: str, task_id: str, step_id: str, step: Any):
+    def update_step(self, did: str, task_id: str, step_id: str, step: Step):
         """
         It updates the step with the new information.
         This method is used by the AI Agent to update the status and output of an step. This method can not be called by a subscriber.
@@ -102,7 +116,7 @@ class AIQueryApi(NVMBackendApi):
             did (str): The DID of the service.
             task_id (str): The task ID.
             step_id (str): The step ID.
-            step (Any): The step object to update. https://docs.nevermined.io/docs/protocol/query-protocol#steps-attributes
+            step (Step): The step object to update. https://docs.nevermined.io/docs/protocol/query-protocol#steps-attributes
         """
         endpoint = self.parse_url_to_backend(UPDATE_STEP_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id).replace('{stepId}', step_id)
         try:
@@ -134,7 +148,6 @@ class AIQueryApi(NVMBackendApi):
         endpoint = self.parse_url_to_proxy(GET_TASK_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         token = self.get_service_token(did)
         return self.get(endpoint, headers={'Authorization': f'Bearer {token.accessToken}'})
-
 
     def get_steps_from_task(self, did: str, task_id: str, status: Optional[str] = None):
         """
