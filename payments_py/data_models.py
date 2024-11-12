@@ -22,11 +22,12 @@ class BalanceResultDto(BaseModel):
                 "isSubscriptor": True,
                 "balance": 10000000
             }
-    })
+        }
+    )
 
 class MintResultDto(BaseModel):
     userOpHash: str = Field(..., description="User operation hash.")
-    success: bool = Field(..., description="True if the operation was succesfull.")
+    success: bool = Field(..., description="True if the operation was successful.")
     amount: str = Field(..., description="The amount of credits minted.")
     
     model_config = ConfigDict(
@@ -36,12 +37,13 @@ class MintResultDto(BaseModel):
                 "success": True,
                 "amount": "12"
             }
-        })
+        }
+    )
 
 class BurnResultDto(BaseModel):
     userOpHash: str = Field(..., description="User operation hash.")
-    success: bool = Field(..., description="True if the operation was succesfull.")
-    amount: str = Field(..., description="The amount of credits minted.")
+    success: bool = Field(..., description="True if the operation was successful.")
+    amount: str = Field(..., description="The amount of credits burned.")
 
     model_config = ConfigDict(
         json_schema_extra = {
@@ -50,7 +52,8 @@ class BurnResultDto(BaseModel):
                 "success": True,
                 "amount": "12"
             }
-        })
+        }
+    )
 
 class CreateAssetResultDto(BaseModel):
     did: str = Field(..., description="The DID of the asset.")
@@ -60,21 +63,23 @@ class CreateAssetResultDto(BaseModel):
             "example": {
                 "did": "did:nv:f1a974ca211e855a89b9a2049900fec29cc79cd9ca4e8d791a27836009c5b215"
             }
-        })
+        }
+    )
 
 class DownloadFileResultDto(BaseModel):
-    success: bool = Field(..., description="True if the operation was succesfull.")
+    success: bool = Field(..., description="True if the operation was successful.")
 
     model_config = ConfigDict(
         json_schema_extra = {
             "example": {
                 "success": True
             }
-        })
+        }
+    )
 
 class OrderPlanResultDto(BaseModel):
     agreementId: str = Field(..., description="The agreement ID.")
-    success: bool = Field(..., description="True if the operation was succesfull.")
+    success: bool = Field(..., description="True if the operation was successful.")
 
     model_config = ConfigDict(
         json_schema_extra = {
@@ -82,7 +87,8 @@ class OrderPlanResultDto(BaseModel):
                 "agreementId": "0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6209172408ad0f79012",
                 "success": True
             }
-        })
+        }
+    )
 
 class ServiceTokenResultDto(BaseModel):
     accessToken: str = Field(..., description="The service token.")
@@ -94,47 +100,55 @@ class ServiceTokenResultDto(BaseModel):
                 "accessToken": "isudgfaahsfoasghfhasfuhasdfuishfihu",
                 "neverminedProxyUri": "https://12312313.proxy.nevermined.app"
             }
-        })
-       
-class AgentExecutionStatus(Enum):
+        }
+    )
+
+class AgentExecutionStatus(str, Enum):
     Pending = "Pending"
     In_Progress = "In_Progress"
     Not_Ready = "Not_Ready"
     Completed = "Completed"
     Failed = "Failed"
-    # Add other status options here
 
-# Artifact data class
-class Artifact:
-    """
-    Represents an artifact with a unique identifier and a URL reference.
-    """
+class TaskLog(BaseModel):
+    task_id: str = Field(..., description="The task ID.")
+    message: str = Field(..., description="Message that will be logged.")
+    level: str = Field(..., description="Log level. info, warn, debug, error.")
+    step_id: Optional[str] = Field(None, description="The step ID.")
+    task_status: Optional[AgentExecutionStatus] = Field(None, description="The status of the task.")
+
+class SearchTasks(BaseModel):
+    did: Optional[str] = None
+    task_id: Optional[str] = None
+    name: Optional[str] = None
+    task_status: Optional[AgentExecutionStatus] = None
+    page: Optional[int] = None
+    offset: Optional[int] = None
+
+class SearchSteps(BaseModel):
+    step_id: Optional[str] = None
+    task_id: Optional[str] = None
+    did: Optional[str] = None
+    name: Optional[str] = None
+    step_status: Optional[AgentExecutionStatus] = None
+    page: Optional[int] = None
+    offset: Optional[int] = None
+
+class Artifact(BaseModel):
     artifact_id: str
     url: str
 
-# ExecutionInput data class
-class ExecutionInput:
-    """
-    Represents the input for a task, such as a query and additional parameters or artifacts.
-    """
+class ExecutionInput(BaseModel):
     query: str
     additional_params: Optional[List[Dict[str, str]]] = None
     artifacts: Optional[List[Artifact]] = None
 
-# ExecutionOutput data class
-class ExecutionOutput:
-    """
-    Represents the output of a task or step execution.
-    """
+class ExecutionOutput(BaseModel):
     output: Any
     additional_output: Optional[List[Dict[str, Any]]] = None
     artifacts: Optional[List[str]] = None
 
-# ExecutionOptions data class
-class ExecutionOptions:
-    """
-    Represents options for executing a task or step, such as input, status, and output.
-    """
+class ExecutionOptions(BaseModel):
     input: ExecutionInput
     status: AgentExecutionStatus
     output: Optional[ExecutionOutput] = None
@@ -142,25 +156,16 @@ class ExecutionOptions:
     updated_at: Optional[datetime] = None
     retries: Optional[int] = None
 
-# Step data class
 class Step(ExecutionOptions):
-    """
-    Represents a step in the execution of a task.
-    """
     step_id: str
     task_id: str
     is_last: Optional[bool] = False
     name: Optional[str] = None
 
-# Task data class
 class Task(ExecutionOptions):
-    """
-    Represents a task that an agent should execute, composed of multiple steps.
-    """
     task_id: str
     steps: List[Step]
     name: Optional[str] = None
 
 # Constants for step names
 FIRST_STEP_NAME = 'init'
-LAST_STEP_NAME = 'init'

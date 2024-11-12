@@ -5,7 +5,7 @@ import os
 
 from payments_py.payments import Payments
 from payments_py import Environment
-from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, OrderPlanResultDto
+from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, OrderPlanResultDto, TaskLog
 
 response_event = asyncio.Event()
 global response_data
@@ -178,9 +178,6 @@ async def test_AIQueryApi_log(ai_query_api_build_fixture, ai_query_api_subscribe
     await asyncio.wait_for(join_event.wait(), timeout=10)
     assert join_event.is_set(), "Join-task event was not received."
 
-
-
-
     log_task_event = asyncio.Event()
     def on_log_task_send(*args):
         print("task-log event received")
@@ -190,7 +187,8 @@ async def test_AIQueryApi_log(ai_query_api_build_fixture, ai_query_api_subscribe
 
 
     await builder.connect_socket()
-    await builder.ai_protocol.log_task('task-d9d8096a-0c97-42d1-8d6c-ff1481d72ed0', 'message', 'info')
+    task_log = TaskLog(task_id='task-d9d8096a-0c97-42d1-8d6c-ff1481d72ed0', message='message', level='info')
+    await builder.ai_protocol.log_task(task_log)
     await asyncio.wait_for(log_task_event.wait(), timeout=10)
     assert log_task_event.is_set(), "Task-log event was not received."
 
