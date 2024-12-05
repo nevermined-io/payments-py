@@ -224,7 +224,6 @@ class AIQueryApi(NVMBackendApi):
             await self.connect_socket()
             self.socket_client.on('_connected', self._on_connected(callback, tasks))
         except Exception as error:
-            print(error)
             raise Exception(f"Unable to initialize websocket client: {self.web_socket_host} - {str(error)}")
 
     
