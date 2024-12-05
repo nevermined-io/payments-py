@@ -1,7 +1,7 @@
 import asyncio
 import json
 from typing import Any, List, Optional, Union
-from payments_py.data_models import AgentExecutionStatus, Step, TaskLog, Task
+from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto, Step, TaskLog, Task
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
 # Define API Endpoints
@@ -67,7 +67,7 @@ class AIQueryApi(NVMBackendApi):
         await self.socket_client.emit('_task-log', json.dumps(data))
 
 
-    async def create_task(self, did: str, task: Task, _callback: Optional[Any]=None):
+    async def create_task(self, did: str, task: Task, _callback: Optional[Any]=None, token: Optional[ServiceTokenResultDto]=None):
         """
         Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent.
         This method is used by subscribers of a Payment Plan required to access a specific AI Agent or Service. Users who are not subscribers won't be able to create AI Tasks for that Agent.
@@ -78,6 +78,7 @@ class AIQueryApi(NVMBackendApi):
             did (str): The DID of the service.
             task (Task): The task to create.
             _callback (Any): The callback to execute when a new task log event is received (optional)
+            token (ServiceTokenResultDto): The service token (optional)
 
 
         Example:
@@ -91,7 +92,8 @@ class AIQueryApi(NVMBackendApi):
             print('Task created:', task.json())
         """
         endpoint = self.parse_url_to_proxy(TASK_ENDPOINT).replace('{did}', did)
-        token = self.get_service_token(did)
+        if not token:
+            token = self.get_service_token(did)
         result = self.post(endpoint, task, headers={'Authorization': f'Bearer {token.accessToken}'})
         if(result.status_code == 201 and _callback):
             tasks = result.json()
@@ -139,7 +141,7 @@ class AIQueryApi(NVMBackendApi):
         """    
         return self.post(self.parse_url_to_backend(SEARCH_TASKS_ENDPOINT), search_params)
 
-    def get_task_with_steps(self, did: str, task_id: str):
+    def get_task_with_steps(self, did: str, task_id: str, token: Optional[ServiceTokenResultDto]=None):
         """
         It returns the full task and the steps resulted of the execution of the task.
 
@@ -149,9 +151,11 @@ class AIQueryApi(NVMBackendApi):
         Args:
             did (str): The DID of the service.
             task_id (str): The task ID.
+            token (ServiceTokenResultDto): The service token (optional)
         """
         endpoint = self.parse_url_to_proxy(GET_TASK_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
-        token = self.get_service_token(did)
+        if not token:
+            token = self.get_service_token(did)
         return self.get(endpoint, headers={'Authorization': f'Bearer {token.accessToken}'})
 
     def get_steps_from_task(self, did: str, task_id: str, status: Optional[str] = None):

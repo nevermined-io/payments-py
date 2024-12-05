@@ -29,7 +29,6 @@ class Payments(NVMBackendApi):
         order_plan: Orders the plan.
         get_asset_ddo: Gets the asset DDO.
         get_plan_balance: Gets the plan balance.
-        get_service_token: Gets the service token.
         get_plan_associated_services: Gets the plan associated services.
         get_plan_associated_files: Gets the plan associated files.
         get_plan_details: Gets the plan details.
@@ -567,7 +566,7 @@ class Payments(NVMBackendApi):
 
         Raises:
             HTTPError: If the API call fails.
-            
+
         Example:
             response = your_instance.get_plan_balance(plan_did="did:example:123456", account_address="0xABC123")
             response.raise_for_status()
@@ -601,34 +600,6 @@ class Payments(NVMBackendApi):
             "balance": response.json()['balance']
         }
         return BalanceResultDto.model_validate(balance)
-    
-    def get_service_access_config(self, service_did: str) -> ServiceTokenResultDto:
-        return self.get_service_token(service_did)
-
-    def get_service_token(self, service_did: str) -> ServiceTokenResultDto:
-        """
-        Get the required configuration for accessing a remote service agent.
-        This configuration includes:
-            - The JWT access token
-            - The Proxy url that can be used to query the agent/service.
-
-        Args:
-            service_did (str): The DID of the service.
-
-        Returns:
-            ServiceTokenResultDto: The result of the creation operation.
-
-        Raises:
-            HTTPError: If the API call fails.
-
-        Example:
-            response = your_instance.get_service_token(service_did="did:nv:xyz789")
-            print(response)
-        """
-        url = f"{self.environment.value['backend']}/api/v1/payments/service/token/{service_did}"
-        response = self.get(url)
-        response.raise_for_status() 
-        return ServiceTokenResultDto.model_validate(response.json()['token'])
     
     def get_plan_associated_services(self, plan_did: str):
         """
