@@ -1,6 +1,7 @@
 import os
 from typing import List, Optional
 import requests
+import jwt
 
 from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto
 from payments_py.environments import Environment
@@ -49,6 +50,8 @@ class Payments(NVMBackendApi):
         self.environment = environment
         self.app_id = app_id
         self.version = version
+        decoded_jwt = jwt.decode(self.nvm_api_key, options={"verify_signature": False})
+        self.account_address = decoded_jwt.get('sub')
         if ai_protocol:
             self.ai_protocol = AIQueryApi(self.backend_options)
 
@@ -551,13 +554,13 @@ class Payments(NVMBackendApi):
         response = self.get(f"{self.environment.value['backend']}/api/v1/payments/asset/ddo/{did}")
         return response
 
-    def get_plan_balance(self, plan_did: str, account_address: str) -> BalanceResultDto:
+    def get_plan_balance(self, plan_did: str, account_address: Optional[str] = None) -> BalanceResultDto:
         """
         Get the balance of an account for a Payment Plan.
 
         Args:
             plan_did (str): The DID of the plan.
-            account_address (str): The account address.
+            account_address (Optional[str]): The account address. Defaults to `self.account_address` if not provided.
 
         Returns:
             BalanceResultDto: The response from the API call formatted as a BalanceResultDto.
@@ -579,13 +582,18 @@ class Payments(NVMBackendApi):
                 "balance": 10000000
             }
         """
+        # Use self.account_address if account_address is not provided
+        account_address = account_address or self.account_address
+
         body = {
             "subscriptionDid": plan_did,
-            **{snake_to_camel(k): v for k, v in locals().items() if v is not None and k != 'self'}
+            "accountAddress": account_address,
         }
+        
         url = (f"{self.environment.value['backend']}/api/v1/payments/subscription/balance")
         response = self.post(url, body)
         response.raise_for_status()
+        
         balance = {
             "planType": response.json()['subscriptionType'],
             "isOwner": response.json()['isOwner'],
@@ -594,6 +602,9 @@ class Payments(NVMBackendApi):
         }
         return BalanceResultDto.model_validate(balance)
     
+    def get_service_access_config(self, service_did: str) -> ServiceTokenResultDto:
+        return self.get_service_token(service_did)
+
     def get_service_token(self, service_did: str) -> ServiceTokenResultDto:
         """
         Get the required configuration for accessing a remote service agent.

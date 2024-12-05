@@ -94,7 +94,8 @@ class AIQueryApi(NVMBackendApi):
         token = self.get_service_token(did)
         result = self.post(endpoint, task, headers={'Authorization': f'Bearer {token.accessToken}'})
         if(result.status_code == 201 and _callback):
-            await self.subscribe_task_logs(_callback, [result["task"]["task_id"]])
+            tasks = result.json()
+            await self.subscribe_task_logs(_callback, [tasks["task"]["task_id"]])
         return result
 
     def create_steps(self, did: str, task_id: str, steps: List[Step]):
@@ -221,9 +222,9 @@ class AIQueryApi(NVMBackendApi):
             if not tasks:
                 raise Exception('No task rooms to join in configuration')
             await self.connect_socket()
-            
-            await self.socket_client.on('_connected', self._on_connected(callback, tasks))
+            self.socket_client.on('_connected', self._on_connected(callback, tasks))
         except Exception as error:
+            print(error)
             raise Exception(f"Unable to initialize websocket client: {self.web_socket_host} - {str(error)}")
 
     
@@ -235,6 +236,6 @@ class AIQueryApi(NVMBackendApi):
             async def handle_task_log_event(data: Any):
                 callback(data)
 
-            await self.socket_client.on('task-log', handle_task_log_event)
+            self.socket_client.on('task-log', handle_task_log_event)
 
         return handle_connected_event    
