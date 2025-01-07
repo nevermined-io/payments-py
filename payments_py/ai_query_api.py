@@ -221,20 +221,20 @@ class AIQueryApi(NVMBackendApi):
         try: 
             if not tasks:
                 raise Exception('No task rooms to join in configuration')
+
             await self.connect_socket()
-            self.socket_client.on('_connected', self._on_connected(callback, tasks))
+            async def join_task():
+                await self.socket_client.emit('_join-tasks', json.dumps({'tasks': tasks}))
+                self.socket_client.on('_join-tasks_', self._on_connected(callback, tasks))
+            self.socket_client.on('_connected', await join_task())
         except Exception as error:
             raise Exception(f"Unable to initialize websocket client: {self.web_socket_host} - {str(error)}")
 
     
-    def _on_connected(self, callback: Any, tasks: List[str]):
-        async def handle_connected_event(*args):
-            print(f"connectTasksSocket:: Joining tasks: {tasks}")
-            await self.socket_client.emit('_join-tasks', {'tasks': tasks})
-
+    def _on_connected(self, callback: Any, tasks: List[str]):        
+        def handle_connected_event(*args):
             async def handle_task_log_event(data: Any):
-                callback(data)
-
+                await callback(data)
             self.socket_client.on('task-log', handle_task_log_event)
 
-        return handle_connected_event    
+        return handle_connected_event
