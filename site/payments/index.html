@@ -94,6 +94,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-get_plan_details_url">method get_plan_details_url</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_service_access_config">method get_service_access_config</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-get_service_details_url">method get_service_details_url</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-get_service_token">method get_service_token</a>
@@ -139,7 +141,7 @@
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h1 id="module-payments"><kbd>module</kbd> <code>payments</code></h1>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L12"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L13"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h2 id="class-payments"><kbd>class</kbd> <code>Payments</code></h2>
 <p>A class representing a payment system. </p>
 <p><strong>Attributes:</strong></p>
@@ -169,7 +171,7 @@
 <li><b><code>burn_credits</code></b>:  Burns credits associated to a plan that you own.      </li>
 <li><b><code>ai_protocol</code></b>:  The AI Query API. </li>
 </ul>
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L44"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L45"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
 <pre><code class="language-python">__init__(
     nvm_api_key: str,
@@ -181,7 +183,7 @@
 )
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L785"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L796"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-burn_credits"><kbd>method</kbd> <code>burn_credits</code></h3>
 <pre><code class="language-python">burn_credits(plan_did: str, amount: str) → BurnResultDto
 </code></pre>
@@ -203,7 +205,7 @@
 <p><strong>Example:</strong>
  response = your_instance.burn_credits(plan_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12") print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L434"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L437"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_agent"><kbd>method</kbd> <code>create_agent</code></h3>
 <pre><code class="language-python">create_agent(
     plan_did: str,
@@ -259,7 +261,7 @@
 <li><b><code>service_host</code></b> (str, optional):  The host of the agent. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L55"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L58"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_credits_plan"><kbd>method</kbd> <code>create_credits_plan</code></h3>
 <pre><code class="language-python">create_credits_plan(
     name: str,
@@ -293,7 +295,7 @@
 <p><strong>Example:</strong>
  response = your_instance.create_credits_plan(name="Basic Plan", description="100 credits plan", price=1, token_address="0x1234", amount_of_credits=100, tags=["basic"]) print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L334"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L337"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_file"><kbd>method</kbd> <code>create_file</code></h3>
 <pre><code class="language-python">create_file(
     plan_did: str,
@@ -349,7 +351,7 @@
 <p><strong>Example:</strong>
  response = your_instance.create_file(plan_did="did:nv:xyz789", asset_type="dataset", name="Sample Dataset", description="A sample dataset", files=[{"name": "file1.csv", "url": "https://example.com/file1.csv"}]) print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L205"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L208"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_service"><kbd>method</kbd> <code>create_service</code></h3>
 <pre><code class="language-python">create_service(
     plan_did: str,
@@ -417,7 +419,7 @@
 <p><strong>Example:</strong>
  response = your_instance.create_service(plan_did="did:nv:abc123", service_type="service", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none") print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L130"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L133"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-create_time_plan"><kbd>method</kbd> <code>create_time_plan</code></h3>
 <pre><code class="language-python">create_time_plan(
     name: str,
@@ -451,7 +453,7 @@
 <p><strong>Example:</strong>
  response = your_instance.create_time_plan(name="Yearly Plan", description="Annual plan", price=1200, token_address="0x5678", duration=365, tags=["yearly", "premium"]) print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L702"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L713"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-download_file"><kbd>method</kbd> <code>download_file</code></h3>
 <pre><code class="language-python">download_file(
     file_did: str,
@@ -481,7 +483,7 @@
 <p><strong>Example:</strong>
  response = your_instance.download_file(file_did="did:nv:7e38d39405445ab3e5435d8c1c6653a00ddc425ba629789f58fbefccaa5e5a5d", destination="/tmp") print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L538"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L541"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_asset_ddo"><kbd>method</kbd> <code>get_asset_ddo</code></h3>
 <pre><code class="language-python">get_asset_ddo(did: str)
 </code></pre>
@@ -496,7 +498,7 @@
 <li><b><code>Response</code></b>:  The response from the API call. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L689"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L700"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_checkout_plan"><kbd>method</kbd> <code>get_checkout_plan</code></h3>
 <pre><code class="language-python">get_checkout_plan(plan_did: str)
 </code></pre>
@@ -510,7 +512,7 @@
 <li><b><code>Response</code></b>:  The url of the checkout plan. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L676"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L687"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_file_details_url"><kbd>method</kbd> <code>get_file_details_url</code></h3>
 <pre><code class="language-python">get_file_details_url(file_did: str)
 </code></pre>
@@ -524,7 +526,7 @@
 <li><b><code>Response</code></b>:  The url of the file details. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L636"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L647"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_plan_associated_files"><kbd>method</kbd> <code>get_plan_associated_files</code></h3>
 <pre><code class="language-python">get_plan_associated_files(plan_did: str)
 </code></pre>
@@ -538,7 +540,7 @@
 <li><b><code>Response</code></b>:  List of DIDs of the associated files. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L622"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L633"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_plan_associated_services"><kbd>method</kbd> <code>get_plan_associated_services</code></h3>
 <pre><code class="language-python">get_plan_associated_services(plan_did: str)
 </code></pre>
@@ -552,15 +554,18 @@
 <li><b><code>Response</code></b>:  List of DIDs of the associated services. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L554"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L557"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_plan_balance"><kbd>method</kbd> <code>get_plan_balance</code></h3>
-<pre><code class="language-python">get_plan_balance(plan_did: str, account_address: str) → BalanceResultDto
+<pre><code class="language-python">get_plan_balance(
+    plan_did: str,
+    account_address: Optional[str] = None
+) → BalanceResultDto
 </code></pre>
 <p>Get the balance of an account for a Payment Plan. </p>
 <p><strong>Args:</strong></p>
 <ul>
 <li><b><code>plan_did</code></b> (str):  The DID of the plan. </li>
-<li><b><code>account_address</code></b> (str):  The account address. </li>
+<li><b><code>account_address</code></b> (Optional[str]):  The account address. Defaults to <code>self.account_address</code> if not provided. </li>
 </ul>
 <p><strong>Returns:</strong></p>
 <ul>
@@ -574,7 +579,7 @@
  response = your_instance.get_plan_balance(plan_did="did:example:123456", account_address="0xABC123") response.raise_for_status() balance = BalanceResultDto.model_validate(response.json()) print(balance) </p>
 <p>Expected Response: {  "planType": "credits",  "isOwner": True,  "isSubscriptor": True,  "balance": 10000000 } </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L650"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L661"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_plan_details_url"><kbd>method</kbd> <code>get_plan_details_url</code></h3>
 <pre><code class="language-python">get_plan_details_url(plan_did: str)
 </code></pre>
@@ -588,7 +593,12 @@
 <li><b><code>Response</code></b>:  The url of the plan details. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L663"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L605"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_service_access_config"><kbd>method</kbd> <code>get_service_access_config</code></h3>
+<pre><code class="language-python">get_service_access_config(service_did: str) → ServiceTokenResultDto
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L674"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_service_details_url"><kbd>method</kbd> <code>get_service_details_url</code></h3>
 <pre><code class="language-python">get_service_details_url(service_did: str)
 </code></pre>
@@ -602,7 +612,7 @@
 <li><b><code>Response</code></b>:  The url of the service details. </li>
 </ul>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L597"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L608"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_service_token"><kbd>method</kbd> <code>get_service_token</code></h3>
 <pre><code class="language-python">get_service_token(service_did: str) → ServiceTokenResultDto
 </code></pre>
@@ -624,7 +634,7 @@
 <p><strong>Example:</strong>
  response = your_instance.get_service_token(service_did="did:nv:xyz789") print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L756"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L767"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-mint_credits"><kbd>method</kbd> <code>mint_credits</code></h3>
 <pre><code class="language-python">mint_credits(plan_did: str, amount: str, receiver: str) → MintResultDto
 </code></pre>
@@ -646,7 +656,7 @@
 <p><strong>Example:</strong>
  response = your_instance.mint_credits(plan_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12", receiver="0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6") print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L509"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L512"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-order_plan"><kbd>method</kbd> <code>order_plan</code></h3>
 <pre><code class="language-python">order_plan(
     plan_did: str,

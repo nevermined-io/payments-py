@@ -22,7 +22,7 @@
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L18"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L19"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `AIQueryApi`
 Represents the AI Query API. 
@@ -45,7 +45,7 @@ Methods:
  - <b>`search_step`</b>:  Searches for steps 
  - <b>`get_step`</b>:  Gets the details of a step 
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L37"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L38"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -62,12 +62,12 @@ __init__(opts: BackendApiOptions)
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L82"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L101"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_steps`
 
 ```python
-create_steps(did: str, task_id: str, steps: Any)
+create_steps(did: str, task_id: str, steps: List[Step])
 ```
 
 It creates the step/s required to complete an AI Task. This method is used by the AI Agent to create the steps required to complete the AI Task. 
@@ -80,16 +80,16 @@ It creates the step/s required to complete an AI Task. This method is used by th
 
  - <b>`did`</b> (str):  The DID of the service. 
  - <b>`task_id`</b> (str):  The task ID. 
- - <b>`steps`</b> (Any):  The steps to create. 
+ - <b>`steps`</b> (List[Step]):  The steps to create. 
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L57"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L70"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_task`
 
 ```python
-create_task(did: str, task: Any)
+create_task(did: str, task: Task, _callback: Optional[Any] = None)
 ```
 
 Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent. This method is used by subscribers of a Payment Plan required to access a specific AI Agent or Service. Users who are not subscribers won't be able to create AI Tasks for that Agent. Because only subscribers can create AI Tasks, the method requires the access token to interact with the AI Agent/Service. This is given using the `queryOpts` object (accessToken attribute). 
@@ -99,7 +99,10 @@ Subscribers can create an AI Task for an Agent. The task must contain the input 
 **Args:**
  
  - <b>`did`</b> (str):  The DID of the service. 
- - <b>`task`</b> (Any):  The task to create. 
+ - <b>`task`</b> (Task):  The task to create. 
+ - <b>`_callback`</b> (Any):  The callback to execute when a new task log event is received (optional) 
+
+
 
 
 
@@ -108,7 +111,7 @@ Subscribers can create an AI Task for an Agent. The task must contain the input 
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L164"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L182"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_step`
 
@@ -128,7 +131,7 @@ Get the details of a step.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L176"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L194"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_steps`
 
@@ -150,7 +153,7 @@ It retrieves all the steps that the agent needs to execute to complete the diffe
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L139"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L157"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_steps_from_task`
 
@@ -170,7 +173,7 @@ It retrieves all the steps that the agent needs to execute to complete a specifi
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L123"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L142"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_task_with_steps`
 
@@ -193,7 +196,7 @@ This method is used by subscribers of a Payment Plan required to access a specif
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L194"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L212"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_tasks_from_agents`
 
@@ -205,7 +208,25 @@ It retrieves all the tasks that the agent needs to execute to complete the diffe
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L154"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L57"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `log_task`
+
+```python
+log_task(task_log: TaskLog)
+```
+
+It send a log message with the status of a task and a message with relevant information for the subscriber. This method is used by AI agents to log messages. 
+
+
+
+**Args:**
+ 
+ - <b>`task_log`</b> (TaskLog):  An instance containing log details. 
+
+---
+
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L172"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `search_step`
 
@@ -223,7 +244,7 @@ It search steps based on the search parameters. The steps belongs to the tasks p
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L114"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L133"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `search_tasks`
 
@@ -241,7 +262,7 @@ It searches tasks based on the search parameters associated to the user.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L41"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L42"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `subscribe`
 
@@ -269,12 +290,26 @@ It subscribes to the Nevermined network to retrieve new AI Tasks requested by ot
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L96"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L220"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `subscribe_tasks_updated`
+
+```python
+subscribe_tasks_updated(callback: Any, tasks: List[str])
+```
+
+
+
+
+
+---
+
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L115"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `update_step`
 
 ```python
-update_step(did: str, task_id: str, step_id: str, step: Any)
+update_step(did: str, task_id: str, step_id: str, step: Step)
 ```
 
 It updates the step with the new information. This method is used by the AI Agent to update the status and output of an step. This method can not be called by a subscriber. 
@@ -286,7 +321,7 @@ It updates the step with the new information. This method is used by the AI Agen
  - <b>`did`</b> (str):  The DID of the service. 
  - <b>`task_id`</b> (str):  The task ID. 
  - <b>`step_id`</b> (str):  The step ID. 
- - <b>`step`</b> (Any):  The step object to update. https://docs.nevermined.io/docs/protocol/query-protocol#steps-attributes 
+ - <b>`step`</b> (Step):  The step object to update. https://docs.nevermined.io/docs/protocol/query-protocol#steps-attributes 
 
 
 
