@@ -68,9 +68,9 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#method-__init___1">method __init__</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#method-connect_handler">method connect_handler</a>
-    </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-connect_socket">method connect_socket</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-connect_socket_subscriber">method connect_socket_subscriber</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-delete">method delete</a>
     </li>
@@ -93,8 +93,6 @@
     <li class="toctree-l3"><a class="reference internal" href="#method-post">method post</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-put">method put</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#method-set_subscriber">method set_subscriber</a>
     </li>
         </ul>
     </li>
@@ -137,7 +135,7 @@
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h1 id="module-nvm_backend"><kbd>module</kbd> <code>nvm_backend</code></h1>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L10"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L11"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h2 id="class-backendapioptions"><kbd>class</kbd> <code>BackendApiOptions</code></h2>
 <p>Represents the backend API options. </p>
 <p><strong>Args:</strong></p>
@@ -146,7 +144,7 @@
 <li><b><code>api_key</code></b> (Optional[str]):  The Nevermined API Key. This key identify your user and is required to interact with the Nevermined API. You can get your API key by logging in to the Nevermined App. See https://docs.nevermined.app/docs/tutorials/integration/nvm-api-keys </li>
 <li><b><code>headers</code></b> (Optional[Dict[str, str]]):  Additional headers to send with the requests </li>
 </ul>
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L19"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L20"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
 <pre><code class="language-python">__init__(
     environment: Environment,
@@ -155,44 +153,50 @@
 )
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L31"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h2 id="class-nvmbackendapi"><kbd>class</kbd> <code>NVMBackendApi</code></h2>
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L32"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-nvmbackendapi"><kbd>class</kbd> <code>NVMBackendApi</code></h2>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L33"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-__init___1"><kbd>method</kbd> <code>__init__</code></h3>
 <pre><code class="language-python">__init__(opts: BackendApiOptions)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L101"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h3 id="method-connect_handler"><kbd>method</kbd> <code>connect_handler</code></h3>
-<pre><code class="language-python">connect_handler(data)
-</code></pre>
-<hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L78"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L81"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-connect_socket"><kbd>method</kbd> <code>connect_socket</code></h3>
 <pre><code class="language-python">connect_socket()
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L187"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L72"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-connect_socket_subscriber"><kbd>method</kbd> <code>connect_socket_subscriber</code></h3>
+<pre><code class="language-python">connect_socket_subscriber(
+    callback,
+    join_account_room,
+    join_agent_rooms,
+    subscribe_event_types,
+    get_pending_events_on_subscribe
+)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L194"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-delete"><kbd>method</kbd> <code>delete</code></h3>
 <pre><code class="language-python">delete(url: str, data: Any, headers: Optional[Dict[str, str]] = None)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L147"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L154"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-disconnect"><kbd>method</kbd> <code>disconnect</code></h3>
 <pre><code class="language-python">disconnect()
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L97"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L100"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-disconnect_socket"><kbd>method</kbd> <code>disconnect_socket</code></h3>
 <pre><code class="language-python">disconnect_socket()
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L163"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L170"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get"><kbd>method</kbd> <code>get</code></h3>
 <pre><code class="language-python">get(url: str, headers: Optional[Dict[str, str]] = None)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L195"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L202"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_service_token"><kbd>method</kbd> <code>get_service_token</code></h3>
 <pre><code class="language-python">get_service_token(service_did: str) → ServiceTokenResultDto
 </code></pre>
@@ -212,45 +216,34 @@
 <p><strong>Example:</strong>
  response = your_instance.get_service_token(service_did="did:nv:xyz789") print(response) </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L135"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L142"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-join_room"><kbd>method</kbd> <code>join_room</code></h3>
 <pre><code class="language-python">join_room(join_account_room: bool, room_ids: Optional[str, List[str]] = None)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L157"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L164"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-parse_headers"><kbd>method</kbd> <code>parse_headers</code></h3>
 <pre><code class="language-python">parse_headers(additional_headers: dict[str, str]) → dict[str, str]
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L154"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L161"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-parse_url_to_backend"><kbd>method</kbd> <code>parse_url_to_backend</code></h3>
 <pre><code class="language-python">parse_url_to_backend(uri: str) → str
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L151"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L158"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-parse_url_to_proxy"><kbd>method</kbd> <code>parse_url_to_proxy</code></h3>
 <pre><code class="language-python">parse_url_to_proxy(uri: str) → str
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L171"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L178"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-post"><kbd>method</kbd> <code>post</code></h3>
 <pre><code class="language-python">post(url: str, data: Any, headers: Optional[Dict[str, str]] = None)
 </code></pre>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L179"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L186"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-put"><kbd>method</kbd> <code>put</code></h3>
 <pre><code class="language-python">put(url: str, data: Any, headers: Optional[Dict[str, str]] = None)
-</code></pre>
-<hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/nvm_backend.py#L70"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h3 id="method-set_subscriber"><kbd>method</kbd> <code>set_subscriber</code></h3>
-<pre><code class="language-python">set_subscriber(
-    callback,
-    join_account_room,
-    join_agent_rooms,
-    subscribe_event_types,
-    get_pending_events_on_subscribe
-)
 </code></pre>
 <hr />
 <p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>

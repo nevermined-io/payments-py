@@ -4,6 +4,7 @@
 
 ## Modules
 
+- [`ai_query_api`](./ai_query_api.md#module-ai_query_api)
 - [`data_models`](./data_models.md#module-data_models)
 - [`environments`](./environments.md#module-environments)
 - [`nvm_backend`](./nvm_backend.md#module-nvm_backend)
@@ -12,6 +13,7 @@
 
 ## Classes
 
+- [`ai_query_api.AIQueryApi`](./ai_query_api.md#class-aiqueryapi): Represents the AI Query API.
 - [`data_models.AgentExecutionStatus`](./data_models.md#class-agentexecutionstatus): An enumeration.
 - [`data_models.Artifact`](./data_models.md#class-artifact)
 - [`data_models.BalanceResultDto`](./data_models.md#class-balanceresultdto)

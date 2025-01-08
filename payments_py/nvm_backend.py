@@ -1,6 +1,7 @@
 import json
 import requests
 import socketio
+import asyncio
 import jwt
 from typing import Optional, Dict, List, Any, Union
 
@@ -39,6 +40,7 @@ class NVMBackendApi:
         self.join_agent_rooms = None
         self.subscribe_event_types = None
         self.get_pending_events_on_subscribe = None
+        self.did = None
         
         default_headers = {
             'Accept': 'application/json',
@@ -104,10 +106,15 @@ class NVMBackendApi:
             raise ValueError('No rooms to join in configuration')
         if not self.socket_client.connected:
             raise ConnectionError('Failed to connect to the WebSocket server.')
-        
+            
         async def event_handler(data):
-            parsed_data = json.loads(data)
-            await self.callback(parsed_data)    
+            try:
+                parsed_data = json.loads(data)
+                self.did = parsed_data.get('did')
+            except Exception as e:
+                print('nvm-backend:: Unable to parse data', e)
+                return
+            asyncio.create_task(self.callback(parsed_data))
 
         await self.join_room(self.join_account_room, self.join_agent_rooms)
 
@@ -116,11 +123,12 @@ class NVMBackendApi:
                 print(f"nvm-backend:: Subscribing to event: {event}")
                 self.socket_client.on(event, event_handler)
         else:
-            self.socket_client.on('step-updated', event_handler)  
+            self.socket_client.on('step-updated', event_handler)
+        
         if self.get_pending_events_on_subscribe:
             try: 
-                print('Emiting pending events')
-                if(self.get_pending_events_on_subscribe and self.join_agent_rooms): 
+                print('Emitting pending events')
+                if self.get_pending_events_on_subscribe and self.join_agent_rooms: 
                     await self._emit_step_events(AgentExecutionStatus.Pending, self.join_agent_rooms)
             except Exception as e:
                 print('query-api:: Unable to get pending events', e)
