@@ -137,7 +137,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
         print(e) 
     
     print('Wait for credits to be burned')
-    await asyncio.sleep(10)
+    await asyncio.sleep(20)
 
     balance2 = subscriber.get_plan_balance(plan_did=plan.did, account_address="0x496D42f45a2C2Dc460c6605A2b414698232F123f")
     print('Plan balance2:', balance2)
