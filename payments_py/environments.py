@@ -14,6 +14,8 @@ class Environment(Enum):
     local = {"frontend": "http://localhost:3000", "backend": "http://localhost:3200", "websocket": "ws://localhost:3200", "proxy": "http://localhost:3100"}
     staging = {"frontend": "https://staging.nevermined.app", "backend": "https://one-backend.staging.nevermined.app", "websocket": "wss://one-backend.staging.nevermined.app", "proxy": "https://proxy.staging.nevermined.app"}
     testing = {"frontend": "https://testing.nevermined.app", "backend": "https://one-backend.testing.nevermined.app", "websocket": "wss://one-backend.testing.nevermined.app", "proxy": "https://proxy.testing.nevermined.app"}
+    gnosis = {"frontend": "https://gnosis.nevermined.app", "backend": "https://one-backend.gnosis.nevermined.app", "websocket": "wss://one-backend.gnosis.nevermined.app", "proxy": "https://proxy.gnosis.nevermined.app"}
+    base = {"frontend": "https://base.nevermined.app", "backend": "https://one-backend.base.nevermined.app", "websocket": "wss://one-backend.base.nevermined.app", "proxy": "https://proxy.base.nevermined.app"}
     arbitrum = {"frontend": "https://nevermined.app", "backend": "https://one-backend.arbitrum.nevermined.app", "websocket": "wss://one-backend.arbitrum.nevermined.app", "proxy": "https://proxy.arbitrum.nevermined.app"}
     appPeaq = {"frontend": "https://peaq.nevermined.app", "backend": "https://one-backend.peaq.nevermined.app"}
 
