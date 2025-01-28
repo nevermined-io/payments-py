@@ -23,6 +23,8 @@ Enum class to define the different environments
  - <b>`local`</b>:  Local environment 
  - <b>`staging`</b>:  Staging environment 
  - <b>`testing`</b>:  Testing environment 
+ - <b>`gnosis`</b>:  Gnosis environment 
+ - <b>`base`</b>:  Base environment 
  - <b>`arbitrum`</b>:  Arbitrum environment 
  - <b>`appPeaq`</b>:  Peaq network 
 

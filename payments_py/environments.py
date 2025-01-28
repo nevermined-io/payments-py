@@ -8,6 +8,8 @@ class Environment(Enum):
         local: Local environment
         staging: Staging environment
         testing: Testing environment
+        gnosis: Gnosis environment
+        base: Base environment
         arbitrum: Arbitrum environment
         appPeaq: Peaq network
     """
