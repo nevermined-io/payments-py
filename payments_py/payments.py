@@ -821,3 +821,53 @@ class Payments(NVMBackendApi):
         response = self.post(url, body)
         response.raise_for_status()
         return BurnResultDto(userOpHash=response.json()['userOpHash'], success=response.json()['success'], amount=amount)
+    
+    def search_plans(self, text: Optional[str] = None, page: Optional[int] = 1, offset: Optional[int] = 10):
+        """
+        Search for plans. It will search for plans matching the text provided in their metadata.
+
+        Args:
+            text (str): The text to search for.
+            page (int): The page number.
+            offset (int): The offset.
+
+        Returns:
+            Response: The response from the API call.
+
+        Example:
+            response = your_instance.search_plans(text="Basic")
+            print(response)
+        """
+        body = {
+            "text": text,
+            "page": page,
+            "offset": offset
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/search/plan"
+        response = self.post(url, body)
+        return response
+    
+    def search_agents(self, text: Optional[str] = None, page: Optional[int] = 1, offset: Optional[int] = 10):
+        """
+        Search for agents. It will search for agents matching the text provided in their metadata.
+
+        Args:
+            text (str): The text to search for.
+            page (int): The page number.
+            offset (int): The offset.
+
+        Returns:
+            Response: The response from the API call.
+        
+        Example:
+            response = your_instance.search_agents(text="My Agent")
+            print(response)
+        """
+        body = {
+            "text": text,
+            "page": page,
+            "offset": offset
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/search/agent"
+        response = self.post(url, body)
+        return response    

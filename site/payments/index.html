@@ -104,6 +104,10 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#method-order_plan">method order_plan</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-search_agents">method search_agents</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-search_plans">method search_plans</a>
+    </li>
         </ul>
     </li>
     </ul>
@@ -680,6 +684,34 @@
 </ul>
 <p><strong>Example:</strong>
  response = your_instance.order_plan(plan_did="did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116") print(response) </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L844"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-search_agents"><kbd>method</kbd> <code>search_agents</code></h3>
+<pre><code class="language-python">search_agents(text: Optional[str] = None)
+</code></pre>
+<p>Search for agents. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>text</code></b> (str):  The text to search for. </li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>:  The response from the API call. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L825"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-search_plans"><kbd>method</kbd> <code>search_plans</code></h3>
+<pre><code class="language-python">search_plans(text: Optional[str] = None)
+</code></pre>
+<p>Search for plans. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>text</code></b> (str):  The text to search for. </li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>:  The response from the API call. </li>
+</ul>
 <hr />
 <p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
               

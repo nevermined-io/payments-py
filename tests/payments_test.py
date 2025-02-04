@@ -13,8 +13,7 @@ nvm_api_key = os.getenv('NVM_API_KEY')
 
 @pytest.fixture
 def payment():
-    return Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=False)
-
+    return Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=False) 
 
 def test_payment_creation(payment):
     assert payment.environment == Environment.staging
@@ -106,6 +105,14 @@ def test_mint_credits(payment):
 def test_burn_credits(payment):
     response = payment.burn_credits(plan_did='did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5', amount="12")
     assert isinstance(response, BurnResultDto)
+
+def test_search_plans(payment):
+    response = payment.search_plans(text="AI")
+    assert response.status_code == 201
+
+def test_search_agents(payment):
+    response = payment.search_agents(text="AI")
+    assert response.status_code == 201       
 
 
 # Mocking the requests.post method. We need to follow this pattern to mock the requests.post method of the rest of tests.
