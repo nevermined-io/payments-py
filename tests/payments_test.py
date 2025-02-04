@@ -108,12 +108,10 @@ def test_burn_credits(payment):
 
 def test_search_plans(payment):
     response = payment.search_plans(text="AI")
-    print(response.json())
     assert response.status_code == 201
 
 def test_search_agents(payment):
     response = payment.search_agents(text="AI")
-    print(response.json())
     assert response.status_code == 201       
 
 
