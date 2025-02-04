@@ -820,6 +820,54 @@ The payment is done using Crypto. Payments using Fiat can be done via the Neverm
 **Example:**
  response = your_instance.order_plan(plan_did="did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116") print(response) 
 
+---
+
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L844"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `search_agents`
+
+```python
+search_agents(text: Optional[str] = None)
+```
+
+Search for agents. 
+
+
+
+**Args:**
+ 
+ - <b>`text`</b> (str):  The text to search for. 
+
+
+
+**Returns:**
+ 
+ - <b>`Response`</b>:  The response from the API call. 
+
+---
+
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L825"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `search_plans`
+
+```python
+search_plans(text: Optional[str] = None)
+```
+
+Search for plans. 
+
+
+
+**Args:**
+ 
+ - <b>`text`</b> (str):  The text to search for. 
+
+
+
+**Returns:**
+ 
+ - <b>`Response`</b>:  The response from the API call. 
+
 
 
 

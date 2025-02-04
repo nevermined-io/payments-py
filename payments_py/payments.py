@@ -821,3 +821,41 @@ class Payments(NVMBackendApi):
         response = self.post(url, body)
         response.raise_for_status()
         return BurnResultDto(userOpHash=response.json()['userOpHash'], success=response.json()['success'], amount=amount)
+    
+    def search_plans(self, text: Optional[str] = None,):
+        """
+        Search for plans.
+
+        Args:
+            text (str): The text to search for.
+
+        Returns:
+            Response: The response from the API call.
+        """
+        body = {
+            "text": text,
+            "page": 1,
+            "offset": 10
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/search/plan"
+        response = self.post(url, body)
+        return response
+    
+    def search_agents(self, text: Optional[str] = None,):
+        """
+        Search for agents.
+
+        Args:
+            text (str): The text to search for.
+
+        Returns:
+            Response: The response from the API call.
+        """
+        body = {
+            "text": text,
+            "page": 1,
+            "offset": 10
+        }
+        url = f"{self.environment.value['backend']}/api/v1/payments/search/agent"
+        response = self.post(url, body)
+        return response    
