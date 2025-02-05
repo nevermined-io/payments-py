@@ -8,7 +8,6 @@
 - [`data_models`](./data_models.md#module-data_models)
 - [`environments`](./environments.md#module-environments)
 - [`nvm_backend`](./nvm_backend.md#module-nvm_backend)
-- [`payments`](./payments.md#module-payments)
 - [`utils`](./utils.md#module-utils)
 
 ## Classes
@@ -18,6 +17,7 @@
 - [`data_models.Artifact`](./data_models.md#class-artifact)
 - [`data_models.BalanceResultDto`](./data_models.md#class-balanceresultdto)
 - [`data_models.BurnResultDto`](./data_models.md#class-burnresultdto)
+- [`data_models.CreateAgentAndPlanResultDto`](./data_models.md#class-createagentandplanresultdto)
 - [`data_models.CreateAssetResultDto`](./data_models.md#class-createassetresultdto)
 - [`data_models.DownloadFileResultDto`](./data_models.md#class-downloadfileresultdto)
 - [`data_models.ExecutionInput`](./data_models.md#class-executioninput)
@@ -35,7 +35,6 @@
 - [`environments.Environment`](./environments.md#class-environment): Enum class to define the different environments
 - [`nvm_backend.BackendApiOptions`](./nvm_backend.md#class-backendapioptions): Represents the backend API options.
 - [`nvm_backend.NVMBackendApi`](./nvm_backend.md#class-nvmbackendapi)
-- [`payments.Payments`](./payments.md#class-payments): A class representing a payment system.
 
 ## Functions
 

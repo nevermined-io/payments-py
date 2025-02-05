@@ -6,7 +6,7 @@ from payments_py import Environment
 from payments_py import Payments
 import os
 
-from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto
+from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAgentAndPlanResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto
 
 
 nvm_api_key = os.getenv('NVM_API_KEY')
@@ -77,6 +77,26 @@ def test_create_file(payment):
     )
     assert isinstance(response, CreateAssetResultDto)
     assert response.did.startswith("did:")
+
+def test_create_agent_and_plan(payment):
+    response = payment.create_agent_and_plan(
+        plan_name="test-py",
+        plan_description="test",
+        plan_price=1000000,
+        plan_token_address="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        plan_amount_of_credits=100,
+        plan_tags=["test"],
+        agent_name="agent-py",
+        agent_description="test",
+        agent_amount_of_credits=1,
+        agent_service_charge_type="fixed",
+        agent_auth_type="none",
+        agent_use_ai_hub=True
+    )
+    assert isinstance(response, CreateAgentAndPlanResultDto)
+    assert response.planDID.startswith("did:")
+    assert response.agentDID.startswith("did:")
+
 
 def test_get_asset_ddo(payment):
     response = payment.get_asset_ddo(did='did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116')

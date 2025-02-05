@@ -3,7 +3,7 @@ from typing import List, Optional
 import requests
 import jwt
 
-from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto
+from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAgentAndPlanResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto
 from payments_py.environments import Environment
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 from payments_py.ai_query_api import AIQueryApi
@@ -509,6 +509,62 @@ class Payments(NVMBackendApi):
                             query_protocol_version,
                             service_host)
 
+    def create_agent_and_plan(self, plan_name: str, plan_description: str, plan_price: int, plan_token_address: str, plan_amount_of_credits: int,
+                                agent_name: str, agent_description: str, agent_service_charge_type: str, agent_auth_type: str,plan_tags: Optional[List[str]] = None, agent_amount_of_credits: int = 1, agent_min_credits_to_charge: Optional[int] = 1, agent_max_credits_to_charge: Optional[int] = 1,
+                                agent_username: Optional[str] = None, agent_password: Optional[str] = None, agent_token: Optional[str] = None, agent_endpoints: Optional[List[dict]] = None,
+                                agent_open_endpoints: Optional[List[str]] = [], agent_open_api_url: Optional[str] = None, agent_integration: Optional[str] = None, agent_sample_link: Optional[str] = None,
+                                agent_api_description: Optional[str] = None, agent_tags: Optional[List[str]] = None, agent_use_ai_hub: Optional[bool] = None, agent_implements_query_protocol: Optional[bool]=None,
+                                agent_query_protocol_version: Optional[str]= None, agent_service_host: Optional[str]= None) -> CreateAgentAndPlanResultDto:
+        """
+        It creates a new AI Agent and a Payment Plan on Nevermined.
+
+        The agent must be associated to the Payment Plan. Users that are subscribers of a payment plan can access the agent.
+
+        Depending on the Payment Plan and the configuration of the agent, the usage of the agent will consume credits.
+
+        When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent.
+
+        This method is oriented to AI Builders
+
+        https://docs.nevermined.app/docs/tutorials/builders/register-agent
+
+        Args:
+
+            plan_name (str): The name of the plan.
+            plan_description (str): The description of the plan.
+            plan_price (int): The price of the plan.
+            plan_token_address (str): The token address of the plan.
+            plan_amount_of_credits (int): The amount of credits for the plan.
+            plan_tags (List[str], optional): The tags associated with the plan.
+            agent_name (str): The name of the agent.
+            agent_description (str): The description of the agent.
+            agent_service_charge_type (str): The charge type of the agent. Options: 'fixed', 'dynamic'
+            agent_auth_type (str): The authentication type of the agent. Options: 'none', 'basic', 'oauth'
+            agent_amount_of_credits (int): The amount of credits the agent consumes per request.
+            agent_min_credits_to_charge (int, optional): The minimum credits to charge for the agent. Only required for dynamic agents.
+            agent_max_credits_to_charge (int, optional): The maximum credits to charge for the agent. Only required for dynamic agents.Some potential clients seek to completely decouple the creation of agents and accounts from the activity of the developer or agent owner, which is why the need has been created to add certain functionalities to the payments library.
+            agent_username (str, optional): The username for authentication.
+            agent_password (str, optional): The password for authentication.
+            agent_token (str, optional): The token for authentication.
+            agent_endpoints (List[Dict[str, str]], optional): The endpoints of the agent.
+            agent_open_endpoints (List[str], optional): The open endpoints of the agent.
+            agent_open_api_url (str, optional): The OpenAPI URL of the agent.
+            agent_integration (str, optional): The integration type of the agent.
+            agent_sample_link (str, optional): The sample link of the agent.
+            agent_api_description (str, optional): The API description of the agent.
+            agent_tags (List[str], optional): The tags associated with the agent.
+            agent_use_ai_hub (bool, optional): If the agent is using the AI Hub. If true, the agent will be configured to use the AI Hub endpoints.
+            agent_implements_query_protocol (bool, optional): Indicates if the agent implements the query protocol.
+            agent_query_protocol_version (str, optional): The version of the query protocol implemented by the agent.
+            agent_service_host (str, optional): The host of the agent.        
+        """
+        plan = self.create_credits_plan(name=plan_name, description=plan_description, price=plan_price, token_address=plan_token_address, amount_of_credits=plan_amount_of_credits, tags=plan_tags)
+        agent = self.create_agent(plan_did=plan.did, name=agent_name, description=agent_description, service_charge_type=agent_service_charge_type, auth_type=agent_auth_type, amount_of_credits=agent_amount_of_credits, min_credits_to_charge=agent_min_credits_to_charge, 
+                                  max_credits_to_charge=agent_max_credits_to_charge, username=agent_username, password=agent_password, token=agent_token, endpoints=agent_endpoints, open_endpoints=agent_open_endpoints, open_api_url=agent_open_api_url, integration=agent_integration, 
+                                  sample_link=agent_sample_link, api_description=agent_api_description, tags=agent_tags, use_ai_hub=agent_use_ai_hub, implements_query_protocol=agent_implements_query_protocol, 
+                                  query_protocol_version=agent_query_protocol_version, service_host=agent_service_host)
+        return CreateAgentAndPlanResultDto.model_validate({ "planDID" : plan.did, "agentDID": agent.did})
+    
     def order_plan(self, plan_did: str, agreementId: Optional[str] = None) -> OrderPlanResultDto:
         """
         Orders a Payment Plan. The user needs to have enough balance in the token selected by the owner of the Payment Plan.

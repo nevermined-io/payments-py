@@ -66,6 +66,19 @@ class CreateAssetResultDto(BaseModel):
         }
     )
 
+class CreateAgentAndPlanResultDto(BaseModel):
+    planDID: str = Field(..., description="The DID of the plan")
+    agentDID: str = Field(..., description="The DID of the agent")
+
+    model_config = ConfigDict(
+        json_schema_extra= {
+            "example": {
+                "planDID": "did:nv:f1a974ca211e855a89b9a2049900fec29cc79cd9ca4e8d791a27836009c5b215",
+                "agentDID": "did:nv:f1a974ca211e855a89b9a2049900fec29cc79cd9ca4e8d791a27836009c5b213"
+            }
+        }
+    )
+
 class DownloadFileResultDto(BaseModel):
     success: bool = Field(..., description="True if the operation was successful.")
 
