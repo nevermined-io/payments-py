@@ -69,7 +69,7 @@ __init__(
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L796"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L726"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `burn_credits`
 
@@ -107,35 +107,12 @@ This method is only can be called by the owner of the Payment Plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L437"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L369"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_agent`
 
 ```python
-create_agent(
-    plan_did: str,
-    name: str,
-    description: str,
-    service_charge_type: str,
-    auth_type: str,
-    amount_of_credits: int = 1,
-    min_credits_to_charge: Optional[int] = 1,
-    max_credits_to_charge: Optional[int] = 1,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
-    token: Optional[str] = None,
-    endpoints: Optional[List[dict]] = None,
-    open_endpoints: Optional[List[str]] = [],
-    open_api_url: Optional[str] = None,
-    integration: Optional[str] = None,
-    sample_link: Optional[str] = None,
-    api_description: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-    use_ai_hub: Optional[bool] = None,
-    implements_query_protocol: Optional[bool] = None,
-    query_protocol_version: Optional[str] = None,
-    service_host: Optional[str] = None
-) → CreateAssetResultDto
+create_agent(createAgentDto: CreateAgentDto) → CreateAssetResultDto
 ```
 
 It creates a new AI Agent on Nevermined. The agent must be associated to a Payment Plan. Users that are subscribers of a payment plan can access the agent. Depending on the Payment Plan and the configuration of the agent, the usage of the agent will consume credits. When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent. 
@@ -150,28 +127,41 @@ https://docs.nevermined.app/docs/tutorials/builders/register-agent
  
 
 
- - <b>`plan_did`</b> (str):  The DID of the plan. 
- - <b>`name`</b> (str):  The name of the agent. 
- - <b>`description`</b> (str):  The description of the agent. 
- - <b>`service_charge_type`</b> (str):  The charge type of the agent. Options: 'fixed', 'dynamic' 
- - <b>`auth_type`</b> (str):  The authentication type of the agent. Options: 'none', 'basic', 'oauth' 
- - <b>`amount_of_credits`</b> (int):  The amount of credits for the agent. 
- - <b>`min_credits_to_charge`</b> (int, optional):  The minimum credits to charge for the agent. Only required for dynamic agents. 
- - <b>`max_credits_to_charge`</b> (int, optional):  The maximum credits to charge for the agent. Only required for dynamic agents. 
- - <b>`username`</b> (str, optional):  The username for authentication. 
- - <b>`password`</b> (str, optional):  The password for authentication. 
- - <b>`token`</b> (str, optional):  The token for authentication. 
- - <b>`endpoints`</b> (List[Dict[str, str]], optional):  The endpoints of the agent. 
- - <b>`open_endpoints`</b> (List[str], optional):  The open endpoints of the agent. 
- - <b>`open_api_url`</b> (str, optional):  The OpenAPI URL of the agent. 
- - <b>`integration`</b> (str, optional):  The integration type of the agent. 
- - <b>`sample_link`</b> (str, optional):  The sample link of the agent. 
- - <b>`api_description`</b> (str, optional):  The API description of the agent. 
- - <b>`tags`</b> (List[str], optional):  The tags associated with the agent. 
- - <b>`use_ai_hub`</b> (bool, optional):  If the agent is using the AI Hub. If true, the agent will be configured to use the AI Hub endpoints. 
- - <b>`implements_query_protocol`</b> (bool, optional):  Indicates if the agent implements the query protocol. 
- - <b>`query_protocol_version`</b> (str, optional):  The version of the query protocol implemented by the agent. 
- - <b>`service_host`</b> (str, optional):  The host of the agent. 
+ - <b>`createAgentDto`</b>:  (CreateAgentDto):  Options for the agent creation. 
+
+---
+
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L418"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+
+### <kbd>method</kbd> `create_agent_and_plan`
+
+```python
+create_agent_and_plan(
+    createCreditsPlanDto: CreateCreditsPlanDto,
+    createAgentDto: CreateAgentDto
+) → CreateAgentAndPlanResultDto
+```
+
+It creates a new AI Agent and a Payment Plan on Nevermined. 
+
+The agent must be associated to the Payment Plan. Users that are subscribers of a payment plan can access the agent. 
+
+Depending on the Payment Plan and the configuration of the agent, the usage of the agent will consume credits. 
+
+When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent. 
+
+This method is oriented to AI Builders 
+
+https://docs.nevermined.app/docs/tutorials/builders/register-agent 
+
+
+
+**Args:**
+ 
+
+
+ - <b>`createTimePlanDto`</b>:  (CreateTimePlanDto):  Options for the plan creation 
+ - <b>`createAgentDto`</b>:  (CreateAgentDto):  Options for the agent creation.       
 
 ---
 
@@ -181,16 +171,11 @@ https://docs.nevermined.app/docs/tutorials/builders/register-agent
 
 ```python
 create_credits_plan(
-    name: str,
-    description: str,
-    price: int,
-    token_address: str,
-    amount_of_credits: int,
-    tags: Optional[List[str]] = None
+    createCreditsPlanDto: CreateCreditsPlanDto
 ) → CreateAssetResultDto
 ```
 
-It allows to an AI Builder to create a Payment Plan on Nevermined based on Credits. A Nevermined Credits Plan limits the access by the access/usage of the Plan. With them, AI Builders control the number of requests that can be made to an agent or service. Every time a user accesses any resouce associated to the Payment Plan, the usage consumes from a capped amount of credits. When the user consumes all the credits, the plan automatically expires and the user needs to top up to continue using the service. 
+It allows to an AI Builder to create a Payment Plan on Nevermined based on Credits. A Nevermined Credits Plan limits the access by the access/usage of the Plan. With them, AI Builders control the number of requests that can be made to an agent or service. Every time a user accesses any resource associated to the Payment Plan, the usage consumes from a capped amount of credits. When the user consumes all the credits, the plan automatically expires and the user needs to top up to continue using the service. 
 
 This method is oriented to AI Builders. 
 
@@ -200,12 +185,7 @@ https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
 **Args:**
  
- - <b>`name`</b> (str):  The name of the plan. 
- - <b>`description`</b> (str):  The description of the plan. 
- - <b>`price`</b> (int):  The price of the plan. 
- - <b>`token_address`</b> (str):  The token address. 
- - <b>`amount_of_credits`</b> (int):  The amount of credits for the plan. 
- - <b>`tags`</b> (List[str], optional):  The tags associated with the plan. 
+ - <b>`createCreditsPlanDto`</b> (CreateCreditsPlanDto):  Options for the plan creation 
 
 
 
@@ -222,34 +202,16 @@ https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
 
 **Example:**
- response = your_instance.create_credits_plan(name="Basic Plan", description="100 credits plan", price=1, token_address="0x1234", amount_of_credits=100, tags=["basic"]) print(response) 
+ response = your_instance.create_credits_plan(CreateCreditsPlanDto(name="Basic Plan", description="100 credits plan", price=1, token_address="0x1234", amount_of_credits=100, tags=["basic"])) print(response) 
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L337"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L294"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_file`
 
 ```python
-create_file(
-    plan_did: str,
-    asset_type: str,
-    name: str,
-    description: str,
-    files: List[dict],
-    data_schema: Optional[str] = None,
-    sample_code: Optional[str] = None,
-    files_format: Optional[str] = None,
-    usage_example: Optional[str] = None,
-    programming_language: Optional[str] = None,
-    framework: Optional[str] = None,
-    task: Optional[str] = None,
-    training_details: Optional[str] = None,
-    variations: Optional[str] = None,
-    fine_tunable: Optional[bool] = None,
-    amount_of_credits: Optional[int] = None,
-    tags: Optional[List[str]] = None
-) → CreateAssetResultDto
+create_file(createFileDto: CreateFileDto) → CreateAssetResultDto
 ```
 
 It creates a new asset with file associated to it. The file asset must be associated to a Payment Plan. Users that are subscribers of a payment plan can download the files attached to it. Depending on the Payment Plan and the configuration of the file asset, the download will consume credits. When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue downloading the files. 
@@ -262,25 +224,7 @@ https://docs.nevermined.app/docs/tutorials/builders/register-file-asset
 
 **Args:**
  
- - <b>`plan_did`</b> (str):  The DID of the plan. 
- - <b>`asset_type`</b> (str):  The type of the asset. -> 'algorithm' | 'model' | 'dataset' | 'file' 
- - <b>`name`</b> (str):  The name of the file. 
- - <b>`description`</b> (str):  The description of the file. 
- - <b>`files`</b> (List[dict]):  The files of the file. 
- - <b>`data_schema`</b> (str, optional):  The data schema of the file. 
- - <b>`sample_code`</b> (str, optional):  The sample code of the file. 
- - <b>`files_format`</b> (str, optional):  The files format of the file. 
- - <b>`usage_example`</b> (str, optional):  The usage example of the file. 
- - <b>`programming_language`</b> (str, optional):  The programming language of the file. 
- - <b>`framework`</b> (str, optional):  The framework of the file. 
- - <b>`task`</b> (str, optional):  The task of the file. 
- - <b>`training_details`</b> (str, optional):  The training details of the file. 
- - <b>`variations`</b> (str, optional):  The variations of the file. 
- - <b>`fine_tunable`</b> (bool, optional):  The fine tunable of the file. 
- - <b>`amount_of_credits`</b> (int, optional):  The amount of credits for the file. 
- - <b>`tags`</b> (List[str], optional):  The tags associated with the file. 
-
-
+ - <b>`createFileDto`</b>:  (CreateFileDto):  Options for the file creation. 
 
 
 
@@ -301,36 +245,12 @@ https://docs.nevermined.app/docs/tutorials/builders/register-file-asset
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L208"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L196"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_service`
 
 ```python
-create_service(
-    plan_did: str,
-    service_type: str,
-    name: str,
-    description: str,
-    service_charge_type: str,
-    auth_type: str,
-    amount_of_credits: int = 1,
-    min_credits_to_charge: Optional[int] = 1,
-    max_credits_to_charge: Optional[int] = 1,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
-    token: Optional[str] = None,
-    endpoints: Optional[List[dict]] = None,
-    open_endpoints: Optional[List[str]] = [],
-    open_api_url: Optional[str] = None,
-    integration: Optional[str] = None,
-    sample_link: Optional[str] = None,
-    api_description: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-    is_nevermined_hosted: Optional[bool] = None,
-    implements_query_protocol: Optional[bool] = None,
-    query_protocol_version: Optional[str] = None,
-    service_host: Optional[str] = None
-) → CreateAssetResultDto
+create_service(createServiceDto: CreateServiceDto) → CreateAssetResultDto
 ```
 
 It creates a new AI Agent or Service on Nevermined. The agent/service must be associated to a Payment Plan. Users that are subscribers of a payment plan can access the agent/service. Depending on the Payment Plan and the configuration of the agent/service, the usage of the agent/service will consume credits. When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent/service. 
@@ -343,29 +263,7 @@ https://docs.nevermined.app/docs/tutorials/builders/register-agent
 
 **Args:**
  
- - <b>`plan_did`</b> (str):  The DID of the plan. 
- - <b>`service_type`</b> (str):  The type of the service. Options: 'service', 'agent', 'assistant' 
- - <b>`name`</b> (str):  The name of the service. 
- - <b>`description`</b> (str):  The description of the service. 
- - <b>`service_charge_type`</b> (str):  The charge type of the service. Options: 'fixed', 'dynamic' 
- - <b>`auth_type`</b> (str):  The authentication type of the service. Options: 'none', 'basic', 'oauth' 
- - <b>`amount_of_credits`</b> (int):  The amount of credits for the service. 
- - <b>`min_credits_to_charge`</b> (int, optional):  The minimum credits to charge for the service. Only required for dynamic services. 
- - <b>`max_credits_to_charge`</b> (int, optional):  The maximum credits to charge for the service. Only required for dynamic services. 
- - <b>`username`</b> (str, optional):  The username for authentication. 
- - <b>`password`</b> (str, optional):  The password for authentication. 
- - <b>`token`</b> (str, optional):  The token for authentication. 
- - <b>`endpoints`</b> (List[Dict[str, str]], optional):  The endpoints of the service. 
- - <b>`open_endpoints`</b> (List[str], optional):  The open endpoints of the service. 
- - <b>`open_api_url`</b> (str, optional):  The OpenAPI URL of the service. 
- - <b>`integration`</b> (str, optional):  The integration type of the service. 
- - <b>`sample_link`</b> (str, optional):  The sample link of the service. 
- - <b>`api_description`</b> (str, optional):  The API description of the service. 
- - <b>`tags`</b> (List[str], optional):  The tags associated with the service. 
- - <b>`is_nevermined_hosted`</b> (bool, optional):  Indicates if the service is hosted by Nevermined. 
- - <b>`implements_query_protocol`</b> (bool, optional):  Indicates if the service implements the query protocol. 
- - <b>`query_protocol_version`</b> (str, optional):  The version of the query protocol implemented by the service. 
- - <b>`service_host`</b> (str, optional):  The host of the service. 
+ - <b>`createServiceDto`</b>:  (CreateServiceDto):  Options for the service creation 
 
 
 
@@ -386,19 +284,12 @@ https://docs.nevermined.app/docs/tutorials/builders/register-agent
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L133"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L127"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `create_time_plan`
 
 ```python
-create_time_plan(
-    name: str,
-    description: str,
-    price: int,
-    token_address: str,
-    duration: Optional[int] = 0,
-    tags: Optional[List[str]] = None
-) → CreateAssetResultDto
+create_time_plan(createTimePlanDto: CreateTimePlanDto) → CreateAssetResultDto
 ```
 
 It allows to an AI Builder to create a Payment Plan on Nevermined based on Time. A Nevermined Time Plan limits the access by the a specific amount of time. With them, AI Builders can specify the duration of the Payment Plan (1 month, 1 year, etc.). When the time period is over, the plan automatically expires and the user needs to renew it. 
@@ -411,12 +302,7 @@ https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
 **Args:**
  
- - <b>`name`</b> (str):  The name of the plan. 
- - <b>`description`</b> (str):  The description of the plan. 
- - <b>`price`</b> (int):  The price of the plan. 
- - <b>`token_address`</b> (str):  The token address. 
- - <b>`duration`</b> (int, optional):  The duration of the plan in days. If not provided, the plan will be valid forever. 
- - <b>`tags`</b> (List[str], optional):  The tags associated with the plan. 
+ - <b>`createTimePlanDto`</b>:  (CreateTimePlanDto):  Options for the plan creation 
 
 
 
@@ -433,11 +319,11 @@ https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
 
 **Example:**
- response = your_instance.create_time_plan(name="Yearly Plan", description="Annual plan", price=1200, token_address="0x5678", duration=365, tags=["yearly", "premium"]) print(response) 
+ response = your_instance.create_time_plan(CreateTimePlanDto(name="Yearly Plan", description="Annual plan", price=1200, token_address="0x5678", duration=365, tags=["yearly", "premium"])) print(response) 
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L713"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L643"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `download_file`
 
@@ -482,7 +368,7 @@ Downloads the file.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L541"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L471"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_asset_ddo`
 
@@ -508,7 +394,7 @@ https://docs.nevermined.io/docs/architecture/specs/Spec-DID https://docs.nevermi
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L700"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L630"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_checkout_plan`
 
@@ -532,7 +418,7 @@ Gets the checkout plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L687"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L617"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_file_details_url`
 
@@ -556,7 +442,7 @@ Gets the file details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L647"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L577"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_associated_files`
 
@@ -580,7 +466,7 @@ Get array of files DIDs associated with a payment plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L633"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L563"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_associated_services`
 
@@ -604,7 +490,7 @@ Get array of services/agent DIDs associated with a payment plan.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L557"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L487"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_balance`
 
@@ -645,7 +531,7 @@ Expected Response: {  "planType": "credits",  "isOwner": True,  "isSubscriptor":
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L661"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L591"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_plan_details_url`
 
@@ -669,7 +555,7 @@ Gets the plan details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L605"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L535"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_access_config`
 
@@ -683,7 +569,7 @@ get_service_access_config(service_did: str) → ServiceTokenResultDto
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L674"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L604"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_details_url`
 
@@ -707,7 +593,7 @@ Gets the service details.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L608"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L538"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_service_token`
 
@@ -744,7 +630,7 @@ Get the required configuration for accessing a remote service agent. This config
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L767"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L697"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `mint_credits`
 
@@ -781,7 +667,7 @@ Mints the credits associated with a plan and sends them to the receiver.
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L512"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L442"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `order_plan`
 
@@ -822,21 +708,27 @@ The payment is done using Crypto. Payments using Fiat can be done via the Neverm
 
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L844"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L780"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `search_agents`
 
 ```python
-search_agents(text: Optional[str] = None)
+search_agents(
+    text: Optional[str] = None,
+    page: Optional[int] = 1,
+    offset: Optional[int] = 10
+)
 ```
 
-Search for agents. 
+Search for agents. It will search for agents matching the text provided in their metadata. 
 
 
 
 **Args:**
  
  - <b>`text`</b> (str):  The text to search for. 
+ - <b>`page`</b> (int):  The page number. 
+ - <b>`offset`</b> (int):  The offset. 
 
 
 
@@ -844,29 +736,45 @@ Search for agents.
  
  - <b>`Response`</b>:  The response from the API call. 
 
+
+
+**Example:**
+ response = your_instance.search_agents(text="My Agent") print(response) 
+
 ---
 
-<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L825"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L755"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `search_plans`
 
 ```python
-search_plans(text: Optional[str] = None)
+search_plans(
+    text: Optional[str] = None,
+    page: Optional[int] = 1,
+    offset: Optional[int] = 10
+)
 ```
 
-Search for plans. 
+Search for plans. It will search for plans matching the text provided in their metadata. 
 
 
 
 **Args:**
  
  - <b>`text`</b> (str):  The text to search for. 
+ - <b>`page`</b> (int):  The page number. 
+ - <b>`offset`</b> (int):  The offset. 
 
 
 
 **Returns:**
  
  - <b>`Response`</b>:  The response from the API call. 
+
+
+
+**Example:**
+ response = your_instance.search_plans(text="Basic") print(response) 
 
 
 
