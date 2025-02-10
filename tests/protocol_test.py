@@ -5,7 +5,7 @@ import os
 
 from payments_py.payments import Payments
 from payments_py import Environment
-from payments_py.data_models import AgentExecutionStatus, CreateAssetResultDto, OrderPlanResultDto, TaskLog
+from payments_py.data_models import AgentExecutionStatus, CreateAgentDto, CreateAssetResultDto, CreateCreditsPlanDto, OrderPlanResultDto, TaskLog
 
 response_event = asyncio.Event()
 global response_data
@@ -78,19 +78,19 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
 
-    plan = builder.create_credits_plan(
+    plan = builder.create_credits_plan(createCreditsPlanDto=CreateCreditsPlanDto(
         name="Plan with agent",
         description="test",
         price=0,
         token_address="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
         amount_of_credits=100,
-        tags=["test"]
+        tags=["test"])
     )
     assert isinstance(plan, CreateAssetResultDto)
     assert plan.did.startswith("did:")
     print('Plan created:', plan.did)
 
-    agent = builder.create_agent(
+    agent = builder.create_agent(createAgentDto=CreateAgentDto(
         plan_did=plan.did,
         name="Agent service",
         description="test",
@@ -98,6 +98,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
         service_charge_type="fixed",
         auth_type="none",
         use_ai_hub=True,
+        )
     )
 
     assert isinstance(agent, CreateAssetResultDto)
