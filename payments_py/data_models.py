@@ -8,6 +8,107 @@ class PlanType(str, Enum):
     TIME = 'time'
     BOTH = 'both'
 
+class CreateCreditsPlanDto(BaseModel):
+    name: str = Field(..., description='The name of the plan.')
+    description: str = Field(..., description='The description of the plan.')
+    price: int = Field(..., description='The price of the plan.')
+    token_address: str = Field(..., description='The token address.')
+    amount_of_credits: int = Field(..., description='The amount of credits for the plan.')
+    tags: List[str] = Field(None, description='The tags associated with the plan.')
+
+class CreateTimePlanDto(BaseModel):
+    name: str = Field(..., description='The name of the plan.')
+    description: str = Field(..., description='The description of the plan.')
+    price: int = Field(..., description='The price of the plan.')
+    token_address: str = Field(..., description='The token address.')
+    duration: int = Field(0, description='The duration of the plan in days. If not provided, the plan will be valid forever.')
+    tags: List[str] = Field(None, description='The tags associated with the plan.')  
+
+class CreateServiceDto(BaseModel):
+    plan_did: str = Field(..., description="The DID of the plan.")
+    service_type: str = Field(..., description="The type of the service. Options: 'service', 'agent', 'assistant'")
+    name: str = Field(..., description="The name of the service.")
+    description: str = Field(..., description="The description of the service.")
+    service_charge_type: str = Field(..., description="The charge type of the service. Options: 'fixed', 'dynamic'")
+    auth_type: str = Field(..., description="The authentication type of the service. Options: 'none', 'basic', 'oauth'")
+    
+    amount_of_credits: int = Field(1, description="The amount of credits for the service.")
+    min_credits_to_charge: int = Field(1, description="The minimum credits to charge for the service. Only required for dynamic services.")
+    max_credits_to_charge: int = Field(1, description="The maximum credits to charge for the service. Only required for dynamic services.")
+    
+    username: Optional[str] = Field(None, description="The username for authentication.")
+    password: Optional[str] = Field(None, description="The password for authentication.")
+    token: Optional[str] = Field(None, description="The token for authentication.")
+    
+    endpoints: List[Dict[str, str]] = Field(default_factory=list, description="The endpoints of the service.")
+    open_endpoints: List[str] = Field(default_factory=list, description="The open endpoints of the service.")
+    
+    open_api_url: Optional[str] = Field(None, description="The OpenAPI URL of the service.")
+    integration: Optional[str] = Field(None, description="The integration type of the service.")
+    sample_link: Optional[str] = Field(None, description="The sample link of the service.")
+    api_description: Optional[str] = Field(None, description="The API description of the service.")
+    
+    tags: List[str] = Field(default_factory=list, description="The tags associated with the service.")
+    
+    is_nevermined_hosted: bool = Field(False, description="Indicates if the service is hosted by Nevermined.")
+    implements_query_protocol: bool = Field(False, description="Indicates if the service implements the query protocol.")
+    
+    query_protocol_version: Optional[str] = Field(None, description="The version of the query protocol implemented by the service.")
+    service_host: Optional[str] = Field(None, description="The host of the service.")
+
+class CreateFileDto(BaseModel):
+    plan_did: str = Field(..., description="The DID of the plan.")
+    asset_type: str = Field(..., description="The type of the asset. Options: 'algorithm', 'model', 'dataset', 'file'")
+    name: str = Field(..., description="The name of the file.")
+    description: str = Field(..., description="The description of the file.")
+    files: List[Dict] = Field(..., description="The files of the file.")
+
+    data_schema: Optional[str] = Field(None, description="The data schema of the file.")
+    sample_code: Optional[str] = Field(None, description="The sample code of the file.")
+    files_format: Optional[str] = Field(None, description="The files format of the file.")
+    usage_example: Optional[str] = Field(None, description="The usage example of the file.")
+    programming_language: Optional[str] = Field(None, description="The programming language of the file.")
+    framework: Optional[str] = Field(None, description="The framework of the file.")
+    task: Optional[str] = Field(None, description="The task of the file.")
+    training_details: Optional[str] = Field(None, description="The training details of the file.")
+    variations: Optional[str] = Field(None, description="The variations of the file.")
+    
+    fine_tunable: bool = Field(False, description="Indicates whether the file is fine-tunable.")
+    amount_of_credits: int = Field(0, description="The amount of credits for the file.")
+    
+    tags: List[str] = Field(default_factory=list, description="The tags associated with the file.")
+
+class CreateAgentDto(BaseModel):
+    plan_did: Optional[str] = Field(None, description="The DID of the plan.")
+    name: str = Field(..., description="The name of the agent.")
+    description: str = Field(..., description="The description of the agent.")
+    
+    service_charge_type: str = Field(..., description="The charge type of the agent. Options: 'fixed', 'dynamic'")
+    auth_type: str = Field(..., description="The authentication type of the agent. Options: 'none', 'basic', 'oauth'")
+    
+    amount_of_credits: int = Field(1, description="The amount of credits for the agent.")
+    min_credits_to_charge: int = Field(1, description="The minimum credits to charge for the agent. Only required for dynamic agents.")
+    max_credits_to_charge: int = Field(1, description="The maximum credits to charge for the agent. Only required for dynamic agents.")
+
+    username: Optional[str] = Field(None, description="The username for authentication.")
+    password: Optional[str] = Field(None, description="The password for authentication.")
+    token: Optional[str] = Field(None, description="The token for authentication.")
+
+    endpoints: List[Dict[str, str]] = Field(default_factory=list, description="The endpoints of the agent.")
+    open_endpoints: List[str] = Field(default_factory=list, description="The open endpoints of the agent.")
+    
+    open_api_url: Optional[str] = Field(None, description="The OpenAPI URL of the agent.")
+    integration: Optional[str] = Field(None, description="The integration type of the agent.")
+    sample_link: Optional[str] = Field(None, description="The sample link of the agent.")
+    api_description: Optional[str] = Field(None, description="The API description of the agent.")
+
+    tags: List[str] = Field(default_factory=list, description="The tags associated with the agent.")
+    
+    use_ai_hub: bool = Field(False, description="If true, the agent will be configured to use the AI Hub endpoints.")
+    implements_query_protocol: bool = Field(False, description="Indicates if the agent implements the query protocol.")
+    query_protocol_version: Optional[str] = Field(None, description="The version of the query protocol implemented by the agent.")
+    service_host: Optional[str] = Field(None, description="The host of the agent.")
+
 class BalanceResultDto(BaseModel):
     planType: PlanType = Field(..., description="Plan type.")
     isOwner: bool = Field(..., description="Is the account owner of the plan.")

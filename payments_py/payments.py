@@ -3,7 +3,7 @@ from typing import List, Optional
 import requests
 import jwt
 
-from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAgentAndPlanResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto
+from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAgentAndPlanResultDto, CreateAgentDto, CreateAssetResultDto, CreateCreditsPlanDto, CreateFileDto, CreateServiceDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto, CreateTimePlanDto
 from payments_py.environments import Environment
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 from payments_py.ai_query_api import AIQueryApi
@@ -55,13 +55,12 @@ class Payments(NVMBackendApi):
         if ai_protocol:
             self.ai_protocol = AIQueryApi(self.backend_options)
 
-    def create_credits_plan(self, name: str, description: str, price: int, token_address: str,
-                            amount_of_credits: int, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
+    def create_credits_plan(self, createCreditsPlanDto: CreateCreditsPlanDto) -> CreateAssetResultDto:
         """
         It allows to an AI Builder to create a Payment Plan on Nevermined based on Credits.
         A Nevermined Credits Plan limits the access by the access/usage of the Plan.
         With them, AI Builders control the number of requests that can be made to an agent or service.
-        Every time a user accesses any resouce associated to the Payment Plan, the usage consumes from a capped amount of credits.
+        Every time a user accesses any resource associated to the Payment Plan, the usage consumes from a capped amount of credits.
         When the user consumes all the credits, the plan automatically expires and the user needs to top up to continue using the service.
 
         This method is oriented to AI Builders.
@@ -69,12 +68,7 @@ class Payments(NVMBackendApi):
         https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
         Args:
-            name (str): The name of the plan.
-            description (str): The description of the plan.
-            price (int): The price of the plan.
-            token_address (str): The token address.
-            amount_of_credits (int): The amount of credits for the plan.
-            tags (List[str], optional): The tags associated with the plan.
+            createCreditsPlanDto (CreateCreditsPlanDto): Options for the plan creation
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -83,12 +77,12 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.create_credits_plan(name="Basic Plan", description="100 credits plan", price=1, token_address="0x1234", amount_of_credits=100, tags=["basic"])
+            response = your_instance.create_credits_plan(CreateCreditsPlanDto(name="Basic Plan", description="100 credits plan", price=1, token_address="0x1234", amount_of_credits=100, tags=["basic"]))
             print(response)
         """
         metadata = {
             'main': {
-                'name': name,
+                'name': createCreditsPlanDto.name,
                 'type': 'subscription',
                 'license': 'No License Specified',
                 'files': [],
@@ -99,8 +93,8 @@ class Payments(NVMBackendApi):
                 },
             },
             'additionalInformation': {
-                'description': description,
-                'tags': tags if tags else [],
+                'description': createCreditsPlanDto.description,
+                'tags': createCreditsPlanDto.tags if createCreditsPlanDto.tags else [],
                 'customData': {
                     'dateMeasure': 'days',
                     'plan': 'custom',
@@ -111,17 +105,17 @@ class Payments(NVMBackendApi):
         service_attributes = [
             {
                 'serviceType': 'nft-sales',
-                'price': price,
+                'price': createCreditsPlanDto.price,
                 'nft': {
-                    'amount': amount_of_credits,
+                    'amount': createCreditsPlanDto.amount_of_credits,
                     'nftTransfer': False,
                 },
             },
         ]
             
         body = {
-            "price": price,
-            "tokenAddress": token_address,
+            "price": createCreditsPlanDto.price,
+            "tokenAddress": createCreditsPlanDto.token_address,
             "metadata": metadata,
             "serviceAttributes": service_attributes,
         }
@@ -130,8 +124,7 @@ class Payments(NVMBackendApi):
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
 
-    def create_time_plan(self, name: str, description: str, price: int, token_address: str,
-                            duration: Optional[int] = 0, tags: Optional[List[str]] = None) -> CreateAssetResultDto:
+    def create_time_plan(self, createTimePlanDto: CreateTimePlanDto) -> CreateAssetResultDto:
         """
         It allows to an AI Builder to create a Payment Plan on Nevermined based on Time.
         A Nevermined Time Plan limits the access by the a specific amount of time.
@@ -143,12 +136,7 @@ class Payments(NVMBackendApi):
         https://docs.nevermined.app/docs/tutorials/builders/create-plan
 
         Args:
-            name (str): The name of the plan.
-            description (str): The description of the plan.
-            price (int): The price of the plan.
-            token_address (str): The token address.
-            duration (int, optional): The duration of the plan in days. If not provided, the plan will be valid forever.
-            tags (List[str], optional): The tags associated with the plan.
+            createTimePlanDto: (CreateTimePlanDto):  Options for the plan creation
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -157,12 +145,12 @@ class Payments(NVMBackendApi):
             HTTPError: If the API call fails.
 
         Example:
-            response = your_instance.create_time_plan(name="Yearly Plan", description="Annual plan", price=1200, token_address="0x5678", duration=365, tags=["yearly", "premium"])
+            response = your_instance.create_time_plan(CreateTimePlanDto(name="Yearly Plan", description="Annual plan", price=1200, token_address="0x5678", duration=365, tags=["yearly", "premium"]))
             print(response)
         """
         metadata = {
             'main': {
-                'name': name,
+                'name': createTimePlanDto.name,
                 'type': 'subscription',
                 'license': 'No License Specified',
                 'files': [],
@@ -173,8 +161,8 @@ class Payments(NVMBackendApi):
                 },
             },
             'additionalInformation': {
-                'description': description,
-                'tags': tags if tags else [],
+                'description': createTimePlanDto.description,
+                'tags': createTimePlanDto.tags if createTimePlanDto.tags else [],
                 'customData': {
                     'dateMeasure': 'days',
                     'plan': 'custom',
@@ -186,9 +174,9 @@ class Payments(NVMBackendApi):
         service_attributes = [
             {
                 'serviceType': 'nft-sales',
-                'price': price,
+                'price': createTimePlanDto.price,
                 'nft': {
-                    'duration': duration,
+                    'duration': createTimePlanDto.duration,
                     'amount': 1,
                     'nftTransfer': False,
                 },
@@ -197,24 +185,15 @@ class Payments(NVMBackendApi):
         body = {
             "metadata": metadata,
             "serviceAttributes": service_attributes,
-            "price": price,
-            "tokenAddress": token_address,
+            "price": createTimePlanDto.price,
+            "tokenAddress": createTimePlanDto.token_address,
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/subscription"
         response = self.post(url, body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
-    def create_service(self, plan_did: str, service_type: str, name: str, description: str,
-                       service_charge_type: str, auth_type: str, amount_of_credits: int = 1,
-                       min_credits_to_charge: Optional[int] = 1, max_credits_to_charge: Optional[int] = 1,
-                       username: Optional[str] = None, password: Optional[str] = None, token: Optional[str] = None,
-                       endpoints: Optional[List[dict]] = None,
-                       open_endpoints: Optional[List[str]] = [], open_api_url: Optional[str] = None,
-                       integration: Optional[str] = None, sample_link: Optional[str] = None,
-                       api_description: Optional[str] = None,
-                       tags: Optional[List[str]] = None, is_nevermined_hosted: Optional[bool] = None, implements_query_protocol: Optional[bool]=None,
-                       query_protocol_version: Optional[str]= None, service_host: Optional[str]= None) -> CreateAssetResultDto:
+    def create_service(self, createServiceDto: CreateServiceDto) -> CreateAssetResultDto:
         """
         It creates a new AI Agent or Service on Nevermined.
         The agent/service must be associated to a Payment Plan. Users that are subscribers of a payment plan can access the agent/service.
@@ -226,29 +205,7 @@ class Payments(NVMBackendApi):
         https://docs.nevermined.app/docs/tutorials/builders/register-agent
 
         Args:
-            plan_did (str): The DID of the plan.
-            service_type (str): The type of the service. Options: 'service', 'agent', 'assistant'
-            name (str): The name of the service.
-            description (str): The description of the service.
-            service_charge_type (str): The charge type of the service. Options: 'fixed', 'dynamic'
-            auth_type (str): The authentication type of the service. Options: 'none', 'basic', 'oauth'
-            amount_of_credits (int): The amount of credits for the service.
-            min_credits_to_charge (int, optional): The minimum credits to charge for the service. Only required for dynamic services.
-            max_credits_to_charge (int, optional): The maximum credits to charge for the service. Only required for dynamic services.
-            username (str, optional): The username for authentication.
-            password (str, optional): The password for authentication.
-            token (str, optional): The token for authentication.
-            endpoints (List[Dict[str, str]], optional): The endpoints of the service.
-            open_endpoints (List[str], optional): The open endpoints of the service.
-            open_api_url (str, optional): The OpenAPI URL of the service.
-            integration (str, optional): The integration type of the service.
-            sample_link (str, optional): The sample link of the service.
-            api_description (str, optional): The API description of the service.
-            tags (List[str], optional): The tags associated with the service.
-            is_nevermined_hosted (bool, optional): Indicates if the service is hosted by Nevermined.
-            implements_query_protocol (bool, optional): Indicates if the service implements the query protocol.
-            query_protocol_version (str, optional): The version of the query protocol implemented by the service.
-            service_host (str, optional): The host of the service.
+            createServiceDto: (CreateServiceDto):  Options for the service creation
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -262,9 +219,9 @@ class Payments(NVMBackendApi):
         """
         metadata = {
             'main':{
-                'name': name,
+                'name': createServiceDto.name,
                 'license': 'No License Specified',
-                'type': service_type,
+                'type': createServiceDto.service_type,
                 'files': [],
                 'ercType': 'nft1155',
                 'nftType': 'nft1155Credit',
@@ -273,40 +230,40 @@ class Payments(NVMBackendApi):
                     'subscriptionType': 'credits', 
                 },
                 'webService': {
-                    'endpoints': endpoints,
-                    'openEndpoints': open_endpoints,
+                    'endpoints': createServiceDto.endpoints,
+                    'openEndpoints': createServiceDto.open_endpoints,
                     'internalAttributes': {
                         'authentication': {
-                            'type': auth_type if auth_type else 'none',
+                            'type': createServiceDto.auth_type if createServiceDto.auth_type else 'none',
                             **({
-                                'username': username,
-                                'password': password
-                            } if auth_type == 'basic' else {}),
+                                'username': createServiceDto.username,
+                                'password': createServiceDto.password
+                            } if createServiceDto.auth_type == 'basic' else {}),
                             **({
-                                'token': token
-                            } if auth_type == 'oauth' else {}),
+                                'token': createServiceDto.token
+                            } if createServiceDto.auth_type == 'oauth' else {}),
                         },
                         **({
-                            'headers': [{'Authorization': f'Bearer {token}'}]
-                        } if auth_type == 'oauth' and token else {}),
+                            'headers': [{'Authorization': f'Bearer {createServiceDto.token}'}]
+                        } if createServiceDto.auth_type == 'oauth' and createServiceDto.token else {}),
                     },
-                    'chargeType': service_charge_type,
-                    'isNeverminedHosted': is_nevermined_hosted,
-                    'implementsQueryProtocol': implements_query_protocol,
-                    'queryProtocolVersion': query_protocol_version,
-                    'serviceHost': self.environment.value['backend'] if is_nevermined_hosted else service_host,
+                    'chargeType': createServiceDto.service_charge_type,
+                    'isNeverminedHosted': createServiceDto.is_nevermined_hosted,
+                    'implementsQueryProtocol': createServiceDto.implements_query_protocol,
+                    'queryProtocolVersion': createServiceDto.query_protocol_version,
+                    'serviceHost': self.environment.value['backend'] if createServiceDto.is_nevermined_hosted else createServiceDto.service_host,
                 },
         },
         'additionalInformation': {
-            'description': description,
-            'tags': tags if tags else [],
+            'description': createServiceDto.description,
+            'tags': createServiceDto.tags if createServiceDto.tags else [],
             'customData': {
-                'openApiUrl': open_api_url,
-                'integration': integration,
-                'sampleLink': sample_link,
-                'apiDescription': api_description,
+                'openApiUrl': createServiceDto.open_api_url,
+                'integration': createServiceDto.integration,
+                'sampleLink': createServiceDto.sample_link,
+                'apiDescription': createServiceDto.api_description,
                 'plan': 'custom',
-                'serviceChargeType': service_charge_type,
+                'serviceChargeType': createServiceDto.service_charge_type,
             },
         }
 
@@ -315,11 +272,11 @@ class Payments(NVMBackendApi):
             {
                 'serviceType': 'nft-access',
                 'nft': {
-                    'amount': amount_of_credits if amount_of_credits else None,
-                    'tokenId': plan_did,
-                    'minCreditsToCharge': min_credits_to_charge,
-                    'minCreditsRequired': min_credits_to_charge,
-                    'maxCreditsToCharge': max_credits_to_charge,
+                    'amount': createServiceDto.amount_of_credits if createServiceDto.amount_of_credits else None,
+                    'tokenId': createServiceDto.plan_did,
+                    'minCreditsToCharge': createServiceDto.min_credits_to_charge,
+                    'minCreditsRequired': createServiceDto.min_credits_to_charge,
+                    'maxCreditsToCharge': createServiceDto.max_credits_to_charge,
                     'nftTransfer': False,
                 },
             },
@@ -327,22 +284,14 @@ class Payments(NVMBackendApi):
         body = {
             "metadata": metadata,
             "serviceAttributes": service_attributes,
-            "subscriptionDid": plan_did,
+            "subscriptionDid": createServiceDto.plan_did,
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/service"
         response = self.post(url, data=body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
-    def create_file(self, plan_did: str, asset_type: str, name: str, description: str, files: List[dict],
-                    data_schema: Optional[str] = None,
-                    sample_code: Optional[str] = None,
-                    files_format: Optional[str] = None, usage_example: Optional[str] = None,
-                    programming_language: Optional[str] = None, framework: Optional[str] = None,
-                    task: Optional[str] = None, training_details: Optional[str] = None,
-                    variations: Optional[str] = None,
-                    fine_tunable: Optional[bool] = None, amount_of_credits: Optional[int] = None,
-                    tags: Optional[List[str]] = None) -> CreateAssetResultDto:
+    def create_file(self, createFileDto: CreateFileDto) -> CreateAssetResultDto:    
         """
         It creates a new asset with file associated to it.
         The file asset must be associated to a Payment Plan. Users that are subscribers of a payment plan can download the files attached to it.
@@ -354,24 +303,7 @@ class Payments(NVMBackendApi):
         https://docs.nevermined.app/docs/tutorials/builders/register-file-asset
 
         Args:
-            plan_did (str): The DID of the plan.
-            asset_type (str): The type of the asset. -> 'algorithm' | 'model' | 'dataset' | 'file'
-            name (str): The name of the file.
-            description (str): The description of the file.
-            files (List[dict]): The files of the file.
-            data_schema (str, optional): The data schema of the file.
-            sample_code (str, optional): The sample code of the file.
-            files_format (str, optional): The files format of the file.
-            usage_example (str, optional): The usage example of the file.
-            programming_language (str, optional): The programming language of the file.
-            framework (str, optional): The framework of the file.
-            task (str, optional): The task of the file.
-            training_details (str, optional): The training details of the file.
-            variations (str, optional): The variations of the file.
-            fine_tunable (bool, optional): The fine tunable of the file.
-            amount_of_credits (int, optional): The amount of credits for the file.
-            tags (List[str], optional): The tags associated with the file.
-            
+            createFileDto: (CreateFileDto):  Options for the file creation.
 
         Returns:
             CreateAssetResultDto: The result of the creation operation.
@@ -385,31 +317,31 @@ class Payments(NVMBackendApi):
         """
         metadata = {
             'main': {
-                'name': name,
+                'name': createFileDto.name,
                 'license': 'No License Specified',
-                'type': asset_type,
-                'files': files,
+                'type': createFileDto.asset_type,
+                'files': createFileDto.files,
                 'ercType': 'nft1155',
                 'nftType': 'nft1155Credit',
             },
             'additionalInformation': {
-                'description': description,
-                'tags': tags if tags else [],
+                'description': createFileDto.description,
+                'tags': createFileDto.tags if createFileDto.tags else [],
                 'customData': {
                 # coverFile: coverFile?.[0],
                 # conditionsFile: conditionsFile?.[0],
                 # sampleData: sampleData?.[0],
-                'dataSchema': data_schema ,
-                'sampleCode': sample_code,
-                'usageExample': usage_example,
-                'filesFormat': files_format ,
-                'programmingLanguage': programming_language ,
-                'framework': framework,
-                'task': task,
-                'architecture': task,
-                'trainingDetails': training_details,
-                'variations': variations ,
-                'fineTunable': fine_tunable,
+                'dataSchema': createFileDto.data_schema ,
+                'sampleCode': createFileDto.sample_code,
+                'usageExample': createFileDto.usage_example,
+                'filesFormat': createFileDto.files_format ,
+                'programmingLanguage': createFileDto.programming_language ,
+                'framework': createFileDto.framework,
+                'task': createFileDto.task,
+                'architecture': createFileDto.task,
+                'trainingDetails': createFileDto.training_details,
+                'variations': createFileDto.variations ,
+                'fineTunable': createFileDto.fine_tunable,
                 'plan': 'custom',
                 },
             },
@@ -418,8 +350,8 @@ class Payments(NVMBackendApi):
             {
                 'serviceType': 'nft-access',
                 'nft': {
-                    'tokenId': plan_did,
-                    'amount': amount_of_credits if amount_of_credits else None,
+                    'tokenId': createFileDto.plan_did,
+                    'amount': createFileDto.amount_of_credits if createFileDto.amount_of_credits else None,
                     'nftTransfer': False,
                 },
             },
@@ -427,22 +359,14 @@ class Payments(NVMBackendApi):
         body = {
             "metadata": metadata,
             "serviceAttributes": service_attributes,
-            "subscriptionDid": plan_did,
+            "subscriptionDid": createFileDto.plan_did,
         }
         url = f"{self.environment.value['backend']}/api/v1/payments/file"
         response = self.post(url, data=body)
         response.raise_for_status()
         return CreateAssetResultDto.model_validate(response.json())
     
-    def create_agent(self, plan_did: str, name: str, description: str, service_charge_type: str, auth_type: str,
-                        amount_of_credits: int = 1, min_credits_to_charge: Optional[int] = 1, max_credits_to_charge: Optional[int] = 1,
-                        username: Optional[str] = None, password: Optional[str] = None, token: Optional[str] = None,
-                        endpoints: Optional[List[dict]] = None,
-                        open_endpoints: Optional[List[str]] = [], open_api_url: Optional[str] = None,
-                        integration: Optional[str] = None, sample_link: Optional[str] = None,
-                        api_description: Optional[str] = None,
-                        tags: Optional[List[str]] = None, use_ai_hub: Optional[bool] = None, implements_query_protocol: Optional[bool]=None,
-                        query_protocol_version: Optional[str]= None, service_host: Optional[str]= None) -> CreateAssetResultDto:
+    def create_agent(self, createAgentDto: CreateAgentDto) -> CreateAssetResultDto:
         """
         It creates a new AI Agent on Nevermined.
         The agent must be associated to a Payment Plan. Users that are subscribers of a payment plan can access the agent.
@@ -455,66 +379,43 @@ class Payments(NVMBackendApi):
 
         Args:
 
-            plan_did (str): The DID of the plan.
-            name (str): The name of the agent.
-            description (str): The description of the agent.
-            service_charge_type (str): The charge type of the agent. Options: 'fixed', 'dynamic'
-            auth_type (str): The authentication type of the agent. Options: 'none', 'basic', 'oauth'
-            amount_of_credits (int): The amount of credits for the agent.
-            min_credits_to_charge (int, optional): The minimum credits to charge for the agent. Only required for dynamic agents.
-            max_credits_to_charge (int, optional): The maximum credits to charge for the agent. Only required for dynamic agents.
-            username (str, optional): The username for authentication.
-            password (str, optional): The password for authentication.
-            token (str, optional): The token for authentication.
-            endpoints (List[Dict[str, str]], optional): The endpoints of the agent.
-            open_endpoints (List[str], optional): The open endpoints of the agent.
-            open_api_url (str, optional): The OpenAPI URL of the agent.
-            integration (str, optional): The integration type of the agent.
-            sample_link (str, optional): The sample link of the agent.
-            api_description (str, optional): The API description of the agent.
-            tags (List[str], optional): The tags associated with the agent.
-            use_ai_hub (bool, optional): If the agent is using the AI Hub. If true, the agent will be configured to use the AI Hub endpoints.
-            implements_query_protocol (bool, optional): Indicates if the agent implements the query protocol.
-            query_protocol_version (str, optional): The version of the query protocol implemented by the agent.
-            service_host (str, optional): The host of the agent.
+            createAgentDto: (CreateAgentDto):  Options for the agent creation.
+    
+
         """
-        if(use_ai_hub):
-            service_host = self.environment.value['backend']
-            implements_query_protocol = True
-            open_api_url = get_ai_hub_open_api_url(service_host)
-            endpoints = get_query_protocol_endpoints(service_host)
+        if(createAgentDto.use_ai_hub):
+            createAgentDto.service_host = self.environment.value['backend']
+            createAgentDto.implements_query_protocol = True
+            createAgentDto.open_api_url = get_ai_hub_open_api_url(createAgentDto.service_host)
+            createAgentDto.endpoints = get_query_protocol_endpoints(createAgentDto.service_host)
 
 
-        return self.create_service(plan_did, 
-                            'agent', 
-                            name, 
-                            description, 
-                            service_charge_type, 
-                            auth_type, 
-                            amount_of_credits, 
-                            min_credits_to_charge, 
-                            max_credits_to_charge, 
-                            username, 
-                            password, 
-                            token, 
-                            endpoints, 
-                            open_endpoints, 
-                            open_api_url, 
-                            integration, 
-                            sample_link, 
-                            api_description, 
-                            tags, 
-                            use_ai_hub, 
-                            implements_query_protocol, 
-                            query_protocol_version,
-                            service_host)
+        return self.create_service(createServiceDto=CreateServiceDto(
+                            plan_did=createAgentDto.plan_did, 
+                            service_type='agent', 
+                            name=createAgentDto.name, 
+                            description=createAgentDto.description,
+                            service_charge_type=createAgentDto.service_charge_type, 
+                            auth_type=createAgentDto.auth_type, 
+                            amount_of_credits=createAgentDto.amount_of_credits, 
+                            min_credits_to_charge=createAgentDto.min_credits_to_charge, 
+                            max_credits_to_charge=createAgentDto.max_credits_to_charge, 
+                            username=createAgentDto.username, 
+                            password=createAgentDto.password, 
+                            token=createAgentDto.token, 
+                            endpoints=createAgentDto.endpoints, 
+                            open_endpoints=createAgentDto.open_endpoints, 
+                            open_api_url=createAgentDto.open_api_url, 
+                            integration=createAgentDto.integration, 
+                            sample_link=createAgentDto.sample_link, 
+                            api_description=createAgentDto.api_description, 
+                            tags=createAgentDto.tags, 
+                            use_ai_hub=createAgentDto.use_ai_hub, 
+                            implements_query_protocol=createAgentDto.implements_query_protocol, 
+                            query_protocol_version=createAgentDto.query_protocol_version,
+                            service_host=createAgentDto.service_host))
 
-    def create_agent_and_plan(self, plan_name: str, plan_description: str, plan_price: int, plan_token_address: str, plan_amount_of_credits: int,
-                                agent_name: str, agent_description: str, agent_service_charge_type: str, agent_auth_type: str,plan_tags: Optional[List[str]] = None, agent_amount_of_credits: int = 1, agent_min_credits_to_charge: Optional[int] = 1, agent_max_credits_to_charge: Optional[int] = 1,
-                                agent_username: Optional[str] = None, agent_password: Optional[str] = None, agent_token: Optional[str] = None, agent_endpoints: Optional[List[dict]] = None,
-                                agent_open_endpoints: Optional[List[str]] = [], agent_open_api_url: Optional[str] = None, agent_integration: Optional[str] = None, agent_sample_link: Optional[str] = None,
-                                agent_api_description: Optional[str] = None, agent_tags: Optional[List[str]] = None, agent_use_ai_hub: Optional[bool] = None, agent_implements_query_protocol: Optional[bool]=None,
-                                agent_query_protocol_version: Optional[str]= None, agent_service_host: Optional[str]= None) -> CreateAgentAndPlanResultDto:
+    def create_agent_and_plan(self, createCreditsPlanDto: CreateCreditsPlanDto, createAgentDto: CreateAgentDto) -> CreateAgentAndPlanResultDto:
         """
         It creates a new AI Agent and a Payment Plan on Nevermined.
 
@@ -530,39 +431,12 @@ class Payments(NVMBackendApi):
 
         Args:
 
-            plan_name (str): The name of the plan.
-            plan_description (str): The description of the plan.
-            plan_price (int): The price of the plan.
-            plan_token_address (str): The token address of the plan.
-            plan_amount_of_credits (int): The amount of credits for the plan.
-            plan_tags (List[str], optional): The tags associated with the plan.
-            agent_name (str): The name of the agent.
-            agent_description (str): The description of the agent.
-            agent_service_charge_type (str): The charge type of the agent. Options: 'fixed', 'dynamic'
-            agent_auth_type (str): The authentication type of the agent. Options: 'none', 'basic', 'oauth'
-            agent_amount_of_credits (int): The amount of credits the agent consumes per request.
-            agent_min_credits_to_charge (int, optional): The minimum credits to charge for the agent. Only required for dynamic agents.
-            agent_max_credits_to_charge (int, optional): The maximum credits to charge for the agent. Only required for dynamic agents.Some potential clients seek to completely decouple the creation of agents and accounts from the activity of the developer or agent owner, which is why the need has been created to add certain functionalities to the payments library.
-            agent_username (str, optional): The username for authentication.
-            agent_password (str, optional): The password for authentication.
-            agent_token (str, optional): The token for authentication.
-            agent_endpoints (List[Dict[str, str]], optional): The endpoints of the agent.
-            agent_open_endpoints (List[str], optional): The open endpoints of the agent.
-            agent_open_api_url (str, optional): The OpenAPI URL of the agent.
-            agent_integration (str, optional): The integration type of the agent.
-            agent_sample_link (str, optional): The sample link of the agent.
-            agent_api_description (str, optional): The API description of the agent.
-            agent_tags (List[str], optional): The tags associated with the agent.
-            agent_use_ai_hub (bool, optional): If the agent is using the AI Hub. If true, the agent will be configured to use the AI Hub endpoints.
-            agent_implements_query_protocol (bool, optional): Indicates if the agent implements the query protocol.
-            agent_query_protocol_version (str, optional): The version of the query protocol implemented by the agent.
-            agent_service_host (str, optional): The host of the agent.        
+            createTimePlanDto: (CreateTimePlanDto):  Options for the plan creation
+            createAgentDto: (CreateAgentDto):  Options for the agent creation.      
         """
-        plan = self.create_credits_plan(name=plan_name, description=plan_description, price=plan_price, token_address=plan_token_address, amount_of_credits=plan_amount_of_credits, tags=plan_tags)
-        agent = self.create_agent(plan_did=plan.did, name=agent_name, description=agent_description, service_charge_type=agent_service_charge_type, auth_type=agent_auth_type, amount_of_credits=agent_amount_of_credits, min_credits_to_charge=agent_min_credits_to_charge, 
-                                  max_credits_to_charge=agent_max_credits_to_charge, username=agent_username, password=agent_password, token=agent_token, endpoints=agent_endpoints, open_endpoints=agent_open_endpoints, open_api_url=agent_open_api_url, integration=agent_integration, 
-                                  sample_link=agent_sample_link, api_description=agent_api_description, tags=agent_tags, use_ai_hub=agent_use_ai_hub, implements_query_protocol=agent_implements_query_protocol, 
-                                  query_protocol_version=agent_query_protocol_version, service_host=agent_service_host)
+        plan = self.create_credits_plan(createCreditsPlanDto)
+        createAgentDto.plan_did = plan.did
+        agent = self.create_agent(createAgentDto)
         return CreateAgentAndPlanResultDto.model_validate({ "planDID" : plan.did, "agentDID": agent.did})
     
     def order_plan(self, plan_did: str, agreementId: Optional[str] = None) -> OrderPlanResultDto:

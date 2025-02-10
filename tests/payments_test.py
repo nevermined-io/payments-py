@@ -6,7 +6,7 @@ from payments_py import Environment
 from payments_py import Payments
 import os
 
-from payments_py.data_models import BalanceResultDto, BurnResultDto, CreateAgentAndPlanResultDto, CreateAssetResultDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto
+from payments_py.data_models import CreateAgentDto, BalanceResultDto, BurnResultDto, CreateAgentAndPlanResultDto, CreateAssetResultDto, CreateFileDto, CreateServiceDto, CreateTimePlanDto, DownloadFileResultDto, MintResultDto, OrderPlanResultDto, ServiceTokenResultDto, CreateCreditsPlanDto
 
 
 nvm_api_key = os.getenv('NVM_API_KEY')
@@ -21,32 +21,53 @@ def test_payment_creation(payment):
     assert payment.version == "1.0.0"
     assert payment.nvm_api_key == nvm_api_key
 
+def test_create_agent_and_plan(payment):
+    response = payment.create_agent_and_plan(createCreditsPlanDto=CreateCreditsPlanDto(name="test-py",
+        description="test",
+        price=1000000,
+        token_address="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+        amount_of_credits=100,
+        tags=["test"]),
+        createAgentDto=CreateAgentDto(
+            name="agent-py",
+            description="test",
+            amount_of_credits=1,
+            service_charge_type="fixed",
+            auth_type="none",
+            use_ai_hub=True
+        )
+
+    )
+    assert isinstance(response, CreateAgentAndPlanResultDto)
+    assert response.planDID.startswith("did:")
+    assert response.agentDID.startswith("did:")
+
 def test_create_time_plan(payment):
-    response = payment.create_time_plan(
+    response = payment.create_time_plan(createTimePlanDto=CreateTimePlanDto(
         name="test-py",
         description="test",
         price=1000000,
         token_address="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
         duration=30,
         tags=["test"]
-    )
+    ))
     assert isinstance(response, CreateAssetResultDto)
     assert response.did.startswith("did:")
 
 def test_create_credits_plan(payment):
-    response = payment.create_credits_plan(
+    response = payment.create_credits_plan(createCreditsPlanDto=CreateCreditsPlanDto(
         name="test-py",
         description="test",
         price=1000000,
         token_address="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
         amount_of_credits=100,
-        tags=["test"]
+        tags=["test"])
     )
     assert isinstance(response, CreateAssetResultDto)
     assert response.did.startswith("did:")
 
 def test_create_service(payment):
-    response = payment.create_service(
+    response = payment.create_service(createServiceDto=CreateServiceDto(
         plan_did='did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116',
         service_type='service',
         name="webservice-py",
@@ -54,12 +75,12 @@ def test_create_service(payment):
         amount_of_credits=1,
         service_charge_type="fixed",
         auth_type="none"
-    )
+    ))
     assert isinstance(response, CreateAssetResultDto)
     assert response.did.startswith("did:")
 
 def test_create_file(payment):
-    response = payment.create_file(
+    response = payment.create_file(createFileDto=CreateFileDto(
         plan_did='did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116',
         asset_type='model',
         name="file-py",
@@ -74,28 +95,9 @@ def test_create_file(payment):
                 "url": "https://raw.githubusercontent.com/nevermined-io/tutorials/main/README.md",
             }
         ]
-    )
+    ))
     assert isinstance(response, CreateAssetResultDto)
     assert response.did.startswith("did:")
-
-def test_create_agent_and_plan(payment):
-    response = payment.create_agent_and_plan(
-        plan_name="test-py",
-        plan_description="test",
-        plan_price=1000000,
-        plan_token_address="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-        plan_amount_of_credits=100,
-        plan_tags=["test"],
-        agent_name="agent-py",
-        agent_description="test",
-        agent_amount_of_credits=1,
-        agent_service_charge_type="fixed",
-        agent_auth_type="none",
-        agent_use_ai_hub=True
-    )
-    assert isinstance(response, CreateAgentAndPlanResultDto)
-    assert response.planDID.startswith("did:")
-    assert response.agentDID.startswith("did:")
 
 
 def test_get_asset_ddo(payment):
