@@ -87,7 +87,7 @@ class AIQueryApi(NVMBackendApi):
                 "additional_params": [],
                 "artifacts": []
             }
-            task = subscriber.ai_protocol.create_task(agent.did, task)
+            task = subscriber.query.create_task(agent.did, task)
             print('Task created:', task.json())
         """
         endpoint = self.parse_url_to_proxy(TASK_ENDPOINT).replace('{did}', did)

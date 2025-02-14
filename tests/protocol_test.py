@@ -17,11 +17,11 @@ nvm_api_key2 = os.getenv('NVM_API_KEY2')
 
 @pytest.fixture
 def ai_query_api_build_fixture():
-    return Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True)
+    return Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0")
 
 @pytest.fixture
 def ai_query_api_subscriber_fixture():
-    return Payments(nvm_api_key=nvm_api_key2, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True)
+    return Payments(nvm_api_key=nvm_api_key2, environment=Environment.staging, app_id="your_app_id", version="1.0.0")
 
 def test_AIQueryApi_creation(ai_query_api_build_fixture):
     ai_query_api = ai_query_api_build_fixture
@@ -34,9 +34,9 @@ def test_AIQueryApi_creation(ai_query_api_build_fixture):
 
 
 async def eventsReceived(data):
-    payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0", ai_protocol=True)
+    payments_builder = Payments(nvm_api_key=nvm_api_key, environment=Environment.staging, app_id="your_app_id", version="1.0.0")
     global response_data
-    step = payments_builder.ai_protocol.get_step(data['step_id'])
+    step = payments_builder.query.get_step(data['step_id'])
     print('eventsReceived::', len(data))
     if(step['step_status'] != AgentExecutionStatus.Pending.value):
         print('Step status is not pending')
@@ -46,7 +46,7 @@ async def eventsReceived(data):
         print('eventsReceived::', 'pending data:', len(data))
         for step in data:
             print('eventsReceived::', 'step:', step)
-            result = payments_builder.ai_protocol.update_step(did=step['did'], 
+            result = payments_builder.query.update_step(did=step['did'], 
                                                               task_id=step['task_id'], 
                                                               step_id=step['step_id'], 
                                                               step={'step_id': step['step_id'],
@@ -61,7 +61,7 @@ async def eventsReceived(data):
         print('eventsReceived::', 'parsing event with did:', data)
         response_data = data
         response_event.set()
-        result = payments_builder.ai_protocol.update_step(did=data["did"], 
+        result = payments_builder.query.update_step(did=data["did"], 
                                                                 task_id=data["task_id"], 
                                                                 step_id=data['step_id'], 
                                                                 step={'step_id': data['step_id'],
@@ -111,18 +111,18 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
 
     balance_before_task = subscriber.get_plan_balance(plan_did=plan.did, account_address="0x496D42f45a2C2Dc460c6605A2b414698232F123f")
 
-    subscription_task = asyncio.create_task(builder.ai_protocol.subscribe(eventsReceived))
+    subscription_task = asyncio.create_task(builder.query.subscribe(eventsReceived))
 
     # Ensure the WebSocket connection is established
     for i in range(5):
         await asyncio.sleep(1)  # Wait for 1 second between each attempt
-        if builder.ai_protocol.socket_client.connected:
+        if builder.query.socket_client.connected:
             break
-    assert builder.ai_protocol.socket_client.connected, "WebSocket connection failed"
+    assert builder.query.socket_client.connected, "WebSocket connection failed"
     assert builder.user_room_id, "User room ID is not set"
 
     
-    task = await subscriber.ai_protocol.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task'})
+    task = await subscriber.query.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task'})
     print('Task created:', task.json())
 
     await asyncio.wait_for(response_event.wait(), timeout=120)
@@ -130,7 +130,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     assert response_data is not None, "Builder did not receive the event from subscriber"
     print('Task received by builder:', response_data)
 
-    task_result = subscriber.ai_protocol.get_task_with_steps(did=agent.did, task_id=response_data['task_id'])
+    task_result = subscriber.query.get_task_with_steps(did=agent.did, task_id=response_data['task_id'])
     try:
         assert task_result.json()['task']['task_status'] == AgentExecutionStatus.Completed.value  
     except Exception as e:
@@ -145,13 +145,13 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     assert int(balance2.balance) == int(balance_before_task.balance) - 2
 
     with pytest.raises(Exception) as excinfo:
-        task = await subscriber.ai_protocol.create_task(did=agent.did, task={})
+        task = await subscriber.query.create_task(did=agent.did, task={})
     exception_args = excinfo.value.args[0] 
     assert exception_args['status'] == 400
 
     # Disconnect both clients after test
-    await builder.ai_protocol.socket_client.disconnect()
-    await subscriber.ai_protocol.socket_client.disconnect()
+    await builder.query.socket_client.disconnect()
+    await subscriber.query.socket_client.disconnect()
 
     subscription_task.cancel()
     try:
@@ -189,7 +189,7 @@ async def test_AIQueryApi_log(ai_query_api_build_fixture, ai_query_api_subscribe
 
     await builder.connect_socket()
     task_log = TaskLog(task_id='task-d9d8096a-0c97-42d1-8d6c-ff1481d72ed0', message='message', level='info')
-    await builder.ai_protocol.log_task(task_log)
+    await builder.query.log_task(task_log)
     await asyncio.wait_for(log_task_event.wait(), timeout=10)
     assert log_task_event.is_set(), "Task-log event was not received."
 
@@ -201,14 +201,14 @@ async def test_AIQueryApi_log(ai_query_api_build_fixture, ai_query_api_subscribe
 # @pytest.mark.asyncio(loop_scope="session")
 # async def test_AI_send_task(ai_query_api_subscriber_fixture):
 #     builder = ai_query_api_subscriber_fixture
-#     task = builder.ai_protocol.create_task('did:nv:268cc4cb5d9d6531f25b9e750b6aa4d96cc5a514116e3afcf41fe4ca0a27dad0', 
+#     task = builder.query.create_task('did:nv:268cc4cb5d9d6531f25b9e750b6aa4d96cc5a514116e3afcf41fe4ca0a27dad0', 
 #                                               {'query': 'https://www.youtube.com/watch?v=-yGk3P5LWAA', 'name': 'Summarize video'})
 #     print('Task created:', task.json()['task']['task_id'])
 #     task_id = task.json()['task']['task_id']
 
 #     final_task_result = None 
 #     while True:
-#         task_result = builder.ai_protocol.get_task_with_steps(did='did:nv:268cc4cb5d9d6531f25b9e750b6aa4d96cc5a514116e3afcf41fe4ca0a27dad0', task_id=task_id)
+#         task_result = builder.query.get_task_with_steps(did='did:nv:268cc4cb5d9d6531f25b9e750b6aa4d96cc5a514116e3afcf41fe4ca0a27dad0', task_id=task_id)
 #         task_status = task_result.json()['task']['task_status']
         
 #         if task_status != 'Pending':
@@ -224,6 +224,6 @@ async def test_AIQueryApi_log(ai_query_api_build_fixture, ai_query_api_subscribe
 # @pytest.mark.asyncio(loop_scope="session")
 # async def test_AI_send_task2(ai_query_api_subscriber_fixture):
 #     builder = ai_query_api_subscriber_fixture
-#     task = builder.ai_protocol.get_task_with_steps(did='did:nv:c48ee23c3eab23d0094dbe2ae7d01a1ddb6394e85dca8614f7de84d8e4eb4ee1', task_id='task-7cd4dbd7-5055-4340-8bb2-78169a6f4e33')
+#     task = builder.query.get_task_with_steps(did='did:nv:c48ee23c3eab23d0094dbe2ae7d01a1ddb6394e85dca8614f7de84d8e4eb4ee1', task_id='task-7cd4dbd7-5055-4340-8bb2-78169a6f4e33')
 #     print('Task result:', task.json())
 

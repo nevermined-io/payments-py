@@ -1,5 +1,6 @@
 import os
-from typing import List, Optional
+from typing import Optional
+import warnings
 import requests
 import jwt
 
@@ -19,31 +20,35 @@ class Payments(NVMBackendApi):
         environment (Environment): The environment for the payment system.
         app_id (str, optional): The application ID.
         version (str, optional): The version of the payment system.
-        ai_protocol (bool): Indicates if the AI protocol is enabled.
         headers (dict, optional): The headers for the payment system.
     Methods:
         create_credits_plan: Creates a new credits plan.
         create_time_plan: Creates a new time plan.
         create_service: Creates a new service.
         create_file: Creates a new file.
+        create_agent: Creates a new agent
+        create_agent_and_plan: Creates a new agent associated to a plan in one step
         order_plan: Orders the plan.
         get_asset_ddo: Gets the asset DDO.
         get_plan_balance: Gets the plan balance.
         get_service_token: Gets the service token.
         get_plan_associated_services: Gets the plan associated services.
         get_plan_associated_files: Gets the plan associated files.
-        get_plan_details: Gets the plan details.
-        get_service_details: Gets the service details.
-        get_file_details: Gets the file details.
+        get_plan_details_url: Gets the plan details.
+        get_service_details_url: Gets the service details.
+        get_file_details_url: Gets the file details.
         get_checkout_plan: Gets the checkout plan.
         download_file: Downloads the file.
         mint_credits: Mints the credits associated to a plan and send to the receiver.
-        burn_credits: Burns credits associated to a plan that you own.     
-        ai_protocol: The AI Query API.
+        burn_credits: Burns credits associated to a plan that you own.   
+        search_plans: Query for plans base on an input query options.
+        search_agents: Query for agents base on an input query options.
+        query: The AI Query API.
+        ai_protocol: The AI Query API. Deprecated
     """
 
     def __init__(self, nvm_api_key: str, environment: Environment,
-                 app_id: Optional[str] = None, version: Optional[str] = None, ai_protocol: bool = False, headers: Optional[dict] = None):
+                 app_id: Optional[str] = None, version: Optional[str] = None, headers: Optional[dict] = None):
         self.backend_options = BackendApiOptions(environment, api_key=nvm_api_key, headers=headers)
         super().__init__(self.backend_options)
         self.nvm_api_key = nvm_api_key
@@ -52,8 +57,13 @@ class Payments(NVMBackendApi):
         self.version = version
         decoded_jwt = jwt.decode(self.nvm_api_key, options={"verify_signature": False})
         self.account_address = decoded_jwt.get('sub')
-        if ai_protocol:
-            self.ai_protocol = AIQueryApi(self.backend_options)
+        self.query = AIQueryApi(self.backend_options)
+        warnings.warn(
+            "`self.ai_protocol` is deprecated and will be removed in a future version. Use `self.query` instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        self.ai_protocol = self.query
 
     def create_credits_plan(self, createCreditsPlanDto: CreateCreditsPlanDto) -> CreateAssetResultDto:
         """

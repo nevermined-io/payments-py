@@ -107,7 +107,7 @@ Subscribers can create an AI Task for an Agent. The task must contain the input 
 
 
 **Example:**
- task = {  "query": "https://www.youtube.com/watch?v=0tZFQs7qBfQ",  "name": "transcribe",  "additional_params": [],  "artifacts": [] } task = subscriber.ai_protocol.create_task(agent.did, task) print('Task created:', task.json()) 
+ task = {  "query": "https://www.youtube.com/watch?v=0tZFQs7qBfQ",  "name": "transcribe",  "additional_params": [],  "artifacts": [] } task = subscriber.query.create_task(agent.did, task) print('Task created:', task.json()) 
 
 ---
 
