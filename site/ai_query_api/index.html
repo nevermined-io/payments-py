@@ -190,7 +190,7 @@
 <li><b><code>_callback</code></b> (Any):  The callback to execute when a new task log event is received (optional) </li>
 </ul>
 <p><strong>Example:</strong>
- task = {  "query": "https://www.youtube.com/watch?v=0tZFQs7qBfQ",  "name": "transcribe",  "additional_params": [],  "artifacts": [] } task = subscriber.ai_protocol.create_task(agent.did, task) print('Task created:', task.json()) </p>
+ task = {  "query": "https://www.youtube.com/watch?v=0tZFQs7qBfQ",  "name": "transcribe",  "additional_params": [],  "artifacts": [] } task = subscriber.query.create_task(agent.did, task) print('Task created:', task.json()) </p>
 <hr />
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L182"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h3 id="method-get_step"><kbd>method</kbd> <code>get_step</code></h3>
