@@ -1,7 +1,8 @@
 import asyncio
 import json
 from typing import Any, List, Optional, Union
-from payments_py.data_models import AgentExecutionStatus, Step, TaskLog, Task
+from urllib.parse import urlencode
+from payments_py.data_models import AgentExecutionStatus, CreateStepsDto, CreateTaskDto, FullTaskDto, GetStepsDtoResult, GetTasksDtoResult, SearchSteps, SearchStepsDtoResult, Step, TaskLog, Task, UpdateStepDto
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
 # Define API Endpoints
@@ -66,8 +67,7 @@ class AIQueryApi(NVMBackendApi):
         await self.connect_socket()
         await self.socket_client.emit('_task-log', json.dumps(data))
 
-
-    async def create_task(self, did: str, task: Task, _callback: Optional[Any]=None):
+    async def create_task(self, did: str, task: CreateTaskDto, _callback: Optional[Any]=None):
         """
         Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent.
         This method is used by subscribers of a Payment Plan required to access a specific AI Agent or Service. Users who are not subscribers won't be able to create AI Tasks for that Agent.
@@ -76,16 +76,16 @@ class AIQueryApi(NVMBackendApi):
         
         Args:
             did (str): The DID of the service.
-            task (Task): The task to create.
+            task (CreateTaskDto): The task to create.
             _callback (Any): The callback to execute when a new task log event is received (optional)
 
 
         Example:
             task = {
-                "query": "https://www.youtube.com/watch?v=0tZFQs7qBfQ",
+                "input_query": "https://www.youtube.com/watch?v=0tZFQs7qBfQ",
                 "name": "transcribe",
-                "additional_params": [],
-                "artifacts": []
+                "input_additional": {},
+                "input_artifacts": []
             }
             task = subscriber.query.create_task(agent.did, task)
             print('Task created:', task.json())
@@ -98,7 +98,7 @@ class AIQueryApi(NVMBackendApi):
             await self.subscribe_tasks_updated(_callback, [tasks["task"]["task_id"]])
         return result
 
-    def create_steps(self, did: str, task_id: str, steps: List[Step]):
+    def create_steps(self, did: str, task_id: str, steps: CreateStepsDto):
         """
         It creates the step/s required to complete an AI Task.
         This method is used by the AI Agent to create the steps required to complete the AI Task.
@@ -139,7 +139,7 @@ class AIQueryApi(NVMBackendApi):
         """    
         return self.post(self.parse_url_to_backend(SEARCH_TASKS_ENDPOINT), search_params)
 
-    def get_task_with_steps(self, did: str, task_id: str):
+    def get_task_with_steps(self, did: str, task_id: str) -> FullTaskDto:
         """
         It returns the full task and the steps resulted of the execution of the task.
 
@@ -152,9 +152,11 @@ class AIQueryApi(NVMBackendApi):
         """
         endpoint = self.parse_url_to_proxy(GET_TASK_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         token = self.get_service_token(did)
-        return self.get(endpoint, headers={'Authorization': f'Bearer {token.accessToken}'})
+        response = self.get(endpoint, headers={'Authorization': f'Bearer {token.accessToken}'})
+        response.raise_for_status()
+        return FullTaskDto.model_validate(response.json())
 
-    def get_steps_from_task(self, did: str, task_id: str, status: Optional[str] = None):
+    def get_steps_from_task(self, did: str, task_id: str, status: Optional[str] = None) -> GetStepsDtoResult:
         """
         It retrieves all the steps that the agent needs to execute to complete a specific task associated to the user.
         This method is used by the AI Agent to retrieve information about the tasks created by users to the agents owned by the user.
@@ -167,9 +169,11 @@ class AIQueryApi(NVMBackendApi):
         endpoint = self.parse_url_to_backend(GET_TASK_STEPS_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         if status:
             endpoint += f'?status={status}'
-        return self.get(endpoint)
+        response =  self.get(endpoint)
+        response.raise_for_status()
+        return GetStepsDtoResult.model_validate( response.json())
     
-    def search_step(self, search_params: Any):
+    def search_step(self, search_params: SearchSteps) -> SearchStepsDtoResult:
         """
         It search steps based on the search parameters. The steps belongs to the tasks part of the AI Agents owned by the user.
         This method is used by the AI Agent to retrieve information about the steps part of tasks created by users to the agents owned by the user.
@@ -177,9 +181,11 @@ class AIQueryApi(NVMBackendApi):
         Args:
             search_params (Any): The search parameters.
         """
-        return self.post(self.parse_url_to_backend(SEARCH_STEPS_ENDPOINT), search_params)
+        response = self.post(self.parse_url_to_backend(SEARCH_STEPS_ENDPOINT), search_params)
+        response.raise_for_status()
+        return response.json()
 
-    def get_step(self,  step_id: str):
+    def get_step(self,  step_id: str) -> UpdateStepDto:
         """
         Get the details of a step.
 
@@ -189,11 +195,9 @@ class AIQueryApi(NVMBackendApi):
             step_id (str): The step ID.
         """
         result = self.search_step({"step_id": step_id})
-        return result.json()['steps'][0]
+        return UpdateStepDto.model_validate(result['steps'][0])
 
-    def get_steps(self,
-                        status: AgentExecutionStatus = AgentExecutionStatus.Pending,
-                        dids: List[str] = []):
+    def get_steps(self, status: AgentExecutionStatus = AgentExecutionStatus.Pending, dids: List[str] = []) -> GetStepsDtoResult:
         """
         It retrieves all the steps that the agent needs to execute to complete the different tasks assigned.
         This method is used by the AI Agent to retrieve information about the steps part of tasks created by users to the agents owned by the user.
@@ -202,20 +206,31 @@ class AIQueryApi(NVMBackendApi):
             status (AgentExecutionStatus): The status of the steps.
             dids (List[str]): The list of DIDs.
         """
-        endpoint = f'{self.parse_url_to_backend(GET_BUILDER_STEPS_ENDPOINT)}?'
+        params = {}
         if status:
-            endpoint += f'&status={status.value}'
+            params["status"] = status.value
         if dids:
-            endpoint += f'&dids={",".join(dids)}'
-        return self.get(endpoint)
+            params["dids"] = ",".join(dids)
 
-    def get_tasks_from_agents(self):
+        query_string = urlencode(params)
+        endpoint = f"{self.parse_url_to_backend(GET_BUILDER_STEPS_ENDPOINT)}?{query_string}"
+
+        response = self.get(endpoint)
+        response.raise_for_status()
+        return GetStepsDtoResult.model_validate( response.json())
+
+    def get_tasks_from_agents(self, status: AgentExecutionStatus = AgentExecutionStatus.Pending) -> GetTasksDtoResult:
         """
         It retrieves all the tasks that the agent needs to execute to complete the different tasks assigned.
         This method is used by the AI Agent to retrieve information about the tasks created by users to the agents owned by the user
 
         """
-        return self.get(self.parse_url(GET_AGENTS_ENDPOINT))
+        endpoint = f'{self.parse_url_to_backend(GET_AGENTS_ENDPOINT)}'
+        if status:
+            endpoint += f'?status={status}'
+        response = self.get(endpoint)
+        response.raise_for_status()
+        return GetTasksDtoResult.model_validate(response.json())
     
     async def subscribe_tasks_updated(self, callback: Any, tasks: List[str]):
         try: 

@@ -47,9 +47,9 @@ async def eventsReceived(data):
         for step in data:
             print('eventsReceived::', 'step:', step)
             result = payments_builder.query.update_step(did=step['did'], 
-                                                              task_id=step['task_id'], 
-                                                              step_id=step['step_id'], 
-                                                              step={'step_id': step['step_id'],
+                                                        task_id=step['task_id'], 
+                                                        step_id=step['step_id'], 
+                                                        step={'step_id': step['step_id'],
                                                                     'task_id': step['task_id'], 
                                                                     'step_status': AgentExecutionStatus.Completed.value,
                                                                     'output': 'success',
@@ -122,7 +122,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     assert builder.user_room_id, "User room ID is not set"
 
     
-    task = await subscriber.query.create_task(agent.did, {'query': 'sample_query', 'name': 'sample_task'})
+    task = await subscriber.query.create_task(agent.did, {'input_query': 'sample_query', 'name': 'sample_task'})
     print('Task created:', task.json())
 
     await asyncio.wait_for(response_event.wait(), timeout=120)
