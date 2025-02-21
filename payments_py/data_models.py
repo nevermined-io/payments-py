@@ -344,6 +344,12 @@ class TaskEntityDto(BaseModel):
     updatedAt: datetime = Field(..., description="Task last update timestamp")
     owner: str = Field(..., description="Owner of the task")
 
+class SearchTasksDtoResult(BaseModel):
+    tasks: List[TaskEntityDto] = Field(..., description="List of tasks")
+    totalResults: int = Field(..., description="Total number of results")
+    page: int = Field(..., description="Current page")
+    offset: int = Field(..., description="Page offset")
+
 class GetStepsDtoResult(BaseModel):
     steps: Optional[List[UpdateStepDto]] = Field(None, description="List of steps")
     totalResults: int

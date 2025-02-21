@@ -2,7 +2,7 @@ import asyncio
 import json
 from typing import Any, List, Optional, Union
 from urllib.parse import urlencode
-from payments_py.data_models import AgentExecutionStatus, CreateStepsDto, CreateTaskDto, FullTaskDto, GetStepsDtoResult, GetTasksDtoResult, SearchSteps, SearchStepsDtoResult, Step, TaskLog, Task, UpdateStepDto
+from payments_py.data_models import AgentExecutionStatus, CreateStepsDto, CreateTaskDto, FullTaskDto, GetStepsDtoResult, GetTasksDtoResult, SearchSteps, SearchStepsDtoResult, SearchTasks, SearchTasksDtoResult, Step, TaskLog, Task, UpdateStepDto
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
 # Define API Endpoints
@@ -130,7 +130,7 @@ class AIQueryApi(NVMBackendApi):
             print('update_step::', e)
             return None
 
-    def search_tasks(self, search_params: Any):
+    def search_tasks(self, search_params: SearchTasks) -> SearchTasksDtoResult:
         """
         It searches tasks based on the search parameters associated to the user.
 
