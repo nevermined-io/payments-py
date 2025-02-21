@@ -38,7 +38,7 @@ async def eventsReceived(data):
     global response_data
     step = payments_builder.query.get_step(data['step_id'])
     print('eventsReceived::', len(data))
-    if(step['step_status'] != AgentExecutionStatus.Pending.value):
+    if(step.step_status != AgentExecutionStatus.Pending.value):
         print('Step status is not pending')
         return
     
@@ -50,11 +50,11 @@ async def eventsReceived(data):
                                                         task_id=step['task_id'], 
                                                         step_id=step['step_id'], 
                                                         step={'step_id': step['step_id'],
-                                                                    'task_id': step['task_id'], 
-                                                                    'step_status': AgentExecutionStatus.Completed.value,
-                                                                    'output': 'success',
-                                                                    'is_last': True
-                                                                    })
+                                                                'task_id': step['task_id'], 
+                                                                'step_status': AgentExecutionStatus.Completed.value,
+                                                                'output': 'success',
+                                                                'is_last': True
+                                                                })
             print(result.json())
 
     else:
