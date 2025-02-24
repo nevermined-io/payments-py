@@ -46,11 +46,11 @@ async def eventsReceived(data):
         print('eventsReceived::', 'pending data:', len(data))
         for step in data:
             print('eventsReceived::', 'step:', step)
-            result = payments_builder.query.update_step(did=step['did'], 
-                                                        task_id=step['task_id'], 
-                                                        step_id=step['step_id'], 
-                                                        step={'step_id': step['step_id'],
-                                                                'task_id': step['task_id'], 
+            result = payments_builder.query.update_step(did=step.did, 
+                                                        task_id=step.task_id, 
+                                                        step_id=step.step_id, 
+                                                        step={'step_id': step.step_id,
+                                                                'task_id': step.task_id,
                                                                 'step_status': AgentExecutionStatus.Completed.value,
                                                                 'output': 'success',
                                                                 'is_last': True
