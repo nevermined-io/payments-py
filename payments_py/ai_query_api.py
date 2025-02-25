@@ -67,7 +67,7 @@ class AIQueryApi(NVMBackendApi):
         await self.connect_socket()
         await self.socket_client.emit('_task-log', json.dumps(data))
 
-    async def create_task(self, did: str, task: CreateTaskDto, _callback: Optional[Any]=None):
+    async def create_task(self, did: str, task: CreateTaskDto, _callback: Optional[Any]=None) -> ApiResponse:
         """
         Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent.
         This method is used by subscribers of a Payment Plan required to access a specific AI Agent or Service. Users who are not subscribers won't be able to create AI Tasks for that Agent.
@@ -92,6 +92,16 @@ class AIQueryApi(NVMBackendApi):
 
         Returns:
             ApiResponse: The response of the request.
+
+        Example:
+            task = {
+                "input_query": "https://www.youtube.com/watch?v=0tZFQs7qBfQ",
+                "name": "transcribe",
+                "input_additional": {},
+                "input_artifacts": []
+            }
+            task = subscriber.query.create_task(agent.did, task)
+            print('Task created:', task.data)
         """
         endpoint = self.parse_url_to_proxy(TASK_ENDPOINT).replace('{did}', did)
         token = self.get_service_token(did)
@@ -122,6 +132,15 @@ class AIQueryApi(NVMBackendApi):
 
         Returns:
             ApiResponse: The response of the request.
+
+        Example:
+            steps = {
+                "steps": [
+                    {"name": "step1", "input_artifacts": [], "input_additional": {}}
+                ]
+            }
+            steps = subscriber.query.create_steps(agent.did, task_id, steps)
+            print('Steps created:', steps.data)
         """
         endpoint = self.parse_url_to_backend(CREATE_STEPS_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         try:
@@ -129,11 +148,7 @@ class AIQueryApi(NVMBackendApi):
                 response = self.post(endpoint, steps)
                 
                 # Check if the response status code is between 200 and 299
-                if 200 <= response.status_code < 300:
-                    return ApiResponse(success=True, data=response.json())
-                else:
-                    return ApiResponse(success=False, error=f"Error: {response.status_code} - {response.text}")
-            
+                return ApiResponse(success=True, data=response.json()) if 200 <= response.status_code < 300 else ApiResponse(success=False, error=f"Error: {response.status_code} - {response.text}")       
         except Exception as e:
                 # Handle exceptions and return a structured error response
             print('create_steps::', e)
