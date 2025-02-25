@@ -2,7 +2,7 @@ import asyncio
 import json
 from typing import Any, List, Optional, Union
 from urllib.parse import urlencode
-from payments_py.data_models import AgentExecutionStatus, CreateStepsDto, CreateTaskDto, FullTaskDto, GetStepsDtoResult, GetTasksDtoResult, SearchSteps, SearchStepsDtoResult, SearchTasks, SearchTasksDtoResult, Step, TaskLog, Task, UpdateStepDto
+from payments_py.data_models import AgentExecutionStatus, ApiResponse, CreateStepsDto, CreateTaskDto, FullTaskDto, GetStepsDtoResult, GetTasksDtoResult, SearchSteps, SearchStepsDtoResult, SearchTasks, SearchTasksDtoResult, Step, TaskLog, UpdateStepDto
 from payments_py.nvm_backend import BackendApiOptions, NVMBackendApi
 
 # Define API Endpoints
@@ -89,16 +89,27 @@ class AIQueryApi(NVMBackendApi):
             }
             task = subscriber.query.create_task(agent.did, task)
             print('Task created:', task.json())
+
+        Returns:
+            ApiResponse: The response of the request.
         """
         endpoint = self.parse_url_to_proxy(TASK_ENDPOINT).replace('{did}', did)
         token = self.get_service_token(did)
-        result = self.post(endpoint, task, headers={'Authorization': f'Bearer {token.accessToken}'})
-        if(result.status_code == 201 and _callback):
-            tasks = result.json()
-            await self.subscribe_tasks_updated(_callback, [tasks["task"]["task_id"]])
-        return result
+        try:
+            result = self.post(endpoint, task, headers={'Authorization': f'Bearer {token.accessToken}'})
+            if 200 <= result.status_code < 300:
+                task_data = result.json()
+                if _callback:
+                    await self.subscribe_tasks_updated(_callback, [task_data["task"]["task_id"]])
+                return ApiResponse(success=True, data=task_data, status=result.status_code)
+            else:
+                return ApiResponse(success=False, error=f"Error: {result.status_code} - {result.text}", status=result.status_code)
+        except Exception as e:
+            # Handle any request exceptions
+            print('create_task::', e)
+            return ApiResponse(success=False, error=str(e))
 
-    def create_steps(self, did: str, task_id: str, steps: CreateStepsDto):
+    def create_steps(self, did: str, task_id: str, steps: CreateStepsDto) -> ApiResponse:
         """
         It creates the step/s required to complete an AI Task.
         This method is used by the AI Agent to create the steps required to complete the AI Task.
@@ -107,12 +118,28 @@ class AIQueryApi(NVMBackendApi):
         
             did (str): The DID of the service.
             task_id (str): The task ID.
-            steps (List[Step]): The steps to create.
+            steps (CreateStepsDto): The steps to create.
+
+        Returns:
+            ApiResponse: The response of the request.
         """
         endpoint = self.parse_url_to_backend(CREATE_STEPS_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
-        return self.post(endpoint, steps)
-
-    def update_step(self, did: str, task_id: str, step_id: str, step: Step):
+        try:
+                # Send the POST request to create the steps
+                response = self.post(endpoint, steps)
+                
+                # Check if the response status code is between 200 and 299
+                if 200 <= response.status_code < 300:
+                    return ApiResponse(success=True, data=response.json())
+                else:
+                    return ApiResponse(success=False, error=f"Error: {response.status_code} - {response.text}")
+            
+        except Exception as e:
+                # Handle exceptions and return a structured error response
+            print('create_steps::', e)
+            return ApiResponse(success=False, error=str(e))
+        
+    def update_step(self, did: str, task_id: str, step_id: str, step: Step) -> ApiResponse:
         """
         It updates the step with the new information.
         This method is used by the AI Agent to update the status and output of an step. This method can not be called by a subscriber.
@@ -122,20 +149,30 @@ class AIQueryApi(NVMBackendApi):
             task_id (str): The task ID.
             step_id (str): The step ID.
             step (Step): The step object to update. https://docs.nevermined.io/docs/protocol/query-protocol#steps-attributes
+        
+        Returns:
+            ApiResponse: The response of the request.
         """
         endpoint = self.parse_url_to_backend(UPDATE_STEP_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id).replace('{stepId}', step_id)
         try:
-            return self.put(endpoint, step)
+            response = self.put(endpoint, step)
+            if 200 <= response.status_code < 300:
+                return ApiResponse(success=True, data=response.json())
+            else:
+                return ApiResponse(success=False, error=f"Error: {response.status_code} - {response.text}")
         except Exception as e:
             print('update_step::', e)
-            return None
+            return ApiResponse(success=False, error=str(e))
 
     def search_tasks(self, search_params: SearchTasks) -> SearchTasksDtoResult:
         """
         It searches tasks based on the search parameters associated to the user.
 
         Args:
-            search_params (Any): The search parameters.
+            search_params (SearchTasks): The search parameters.
+        
+        Returns:
+            SearchTasksDtoResult: The search result.
         """    
         return self.post(self.parse_url_to_backend(SEARCH_TASKS_ENDPOINT), search_params)
 
@@ -149,6 +186,8 @@ class AIQueryApi(NVMBackendApi):
         Args:
             did (str): The DID of the service.
             task_id (str): The task ID.
+        Returns:
+            FullTaskDto: The full task with steps and logs.
         """
         endpoint = self.parse_url_to_proxy(GET_TASK_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         token = self.get_service_token(did)
@@ -165,6 +204,8 @@ class AIQueryApi(NVMBackendApi):
             did (str): The DID of the service.
             task_id (str): The task ID.
             status (Optional[str]): The status of the steps.
+        Returns:
+            GetStepsDtoResult: The steps result.
         """
         endpoint = self.parse_url_to_backend(GET_TASK_STEPS_ENDPOINT).replace('{did}', did).replace('{taskId}', task_id)
         if status:
@@ -179,7 +220,10 @@ class AIQueryApi(NVMBackendApi):
         This method is used by the AI Agent to retrieve information about the steps part of tasks created by users to the agents owned by the user.
 
         Args:
-            search_params (Any): The search parameters.
+            search_params (SearchSteps): The search parameters.
+        
+        Returns:
+            SearchStepsDtoResult: The search result.
         """
         response = self.post(self.parse_url_to_backend(SEARCH_STEPS_ENDPOINT), search_params)
         response.raise_for_status()
@@ -193,6 +237,9 @@ class AIQueryApi(NVMBackendApi):
             did (str): The DID of the service.
             task_id (str): The task ID.
             step_id (str): The step ID.
+
+        Returns:
+            UpdateStepDto: The step details.
         """
         result = self.search_step({"step_id": step_id})
         return UpdateStepDto.model_validate(result['steps'][0])
@@ -205,6 +252,9 @@ class AIQueryApi(NVMBackendApi):
         Args:
             status (AgentExecutionStatus): The status of the steps.
             dids (List[str]): The list of DIDs.
+        
+        Returns:
+            GetStepsDtoResult: The steps
         """
         params = {}
         if status:
@@ -224,6 +274,11 @@ class AIQueryApi(NVMBackendApi):
         It retrieves all the tasks that the agent needs to execute to complete the different tasks assigned.
         This method is used by the AI Agent to retrieve information about the tasks created by users to the agents owned by the user
 
+        Args:
+            status (AgentExecutionStatus): The status of the tasks.
+
+        Returns:
+            GetTasksDtoResult: The tasks.
         """
         endpoint = f'{self.parse_url_to_backend(GET_AGENTS_ENDPOINT)}'
         if status:

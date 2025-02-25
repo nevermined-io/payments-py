@@ -55,7 +55,8 @@ async def eventsReceived(data):
                                                                 'output': 'success',
                                                                 'is_last': True
                                                                 })
-            print(result.json())
+            print(result.success)
+            print(result.data)
 
     else:
         print('eventsReceived::', 'parsing event with did:', data)
@@ -70,7 +71,8 @@ async def eventsReceived(data):
                                                                     'output': 'success',
                                                                     'is_last': True
                                                                     })
-        print(result.json())
+        print(result.success)
+        print(result.data)
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -123,7 +125,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
 
     
     task = await subscriber.query.create_task(agent.did, {'input_query': 'sample_query', 'name': 'sample_task'})
-    print('Task created:', task.json())
+    print('Task created:', task.data)
 
     await asyncio.wait_for(response_event.wait(), timeout=120)
 
@@ -132,7 +134,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
 
     task_result = subscriber.query.get_task_with_steps(did=agent.did, task_id=response_data['task_id'])
     try:
-        assert task_result.json()['task']['task_status'] == AgentExecutionStatus.Completed.value  
+        assert task_result.task.task_status == AgentExecutionStatus.Completed.value  
     except Exception as e:
         print('Task status:', task_result)
         print(e) 
@@ -144,10 +146,8 @@ async def test_AIQueryApi_create_task_in_plan_purchased(ai_query_api_build_fixtu
     print('Plan balance2:', balance2)
     assert int(balance2.balance) == int(balance_before_task.balance) - 2
 
-    with pytest.raises(Exception) as excinfo:
-        task = await subscriber.query.create_task(did=agent.did, task={})
-    exception_args = excinfo.value.args[0] 
-    assert exception_args['status'] == 400
+    task_invalid = await subscriber.query.create_task(did=agent.did, task={})
+    assert task_invalid.success == False
 
     # Disconnect both clients after test
     await builder.query.socket_client.disconnect()

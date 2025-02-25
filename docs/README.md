@@ -13,6 +13,7 @@
 ## Classes
 
 - [`data_models.AgentExecutionStatus`](./data_models.md#class-agentexecutionstatus): An enumeration.
+- [`data_models.ApiResponse`](./data_models.md#class-apiresponse)
 - [`data_models.Artifact`](./data_models.md#class-artifact)
 - [`data_models.BalanceResultDto`](./data_models.md#class-balanceresultdto)
 - [`data_models.BaseStepDto`](./data_models.md#class-basestepdto)
@@ -40,6 +41,7 @@
 - [`data_models.SearchSteps`](./data_models.md#class-searchsteps)
 - [`data_models.SearchStepsDtoResult`](./data_models.md#class-searchstepsdtoresult)
 - [`data_models.SearchTasks`](./data_models.md#class-searchtasks)
+- [`data_models.SearchTasksDtoResult`](./data_models.md#class-searchtasksdtoresult)
 - [`data_models.ServiceTokenResultDto`](./data_models.md#class-servicetokenresultdto)
 - [`data_models.Step`](./data_models.md#class-step)
 - [`data_models.Task`](./data_models.md#class-task)

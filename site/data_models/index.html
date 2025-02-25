@@ -288,7 +288,7 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#class-getstepsdtoresult">class GetStepsDtoResult</a>
+    <li class="toctree-l2"><a class="reference internal" href="#class-searchtasksdtoresult">class SearchTasksDtoResult</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#property-model_extra_29">property model_extra</a>
     </li>
@@ -296,7 +296,7 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#class-gettasksdtoresult">class GetTasksDtoResult</a>
+    <li class="toctree-l2"><a class="reference internal" href="#class-getstepsdtoresult">class GetStepsDtoResult</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#property-model_extra_30">property model_extra</a>
     </li>
@@ -304,11 +304,27 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#class-fulltaskdto">class FullTaskDto</a>
+    <li class="toctree-l2"><a class="reference internal" href="#class-gettasksdtoresult">class GetTasksDtoResult</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#property-model_extra_31">property model_extra</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#property-model_fields_set_31">property model_fields_set</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#class-fulltaskdto">class FullTaskDto</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#property-model_extra_32">property model_extra</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#property-model_fields_set_32">property model_fields_set</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#class-apiresponse">class ApiResponse</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#property-model_extra_33">property model_extra</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#property-model_fields_set_33">property model_fields_set</a>
     </li>
         </ul>
     </li>
@@ -749,7 +765,7 @@
   A set of strings representing the fields that have been set,  i.e. that were not filled from defaults. </p>
 <hr />
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L347"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h2 id="class-getstepsdtoresult"><kbd>class</kbd> <code>GetStepsDtoResult</code></h2>
+<h2 id="class-searchtasksdtoresult"><kbd>class</kbd> <code>SearchTasksDtoResult</code></h2>
 <hr />
 <h4 id="property-model_extra_29"><kbd>property</kbd> model_extra</h4>
 <p>Get extra fields set during validation. </p>
@@ -761,8 +777,8 @@
 <p><strong>Returns:</strong>
   A set of strings representing the fields that have been set,  i.e. that were not filled from defaults. </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L351"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h2 id="class-gettasksdtoresult"><kbd>class</kbd> <code>GetTasksDtoResult</code></h2>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L353"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-getstepsdtoresult"><kbd>class</kbd> <code>GetStepsDtoResult</code></h2>
 <hr />
 <h4 id="property-model_extra_30"><kbd>property</kbd> model_extra</h4>
 <p>Get extra fields set during validation. </p>
@@ -774,8 +790,8 @@
 <p><strong>Returns:</strong>
   A set of strings representing the fields that have been set,  i.e. that were not filled from defaults. </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L355"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h2 id="class-fulltaskdto"><kbd>class</kbd> <code>FullTaskDto</code></h2>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L357"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-gettasksdtoresult"><kbd>class</kbd> <code>GetTasksDtoResult</code></h2>
 <hr />
 <h4 id="property-model_extra_31"><kbd>property</kbd> model_extra</h4>
 <p>Get extra fields set during validation. </p>
@@ -783,6 +799,32 @@
   A dictionary of extra fields, or <code>None</code> if <code>config.extra</code> is not set to <code>"allow"</code>. </p>
 <hr />
 <h4 id="property-model_fields_set_31"><kbd>property</kbd> model_fields_set</h4>
+<p>Returns the set of fields that have been explicitly set on this model instance. </p>
+<p><strong>Returns:</strong>
+  A set of strings representing the fields that have been set,  i.e. that were not filled from defaults. </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L361"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-fulltaskdto"><kbd>class</kbd> <code>FullTaskDto</code></h2>
+<hr />
+<h4 id="property-model_extra_32"><kbd>property</kbd> model_extra</h4>
+<p>Get extra fields set during validation. </p>
+<p><strong>Returns:</strong>
+  A dictionary of extra fields, or <code>None</code> if <code>config.extra</code> is not set to <code>"allow"</code>. </p>
+<hr />
+<h4 id="property-model_fields_set_32"><kbd>property</kbd> model_fields_set</h4>
+<p>Returns the set of fields that have been explicitly set on this model instance. </p>
+<p><strong>Returns:</strong>
+  A set of strings representing the fields that have been set,  i.e. that were not filled from defaults. </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/data_models.py#L368"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-apiresponse"><kbd>class</kbd> <code>ApiResponse</code></h2>
+<hr />
+<h4 id="property-model_extra_33"><kbd>property</kbd> model_extra</h4>
+<p>Get extra fields set during validation. </p>
+<p><strong>Returns:</strong>
+  A dictionary of extra fields, or <code>None</code> if <code>config.extra</code> is not set to <code>"allow"</code>. </p>
+<hr />
+<h4 id="property-model_fields_set_33"><kbd>property</kbd> model_fields_set</h4>
 <p>Returns the set of fields that have been explicitly set on this model instance. </p>
 <p><strong>Returns:</strong>
   A set of strings representing the fields that have been set,  i.e. that were not filled from defaults. </p>

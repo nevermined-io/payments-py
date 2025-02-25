@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 from enum import Enum
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, TypeVar, Union, Any
 from datetime import datetime
 
 class PlanType(str, Enum):
@@ -362,3 +362,10 @@ class FullTaskDto(BaseModel):
     task: TaskEntityDto
     steps: List[UpdateStepDto]
     logs: List[TaskLog]
+
+T = TypeVar('T')
+
+class ApiResponse(BaseModel):
+    success: bool
+    data: Optional[T] = None
+    error: Optional[str] = None
