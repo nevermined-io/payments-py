@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from enum import Enum
-from typing import Dict, Generic, List, Optional, TypeVar, Union, Any
+from typing import Dict, List, Optional, TypeVar, Union, Any
 from datetime import datetime
 
 
@@ -562,7 +562,7 @@ class FullTaskDto(BaseModel):
 T = TypeVar("T")
 
 
-class ApiResponse(Generic[T]):
+class ApiResponse(BaseModel):
     success: bool
-    data: Optional[T]
-    error: Optional[str]
+    data: Optional[T] = None
+    error: Optional[str] = None
