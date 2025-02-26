@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "payments-py"
-version = "0.6.0"
+version = "0.7.0"
 description = ""
 authors = ["enrique <enrique@nevermined.io>"]
 readme = "README.md"
@@ -17,6 +17,8 @@ python-socketio = "5.11.4"
 aiohttp = "^3.10.8"
 pytest-asyncio = "^0.24.0"
 websocket-client = "^1.8.0"
+black = "^25.1.0"
+
 
 
 [tool.poetry.group.test.dependencies]
