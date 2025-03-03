@@ -111,7 +111,10 @@ class AIQueryApi(NVMBackendApi):
         await self.socket_client.emit("_task-log", json.dumps(data))
 
     async def create_task(
-        self, did: str, task: CreateTaskDto, _callback: Optional[Callable[[TaskEvent], None]] = None
+        self,
+        did: str,
+        task: CreateTaskDto,
+        _callback: Optional[Callable[[TaskEvent], None]] = None,
     ) -> ApiResponse:
         """
         Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent.
@@ -404,7 +407,9 @@ class AIQueryApi(NVMBackendApi):
         response.raise_for_status()
         return GetTasksDtoResult.model_validate(response.json())
 
-    async def subscribe_tasks_updated(self, callback: Callable[[TaskEvent], None], tasks: List[str]):
+    async def subscribe_tasks_updated(
+        self, callback: Callable[[TaskEvent], None], tasks: List[str]
+    ):
         try:
             if not tasks:
                 raise Exception("No task rooms to join in configuration")

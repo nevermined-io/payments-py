@@ -5,7 +5,12 @@ import asyncio
 import jwt
 from typing import Callable, Optional, Dict, List, Any, Union
 
-from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto, StepEvent, TaskEvent
+from payments_py.data_models import (
+    AgentExecutionStatus,
+    ServiceTokenResultDto,
+    StepEvent,
+    TaskEvent,
+)
 from payments_py.environments import Environment
 
 
@@ -35,7 +40,9 @@ class BackendApiOptions:
 class NVMBackendApi:
     def __init__(self, opts: BackendApiOptions):
         self.opts = opts
-        self.socket_client: socketio.AsyncClient = socketio.AsyncClient(logger=True, engineio_logger=True)
+        self.socket_client: socketio.AsyncClient = socketio.AsyncClient(
+            logger=True, engineio_logger=True
+        )
         self.user_room_id: Optional[str] = None
         self.has_key: bool = False
         self.callback: Optional[Callable[[StepEvent], None]] = None

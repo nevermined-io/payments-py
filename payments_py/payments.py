@@ -81,7 +81,9 @@ class Payments(NVMBackendApi):
         self.environment: Environment = environment
         self.app_id: Optional[str] = app_id
         self.version: Optional[str] = version
-        decoded_jwt: dict = jwt.decode(self.nvm_api_key, options={"verify_signature": False})
+        decoded_jwt: dict = jwt.decode(
+            self.nvm_api_key, options={"verify_signature": False}
+        )
         self.account_address: str = decoded_jwt.get("sub")
         self.query: AIQueryApi = AIQueryApi(self.backend_options)
         warnings.warn(
