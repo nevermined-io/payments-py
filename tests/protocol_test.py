@@ -62,8 +62,7 @@ async def eventsReceived(data: StepEvent):
         version="1.0.0",
     )
     global response_data
-    step = payments_builder.query.get_step(data["step_id"])
-    print("eventsReceived::", len(data))
+    step = payments_builder.query.get_step(data.step_id)
     if step.step_status != AgentExecutionStatus.Pending.value:
         print("Step status is not pending")
         return
@@ -71,12 +70,12 @@ async def eventsReceived(data: StepEvent):
     response_data = data
     response_event.set()
     result = payments_builder.query.update_step(
-        did=data["did"],
-        task_id=data["task_id"],
-        step_id=data["step_id"],
+        did=step.did,
+        task_id=step.task_id,
+        step_id=step.step_id,
         step={
-            "step_id": data["step_id"],
-            "task_id": data["task_id"],
+            "step_id": step.step_id,
+            "task_id": step.task_id,
             "step_status": AgentExecutionStatus.Completed.value,
             "output": "success",
             "is_last": True,
@@ -154,7 +153,7 @@ async def test_AIQueryApi_create_task_in_plan_purchased(
     print("Task received by builder:", response_data)
 
     task_result = subscriber.query.get_task_with_steps(
-        did=agent.did, task_id=response_data["task_id"]
+        did=agent.did, task_id=response_data.task_id
     )
     try:
         assert task_result.task.task_status == AgentExecutionStatus.Completed.value

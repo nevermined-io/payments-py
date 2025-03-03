@@ -433,9 +433,10 @@ class AIQueryApi(NVMBackendApi):
     def _on_connected(self, callback: Callable[[TaskEvent], None], tasks: List[str]):
         def handle_connected_event(*args):
             async def handle_task_update_event(data: Any):
-                data = json.loads(data)
-                if data.get("did") != self.did:  # Avoid processing own events
-                    await callback(data)
+                parsed_data = json.loads(data)
+                task_event: TaskEvent = TaskEvent.model_validate(parsed_data)
+                if task_event.did != self.did:  # Avoid processing own events
+                    await callback(task_event)
 
             self.socket_client.on("task-updated", handle_task_update_event)
 

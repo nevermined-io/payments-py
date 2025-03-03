@@ -136,11 +136,12 @@ class NVMBackendApi:
         async def event_handler(data: str):
             try:
                 parsed_data = json.loads(data)
+                step_event: StepEvent = StepEvent.model_validate(parsed_data)
                 self.did = parsed_data.get("did")
             except Exception as e:
                 print("nvm-backend:: Unable to parse data", e)
                 return
-            asyncio.create_task(self.callback(parsed_data))
+            asyncio.create_task(self.callback(step_event))
 
         await self.join_room(self.join_account_room, self.join_agent_rooms)
 
