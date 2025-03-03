@@ -3,9 +3,14 @@ import requests
 import socketio
 import asyncio
 import jwt
-from typing import Optional, Dict, List, Any, Union
+from typing import Callable, Optional, Dict, List, Any, Union
 
-from payments_py.data_models import AgentExecutionStatus, ServiceTokenResultDto
+from payments_py.data_models import (
+    AgentExecutionStatus,
+    ServiceTokenResultDto,
+    StepEvent,
+    TaskEvent,
+)
 from payments_py.environments import Environment
 
 
@@ -25,25 +30,27 @@ class BackendApiOptions:
         api_key: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        self.api_key = api_key
-        self.backend_host = environment.value["backend"]
-        self.web_socket_host = environment.value["websocket"]
-        self.proxy_host = environment.value["proxy"]
-        self.headers = headers or {}
+        self.api_key: Optional[str] = api_key
+        self.backend_host: str = environment.value["backend"]
+        self.web_socket_host: str = environment.value["websocket"]
+        self.proxy_host: str = environment.value["proxy"]
+        self.headers: Dict[str, str] = headers or {}
 
 
 class NVMBackendApi:
     def __init__(self, opts: BackendApiOptions):
         self.opts = opts
-        self.socket_client = socketio.AsyncClient(logger=True, engineio_logger=True)
-        self.user_room_id = None
-        self.has_key = False
-        self.callback = None
-        self.join_account_room = None
-        self.join_agent_rooms = None
-        self.subscribe_event_types = None
-        self.get_pending_events_on_subscribe = None
-        self.did = None
+        self.socket_client: socketio.AsyncClient = socketio.AsyncClient(
+            logger=True, engineio_logger=True
+        )
+        self.user_room_id: Optional[str] = None
+        self.has_key: bool = False
+        self.callback: Optional[Callable[[StepEvent], None]] = None
+        self.join_account_room: Optional[bool] = None
+        self.join_agent_rooms: Optional[Union[str, List[str]]] = None
+        self.subscribe_event_types: Optional[List[str]] = None
+        self.get_pending_events_on_subscribe: Optional[bool] = None
+        self.did: Optional[str] = None
 
         default_headers = {
             "Accept": "application/json",
@@ -75,11 +82,11 @@ class NVMBackendApi:
 
     async def connect_socket_subscriber(
         self,
-        callback,
-        join_account_room,
-        join_agent_rooms,
-        subscribe_event_types,
-        get_pending_events_on_subscribe,
+        callback: Callable[[StepEvent], None],
+        join_account_room: bool,
+        join_agent_rooms: Optional[Union[str, List[str]]] = None,
+        subscribe_event_types: Optional[List[str]] = None,
+        get_pending_events_on_subscribe: bool = False,
     ):
         self.callback = callback
         self.join_account_room = join_account_room
@@ -120,13 +127,13 @@ class NVMBackendApi:
         if self.socket_client and self.socket_client.connected:
             await self.socket_client.disconnect()
 
-    async def _subscribe(self, data):
+    async def _subscribe(self, data: str):
         if not self.join_account_room and not self.join_agent_rooms:
             raise ValueError("No rooms to join in configuration")
         if not self.socket_client.connected:
             raise ConnectionError("Failed to connect to the WebSocket server.")
 
-        async def event_handler(data):
+        async def event_handler(data: str):
             try:
                 parsed_data = json.loads(data)
                 self.did = parsed_data.get("did")
@@ -136,6 +143,12 @@ class NVMBackendApi:
             asyncio.create_task(self.callback(parsed_data))
 
         await self.join_room(self.join_account_room, self.join_agent_rooms)
+
+        # if self.subscribe_event_types:
+        #     for event in self.subscribe_event_types:
+        #         self.socket_client.off(event)
+        # else:
+        #     self.socket_client.off("step-updated")
 
         if self.subscribe_event_types:
             for event in self.subscribe_event_types:

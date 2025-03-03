@@ -11,6 +11,7 @@ from payments_py.data_models import (
     CreateAssetResultDto,
     CreateCreditsPlanDto,
     OrderPlanResultDto,
+    StepEvent,
     TaskLog,
 )
 
@@ -24,7 +25,7 @@ nvm_api_key2 = os.getenv("NVM_API_KEY2")
 
 
 @pytest.fixture
-def ai_query_api_build_fixture():
+def ai_query_api_build_fixture() -> Payments:
     return Payments(
         nvm_api_key=nvm_api_key,
         environment=Environment.staging,
@@ -34,7 +35,7 @@ def ai_query_api_build_fixture():
 
 
 @pytest.fixture
-def ai_query_api_subscriber_fixture():
+def ai_query_api_subscriber_fixture() -> Payments:
     return Payments(
         nvm_api_key=nvm_api_key2,
         environment=Environment.staging,
@@ -53,7 +54,7 @@ def test_AIQueryApi_creation(ai_query_api_build_fixture):
     assert ai_query_api.user_room_id
 
 
-async def eventsReceived(data):
+async def eventsReceived(data: StepEvent):
     payments_builder = Payments(
         nvm_api_key=nvm_api_key,
         environment=Environment.staging,
@@ -66,49 +67,28 @@ async def eventsReceived(data):
     if step.step_status != AgentExecutionStatus.Pending.value:
         print("Step status is not pending")
         return
-
-    if isinstance(data, list):
-        print("eventsReceived::", "pending data:", len(data))
-        for step in data:
-            print("eventsReceived::", "step:", step)
-            result = payments_builder.query.update_step(
-                did=step.did,
-                task_id=step.task_id,
-                step_id=step.step_id,
-                step={
-                    "step_id": step.step_id,
-                    "task_id": step.task_id,
-                    "step_status": AgentExecutionStatus.Completed.value,
-                    "output": "success",
-                    "is_last": True,
-                },
-            )
-            print(result.success)
-            print(result.data)
-
-    else:
-        print("eventsReceived::", "parsing event with did:", data)
-        response_data = data
-        response_event.set()
-        result = payments_builder.query.update_step(
-            did=data["did"],
-            task_id=data["task_id"],
-            step_id=data["step_id"],
-            step={
-                "step_id": data["step_id"],
-                "task_id": data["task_id"],
-                "step_status": AgentExecutionStatus.Completed.value,
-                "output": "success",
-                "is_last": True,
-            },
-        )
-        print(result.success)
-        print(result.data)
+    print("eventsReceived::", "parsing event with did:", data)
+    response_data = data
+    response_event.set()
+    result = payments_builder.query.update_step(
+        did=data["did"],
+        task_id=data["task_id"],
+        step_id=data["step_id"],
+        step={
+            "step_id": data["step_id"],
+            "task_id": data["task_id"],
+            "step_status": AgentExecutionStatus.Completed.value,
+            "output": "success",
+            "is_last": True,
+        },
+    )
+    print(result.success)
+    print(result.data)
 
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_AIQueryApi_create_task_in_plan_purchased(
-    ai_query_api_build_fixture, ai_query_api_subscriber_fixture
+    ai_query_api_build_fixture: Payments, ai_query_api_subscriber_fixture: Payments
 ):
     builder = ai_query_api_build_fixture
     subscriber = ai_query_api_subscriber_fixture
