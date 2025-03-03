@@ -77,19 +77,19 @@ class Payments(NVMBackendApi):
             environment, api_key=nvm_api_key, headers=headers
         )
         super().__init__(self.backend_options)
-        self.nvm_api_key = nvm_api_key
-        self.environment = environment
-        self.app_id = app_id
-        self.version = version
-        decoded_jwt = jwt.decode(self.nvm_api_key, options={"verify_signature": False})
-        self.account_address = decoded_jwt.get("sub")
-        self.query = AIQueryApi(self.backend_options)
+        self.nvm_api_key: str = nvm_api_key
+        self.environment: Environment = environment
+        self.app_id: Optional[str] = app_id
+        self.version: Optional[str] = version
+        decoded_jwt: dict = jwt.decode(self.nvm_api_key, options={"verify_signature": False})
+        self.account_address: str = decoded_jwt.get("sub")
+        self.query: AIQueryApi = AIQueryApi(self.backend_options)
         warnings.warn(
             "`self.ai_protocol` is deprecated and will be removed in a future version. Use `self.query` instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        self.ai_protocol = self.query
+        self.ai_protocol: AIQueryApi = self.query
 
     def create_credits_plan(
         self, createCreditsPlanDto: CreateCreditsPlanDto

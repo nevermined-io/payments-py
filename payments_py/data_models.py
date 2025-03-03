@@ -566,3 +566,14 @@ class ApiResponse(BaseModel):
     success: bool
     data: Optional[T] = None
     error: Optional[str] = None
+
+class StepEvent(BaseModel):
+    step_id: str = Field(..., description="Id of the step")
+    task_id: str = Field(..., description="Id of the task")
+    did: str = Field(..., description="Id of the agent")
+
+class TaskEvent(BaseModel):
+    task_id: str = Field(..., description="Id of the task")
+    did: str = Field(..., description="Id of the agent")
+    status: str = Field(..., description="Status of the task")
+        

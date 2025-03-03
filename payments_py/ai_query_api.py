@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any, List, Optional, Union
+from typing import Any, Callable, List, Optional, Union
 from urllib.parse import urlencode
 from payments_py.data_models import (
     AgentExecutionStatus,
@@ -15,6 +15,8 @@ from payments_py.data_models import (
     SearchTasks,
     SearchTasksDtoResult,
     Step,
+    StepEvent,
+    TaskEvent,
     TaskLog,
     UpdateStepDto,
 )
@@ -54,26 +56,38 @@ class AIQueryApi(NVMBackendApi):
 
     def __init__(self, opts: BackendApiOptions):
         super().__init__(opts)
-        self.opts = opts
+        self.opts: BackendApiOptions = opts
 
     async def subscribe(
         self,
-        callback: Any,
+        callback: Callable[[StepEvent], None],
         join_account_room: bool = True,
         join_agent_rooms: Optional[Union[str, List[str]]] = None,
         subscribe_event_types: Optional[List[str]] = None,
         get_pending_events_on_subscribe: bool = True,
-    ):
+    ) -> None:
         """
         It subscribes to the Nevermined network to retrieve new AI Tasks requested by other users.
         This method is used by AI agents to subscribe and receive new AI Tasks sent by other subscribers.
 
         Args:
-            callback (Any): The callback function to be called when a new event is received.
+            callback (Callable[[StepEvent], None]): The callback function to be called when a new event is received.
             join_account_room (bool): If True, it will join the account room.
             join_agent_rooms (Optional[Union[str, List[str]]]): The agent rooms to join.
             subscribe_event_types (Optional[List[str]]): The event types to subscribe to.
             get_pending_events_on_subscribe (bool): If True, it will get the pending events on subscribe.
+
+        Example:
+            await subscriber.query.subscribe(
+                callback=eventsReceived,
+                join_account_room=True,
+                join_agent_rooms=["agent1", "agent2"],
+                subscribe_event_types=["ste-updated"],
+                get_pending_events_on_subscribe=True
+            )
+
+        Returns:
+            None
         """
         await self.connect_socket_subscriber(
             callback=callback,
@@ -97,7 +111,7 @@ class AIQueryApi(NVMBackendApi):
         await self.socket_client.emit("_task-log", json.dumps(data))
 
     async def create_task(
-        self, did: str, task: CreateTaskDto, _callback: Optional[Any] = None
+        self, did: str, task: CreateTaskDto, _callback: Optional[Callable[[TaskEvent], None]] = None
     ) -> ApiResponse:
         """
         Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent.
@@ -108,7 +122,7 @@ class AIQueryApi(NVMBackendApi):
         Args:
             did (str): The DID of the service.
             task (CreateTaskDto): The task to create.
-            _callback (Any): The callback to execute when a new task log event is received (optional)
+            _callback (Optional[Callable[[TaskEvent], None]]): The callback to execute when a new task updated event is received (optional)
 
 
         Example:
@@ -390,7 +404,7 @@ class AIQueryApi(NVMBackendApi):
         response.raise_for_status()
         return GetTasksDtoResult.model_validate(response.json())
 
-    async def subscribe_tasks_updated(self, callback: Any, tasks: List[str]):
+    async def subscribe_tasks_updated(self, callback: Callable[[TaskEvent], None], tasks: List[str]):
         try:
             if not tasks:
                 raise Exception("No task rooms to join in configuration")
@@ -411,7 +425,7 @@ class AIQueryApi(NVMBackendApi):
                 f"Unable to initialize websocket client: {self.web_socket_host} - {str(error)}"
             )
 
-    def _on_connected(self, callback: Any, tasks: List[str]):
+    def _on_connected(self, callback: Callable[[TaskEvent], None], tasks: List[str]):
         def handle_connected_event(*args):
             async def handle_task_update_event(data: Any):
                 data = json.loads(data)
