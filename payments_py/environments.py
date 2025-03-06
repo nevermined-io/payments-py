@@ -11,6 +11,7 @@ class Environment(Enum):
         testing: Testing environment
         gnosis: Gnosis environment
         base: Base environment
+        baseSepolia: Base Sepolia environment
         arbitrum: Arbitrum environment
         appPeaq: Peaq network
     """
