@@ -45,6 +45,12 @@ class Environment(Enum):
         "websocket": "wss://one-backend.base.nevermined.app",
         "proxy": "https://proxy.base.nevermined.app",
     }
+    baseSepolia = {
+        "frontend": "https://base-sepolia.nevermined.app",
+        "backend": "https://one-backend.base-sepolia.nevermined.app",
+        "websocket": "wss://one-backend.base-sepolia.nevermined.app",
+        "proxy": "https://proxy.base-sepolia.nevermined.app",
+    }
     arbitrum = {
         "frontend": "https://nevermined.app",
         "backend": "https://one-backend.arbitrum.nevermined.app",
