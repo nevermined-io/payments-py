@@ -1,80 +1,85 @@
-from enum import Enum
+import os
 
-
-class Environment(Enum):
+class EnvironmentInfo:
     """
-    Enum class to define the different environments
+    Data class to store environment information.
 
     Attributes:
-        local: Local environment
-        staging: Staging environment
-        testing: Testing environment
-        gnosis: Gnosis environment
-        base: Base environment
-        baseSepolia: Base Sepolia environment
-        arbitrum: Arbitrum environment
-        appPeaq: Peaq network
+        frontend (str): Frontend URL
+        backend (str): Backend URL
+        proxy (str): Proxy URL
     """
+    def __init__(self, frontend=None, backend=None, proxy=None):
+        self.frontend = frontend
+        self.backend = backend
+        self.proxy = proxy
 
-    local = {
-        "frontend": "http://localhost:3000",
-        "backend": "http://localhost:3200",
-        "websocket": "ws://localhost:3200",
-        "proxy": "http://localhost:3100",
-    }
-    staging = {
-        "frontend": "https://staging.nevermined.app",
-        "backend": "https://one-backend.staging.nevermined.app",
-        "websocket": "wss://one-backend.staging.nevermined.app",
-        "proxy": "https://proxy.staging.nevermined.app",
-    }
-    testing = {
-        "frontend": "https://testing.nevermined.app",
-        "backend": "https://one-backend.testing.nevermined.app",
-        "websocket": "wss://one-backend.testing.nevermined.app",
-        "proxy": "https://proxy.testing.nevermined.app",
-    }
-    gnosis = {
-        "frontend": "https://gnosis.nevermined.app",
-        "backend": "https://one-backend.gnosis.nevermined.app",
-        "websocket": "wss://one-backend.gnosis.nevermined.app",
-        "proxy": "https://proxy.gnosis.nevermined.app",
-    }
-    base = {
-        "frontend": "https://base.nevermined.app",
-        "backend": "https://one-backend.base.nevermined.app",
-        "websocket": "wss://one-backend.base.nevermined.app",
-        "proxy": "https://proxy.base.nevermined.app",
-    }
-    baseSepolia = {
-        "frontend": "https://base-sepolia.nevermined.app",
-        "backend": "https://one-backend.base-sepolia.nevermined.app",
-        "websocket": "wss://one-backend.base-sepolia.nevermined.app",
-        "proxy": "https://proxy.base-sepolia.nevermined.app",
-    }
-    arbitrum = {
-        "frontend": "https://nevermined.app",
-        "backend": "https://one-backend.arbitrum.nevermined.app",
-        "websocket": "wss://one-backend.arbitrum.nevermined.app",
-        "proxy": "https://proxy.arbitrum.nevermined.app",
-    }
-    appPeaq = {
-        "frontend": "https://peaq.nevermined.app",
-        "backend": "https://one-backend.peaq.nevermined.app",
-    }
+# Zero address constant
+ZeroAddress = "0x0000000000000000000000000000000000000000"
 
-    @classmethod
-    def get_environment(cls, name):
-        """
-        Get the environment by name
+# Supported environment names
+ENVIRONMENT_NAMES = [
+    "local",
+    "staging",
+    "testing",
+    "arbitrum",
+    "base",
+    "base-sepolia",
+    "custom",
+]
 
-        Args:
-            name (str): The name of the environment
+# Environments dictionary
+Environments = {
+    "local": EnvironmentInfo(
+        frontend="http://localhost:3000",
+        backend="http://localhost:3001",
+        proxy="https://localhost:443",
+    ),
+    "staging": EnvironmentInfo(
+        frontend="https://staging.nevermined.app",
+        backend="https://api.staging.nevermined.app",
+        proxy="https://proxy.staging.nevermined.app",
+    ),
+    "testing": EnvironmentInfo(
+        frontend="https://testing.nevermined.app",
+        backend="https://api.testing.nevermined.app",
+        proxy="https://proxy.testing.nevermined.app",
+    ),
+    "arbitrum": EnvironmentInfo(
+        frontend="https://nevermined.app",
+        backend="https://one-backend.arbitrum.nevermined.app",
+        proxy="https://proxy.arbitrum.nevermined.app",
+    ),
+    "base": EnvironmentInfo(
+        frontend="https://base.nevermined.app",
+        backend="https://one-backend.base.nevermined.app",
+        proxy="https://proxy.base.nevermined.app",
+    ),
+    "base-sepolia": EnvironmentInfo(
+        frontend="https://base-sepolia.nevermined.app",
+        backend="https://one-backend.base-sepolia.nevermined.app",
+        proxy="https://proxy.base-sepolia.nevermined.app",
+    ),
+    "custom": EnvironmentInfo(
+        frontend=os.getenv("NVM_FRONTEND_URL", "http://localhost:3000"),
+        backend=os.getenv("NVM_BACKEND_URL", "http://localhost:3001"),
+        proxy=os.getenv("NVM_PROXY_URL", "https://localhost:443"),
+    ),
+}
 
-        Example:
-            env = Environment.get_environment('local')
-        """
-        try:
-            return cls[name]
-        except KeyError:
-            raise ValueError(f"Environment '{name}' is not defined.")
+def get_environment(name):
+    """
+    Get the environment configuration by name.
+
+    Args:
+        name (str): The name of the environment.
+
+    Returns:
+        EnvironmentInfo: The environment configuration.
+
+    Raises:
+        ValueError: If the environment name is not defined.
+    """
+    if name not in Environments:
+        raise ValueError(f"Environment '{name}' is not defined.")
+    return Environments[name]
