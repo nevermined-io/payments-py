@@ -1,15 +1,22 @@
 """
 AI Query API implementation for the Nevermined Payments protocol
 """
+
 from typing import Optional, Dict, Any
 from payments_py.common.payments_error import PaymentsError
 from payments_py.api.nvm_api import NVMBackendApi, BackendApiOptions, HTTPRequestOptions
+
 
 class AIQueryOptions:
     """
     Options required for interacting with an external AI Agent/Service.
     """
-    def __init__(self, access_token: Optional[str] = None, nevermined_proxy_uri: Optional[str] = None):
+
+    def __init__(
+        self,
+        access_token: Optional[str] = None,
+        nevermined_proxy_uri: Optional[str] = None,
+    ):
         """
         Initialize AIQueryOptions.
 
@@ -20,6 +27,7 @@ class AIQueryOptions:
         self.access_token = access_token
         self.nevermined_proxy_uri = nevermined_proxy_uri
 
+
 class AIQueryApi(NVMBackendApi):
     """
     The AI Query API class provides the methods to interact with the AI Query API.
@@ -28,10 +36,8 @@ class AIQueryApi(NVMBackendApi):
     @remarks
     This API is oriented for AI Builders providing AI Agents and AI Subscribers interacting with them.
     """
-    def __init__(
-        self,
-        opts: BackendApiOptions
-    ):
+
+    def __init__(self, opts: BackendApiOptions):
         """
         Initialize the AI Query API.
 
@@ -68,7 +74,7 @@ class AIQueryApi(NVMBackendApi):
             url = f"/api/v1/payments/service/token/{agent_id}"
             response = self.get(url, HTTPRequestOptions(send_through_proxy=False))
             data = response.json()
-            token = data.get('token', {})
+            token = data.get("token", {})
             return token
         except Exception as e:
             raise PaymentsError(str(e))
@@ -78,7 +84,7 @@ class AIQueryApi(NVMBackendApi):
         method: str,
         url: str,
         data: Optional[Any] = None,
-        req_options: Optional[HTTPRequestOptions] = None
+        req_options: Optional[HTTPRequestOptions] = None,
     ) -> Any:
         """
         Sends a request to the AI Agent/Service.
@@ -109,4 +115,4 @@ class AIQueryApi(NVMBackendApi):
             response = self.request(method, url, data, req_options)
             return response.json()
         except Exception as e:
-            raise PaymentsError(str(e)) 
+            raise PaymentsError(str(e))

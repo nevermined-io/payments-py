@@ -20,7 +20,12 @@ def is_ethereum_address(address: str | None) -> bool:
     :param address: str or None
     :return: bool
     """
-    if address and isinstance(address, str) and address.startswith("0x") and len(address) == 42:
+    if (
+        address
+        and isinstance(address, str)
+        and address.startswith("0x")
+        and len(address) == 42
+    ):
         try:
             int(address[2:], 16)
             return True

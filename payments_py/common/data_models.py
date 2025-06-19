@@ -1,34 +1,45 @@
 """
 Data models for the Nevermined Payments protocol.
 """
-from typing import Optional, List, Dict, Any
+
+from typing import Optional, List, Dict
 from pydantic import BaseModel
+
 
 class BalanceResultDto(BaseModel):
     """Balance result data transfer object."""
+
     plan_type: str
     is_owner: bool
     is_subscriptor: bool
     balance: int
 
+
 class BurnResultDto(BaseModel):
     """Burn result data transfer object."""
+
     user_op_hash: str
     success: bool
     amount: str
 
+
 class CreateAgentAndPlanResultDto(BaseModel):
     """Create agent and plan result data transfer object."""
+
     plan_did: str
     agent_did: str
 
+
 class CreateAssetResultDto(BaseModel):
     """Create asset result data transfer object."""
+
     did: str
     success: bool
 
+
 class CreateCreditsPlanDto(BaseModel):
     """Create credits plan data transfer object."""
+
     name: str
     description: str
     price: float
@@ -36,8 +47,10 @@ class CreateCreditsPlanDto(BaseModel):
     amount_of_credits: int
     tags: Optional[List[str]] = None
 
+
 class CreateTimePlanDto(BaseModel):
     """Create time plan data transfer object."""
+
     name: str
     description: str
     price: float
@@ -45,8 +58,10 @@ class CreateTimePlanDto(BaseModel):
     duration: int
     tags: Optional[List[str]] = None
 
+
 class CreateServiceDto(BaseModel):
     """Create service data transfer object."""
+
     plan_did: str
     service_type: str
     name: str
@@ -71,8 +86,10 @@ class CreateServiceDto(BaseModel):
     query_protocol_version: Optional[str] = None
     service_host: Optional[str] = None
 
+
 class CreateFileDto(BaseModel):
     """Create file data transfer object."""
+
     plan_did: str
     asset_type: str
     name: str
@@ -92,8 +109,10 @@ class CreateFileDto(BaseModel):
     fine_tunable: Optional[bool] = None
     amount_of_credits: Optional[int] = None
 
+
 class CreateAgentDto(BaseModel):
     """Create agent data transfer object."""
+
     plan_did: str
     name: str
     description: str
@@ -117,22 +136,30 @@ class CreateAgentDto(BaseModel):
     query_protocol_version: Optional[str] = None
     service_host: Optional[str] = None
 
+
 class DownloadFileResultDto(BaseModel):
     """Download file result data transfer object."""
+
     success: bool
+
 
 class MintResultDto(BaseModel):
     """Mint result data transfer object."""
+
     user_op_hash: str
     success: bool
     amount: str
 
+
 class OrderPlanResultDto(BaseModel):
     """Order plan result data transfer object."""
+
     agreement_id: str
     success: bool
 
+
 class ServiceTokenResultDto(BaseModel):
     """Service token result data transfer object."""
+
     token: str
-    proxy_url: str 
+    proxy_url: str

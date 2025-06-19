@@ -1,21 +1,17 @@
 """
 End-to-end tests for the Payments class.
 """
+
 import os
 import time
 import pytest
 import threading
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse
 import json
 import requests
 from payments_py.payments import Payments
-from payments_py.common.types import (
-    PlanMetadata,
-    PlanPriceType,
-    Address
-)
+from payments_py.common.types import PlanMetadata, PlanPriceType
 from payments_py.environments import ZeroAddress
 from payments_py.plans import (
     get_erc20_price_config,
@@ -25,29 +21,33 @@ from payments_py.plans import (
     get_free_price_config,
     get_native_token_price_config,
     get_non_expirable_duration_config,
-    ONE_DAY_DURATION
+    ONE_DAY_DURATION,
 )
 
 # Test configuration
 TEST_TIMEOUT = 30
-TEST_ENVIRONMENT = os.getenv('TEST_ENVIRONMENT', 'local')
+TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "local")
 SLEEP_DURATION = 3
-ERC20_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
+ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 
 # Test API keys (these should be replaced with test keys in a real environment)
-SUBSCRIBER_API_KEY = os.getenv('TEST_SUBSCRIBER_API_KEY', 'eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDA2OEVkMDBjRjA0NDFlNDgyOUQ5Nzg0ZkNCZTdiOWUyNkQ0QkQ4ZDAiLCJzdWIiOiIweDUwNTM4NDE5MkJhNmE0RDRiNTBFQUI4NDZlZTY3ZGIzYjlBOTMzNTkiLCJqdGkiOiIweGM1NWNiNTUzN2IzNmQ3MmRmZjBmMGY0MGYzMmY1ZTMwMjVkOWFiYmI5YTJhZjgwNjM2NWEzYmQzOWVkMWJiMWUiLCJleHAiOjE3ODE3MTQyMzF9.s0Pj27izNBnswrO7n8Gjfk7HplSChd4x5dtBMP4WTkYwnNLf-tfvscz-eNPrJshV0cLTb1QIyTZCFxXbPLuW_hs')
-BUILDER_API_KEY = os.getenv('TEST_BUILDER_API_KEY', 'eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDA2OEVkMDBjRjA0NDFlNDgyOUQ5Nzg0ZkNCZTdiOWUyNkQ0QkQ4ZDAiLCJzdWIiOiIweDg5MjQ4MDM0NzJiYjQ1M2I3YzI3YTNDOTgyQTA4Zjc1MTVEN2FBNzIiLCJqdGkiOiIweDk2ZWIxNzdkMTg1M2EyNGI2NGM5ZTIzMDYxZjhkYjJmNGQ0ZjUzNDEzYjU1ZjczN2M5ZWY4MmJiYzlkNmNlZjQiLCJleHAiOjE3ODE3MTQyMzB9.G0iWkDVKXM_608hYQ5hUpc1HWZDOlRBasyO6iCo9FdQYleihUWmtlczAlQoHmgThnj6_eS3S6O_pCfKU9EBbpBw')
+SUBSCRIBER_API_KEY = os.getenv(
+    "TEST_SUBSCRIBER_API_KEY",
+    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDA2OEVkMDBjRjA0NDFlNDgyOUQ5Nzg0ZkNCZTdiOWUyNkQ0QkQ4ZDAiLCJzdWIiOiIweDUwNTM4NDE5MkJhNmE0RDRiNTBFQUI4NDZlZTY3ZGIzYjlBOTMzNTkiLCJqdGkiOiIweGM1NWNiNTUzN2IzNmQ3MmRmZjBmMGY0MGYzMmY1ZTMwMjVkOWFiYmI5YTJhZjgwNjM2NWEzYmQzOWVkMWJiMWUiLCJleHAiOjE3ODE3MTQyMzF9.s0Pj27izNBnswrO7n8Gjfk7HplSChd4x5dtBMP4WTkYwnNLf-tfvscz-eNPrJshV0cLTb1QIyTZCFxXbPLuW_hs",
+)
+BUILDER_API_KEY = os.getenv(
+    "TEST_BUILDER_API_KEY",
+    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDA2OEVkMDBjRjA0NDFlNDgyOUQ5Nzg0ZkNCZTdiOWUyNkQ0QkQ4ZDAiLCJzdWIiOiIweDg5MjQ4MDM0NzJiYjQ1M2I3YzI3YTNDOTgyQTA4Zjc1MTVEN2FBNzIiLCJqdGkiOiIweDk2ZWIxNzdkMTg1M2EyNGI2NGM5ZTIzMDYxZjhkYjJmNGQ0ZjUzNDEzYjU1ZjczN2M5ZWY4MmJiYzlkNmNlZjQiLCJleHAiOjE3ODE3MTQyMzB9.G0iWkDVKXM_608hYQ5hUpc1HWZDOlRBasyO6iCo9FdQYleihUWmtlczAlQoHmgThnj6_eS3S6O_pCfKU9EBbpBw",
+)
 
 # Test endpoints
 AGENT_ENDPOINTS = [
-    {'POST': 'http://localhost:8889/test/:agentId/tasks'},
-    {'GET': 'http://localhost:8889/test/:agentId/tasks/:taskId'}
+    {"POST": "http://localhost:8889/test/:agentId/tasks"},
+    {"GET": "http://localhost:8889/test/:agentId/tasks/:taskId"},
 ]
 
 # Test metadata
-plan_metadata = PlanMetadata(
-    name='E2E test Payments Plan PYTHON'
-)
+plan_metadata = PlanMetadata(name="E2E test Payments Plan PYTHON")
 
 # Global variables to store test IDs - these will be shared between tests
 credits_plan_id = None
@@ -57,26 +57,29 @@ agent_id = None
 builder_address = None
 agent_access_params = None
 
+
 # Mock HTTP Server for Agent testing
 class MockAgentHandler(BaseHTTPRequestHandler):
     def __init__(self, *args, payments_builder=None, agent_id=None, **kwargs):
         self.payments_builder = payments_builder
         self.agent_id = agent_id
         super().__init__(*args, **kwargs)
-    
+
     def do_POST(self):
         self._handle_request()
-    
+
     def do_GET(self):
         self._handle_request()
-    
+
     def _handle_request(self):
-        auth_header = self.headers.get('Authorization')
+        auth_header = self.headers.get("Authorization")
         requested_url = f"http://localhost:8889{self.path}"
         http_verb = self.command
-        
-        print(f'Received request: endpoint={requested_url}, httpVerb={http_verb}, authHeader={auth_header}')
-        
+
+        print(
+            f"Received request: endpoint={requested_url}, httpVerb={http_verb}, authHeader={auth_header}"
+        )
+
         try:
             if self.payments_builder and self.agent_id:
                 # Note: This would need to be implemented in the Python SDK
@@ -84,53 +87,57 @@ class MockAgentHandler(BaseHTTPRequestHandler):
                 #     self.agent_id, auth_header, requested_url, http_verb
                 # )
                 # For now, we'll simulate a valid request
-                if auth_header and auth_header.startswith('Bearer ') and 'INVALID_TOKEN' not in auth_header:
+                if (
+                    auth_header
+                    and auth_header.startswith("Bearer ")
+                    and "INVALID_TOKEN" not in auth_header
+                ):
                     self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
+                    self.send_header("Content-Type", "application/json")
                     self.end_headers()
-                    response = {'message': 'Hello from the Agent!'}
+                    response = {"message": "Hello from the Agent!"}
                     self.wfile.write(json.dumps(response).encode())
                     return
         except Exception as e:
-            print(f'Unauthorized access attempt: {auth_header}, error: {e}')
-        
+            print(f"Unauthorized access attempt: {auth_header}, error: {e}")
+
         self.send_response(403)
-        self.send_header('Content-Type', 'application/json')
+        self.send_header("Content-Type", "application/json")
         self.end_headers()
-        response = {'error': 'Unauthorized'}
+        response = {"error": "Unauthorized"}
         self.wfile.write(json.dumps(response).encode())
+
 
 def create_mock_server(payments_builder, agent_id):
     """Create and start a mock HTTP server for agent testing."""
-    server = HTTPServer(('localhost', 8889), MockAgentHandler)
+    server = HTTPServer(("localhost", 8889), MockAgentHandler)
     server.payments_builder = payments_builder
     server.agent_id = agent_id
-    
+
     def run_server():
         server.serve_forever()
-    
+
     thread = threading.Thread(target=run_server, daemon=True)
     thread.start()
-    
+
     # Wait a bit for server to start
     time.sleep(1)
     return server
 
+
 @pytest.fixture(scope="module")
 def payments_subscriber():
     """Create a Payments instance for the subscriber."""
-    return Payments({
-        'nvm_api_key': SUBSCRIBER_API_KEY,
-        'environment': TEST_ENVIRONMENT
-    })
+    return Payments(
+        {"nvm_api_key": SUBSCRIBER_API_KEY, "environment": TEST_ENVIRONMENT}
+    )
+
 
 @pytest.fixture(scope="module")
 def payments_builder():
     """Create a Payments instance for the builder."""
-    return Payments({
-        'nvm_api_key': BUILDER_API_KEY,
-        'environment': TEST_ENVIRONMENT
-    })
+    return Payments({"nvm_api_key": BUILDER_API_KEY, "environment": TEST_ENVIRONMENT})
+
 
 def test_payments_setup(payments_subscriber, payments_builder):
     """Test that Payments instances can be initialized correctly."""
@@ -142,22 +149,24 @@ def test_payments_setup(payments_subscriber, payments_builder):
     assert payments_builder.account_address is not None
     builder_address = payments_builder.account_address
 
+
 def test_fiat_price_config(payments_builder):
     """Test FIAT price config setup."""
     global builder_address
     if not builder_address:
-        builder_address = '0x0000000000000000000000000000000000000001'
+        builder_address = "0x0000000000000000000000000000000000000001"
     fiat_price_config = get_fiat_price_config(100, builder_address)
     assert fiat_price_config is not None
     assert fiat_price_config.price_type == PlanPriceType.FIXED_FIAT_PRICE
     assert fiat_price_config.amounts[0] == 100
     assert fiat_price_config.receivers[0] == builder_address
 
+
 def test_crypto_price_config(payments_builder):
     """Test CRYPTO price config setup."""
     global builder_address
     if not builder_address:
-        builder_address = '0x0000000000000000000000000000000000000001'
+        builder_address = "0x0000000000000000000000000000000000000001"
     crypto_price_config = get_native_token_price_config(100, builder_address)
     assert crypto_price_config is not None
     assert crypto_price_config.price_type == PlanPriceType.FIXED_PRICE
@@ -165,86 +174,95 @@ def test_crypto_price_config(payments_builder):
     assert crypto_price_config.receivers[0] == builder_address
     assert crypto_price_config.token_address == ZeroAddress
 
+
 @pytest.mark.timeout(TEST_TIMEOUT)
 def test_create_credits_plan(payments_builder):
     """Test creating a credits plan."""
     global builder_address, credits_plan_id
     if not builder_address:
-        builder_address = '0x0000000000000000000000000000000000000001'
+        builder_address = "0x0000000000000000000000000000000000000001"
     price_config = get_erc20_price_config(20, ERC20_ADDRESS, builder_address)
     credits_config = get_fixed_credits_config(100)
-    print(' **** PRICE CONFIG ***', price_config)
-    response = payments_builder.register_credits_plan(plan_metadata, price_config, credits_config)
+    print(" **** PRICE CONFIG ***", price_config)
+    response = payments_builder.register_credits_plan(
+        plan_metadata, price_config, credits_config
+    )
     assert response is not None
-    credits_plan_id = response.get('planId', None)
+    credits_plan_id = response.get("planId", None)
     assert credits_plan_id is not None
     assert int(credits_plan_id) > 0
-    print('Credits Plan ID', credits_plan_id)
+    print("Credits Plan ID", credits_plan_id)
+
 
 @pytest.mark.timeout(TEST_TIMEOUT)
 def test_create_time_plan(payments_builder):
     """Test creating a time plan."""
     global builder_address, expirable_plan_id
     if not builder_address:
-        builder_address = '0x0000000000000000000000000000000000000001'
+        builder_address = "0x0000000000000000000000000000000000000001"
     price_config = get_erc20_price_config(50, ERC20_ADDRESS, builder_address)
     credits_config = get_expirable_duration_config(ONE_DAY_DURATION)  # 1 day
-    response = payments_builder.register_time_plan(plan_metadata, price_config, credits_config)
+    response = payments_builder.register_time_plan(
+        plan_metadata, price_config, credits_config
+    )
     assert response is not None
-    expirable_plan_id = response.get('planId', None)
+    expirable_plan_id = response.get("planId", None)
     assert expirable_plan_id is not None
     assert int(expirable_plan_id) > 0
-    print('Expirable Plan ID', expirable_plan_id)
+    print("Expirable Plan ID", expirable_plan_id)
+
 
 @pytest.mark.timeout(TEST_TIMEOUT)
 def test_create_trial_plan(payments_builder):
     """Test creating a trial plan."""
     global trial_plan_id
-    trial_plan_metadata = PlanMetadata(
-        name='E2E test Trial Payments Plan PYTHON'
-    )
+    trial_plan_metadata = PlanMetadata(name="E2E test Trial Payments Plan PYTHON")
     price_config = get_free_price_config()
     credits_config = get_expirable_duration_config(ONE_DAY_DURATION)
-    print(' **** PRICE CONFIG ***', price_config)
-    response = payments_builder.register_time_trial_plan(trial_plan_metadata, price_config, credits_config)
+    print(" **** PRICE CONFIG ***", price_config)
+    response = payments_builder.register_time_trial_plan(
+        trial_plan_metadata, price_config, credits_config
+    )
     assert response is not None
-    trial_plan_id = response.get('planId', None)
+    trial_plan_id = response.get("planId", None)
     assert trial_plan_id is not None
     assert int(trial_plan_id) > 0
-    print('Trial Plan ID', trial_plan_id)
+    print("Trial Plan ID", trial_plan_id)
+
 
 @pytest.mark.timeout(TEST_TIMEOUT)
 def test_create_agent(payments_builder):
     """Test creating an agent with associated plans."""
     global agent_id, credits_plan_id, expirable_plan_id
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
-    assert expirable_plan_id is not None, "expirable_plan_id must be set by previous test"
-    
+    assert (
+        expirable_plan_id is not None
+    ), "expirable_plan_id must be set by previous test"
+
     agent_metadata = {
-        'name': 'E2E Payments Agent PYTHON',
-        'tags': ['test'],
-        'dateCreated': datetime.now().isoformat()
+        "name": "E2E Payments Agent PYTHON",
+        "tags": ["test"],
+        "dateCreated": datetime.now().isoformat(),
     }
-    agent_api = {
-        'endpoints': AGENT_ENDPOINTS
-    }
+    agent_api = {"endpoints": AGENT_ENDPOINTS}
     payment_plans = [credits_plan_id, expirable_plan_id]
     payment_plans = [pid for pid in payment_plans if pid]
     result = payments_builder.register_agent(agent_metadata, agent_api, payment_plans)
-    print('RESULT', result)
-    agent_id = result.get('agentId', None)
+    print("RESULT", result)
+    agent_id = result.get("agentId", None)
     assert agent_id is not None
-    assert agent_id.startswith('did:nv:')
-    print('Agent ID', agent_id)
+    assert agent_id.startswith("did:nv:")
+    print("Agent ID", agent_id)
+
 
 @pytest.mark.timeout(TEST_TIMEOUT)
 def test_create_agent_and_plan(payments_builder):
     """Test creating an agent and plan in one step."""
     global builder_address
     if not builder_address:
-        builder_address = '0x0000000000000000000000000000000000000001'
-    agent_metadata = {'name': 'My AI Payments Agent', 'tags': ['test2']}
-    agent_api = {'endpoints': [{'POST': 'http://localhost:8889/test/:agentId/tasks'}]}
+        builder_address = "0x0000000000000000000000000000000000000001"
+    agent_metadata = {"name": "My AI Payments Agent", "tags": ["test2"]}
+    agent_api = {"endpoints": [{"POST": "http://localhost:8889/test/:agentId/tasks"}]}
     crypto_price_config = get_native_token_price_config(500, builder_address)
     non_expirable_config = get_non_expirable_duration_config()
     result = payments_builder.register_agent_and_plan(
@@ -252,12 +270,13 @@ def test_create_agent_and_plan(payments_builder):
         agent_api,
         plan_metadata,
         crypto_price_config,
-        non_expirable_config
+        non_expirable_config,
     )
-    agent_and_plan_agent_id = result.get('agentId', None)
-    agent_and_plan_plan_id = result.get('planId', None)
+    agent_and_plan_agent_id = result.get("agentId", None)
+    agent_and_plan_plan_id = result.get("planId", None)
     assert agent_and_plan_agent_id is not None
     assert agent_and_plan_plan_id is not None
+
 
 @pytest.mark.timeout(TEST_TIMEOUT)
 def test_get_plan(payments_builder):
@@ -266,8 +285,9 @@ def test_get_plan(payments_builder):
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
     plan = payments_builder.get_plan(credits_plan_id)
     assert plan is not None
-    assert plan.get('id') == credits_plan_id
-    print('Plan', plan)
+    assert plan.get("id") == credits_plan_id
+    print("Plan", plan)
+
 
 @pytest.mark.timeout(TEST_TIMEOUT)
 def test_get_agent(payments_builder):
@@ -276,8 +296,9 @@ def test_get_agent(payments_builder):
     assert agent_id is not None, "agent_id must be set by previous test"
     agent = payments_builder.get_agent(agent_id)
     assert agent is not None
-    assert agent.get('id') == agent_id
-    print('Agent', agent)
+    assert agent.get("id") == agent_id
+    print("Agent", agent)
+
 
 @pytest.mark.timeout(TEST_TIMEOUT * 2)
 def test_order_plan(payments_subscriber):
@@ -285,12 +306,13 @@ def test_order_plan(payments_subscriber):
     global credits_plan_id
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
     print(credits_plan_id)
-    print(' SUBSCRIBER ADDRESS = ', payments_subscriber.account_address)
+    print(" SUBSCRIBER ADDRESS = ", payments_subscriber.account_address)
     order_result = payments_subscriber.order_plan(credits_plan_id)
     assert order_result is not None
-    print('Order Result', order_result)
-    assert order_result.get('success') is True
-    print('Order Result', order_result)
+    print("Order Result", order_result)
+    assert order_result.get("success") is True
+    print("Order Result", order_result)
+
 
 def test_get_plan_balance(payments_subscriber):
     """Test getting plan balance."""
@@ -298,8 +320,9 @@ def test_get_plan_balance(payments_subscriber):
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
     balance_result = payments_subscriber.get_plan_balance(credits_plan_id)
     assert balance_result is not None
-    print('Balance Result', balance_result)
-    assert int(balance_result.get('balance', 0)) > 0
+    print("Balance Result", balance_result)
+    assert int(balance_result.get("balance", 0)) > 0
+
 
 @pytest.mark.timeout(TEST_TIMEOUT * 2)
 def test_order_trial_plan(payments_subscriber):
@@ -309,8 +332,9 @@ def test_order_trial_plan(payments_subscriber):
 
     order_result = payments_subscriber.order_plan(trial_plan_id)
     assert order_result is not None
-    assert order_result.get('success') is True
-    print('Order Result', order_result)
+    assert order_result.get("success") is True
+    print("Order Result", order_result)
+
 
 @pytest.mark.timeout(TEST_TIMEOUT * 2)
 def test_order_trial_plan_twice(payments_subscriber):
@@ -320,12 +344,13 @@ def test_order_trial_plan_twice(payments_subscriber):
 
     with pytest.raises(Exception):
         order_result = payments_subscriber.order_plan(trial_plan_id)
-        print('Order Result', order_result)
-        assert order_result.get('success') is False
+        print("Order Result", order_result)
+        assert order_result.get("success") is False
+
 
 class TestE2ESubscriberAgentFlow:
     """Test E2E Subscriber/Agent flow with mock HTTP server."""
-    
+
     @pytest.fixture(autouse=True)
     def setup_server(self, payments_builder):
         """Setup mock HTTP server for agent testing."""
@@ -335,54 +360,61 @@ class TestE2ESubscriberAgentFlow:
         yield
         self.server.shutdown()
         self.server.server_close()
-    
+
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_generate_agent_access_token(self, payments_subscriber):
         """Test generating agent access token."""
         global agent_access_params, credits_plan_id, agent_id
-        assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
+        assert (
+            credits_plan_id is not None
+        ), "credits_plan_id must be set by previous test"
         assert agent_id is not None, "agent_id must be set by previous test"
-        
-        agent_access_params = payments_subscriber.get_agent_access_token(credits_plan_id, agent_id)
+
+        agent_access_params = payments_subscriber.get_agent_access_token(
+            credits_plan_id, agent_id
+        )
         assert agent_access_params is not None
-        print('Agent Access Params', agent_access_params)
-        assert len(agent_access_params.get('accessToken', '')) > 0
-    
+        print("Agent Access Params", agent_access_params)
+        assert len(agent_access_params.get("accessToken", "")) > 0
+
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_send_request_to_agent(self):
         """Test sending a request directly to the agent."""
         global agent_access_params
-        assert agent_access_params is not None, "agent_access_params must be set by previous test"
-        
-        agent_url = 'http://localhost:8889/test/12345/tasks'
+        assert (
+            agent_access_params is not None
+        ), "agent_access_params must be set by previous test"
+
+        agent_url = "http://localhost:8889/test/12345/tasks"
         headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': f"Bearer {agent_access_params.get('accessToken')}"
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {agent_access_params.get('accessToken')}",
         }
-        
+
         response = requests.post(agent_url, headers=headers)
         assert response is not None
         print(response.json())
         assert response.status_code == 200
-    
+
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_invalid_agent_request(self):
         """Test that invalid agent requests are rejected."""
-        agent_url = 'http://localhost:8889/test/12345/tasks'
+        agent_url = "http://localhost:8889/test/12345/tasks"
         headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer INVALID_TOKEN'
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer INVALID_TOKEN",
         }
-        
+
         response = requests.post(agent_url, headers=headers)
         assert response is not None
         assert response.status_code == 403
+
 
 @pytest.mark.timeout(TEST_TIMEOUT)
 def test_get_nonexistent_plan(payments_builder):
     """Test getting a plan that does not exist."""
     with pytest.raises(Exception):
-        result = payments_builder.get_plan('11111')
-        assert result is None 
+        result = payments_builder.get_plan("11111")
+        assert result is None

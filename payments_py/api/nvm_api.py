@@ -28,6 +28,7 @@ API_URL_REMOVE_PLAN_AGENT = "/api/v1/protocol/agents/{agent_id}/plan/{plan_id}"
 API_URL_GET_AGENT_ACCESS_TOKEN = "/api/v1/protocol/token/{plan_id}/{agent_id}"
 API_URL_VALIDATE_AGENT_ACCESS_TOKEN = "/api/v1/protocol/token/validate/{agent_id}"
 
+
 class BackendApiOptions:
     """
     Backend API options for Nevermined Payments.
@@ -37,11 +38,19 @@ class BackendApiOptions:
     :param proxy_host: The host of the Nevermined Proxy (optional)
     :param headers: Additional headers to send with the requests (optional)
     """
-    def __init__(self, backend_host: str, api_key: Optional[str] = None, proxy_host: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
+
+    def __init__(
+        self,
+        backend_host: str,
+        api_key: Optional[str] = None,
+        proxy_host: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         self.backend_host = backend_host
         self.api_key = api_key
         self.proxy_host = proxy_host
         self.headers = headers or {}
+
 
 class HTTPRequestOptions:
     """
@@ -51,15 +60,23 @@ class HTTPRequestOptions:
     :param proxy_host: Proxy host to use (optional)
     :param headers: Additional headers for the request (optional)
     """
-    def __init__(self, send_through_proxy: bool = True, proxy_host: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
+
+    def __init__(
+        self,
+        send_through_proxy: bool = True,
+        proxy_host: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         self.send_through_proxy = send_through_proxy
         self.proxy_host = proxy_host
         self.headers = headers or {}
+
 
 class NVMBackendApi:
     """
     Nevermined Backend API client, equivalent to the TypeScript NVMBackendApi class.
     """
+
     def __init__(self, opts: BackendApiOptions):
         """
         Initialize the API client with backend options.
@@ -80,7 +97,9 @@ class NVMBackendApi:
         self.agent_id = ""
         try:
             if self.opts.api_key and len(self.opts.api_key) > 0:
-                jwt_decoded = jwt.decode(self.opts.api_key, options={"verify_signature": False})
+                jwt_decoded = jwt.decode(
+                    self.opts.api_key, options={"verify_signature": False}
+                )
                 sub = jwt_decoded.get("sub", "")
                 if isinstance(sub, str) and is_ethereum_address(sub):
                     self.has_key = True
@@ -92,7 +111,9 @@ class NVMBackendApi:
         except Exception as error:
             raise ValueError(f"Invalid URL: {self.opts.backend_host} - {str(error)}")
 
-    def parse_url(self, uri: str, req_options: Optional[HTTPRequestOptions] = None) -> str:
+    def parse_url(
+        self, uri: str, req_options: Optional[HTTPRequestOptions] = None
+    ) -> str:
         """
         Compose the full URL for a request, using proxy if needed.
         """
@@ -109,7 +130,9 @@ class NVMBackendApi:
         parsed = urlparse(host)
         return f"{parsed.scheme}://{parsed.netloc}{uri}"
 
-    def parse_headers(self, additional_headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    def parse_headers(
+        self, additional_headers: Optional[Dict[str, str]] = None
+    ) -> Dict[str, str]:
         """
         Merge default headers with additional headers.
         """
@@ -124,7 +147,13 @@ class NVMBackendApi:
         """
         self.opts.headers["Authorization"] = f"Bearer {token}"
 
-    def request(self, method: str, url: str, data: Any = None, req_options: Optional[HTTPRequestOptions] = None):
+    def request(
+        self,
+        method: str,
+        url: str,
+        data: Any = None,
+        req_options: Optional[HTTPRequestOptions] = None,
+    ):
         """
         Make an HTTP request to the backend.
         """
@@ -153,7 +182,9 @@ class NVMBackendApi:
                 message = "Request failed"
             raise Exception(f"HTTP {response.status_code}: {message}") from err
         except Exception as err:
-            raise Exception("Network error or request failed without a response.") from err
+            raise Exception(
+                "Network error or request failed without a response."
+            ) from err
 
     def get(self, url: str, req_options: Optional[HTTPRequestOptions] = None):
         """
@@ -162,19 +193,25 @@ class NVMBackendApi:
         req_options = req_options or HTTPRequestOptions(send_through_proxy=True)
         return self.request("GET", url, None, req_options)
 
-    def post(self, url: str, data: Any, req_options: Optional[HTTPRequestOptions] = None):
+    def post(
+        self, url: str, data: Any, req_options: Optional[HTTPRequestOptions] = None
+    ):
         """
         Make a POST request.
         """
         return self.request("POST", url, data, req_options)
 
-    def put(self, url: str, data: Any, req_options: Optional[HTTPRequestOptions] = None):
+    def put(
+        self, url: str, data: Any, req_options: Optional[HTTPRequestOptions] = None
+    ):
         """
         Make a PUT request.
         """
         return self.request("PUT", url, data, req_options)
 
-    def delete(self, url: str, data: Any, req_options: Optional[HTTPRequestOptions] = None):
+    def delete(
+        self, url: str, data: Any, req_options: Optional[HTTPRequestOptions] = None
+    ):
         """
         Make a DELETE request.
         """

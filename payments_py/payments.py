@@ -1,6 +1,7 @@
 """
 Main Payments class for the Nevermined Payments protocol.
 """
+
 from typing import Optional, Dict, Any, List
 import jwt
 import requests
@@ -13,7 +14,7 @@ from payments_py.common.types import (
     PlanCreditsConfig,
     AgentMetadata,
     AgentAPIAttributes,
-    PlanCreditsType
+    PlanCreditsType,
 )
 from payments_py.api.query_api import AIQueryApi
 from payments_py.api.nvm_api import (
@@ -29,16 +30,18 @@ from payments_py.api.nvm_api import (
     API_URL_SEARCH_AGENTS,
     API_URL_ADD_PLAN_AGENT,
     API_URL_REMOVE_PLAN_AGENT,
-    API_URL_GET_AGENT_ACCESS_TOKEN
+    API_URL_GET_AGENT_ACCESS_TOKEN,
 )
 from payments_py.environments import get_environment
 from payments_py.common.helper import get_random_big_int, dict_keys_to_camel
 from enum import Enum
 
+
 class Payments:
     """
     Main class for interacting with the Nevermined Payments protocol.
     """
+
     query: AIQueryApi
     return_url: str
     environment: str
@@ -49,16 +52,16 @@ class Payments:
     is_browser_instance: bool
 
     @classmethod
-    def get_instance(cls, options: PaymentOptions) -> 'Payments':
+    def get_instance(cls, options: PaymentOptions) -> "Payments":
         """
         Get an instance of the payments class.
-        
+
         Args:
             options: The options to initialize the payments class
-            
+
         Returns:
             An instance of Payments
-            
+
         Raises:
             PaymentsError: If nvm_api_key is not provided
         """
@@ -66,7 +69,9 @@ class Payments:
             raise PaymentsError("return_url is required")
         return cls(options)
 
-    def __init__(self, options: PaymentOptions | dict, is_browser_instance: bool = False):
+    def __init__(
+        self, options: PaymentOptions | dict, is_browser_instance: bool = False
+    ):
         """
         Initialize the Payments class.
         Args:
@@ -76,7 +81,7 @@ class Payments:
         if isinstance(options, dict):
             options = PaymentOptions(**options)
         self.nvm_api_key = options.nvm_api_key
-        self.return_url = options.return_url or ''
+        self.return_url = options.return_url or ""
         self.environment = get_environment(options.environment)
         self.app_id = options.app_id
         self.version = options.version
@@ -88,14 +93,13 @@ class Payments:
     def _parse_nvm_api_key(self) -> None:
         """
         Parse the NVM API Key to get the account address.
-        
+
         Raises:
             PaymentsError: If the API key is invalid
         """
         try:
             decoded_jwt = jwt.decode(
-                self.nvm_api_key,
-                options={"verify_signature": False}
+                self.nvm_api_key, options={"verify_signature": False}
             )
             self.account_address = decoded_jwt.get("sub")
         except Exception as e:
@@ -106,12 +110,13 @@ class Payments:
         Initialize the AI Query Protocol API.
         """
         from payments_py.api.nvm_api import BackendApiOptions
+
         self.query = AIQueryApi(
             BackendApiOptions(
                 backend_host=self.environment.backend,
                 api_key=self.nvm_api_key,
                 proxy_host=self.environment.proxy,
-                headers={}
+                headers={},
             )
         )
 
@@ -119,13 +124,15 @@ class Payments:
     def is_logged_in(self) -> bool:
         """
         Check if a user is logged in.
-        
+
         Returns:
             True if the user is logged in
         """
         return bool(self.nvm_api_key)
 
-    def get_backend_http_options(self, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def get_backend_http_options(
+        self, body: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Get HTTP options for backend requests (headers and body only).
         Args:
@@ -151,8 +158,10 @@ class Payments:
         if isinstance(obj, list):
             return [self.pydantic_to_dict(i) for i in obj]
         elif isinstance(obj, dict):
-            return {k: self.pydantic_to_dict(v) for k, v in obj.items() if v is not None}
-        elif hasattr(obj, 'dict'):
+            return {
+                k: self.pydantic_to_dict(v) for k, v in obj.items() if v is not None
+            }
+        elif hasattr(obj, "dict"):
             return self.pydantic_to_dict(obj.dict(exclude_none=True))
         elif isinstance(obj, Enum):
             return obj.value
@@ -164,7 +173,7 @@ class Payments:
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
         credits_config: PlanCreditsConfig,
-        nonce: Optional[int] = None
+        nonce: Optional[int] = None,
     ) -> Dict[str, str]:
         """
         Allows an AI Builder to create a Payment Plan on Nevermined in a flexible manner.
@@ -199,29 +208,29 @@ class Payments:
             "priceConfig": self.pydantic_to_dict(price_config),
             "creditsConfig": self.pydantic_to_dict(credits_config),
             "nonce": nonce,
-            "isTrialPlan": getattr(plan_metadata, 'is_trial_plan', False)
+            "isTrialPlan": getattr(plan_metadata, "is_trial_plan", False),
         }
         body = dict_keys_to_camel(body)
-        
+
         options = self.get_backend_http_options(body)
         url = f"{self.environment.backend}{API_URL_REGISTER_PLAN}"
-        
+
         response = requests.post(url, **options)
         if not response.ok:
             raise PaymentsError(f"{response.status_code} - {response.text}")
-        
+
         result = response.json()
         if not result:
             raise PaymentsError("Failed to register plan")
-        if 'plan_id' in result:
-            result['planId'] = result.pop('plan_id')
+        if "plan_id" in result:
+            result["planId"] = result.pop("plan_id")
         return result
 
     def register_credits_plan(
         self,
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
-        credits_config: PlanCreditsConfig
+        credits_config: PlanCreditsConfig,
     ) -> Dict[str, str]:
         """
         It allows to an AI Builder to create a Payment Plan on Nevermined based on Credits.
@@ -249,19 +258,26 @@ class Payments:
             >>> result = payments.register_credits_plan(plan_metadata, crypto_price_config, credits_config)
             >>> plan_id = result["planId"]
         """
-        if credits_config.credits_type not in [PlanCreditsType.FIXED, PlanCreditsType.DYNAMIC]:
-            raise PaymentsError("The creditsConfig.creditsType must be FIXED or DYNAMIC")
-            
+        if credits_config.credits_type not in [
+            PlanCreditsType.FIXED,
+            PlanCreditsType.DYNAMIC,
+        ]:
+            raise PaymentsError(
+                "The creditsConfig.creditsType must be FIXED or DYNAMIC"
+            )
+
         if credits_config.min_amount > credits_config.max_amount:
-            raise PaymentsError("The creditsConfig.minAmount can not be more than creditsConfig.maxAmount")
-            
+            raise PaymentsError(
+                "The creditsConfig.minAmount can not be more than creditsConfig.maxAmount"
+            )
+
         return self.register_plan(plan_metadata, price_config, credits_config)
 
     def register_time_plan(
         self,
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
-        credits_config: PlanCreditsConfig
+        credits_config: PlanCreditsConfig,
     ) -> Dict[str, str]:
         """
         It allows to an AI Builder to create a Payment Plan on Nevermined limited by duration.
@@ -291,14 +307,14 @@ class Payments:
         """
         if credits_config.credits_type != PlanCreditsType.EXPIRABLE:
             raise PaymentsError("The creditsConfig.creditsType must be EXPIRABLE")
-            
+
         return self.register_plan(plan_metadata, price_config, credits_config)
 
     def register_credits_trial_plan(
         self,
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
-        credits_config: PlanCreditsConfig
+        credits_config: PlanCreditsConfig,
     ) -> Dict[str, str]:
         """
         It allows to an AI Builder to create a Trial Payment Plan on Nevermined limited by duration.
@@ -329,7 +345,7 @@ class Payments:
         self,
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
-        credits_config: PlanCreditsConfig
+        credits_config: PlanCreditsConfig,
     ) -> Dict[str, str]:
         """
         It allows to an AI Builder to create a Trial Payment Plan on Nevermined limited by duration.
@@ -360,7 +376,7 @@ class Payments:
         self,
         agent_metadata: AgentMetadata,
         agent_api: AgentAPIAttributes,
-        payment_plans: List[str]
+        payment_plans: List[str],
     ) -> Dict[str, str]:
         """
         It registers a new AI Agent on Nevermined.
@@ -388,17 +404,17 @@ class Payments:
         body = {
             "metadataAttributes": self.pydantic_to_dict(agent_metadata),
             "agentApiAttributes": self.pydantic_to_dict(agent_api),
-            "plans": payment_plans
+            "plans": payment_plans,
         }
         body = dict_keys_to_camel(body)
         response = requests.post(
             f"{self.environment.backend}{API_URL_REGISTER_AGENT}",
-            **self.get_backend_http_options(body)
+            **self.get_backend_http_options(body),
         ).json()
         if not response:
             raise PaymentsError("Failed to register agent")
-        if 'agent_id' in response:
-            response['agentId'] = response.pop('agent_id')
+        if "agent_id" in response:
+            response["agentId"] = response.pop("agent_id")
         return response
 
     def register_agent_and_plan(
@@ -407,7 +423,7 @@ class Payments:
         agent_api: AgentAPIAttributes,
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
-        credits_config: PlanCreditsConfig
+        credits_config: PlanCreditsConfig,
     ) -> Dict[str, str]:
         """
         It registers a new AI Agent and a Payment Plan associated to this new agent.
@@ -441,113 +457,125 @@ class Payments:
             >>> plan_id = result["planId"]
         """
         plan_result = self.register_plan(plan_metadata, price_config, credits_config)
-        agent_result = self.register_agent(agent_metadata, agent_api, [plan_result["planId"]])
-        return {
-            "agentId": agent_result["agentId"],
-            "planId": plan_result["planId"]
-        }
+        agent_result = self.register_agent(
+            agent_metadata, agent_api, [plan_result["planId"]]
+        )
+        return {"agentId": agent_result["agentId"], "planId": plan_result["planId"]}
 
     def get_agent(self, agent_id: str) -> Dict[str, Any]:
         """
         Get the metadata (aka Decentralized Document or DDO) for a given Agent identifier (agentId).
-        
+
         Args:
             agent_id: The unique identifier of the agent
 
         Returns:
             The metadata (aka Decentralized Document or DDO) for the given Agent identifier (agentId)
-            
+
         Raises:
             PaymentsError: If the agent is not found
         """
-        url = API_URL_GET_AGENT.replace('{agent_id}', agent_id)
+        url = API_URL_GET_AGENT.replace("{agent_id}", agent_id)
         response = requests.get(
             f"{self.environment.backend}{url}",
-            headers={"Accept": "application/json", "Content-Type": "application/json"}
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
         ).json()
-        
+
         if not response:
-            raise PaymentsError(f"Agent not found. {response.statusText} - {response.text}")
-            
+            raise PaymentsError(
+                f"Agent not found. {response.statusText} - {response.text}"
+            )
+
         return response
-    
+
     def get_plan(self, plan_id: str) -> Dict[str, Any]:
         """
         Get the metadata (aka Decentralized Document or DDO) for a given Plan identifier (planId).
-        
+
         Args:
             plan_id: The unique identifier of the plan
-            
+
         Returns:
             The metadata (aka Decentralized Document or DDO) for the given Plan identifier (planId)
-            
+
         Raises:
             PaymentsError: If the plan is not found
         """
-        url = API_URL_GET_PLAN.replace('{plan_id}', plan_id)
+        url = API_URL_GET_PLAN.replace("{plan_id}", plan_id)
         response = requests.get(
             f"{self.environment.backend}{url}",
-            headers={"Accept": "application/json", "Content-Type": "application/json"}
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
         )
-        
+
         if not response.ok:
-            raise PaymentsError(f"Plan not found. {response.status_code} - {response.text}")
-            
+            raise PaymentsError(
+                f"Plan not found. {response.status_code} - {response.text}"
+            )
+
         return response.json()
 
-    def get_plan_balance(self, plan_id: str, account_address: Optional[str] = None) -> Dict[str, Any]:
+    def get_plan_balance(
+        self, plan_id: str, account_address: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Get the balance of an account for a Payment Plan.
-        
+
         Args:
             plan_id: The identifier of the Payment Plan
             account_address: The address of the account to get the balance.
 
         Returns:
             The balance of the account for the given Payment Plan
-            
+
         Raises:
             PaymentsError: If unable to get balance
         """
-        url = API_URL_PLAN_BALANCE.replace('{plan_id}', plan_id).replace('{holder_address}', account_address or self.account_address)
+        url = API_URL_PLAN_BALANCE.replace("{plan_id}", plan_id).replace(
+            "{holder_address}", account_address or self.account_address
+        )
         response = requests.get(
             f"{self.environment.backend}{url}",
-            headers={"Accept": "application/json", "Content-Type": "application/json"}
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
         ).json()
-        
+
         if not response:
-            raise PaymentsError(f"Plan balance not found. {response.statusText} - {response.text}")
-            
+            raise PaymentsError(
+                f"Plan balance not found. {response.statusText} - {response.text}"
+            )
+
         return response
 
     def order_plan(self, plan_did: str) -> Dict[str, bool]:
         """
         Orders a Payment Plan. The user needs to have enough balance in the token selected by the owner of the Payment Plan.
-        
+
         Args:
             plan_did: The identifier of the Payment Plan
-            
+
         Returns:
             A promise that resolves indicating if the operation was successful.
-            
+
         Raises:
             PaymentsError: If unable to order plan
         """
-        url = API_URL_ORDER_PLAN.replace('{plan_id}', plan_did)
+        url = API_URL_ORDER_PLAN.replace("{plan_id}", plan_did)
         response = requests.post(
-            f"{self.environment.backend}{url}",
-            **self.get_backend_http_options()
+            f"{self.environment.backend}{url}", **self.get_backend_http_options()
         ).json()
 
         if not response:
-            raise PaymentsError(f"Unable to order plan. {response.statusText} - {response.text}")
-            
+            raise PaymentsError(
+                f"Unable to order plan. {response.statusText} - {response.text}"
+            )
+
         return response
 
-    def mint_plan_credits(self, plan_id: str, credits_amount: int, credits_receiver: str) -> Dict[str, Any]:
+    def mint_plan_credits(
+        self, plan_id: str, credits_amount: int, credits_receiver: str
+    ) -> Dict[str, Any]:
         """
         Mint credits for a given Payment Plan and transfer them to a receiver.
-        
+
         Args:
             plan_id: The identifier of the Payment Plan
             credits_amount: The number of credits to mint
@@ -555,39 +583,45 @@ class Payments:
 
         Returns:
             A promise that resolves indicating if the operation was successful.
-            
+
         Raises:
             PaymentsError: If unable to mint credits
         """
         body = {
             "planId": plan_id,
             "amount": credits_amount,
-            "creditsReceiver": credits_receiver
+            "creditsReceiver": credits_receiver,
         }
         body = dict_keys_to_camel(body)
         response = requests.post(
             f"{self.environment.backend}{API_URL_MINT_PLAN}",
-            **self.get_backend_http_options(self.pydantic_to_dict(body))
+            **self.get_backend_http_options(self.pydantic_to_dict(body)),
         ).json()
-        
+
         if not response:
             raise PaymentsError(f"Unable to mint plan credits.")
-        
+
         return response
 
-    def mint_plan_expirable(self, plan_id: str, credits_amount: int, credits_receiver: str, credits_duration: int = 0) -> Dict[str, Any]:
+    def mint_plan_expirable(
+        self,
+        plan_id: str,
+        credits_amount: int,
+        credits_receiver: str,
+        credits_duration: int = 0,
+    ) -> Dict[str, Any]:
         """
         Mint credits for a given Payment Plan and transfer them to a receiver.
-        
+
         Args:
             plan_id: The identifier of the Payment Plan
             credits_amount: The number of credits to mint
             credits_receiver: The address of the receiver where the credits will be transferred
             credits_duration: The duration of the credits in seconds
-            
+
         Returns:
             A promise that resolves indicating if the operation was successful.
-            
+
         Raises:
             PaymentsError: If unable to mint expirable credits
         """
@@ -595,17 +629,17 @@ class Payments:
             "planId": plan_id,
             "amount": credits_amount,
             "creditsReceiver": credits_receiver,
-            "duration": credits_duration
+            "duration": credits_duration,
         }
         body = dict_keys_to_camel(body)
         response = requests.post(
             f"{self.environment.backend}{API_URL_MINT_EXPIRABLE_PLAN}",
-            **self.get_backend_http_options(self.pydantic_to_dict(body))
+            **self.get_backend_http_options(self.pydantic_to_dict(body)),
         ).json()
-        
+
         if not response:
             raise PaymentsError(f"Unable to mint expirable credits.")
-        
+
         return response
 
     def burn_credits(self, plan_id: str, credits_amount: str) -> Dict[str, Any]:
@@ -613,32 +647,29 @@ class Payments:
         Burn credits for a given Payment Plan.
 
         This method is only can be called by the owner of the Payment Plan.
-        
+
         Args:
             plan_id: The identifier of the Payment Plan
             credits_amount: The number of credits to burn
 
         Returns:
             A promise that resolves indicating if the operation was successful.
-            
+
         Raises:
             PaymentsError: If unable to burn credits
         """
-        body = {
-            "planId": plan_id,
-            "creditsAmountToBurn": credits_amount
-        }
+        body = {"planId": plan_id, "creditsAmountToBurn": credits_amount}
         body = dict_keys_to_camel(body)
         response = requests.delete(
             f"{self.environment.backend}{API_URL_BURN_PLAN}",
-            **self.get_backend_http_options(self.pydantic_to_dict(body))
+            **self.get_backend_http_options(self.pydantic_to_dict(body)),
         ).json()
-        
+
         if not response:
             raise PaymentsError(f"Unable to burn credits.")
-        
+
         return response
-    
+
     def add_plan_to_agent(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
         """
         Add a Payment Plan to an AI Agent.
@@ -651,21 +682,22 @@ class Payments:
 
         Returns:
             A promise that resolves indicating if the operation was successful.
-            
+
         Raises:
             PaymentsError: If unable to add plan to agent
         """
-        url = API_URL_ADD_PLAN_AGENT.replace('{plan_id}', plan_id).replace('{agent_id}', agent_id)
+        url = API_URL_ADD_PLAN_AGENT.replace("{plan_id}", plan_id).replace(
+            "{agent_id}", agent_id
+        )
         response = requests.post(
-            f"{self.environment.backend}{url}",
-            **self.get_backend_http_options()
+            f"{self.environment.backend}{url}", **self.get_backend_http_options()
         ).json()
-        
+
         if not response:
             raise PaymentsError(f"Unable to add plan to agent.")
-        
+
         return response
-    
+
     def remove_plan_from_agent(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
         """
         Remove a Payment Plan from an AI Agent.
@@ -679,25 +711,28 @@ class Payments:
 
         Returns:
             A promise that resolves indicating if the operation was successful.
-            
+
         Raises:
             PaymentsError: If unable to remove plan from agent
         """
-        url = API_URL_REMOVE_PLAN_AGENT.replace('{plan_id}', plan_id).replace('{agent_id}', agent_id)
+        url = API_URL_REMOVE_PLAN_AGENT.replace("{plan_id}", plan_id).replace(
+            "{agent_id}", agent_id
+        )
         response = requests.delete(
-            f"{self.environment.backend}{url}",
-            **self.get_backend_http_options()
+            f"{self.environment.backend}{url}", **self.get_backend_http_options()
         ).json()
-        
+
         if not response:
             raise PaymentsError(f"Unable to remove plan from agent.")
-        
+
         return response
-    
-    def search_agents(self, text: str, page: int = 1, offset: int = 10) -> Dict[str, Any]:
+
+    def search_agents(
+        self, text: str, page: int = 1, offset: int = 10
+    ) -> Dict[str, Any]:
         """
         Search for AI Agents based on a text query.
-        
+
         Args:
             text: The text query to search for Payment Plans.
             page: The page number for pagination.
@@ -705,10 +740,10 @@ class Payments:
 
         Returns:
             A promise that resolves to the JSON response from the server.
-            
+
         Raises:
             PaymentsError: If the search fails
-            
+
         Example:
             >>> agents = payments.search_agents(text='test')
             >>> print(agents.agents)
@@ -717,14 +752,16 @@ class Payments:
         response = requests.get(
             f"{self.environment.backend}{url}",
             headers={"Accept": "application/json", "Content-Type": "application/json"},
-            params={"text": text, "page": page, "offset": offset}
+            params={"text": text, "page": page, "offset": offset},
         ).json()
-        
+
         if not response:
-            raise PaymentsError(f"Unable to search agents. {response.statusText} - {response.text}")
-        
+            raise PaymentsError(
+                f"Unable to search agents. {response.statusText} - {response.text}"
+            )
+
         return response
-    
+
     def connect(self):
         """
         Initiate the connect flow. Only allowed in browser context.
@@ -752,25 +789,27 @@ class Payments:
     def get_agent_access_token(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
         """
         Get an access token for an agent based on a plan subscription.
-        
+
         Args:
             plan_id: The identifier of the Payment Plan
             agent_id: The identifier of the AI Agent
-            
+
         Returns:
             The agent access parameters including the access token
-            
+
         Raises:
             PaymentsError: If unable to get agent access token
         """
-        access_token_url = API_URL_GET_AGENT_ACCESS_TOKEN.format(plan_id=plan_id, agent_id=agent_id)
+        access_token_url = API_URL_GET_AGENT_ACCESS_TOKEN.format(
+            plan_id=plan_id, agent_id=agent_id
+        )
         options = self.get_backend_http_options()
         url = f"{self.environment.backend}{access_token_url}"
-        
+
         response = requests.get(url, **options)
         if not response.ok:
-            raise PaymentsError(f"Unable to get agent access token. {response.status_code} - {response.text}")
-        
+            raise PaymentsError(
+                f"Unable to get agent access token. {response.status_code} - {response.text}"
+            )
+
         return response.json()
-
-

@@ -1,5 +1,6 @@
 import os
 
+
 class EnvironmentInfo:
     """
     Data class to store environment information.
@@ -9,10 +10,12 @@ class EnvironmentInfo:
         backend (str): Backend URL
         proxy (str): Proxy URL
     """
+
     def __init__(self, frontend=None, backend=None, proxy=None):
         self.frontend = frontend
         self.backend = backend
         self.proxy = proxy
+
 
 # Zero address constant
 ZeroAddress = "0x0000000000000000000000000000000000000000"
@@ -66,6 +69,7 @@ Environments = {
         proxy=os.getenv("NVM_PROXY_URL", "https://localhost:443"),
     ),
 }
+
 
 def get_environment(name):
     """
