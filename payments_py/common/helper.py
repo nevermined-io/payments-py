@@ -83,7 +83,7 @@ def get_service_host_from_endpoints(endpoints: list[Endpoint]) -> str:
         service_host = ''
     return service_host
 
-def get_random_big_int(bits: int = 53) -> int:
+def get_random_big_int(bits: int = 48) -> int:
     """
     Generate a random big integer with the specified number of bits (default 48, max safe integer for JS is 53 bits).
 

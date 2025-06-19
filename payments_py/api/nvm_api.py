@@ -24,6 +24,10 @@ API_URL_SEARCH_AGENTS = "/api/v1/protocol/agents/search"
 API_URL_ADD_PLAN_AGENT = "/api/v1/protocol/agents/{agent_id}/plan/{plan_id}"
 API_URL_REMOVE_PLAN_AGENT = "/api/v1/protocol/agents/{agent_id}/plan/{plan_id}"
 
+# Token endpoints
+API_URL_GET_AGENT_ACCESS_TOKEN = "/api/v1/protocol/token/{plan_id}/{agent_id}"
+API_URL_VALIDATE_AGENT_ACCESS_TOKEN = "/api/v1/protocol/token/validate/{agent_id}"
+
 class BackendApiOptions:
     """
     Backend API options for Nevermined Payments.

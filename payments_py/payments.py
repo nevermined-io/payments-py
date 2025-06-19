@@ -28,7 +28,8 @@ from payments_py.api.nvm_api import (
     API_URL_GET_AGENT,
     API_URL_SEARCH_AGENTS,
     API_URL_ADD_PLAN_AGENT,
-    API_URL_REMOVE_PLAN_AGENT
+    API_URL_REMOVE_PLAN_AGENT,
+    API_URL_GET_AGENT_ACCESS_TOKEN
 )
 from payments_py.environments import get_environment
 from payments_py.common.helper import get_random_big_int, dict_keys_to_camel
@@ -197,18 +198,24 @@ class Payments:
             "metadataAttributes": self.pydantic_to_dict(plan_metadata),
             "priceConfig": self.pydantic_to_dict(price_config),
             "creditsConfig": self.pydantic_to_dict(credits_config),
-            "nonce": nonce
+            "nonce": nonce,
+            "isTrialPlan": getattr(plan_metadata, 'is_trial_plan', False)
         }
         body = dict_keys_to_camel(body)
-        response = requests.post(
-            f"{self.environment.backend}{API_URL_REGISTER_PLAN}",
-            **self.get_backend_http_options(body)
-        ).json()
-        if not response:
+        
+        options = self.get_backend_http_options(body)
+        url = f"{self.environment.backend}{API_URL_REGISTER_PLAN}"
+        
+        response = requests.post(url, **options)
+        if not response.ok:
+            raise PaymentsError(f"{response.status_code} - {response.text}")
+        
+        result = response.json()
+        if not result:
             raise PaymentsError("Failed to register plan")
-        if 'plan_id' in response:
-            response['planId'] = response.pop('plan_id')
-        return response
+        if 'plan_id' in result:
+            result['planId'] = result.pop('plan_id')
+        return result
 
     def register_credits_plan(
         self,
@@ -481,12 +488,12 @@ class Payments:
         response = requests.get(
             f"{self.environment.backend}{url}",
             headers={"Accept": "application/json", "Content-Type": "application/json"}
-        ).json()
+        )
         
-        if not response:
-            raise PaymentsError(f"Plan not found. {response.statusText} - {response.text}")
+        if not response.ok:
+            raise PaymentsError(f"Plan not found. {response.status_code} - {response.text}")
             
-        return response
+        return response.json()
 
     def get_plan_balance(self, plan_id: str, account_address: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -531,7 +538,7 @@ class Payments:
             f"{self.environment.backend}{url}",
             **self.get_backend_http_options()
         ).json()
-        
+
         if not response:
             raise PaymentsError(f"Unable to order plan. {response.statusText} - {response.text}")
             
@@ -741,5 +748,29 @@ class Payments:
         if self.is_browser_instance:
             raise PaymentsError("This method can only be used in a browser environment")
         self.nvm_api_key = None
+
+    def get_agent_access_token(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
+        """
+        Get an access token for an agent based on a plan subscription.
+        
+        Args:
+            plan_id: The identifier of the Payment Plan
+            agent_id: The identifier of the AI Agent
+            
+        Returns:
+            The agent access parameters including the access token
+            
+        Raises:
+            PaymentsError: If unable to get agent access token
+        """
+        access_token_url = API_URL_GET_AGENT_ACCESS_TOKEN.format(plan_id=plan_id, agent_id=agent_id)
+        options = self.get_backend_http_options()
+        url = f"{self.environment.backend}{access_token_url}"
+        
+        response = requests.get(url, **options)
+        if not response.ok:
+            raise PaymentsError(f"Unable to get agent access token. {response.status_code} - {response.text}")
+        
+        return response.json()
 
 
