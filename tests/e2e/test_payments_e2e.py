@@ -26,7 +26,7 @@ from payments_py.plans import (
 
 # Test configuration
 TEST_TIMEOUT = 30
-TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "local")
+TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging")
 SLEEP_DURATION = 3
 ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 
