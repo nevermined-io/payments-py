@@ -6,7 +6,7 @@ import os
 import pytest
 from payments_py.payments import Payments
 from payments_py.common.payments_error import PaymentsError
-from payments_py.common.helper import (
+from payments_py.utils import (
     snake_to_camel,
     is_ethereum_address,
     get_service_host_from_endpoints,
@@ -21,20 +21,21 @@ TEST_API_KEY = os.getenv(
 
 def test_payments_initialization():
     """Test that Payments can be initialized correctly."""
-    payments = Payments({"nvm_api_key": TEST_API_KEY, "environment": "staging"})
+    payments = Payments({"nvm_api_key": TEST_API_KEY, "environment": "staging_testnet"})
     assert payments is not None
     assert payments.query is not None
     assert payments.is_browser_instance is False
+    assert payments.plans is not None
 
 
 def test_payments_initialization_browser():
     """Test that Payments can be initialized in browser mode and methods raise error."""
     payments = Payments(
-        {"nvm_api_key": TEST_API_KEY, "environment": "staging"},
+        {"nvm_api_key": TEST_API_KEY, "environment": "staging_testnet"},
         is_browser_instance=True,
     )
     assert payments.is_browser_instance is True
-    for method in [payments.connect, payments.init, payments.logout]:
+    for method in [payments.connect, payments.logout]:
         try:
             method()
             assert False, "Should have raised PaymentsError"
@@ -45,7 +46,7 @@ def test_payments_initialization_browser():
 def test_payments_initialization_without_api_key():
     """Test that Payments cannot be initialized without an API key."""
     with pytest.raises(PaymentsError):
-        Payments({"environment": "staging"})
+        Payments({"environment": "staging_testnet"})
 
 
 def test_is_ethereum_address():

@@ -89,7 +89,10 @@ class Payments(BasePaymentsAPI):
 
         Returns:
             True if the user is logged in
+
+        Note: This is a browser-only function.
         """
+        raise PaymentsError("This is a browser-only function")
         return bool(self.nvm_api_key)
 
     def connect(self) -> None:
@@ -99,8 +102,7 @@ class Payments(BasePaymentsAPI):
 
         Note: This is a browser-only function.
         """
-        if not self.is_browser_instance:
-            return
+        raise PaymentsError("This is a browser-only function")
         url = f"{self.environment.frontend}/login?returnUrl={self.return_url}"
         # In a browser environment, this would redirect
         print(f"Redirecting to: {url}")
@@ -108,7 +110,6 @@ class Payments(BasePaymentsAPI):
     def logout(self) -> None:
         """
         Logs out the user by removing the NVM API key.
-
-        Note: This is a browser-only function.
         """
+        raise PaymentsError("This is a browser-only function")
         self.nvm_api_key = ""
