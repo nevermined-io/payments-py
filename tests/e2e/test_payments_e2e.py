@@ -57,15 +57,13 @@ trial_plan_id = None
 agent_id = None
 builder_address = None
 agent_access_params = None
+# Global variables for mock server
+mock_payments_builder = None
+mock_agent_id = None
 
 
 # Mock HTTP Server for Agent testing
 class MockAgentHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, payments_builder=None, agent_id=None, **kwargs):
-        self.payments_builder = payments_builder
-        self.agent_id = agent_id
-        super().__init__(*args, **kwargs)
-
     def do_POST(self):
         self._handle_request()
 
@@ -73,6 +71,7 @@ class MockAgentHandler(BaseHTTPRequestHandler):
         self._handle_request()
 
     def _handle_request(self):
+        global mock_payments_builder, mock_agent_id
         auth_header = self.headers.get("Authorization")
         requested_url = f"http://localhost:8889{self.path}"
         http_verb = self.command
@@ -82,7 +81,7 @@ class MockAgentHandler(BaseHTTPRequestHandler):
         )
 
         try:
-            if self.payments_builder and self.agent_id:
+            if mock_payments_builder and mock_agent_id:
                 # Note: This would need to be implemented in the Python SDK
                 # isValidReq = await self.payments_builder.is_valid_request(
                 #     self.agent_id, auth_header, requested_url, http_verb
@@ -111,9 +110,11 @@ class MockAgentHandler(BaseHTTPRequestHandler):
 
 def create_mock_server(payments_builder, agent_id):
     """Create and start a mock HTTP server for agent testing."""
+    global mock_payments_builder, mock_agent_id
+    mock_payments_builder = payments_builder
+    mock_agent_id = agent_id
+
     server = HTTPServer(("localhost", 8889), MockAgentHandler)
-    server.payments_builder = payments_builder
-    server.agent_id = agent_id
 
     def run_server():
         server.serve_forever()
