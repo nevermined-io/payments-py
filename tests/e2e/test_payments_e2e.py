@@ -26,18 +26,18 @@ from payments_py.plans import (
 
 # Test configuration
 TEST_TIMEOUT = 30
-TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging")
+TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging_testnet")
 SLEEP_DURATION = 3
 ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 
 # Test API keys (these should be replaced with test keys in a real environment)
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
-    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDA2OEVkMDBjRjA0NDFlNDgyOUQ5Nzg0ZkNCZTdiOWUyNkQ0QkQ4ZDAiLCJzdWIiOiIweDUwNTM4NDE5MkJhNmE0RDRiNTBFQUI4NDZlZTY3ZGIzYjlBOTMzNTkiLCJqdGkiOiIweGM1NWNiNTUzN2IzNmQ3MmRmZjBmMGY0MGYzMmY1ZTMwMjVkOWFiYmI5YTJhZjgwNjM2NWEzYmQzOWVkMWJiMWUiLCJleHAiOjE3ODE3MTQyMzF9.s0Pj27izNBnswrO7n8Gjfk7HplSChd4x5dtBMP4WTkYwnNLf-tfvscz-eNPrJshV0cLTb1QIyTZCFxXbPLuW_hs",
+    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweGFFMzcxNDlGOWU4NWU4ZTQ4QWJGNTY1QUJFOWZEMjdFNjgyZTQ0YWIiLCJqdGkiOiIweGUzNjA2M2UwZTU3ZTAyNjRmZDA4ZTU3NGI3M2IxNzI0MTNmMmM1MzE4NmIxMjc2YzU5MTdiZTg3Zjc5Yzc3ZjYiLCJleHAiOjE3ODQyMjIwNDh9.XKVVIhwl1Ax-bXb8f44OjghLIN3stOPiz4NbMZ9D9vcMOiItU9_BUEEWYTcA04zz0pkByW0f1MQ0xHXNbDFUWxs",
 )
 BUILDER_API_KEY = os.getenv(
     "TEST_BUILDER_API_KEY",
-    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDA2OEVkMDBjRjA0NDFlNDgyOUQ5Nzg0ZkNCZTdiOWUyNkQ0QkQ4ZDAiLCJzdWIiOiIweDg5MjQ4MDM0NzJiYjQ1M2I3YzI3YTNDOTgyQTA4Zjc1MTVEN2FBNzIiLCJqdGkiOiIweDk2ZWIxNzdkMTg1M2EyNGI2NGM5ZTIzMDYxZjhkYjJmNGQ0ZjUzNDEzYjU1ZjczN2M5ZWY4MmJiYzlkNmNlZjQiLCJleHAiOjE3ODE3MTQyMzB9.G0iWkDVKXM_608hYQ5hUpc1HWZDOlRBasyO6iCo9FdQYleihUWmtlczAlQoHmgThnj6_eS3S6O_pCfKU9EBbpBw",
+    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweENFQTkxOUZBZTBDQjNDNzdmZDIwNDk3NDdmOEQ3OEZFRjIwQTREMDciLCJqdGkiOiIweDJiODk0MDRmODQ2ZGZiODdlZjhhYjY1M2ZjZGU1ZjVkODc5MTZiNjM4Yjg5Y2IyN2ZiZDM1OTEyOGUzNTAwYTIiLCJleHAiOjE3ODQyMjE5ODB9.04DrXaNi50-nD1xkp6Q546BjxRRoTAtT5byHVStyveEH0bT-Iwvi1CZXIuXBraaB9GlhrWufXbJLd5Ln-RQvmhw",
 )
 
 # Test endpoints
@@ -184,7 +184,7 @@ def test_create_credits_plan(payments_builder):
     price_config = get_erc20_price_config(20, ERC20_ADDRESS, builder_address)
     credits_config = get_fixed_credits_config(100)
     print(" **** PRICE CONFIG ***", price_config)
-    response = payments_builder.register_credits_plan(
+    response = payments_builder.plans.register_credits_plan(
         plan_metadata, price_config, credits_config
     )
     assert response is not None
@@ -202,7 +202,7 @@ def test_create_time_plan(payments_builder):
         builder_address = "0x0000000000000000000000000000000000000001"
     price_config = get_erc20_price_config(50, ERC20_ADDRESS, builder_address)
     credits_config = get_expirable_duration_config(ONE_DAY_DURATION)  # 1 day
-    response = payments_builder.register_time_plan(
+    response = payments_builder.plans.register_time_plan(
         plan_metadata, price_config, credits_config
     )
     assert response is not None
@@ -220,7 +220,7 @@ def test_create_trial_plan(payments_builder):
     price_config = get_free_price_config()
     credits_config = get_expirable_duration_config(ONE_DAY_DURATION)
     print(" **** PRICE CONFIG ***", price_config)
-    response = payments_builder.register_time_trial_plan(
+    response = payments_builder.plans.register_time_trial_plan(
         trial_plan_metadata, price_config, credits_config
     )
     assert response is not None
@@ -243,11 +243,14 @@ def test_create_agent(payments_builder):
         "name": "E2E Payments Agent PYTHON",
         "tags": ["test"],
         "dateCreated": datetime.now().isoformat(),
+        "description": "E2E Payments Agent PYTHON",
     }
     agent_api = {"endpoints": AGENT_ENDPOINTS}
     payment_plans = [credits_plan_id, expirable_plan_id]
     payment_plans = [pid for pid in payment_plans if pid]
-    result = payments_builder.register_agent(agent_metadata, agent_api, payment_plans)
+    result = payments_builder.agents.register_agent(
+        agent_metadata, agent_api, payment_plans
+    )
     print("RESULT", result)
     agent_id = result.get("agentId", None)
     assert agent_id is not None
@@ -261,11 +264,15 @@ def test_create_agent_and_plan(payments_builder):
     global builder_address
     if not builder_address:
         builder_address = "0x0000000000000000000000000000000000000001"
-    agent_metadata = {"name": "My AI Payments Agent", "tags": ["test2"]}
+    agent_metadata = {
+        "name": "My AI Payments Agent",
+        "tags": ["test2"],
+        "description": "My AI Payments Agent",
+    }
     agent_api = {"endpoints": [{"POST": "http://localhost:8889/test/:agentId/tasks"}]}
     crypto_price_config = get_native_token_price_config(500, builder_address)
     non_expirable_config = get_non_expirable_duration_config()
-    result = payments_builder.register_agent_and_plan(
+    result = payments_builder.agents.register_agent_and_plan(
         agent_metadata,
         agent_api,
         plan_metadata,
@@ -283,7 +290,7 @@ def test_get_plan(payments_builder):
     """Test getting a plan."""
     global credits_plan_id
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
-    plan = payments_builder.get_plan(credits_plan_id)
+    plan = payments_builder.plans.get_plan(credits_plan_id)
     assert plan is not None
     assert plan.get("id") == credits_plan_id
     print("Plan", plan)
@@ -294,7 +301,7 @@ def test_get_agent(payments_builder):
     """Test getting an agent."""
     global agent_id
     assert agent_id is not None, "agent_id must be set by previous test"
-    agent = payments_builder.get_agent(agent_id)
+    agent = payments_builder.agents.get_agent(agent_id)
     assert agent is not None
     assert agent.get("id") == agent_id
     print("Agent", agent)
@@ -307,7 +314,7 @@ def test_order_plan(payments_subscriber):
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
     print(credits_plan_id)
     print(" SUBSCRIBER ADDRESS = ", payments_subscriber.account_address)
-    order_result = payments_subscriber.order_plan(credits_plan_id)
+    order_result = payments_subscriber.plans.order_plan(credits_plan_id)
     assert order_result is not None
     print("Order Result", order_result)
     assert order_result.get("success") is True
@@ -318,7 +325,7 @@ def test_get_plan_balance(payments_subscriber):
     """Test getting plan balance."""
     global credits_plan_id
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
-    balance_result = payments_subscriber.get_plan_balance(credits_plan_id)
+    balance_result = payments_subscriber.plans.get_plan_balance(credits_plan_id)
     assert balance_result is not None
     print("Balance Result", balance_result)
     assert int(balance_result.get("balance", 0)) > 0
@@ -330,7 +337,7 @@ def test_order_trial_plan(payments_subscriber):
     global trial_plan_id
     assert trial_plan_id is not None, "trial_plan_id must be set by previous test"
 
-    order_result = payments_subscriber.order_plan(trial_plan_id)
+    order_result = payments_subscriber.plans.order_plan(trial_plan_id)
     assert order_result is not None
     assert order_result.get("success") is True
     print("Order Result", order_result)
@@ -343,7 +350,7 @@ def test_order_trial_plan_twice(payments_subscriber):
     assert trial_plan_id is not None, "trial_plan_id must be set by previous test"
 
     with pytest.raises(Exception):
-        order_result = payments_subscriber.order_plan(trial_plan_id)
+        order_result = payments_subscriber.plans.order_plan(trial_plan_id)
         print("Order Result", order_result)
         assert order_result.get("success") is False
 
@@ -370,7 +377,7 @@ class TestE2ESubscriberAgentFlow:
         ), "credits_plan_id must be set by previous test"
         assert agent_id is not None, "agent_id must be set by previous test"
 
-        agent_access_params = payments_subscriber.get_agent_access_token(
+        agent_access_params = payments_subscriber.agents.get_agent_access_token(
             credits_plan_id, agent_id
         )
         assert agent_access_params is not None
@@ -416,5 +423,5 @@ class TestE2ESubscriberAgentFlow:
 def test_get_nonexistent_plan(payments_builder):
     """Test getting a plan that does not exist."""
     with pytest.raises(Exception):
-        result = payments_builder.get_plan("11111")
+        result = payments_builder.plans.get_plan("11111")
         assert result is None

@@ -80,7 +80,7 @@ class PlanMetadata(AgentMetadata):
     Metadata for a payment plan, extends AgentMetadata.
     """
 
-    is_trial_plan: Optional[bool] = None
+    is_trial_plan: Optional[bool] = False
 
 
 class PlanPriceType(Enum):

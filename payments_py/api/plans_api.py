@@ -28,7 +28,7 @@ from payments_py.api.nvm_api import (
     API_URL_STRIPE_CHECKOUT,
     API_URL_REDEEM_PLAN,
 )
-from payments_py.utils import get_random_big_int
+from payments_py.utils import get_random_big_int, is_ethereum_address
 
 
 class PlansAPI(BasePaymentsAPI):
@@ -79,11 +79,11 @@ class PlansAPI(BasePaymentsAPI):
             nonce = get_random_big_int()
 
         body = {
-            "metadataAttributes": plan_metadata,
-            "priceConfig": price_config,
-            "creditsConfig": credits_config,
+            "metadataAttributes": self.pydantic_to_dict(plan_metadata),
+            "priceConfig": self.pydantic_to_dict(price_config),
+            "creditsConfig": self.pydantic_to_dict(credits_config),
             "nonce": nonce,
-            "isTrialPlan": plan_metadata.is_trial_plan,
+            "isTrialPlan": getattr(plan_metadata, "is_trial_plan", False),
         }
 
         options = self.get_backend_http_options("POST", body)
@@ -246,26 +246,27 @@ class PlansAPI(BasePaymentsAPI):
         Raises:
             PaymentsError: If unable to get plan balance
         """
-        if account_address is None:
-            account_address = self.account_address
 
-        url = (
-            f"{self.environment.backend}{API_URL_PLAN_BALANCE.format(plan_id=plan_id)}"
+        if not is_ethereum_address(account_address):
+            account_address = self.get_account_address()
+
+        url = f"{self.environment.backend}{API_URL_PLAN_BALANCE.format(plan_id=plan_id, holder_address=account_address)}"
+        response = requests.get(
+            url,
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
         )
-        params = {"accountAddress": account_address}
-        response = requests.get(url, params=params)
         if not response.ok:
             raise PaymentsError(
                 f"Unable to get plan balance. {response.status_code} - {response.text}"
             )
         return response.json()
 
-    def order_plan(self, plan_did: str) -> Dict[str, bool]:
+    def order_plan(self, plan_id: str) -> Dict[str, bool]:
         """
-        Order a plan by its DID.
+        Order a plan by its ID.
 
         Args:
-            plan_did: The DID of the plan to order
+            plan_id: The ID of the plan to order
 
         Returns:
             The result of the order operation
@@ -273,9 +274,8 @@ class PlansAPI(BasePaymentsAPI):
         Raises:
             PaymentsError: If unable to order the plan
         """
-        body = {"planDid": plan_did}
-        options = self.get_backend_http_options("POST", body)
-        url = f"{self.environment.backend}{API_URL_ORDER_PLAN}"
+        options = self.get_backend_http_options("POST")
+        url = f"{self.environment.backend}{API_URL_ORDER_PLAN}".format(plan_id=plan_id)
 
         response = requests.post(url, **options)
         if not response.ok:
@@ -303,7 +303,7 @@ class PlansAPI(BasePaymentsAPI):
         """
         body = {
             "planId": plan_id,
-            "creditsAmount": credits_amount,
+            "amount": credits_amount,
             "creditsReceiver": credits_receiver,
         }
         options = self.get_backend_http_options("POST", body)
@@ -426,7 +426,7 @@ class PlansAPI(BasePaymentsAPI):
         Raises:
             PaymentsError: If unable to order the fiat plan
         """
-        body = {"planId": plan_id}
+        body = {"planId": plan_id, "sessionType": "embedded"}
         options = self.get_backend_http_options("POST", body)
         url = f"{self.environment.backend}{API_URL_STRIPE_CHECKOUT}"
 

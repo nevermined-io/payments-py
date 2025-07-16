@@ -24,40 +24,46 @@ ZeroAddress = "0x0000000000000000000000000000000000000000"
 
 # Supported environment names
 EnvironmentName = Literal[
-    "local", "staging", "testing", "production", "base", "base-sepolia", "custom"
+    "local_testnet",
+    "local_mainnet",
+    "staging_testnet",
+    "staging_mainnet",
+    "production_testnet",
+    "production_mainnet",
+    "custom",
 ]
 
 # Environments dictionary
 Environments = {
-    "local": EnvironmentInfo(
+    "local_testnet": EnvironmentInfo(
         frontend="http://localhost:3000",
         backend="http://localhost:3001",
         proxy="https://localhost:443",
     ),
-    "staging": EnvironmentInfo(
+    "local_mainnet": EnvironmentInfo(
+        frontend="http://localhost:3000",
+        backend="http://localhost:3002",
+        proxy="https://localhost:443",
+    ),
+    "staging_testnet": EnvironmentInfo(
         frontend="https://staging.nevermined.app",
-        backend="https://one-backend.staging.nevermined.app",
+        backend="https://api-base-sepolia.staging.nevermined.app",
         proxy="https://proxy.staging.nevermined.app",
     ),
-    "testing": EnvironmentInfo(
-        frontend="https://testing.nevermined.app",
-        backend="https://one-backend.testing.nevermined.app",
+    "staging_mainnet": EnvironmentInfo(
+        frontend="https://staging.nevermined.app",
+        backend="https://api-base-mainnet.staging.nevermined.app",
+        proxy="https://proxy.staging.nevermined.app",
+    ),
+    "production_testnet": EnvironmentInfo(
+        frontend="https://nevermined.app",
+        backend="https://api-base-sepolia.nevermined.app",
         proxy="https://proxy.testing.nevermined.app",
     ),
-    "production": EnvironmentInfo(
+    "production_mainnet": EnvironmentInfo(
         frontend="https://nevermined.app",
-        backend="https://one-backend.nevermined.app",
+        backend="https://api-base-mainnet.nevermined.app",
         proxy="https://proxy.nevermined.app",
-    ),
-    "base": EnvironmentInfo(
-        frontend="https://base.nevermined.app",
-        backend="https://one-backend.base.nevermined.app",
-        proxy="https://proxy.base.nevermined.app",
-    ),
-    "base-sepolia": EnvironmentInfo(
-        frontend="https://base-sepolia.nevermined.app",
-        backend="https://one-backend.base-sepolia.nevermined.app",
-        proxy="https://proxy.base-sepolia.nevermined.app",
     ),
     "custom": EnvironmentInfo(
         frontend=os.getenv("NVM_FRONTEND_URL", "http://localhost:3000"),

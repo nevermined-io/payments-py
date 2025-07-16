@@ -152,7 +152,11 @@ class AgentRequestsAPI(BasePaymentsAPI):
             "creditsToRedeem": track_agent_sub_task.credits_to_redeem or 0,
             "tag": track_agent_sub_task.tag,
             "description": track_agent_sub_task.description,
-            "status": track_agent_sub_task.status,
+            "status": (
+                track_agent_sub_task.status.value
+                if track_agent_sub_task.status
+                else None
+            ),
         }
 
         options = self.get_backend_http_options("POST", body)

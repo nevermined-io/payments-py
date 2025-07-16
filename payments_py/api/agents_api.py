@@ -68,8 +68,8 @@ class AgentsAPI(BasePaymentsAPI):
             PaymentsError: If registration fails
         """
         body = {
-            "metadataAttributes": agent_metadata,
-            "agentApiAttributes": agent_api,
+            "metadataAttributes": self.pydantic_to_dict(agent_metadata),
+            "agentApiAttributes": self.pydantic_to_dict(agent_api),
             "plans": payment_plans,
         }
 
@@ -112,13 +112,13 @@ class AgentsAPI(BasePaymentsAPI):
         """
         body = {
             "plan": {
-                "metadataAttributes": plan_metadata,
-                "priceConfig": price_config,
-                "creditsConfig": credits_config,
+                "metadataAttributes": self.pydantic_to_dict(plan_metadata),
+                "priceConfig": self.pydantic_to_dict(price_config),
+                "creditsConfig": self.pydantic_to_dict(credits_config),
             },
             "agent": {
-                "metadataAttributes": agent_metadata,
-                "agentApiAttributes": agent_api,
+                "metadataAttributes": self.pydantic_to_dict(agent_metadata),
+                "agentApiAttributes": self.pydantic_to_dict(agent_api),
             },
         }
 
