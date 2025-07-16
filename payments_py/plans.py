@@ -11,15 +11,15 @@ from payments_py.common.types import (
     Address,
 )
 from payments_py.environments import ZeroAddress
-from payments_py.common.helper import is_ethereum_address
+from payments_py.utils import is_ethereum_address
 
 # Duration constants in seconds
-ONE_DAY_DURATION = 86400  # 24 * 60 * 60 seconds
-ONE_WEEK_DURATION = 604800  # 7 * 24 * 60 * 60 seconds
+ONE_DAY_DURATION = 86_400  # 24 * 60 * 60 seconds
+ONE_WEEK_DURATION = 604_800  # 7 * 24 * 60 * 60 seconds
 ONE_MONTH_DURATION = (
-    2629746  # (365.25 days/year ÷ 12 months/year) × 24 × 60 × 60 ≈ 2,629,746 seconds
+    2_629_746  # (365.25 days/year ÷ 12 months/year) × 24 × 60 × 60 ≈ 2,629,746 seconds
 )
-ONE_YEAR_DURATION = 31557600  # 365.25 * 24 * 60 * 60 seconds
+ONE_YEAR_DURATION = 31_557_600  # 365.25 * 24 * 60 * 60 seconds
 
 
 def get_fiat_price_config(amount: int, receiver: Address) -> PlanPriceConfig:
@@ -220,7 +220,15 @@ def set_redemption_type(
     Returns:
         A new PlanCreditsConfig with the updated redemption type
     """
-    return {**credits_config, "redemptionType": redemption_type}
+    return PlanCreditsConfig(
+        credits_type=credits_config.credits_type,
+        redemption_type=redemption_type,
+        proof_required=credits_config.proof_required,
+        duration_secs=credits_config.duration_secs,
+        amount=credits_config.amount,
+        min_amount=credits_config.min_amount,
+        max_amount=credits_config.max_amount,
+    )
 
 
 def set_proof_required(
@@ -236,4 +244,12 @@ def set_proof_required(
     Returns:
         A new PlanCreditsConfig with the updated proof requirement
     """
-    return {**credits_config, "proofRequired": proof_required}
+    return PlanCreditsConfig(
+        credits_type=credits_config.credits_type,
+        redemption_type=credits_config.redemption_type,
+        proof_required=proof_required,
+        duration_secs=credits_config.duration_secs,
+        amount=credits_config.amount,
+        min_amount=credits_config.min_amount,
+        max_amount=credits_config.max_amount,
+    )

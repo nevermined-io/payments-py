@@ -3,10 +3,7 @@ Nevermined Payments API endpoints and backend client
 """
 
 import requests
-import jwt
 from typing import Optional, Dict, Any
-from urllib.parse import urlparse
-from payments_py.common.helper import is_ethereum_address
 
 # Plan endpoints
 API_URL_REGISTER_PLAN = "/api/v1/protocol/plans"
@@ -16,6 +13,8 @@ API_URL_ORDER_PLAN = "/api/v1/protocol/plans/{plan_id}/order"
 API_URL_MINT_PLAN = "/api/v1/protocol/plans/mint"
 API_URL_MINT_EXPIRABLE_PLAN = "/api/v1/protocol/plans/mintExpirable"
 API_URL_BURN_PLAN = "/api/v1/protocol/plans/burn"
+API_URL_GET_PLAN_AGENTS = "/api/v1/protocol/plans/{plan_id}/agents"
+API_URL_REDEEM_PLAN = "/api/v1/protocol/plans/redeem"
 
 # Agent endpoints
 API_URL_REGISTER_AGENT = "/api/v1/protocol/agents"
@@ -23,33 +22,17 @@ API_URL_GET_AGENT = "/api/v1/protocol/agents/{agent_id}"
 API_URL_SEARCH_AGENTS = "/api/v1/protocol/agents/search"
 API_URL_ADD_PLAN_AGENT = "/api/v1/protocol/agents/{agent_id}/plan/{plan_id}"
 API_URL_REMOVE_PLAN_AGENT = "/api/v1/protocol/agents/{agent_id}/plan/{plan_id}"
+API_URL_INITIALIZE_AGENT = "/api/v1/protocol/agents/initialize/{agent_id}"
+API_URL_TRACK_AGENT_SUB_TASK = "/api/v1/protocol/agent-sub-tasks"
+API_URL_REGISTER_AGENTS_AND_PLAN = "/api/v1/protocol/agents/plans"
+API_URL_GET_AGENT_PLANS = "/api/v1/protocol/agents/{agent_id}/plans"
 
 # Token endpoints
 API_URL_GET_AGENT_ACCESS_TOKEN = "/api/v1/protocol/token/{plan_id}/{agent_id}"
 API_URL_VALIDATE_AGENT_ACCESS_TOKEN = "/api/v1/protocol/token/validate/{agent_id}"
 
-
-class BackendApiOptions:
-    """
-    Backend API options for Nevermined Payments.
-
-    :param backend_host: The host of the backend server
-    :param api_key: The Nevermined API Key (optional)
-    :param proxy_host: The host of the Nevermined Proxy (optional)
-    :param headers: Additional headers to send with the requests (optional)
-    """
-
-    def __init__(
-        self,
-        backend_host: str,
-        api_key: Optional[str] = None,
-        proxy_host: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ):
-        self.backend_host = backend_host
-        self.api_key = api_key
-        self.proxy_host = proxy_host
-        self.headers = headers or {}
+# Stripe endpoints
+API_URL_STRIPE_CHECKOUT = "/api/v1/stripe/checkout"
 
 
 class HTTPRequestOptions:
@@ -59,6 +42,7 @@ class HTTPRequestOptions:
     :param send_through_proxy: Whether to send the request through the proxy (default True)
     :param proxy_host: Proxy host to use (optional)
     :param headers: Additional headers for the request (optional)
+    :param access_token: Access token for authorization (optional)
     """
 
     def __init__(
@@ -66,86 +50,51 @@ class HTTPRequestOptions:
         send_through_proxy: bool = True,
         proxy_host: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        access_token: Optional[str] = None,
     ):
         self.send_through_proxy = send_through_proxy
         self.proxy_host = proxy_host
         self.headers = headers or {}
+        self.access_token = access_token
 
 
-class NVMBackendApi:
+class AbstractHTTPClient:
     """
-    Nevermined Backend API client, equivalent to the TypeScript NVMBackendApi class.
+    Abstract HTTP client for Nevermined API requests.
+    Equivalent to the TypeScript AbstractHTTPClient class.
     """
 
-    def __init__(self, opts: BackendApiOptions):
+    def __init__(self):
         """
-        Initialize the API client with backend options.
+        Initialize the HTTP client.
         """
-        default_headers = {
-            "Accept": "application/json",
-            **opts.headers,
-        }
-        if opts.api_key:
-            default_headers["Authorization"] = f"Bearer {opts.api_key}"
-        self.opts = BackendApiOptions(
-            backend_host=opts.backend_host,
-            api_key=opts.api_key,
-            proxy_host=opts.proxy_host,
-            headers=default_headers,
-        )
-        self.has_key = False
-        self.agent_id = ""
-        try:
-            if self.opts.api_key and len(self.opts.api_key) > 0:
-                jwt_decoded = jwt.decode(
-                    self.opts.api_key, options={"verify_signature": False}
-                )
-                sub = jwt_decoded.get("sub", "")
-                if isinstance(sub, str) and is_ethereum_address(sub):
-                    self.has_key = True
-        except Exception:
-            self.has_key = False
-        try:
-            backend_url = urlparse(self.opts.backend_host)
-            self.opts.backend_host = f"{backend_url.scheme}://{backend_url.netloc}"
-        except Exception as error:
-            raise ValueError(f"Invalid URL: {self.opts.backend_host} - {str(error)}")
+        pass
 
-    def parse_url(
-        self, uri: str, req_options: Optional[HTTPRequestOptions] = None
-    ) -> str:
+    def parse_url(self, url_requested: str, req_options: HTTPRequestOptions) -> str:
         """
-        Compose the full URL for a request, using proxy if needed.
+        Parse URL for request, using proxy if needed.
         """
-        req_options = req_options or HTTPRequestOptions()
         if req_options.send_through_proxy:
-            if req_options.proxy_host:
-                host = req_options.proxy_host
-            elif self.opts.proxy_host:
-                host = self.opts.proxy_host
-            else:
-                host = self.opts.backend_host
+            if not req_options.proxy_host:
+                raise ValueError("Proxy host is required when sendThroughProxy is true")
+            from urllib.parse import urlparse
+
+            proxy_origin = urlparse(req_options.proxy_host).netloc
+            return f"https://{proxy_origin}{url_requested}"
         else:
-            host = self.opts.backend_host
-        parsed = urlparse(host)
-        return f"{parsed.scheme}://{parsed.netloc}{uri}"
+            return url_requested
 
     def parse_headers(
-        self, additional_headers: Optional[Dict[str, str]] = None
+        self, request_headers: Dict[str, str], access_token: Optional[str] = None
     ) -> Dict[str, str]:
         """
-        Merge default headers with additional headers.
+        Parse headers for request, including access token if provided.
         """
-        return {
-            **self.opts.headers,
-            **(additional_headers or {}),
-        }
-
-    def set_bearer_token(self, token: str):
-        """
-        Set a new Bearer token for Authorization header.
-        """
-        self.opts.headers["Authorization"] = f"Bearer {token}"
+        headers = {}
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        headers.update(request_headers or {})
+        return headers
 
     def request(
         self,
@@ -155,26 +104,31 @@ class NVMBackendApi:
         req_options: Optional[HTTPRequestOptions] = None,
     ):
         """
-        Make an HTTP request to the backend.
+        Make an HTTP request.
         """
-        req_options = req_options or HTTPRequestOptions(send_through_proxy=False)
+        if req_options is None:
+            req_options = HTTPRequestOptions(send_through_proxy=False)
+
         full_url = self.parse_url(url, req_options)
-        headers = self.parse_headers(req_options.headers)
+        headers = self.parse_headers(req_options.headers, req_options.access_token)
+
         try:
-            if method.upper() in ["GET"]:
+            if method.upper() == "GET":
                 response = requests.get(full_url, headers=headers)
-            elif method.upper() in ["POST"]:
+            elif method.upper() == "POST":
                 response = requests.post(full_url, json=data, headers=headers)
-            elif method.upper() in ["PUT"]:
+            elif method.upper() == "PUT":
                 response = requests.put(full_url, json=data, headers=headers)
-            elif method.upper() in ["DELETE"]:
+            elif method.upper() == "DELETE":
                 response = requests.delete(full_url, json=data, headers=headers)
-            elif method.upper() in ["PATCH"]:
+            elif method.upper() == "PATCH":
                 response = requests.patch(full_url, json=data, headers=headers)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
+
             response.raise_for_status()
             return response
+
         except requests.HTTPError as err:
             try:
                 message = response.json().get("message", "Request failed")
@@ -190,7 +144,8 @@ class NVMBackendApi:
         """
         Make a GET request.
         """
-        req_options = req_options or HTTPRequestOptions(send_through_proxy=True)
+        if req_options is None:
+            req_options = HTTPRequestOptions(send_through_proxy=True)
         return self.request("GET", url, None, req_options)
 
     def post(

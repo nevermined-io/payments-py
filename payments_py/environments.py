@@ -1,6 +1,9 @@
 import os
+from dataclasses import dataclass
+from typing import Literal, Union
 
 
+@dataclass
 class EnvironmentInfo:
     """
     Data class to store environment information.
@@ -11,24 +14,17 @@ class EnvironmentInfo:
         proxy (str): Proxy URL
     """
 
-    def __init__(self, frontend=None, backend=None, proxy=None):
-        self.frontend = frontend
-        self.backend = backend
-        self.proxy = proxy
+    backend: str
+    proxy: str
+    frontend: str = None
 
 
 # Zero address constant
 ZeroAddress = "0x0000000000000000000000000000000000000000"
 
 # Supported environment names
-ENVIRONMENT_NAMES = [
-    "local",
-    "staging",
-    "testing",
-    "arbitrum",
-    "base",
-    "base-sepolia",
-    "custom",
+EnvironmentName = Literal[
+    "local", "staging", "testing", "production", "base", "base-sepolia", "custom"
 ]
 
 # Environments dictionary
@@ -40,18 +36,18 @@ Environments = {
     ),
     "staging": EnvironmentInfo(
         frontend="https://staging.nevermined.app",
-        backend="https://api.staging.nevermined.app",
+        backend="https://one-backend.staging.nevermined.app",
         proxy="https://proxy.staging.nevermined.app",
     ),
     "testing": EnvironmentInfo(
         frontend="https://testing.nevermined.app",
-        backend="https://api.testing.nevermined.app",
+        backend="https://one-backend.testing.nevermined.app",
         proxy="https://proxy.testing.nevermined.app",
     ),
-    "arbitrum": EnvironmentInfo(
+    "production": EnvironmentInfo(
         frontend="https://nevermined.app",
-        backend="https://one-backend.arbitrum.nevermined.app",
-        proxy="https://proxy.arbitrum.nevermined.app",
+        backend="https://one-backend.nevermined.app",
+        proxy="https://proxy.nevermined.app",
     ),
     "base": EnvironmentInfo(
         frontend="https://base.nevermined.app",
@@ -71,12 +67,12 @@ Environments = {
 }
 
 
-def get_environment(name):
+def get_environment(name: EnvironmentName) -> EnvironmentInfo:
     """
     Get the environment configuration by name.
 
     Args:
-        name (str): The name of the environment.
+        name: The name of the environment.
 
     Returns:
         EnvironmentInfo: The environment configuration.

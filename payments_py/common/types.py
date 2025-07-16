@@ -2,7 +2,7 @@
 Type definitions for the Nevermined Payments protocol.
 """
 
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from enum import Enum
 
@@ -154,3 +154,69 @@ class PlanBalance(BaseModel):
     balance: int
     credits_contract: str
     is_subscriber: bool
+
+
+class PaginationOptions(BaseModel):
+    """
+    Options for pagination in API requests to the Nevermined API.
+    """
+
+    sort_by: Optional[str] = None
+    sort_order: str = "desc"
+    page: int = 1
+    offset: int = 10
+
+
+class AgentTaskStatus(str, Enum):
+    """
+    Status of an agent task.
+    """
+
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    PENDING = "PENDING"
+
+
+class TrackAgentSubTaskDto(BaseModel):
+    """
+    Data transfer object for tracking agent sub tasks.
+    """
+
+    agent_request_id: str
+    credits_to_redeem: Optional[int] = 0
+    tag: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[AgentTaskStatus] = None
+
+
+class StartAgentRequest(BaseModel):
+    """
+    Information about the initialization of an agent request.
+    """
+
+    agent_request_id: str
+    balance: PlanBalance
+    url_matching: str
+    verb_matching: str
+
+
+class AgentAccessCredentials(BaseModel):
+    """
+    Access credentials for an agent.
+    """
+
+    access_token: str
+    proxies: Optional[List[str]] = None
+
+
+class NvmAPIResult(BaseModel):
+    """
+    Result of a Nevermined API operation.
+    """
+
+    success: bool
+    message: Optional[str] = None
+    tx_hash: Optional[str] = None
+    http_status: Optional[int] = None
+    data: Optional[Dict[str, Any]] = None
+    when: Optional[str] = None
