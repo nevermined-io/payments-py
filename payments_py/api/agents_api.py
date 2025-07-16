@@ -131,10 +131,11 @@ class AgentsAPI(BasePaymentsAPI):
                 f"Unable to register agent & plan. {response.status_code} - {response.text}"
             )
         result = response.json()
+
         return {
             "agentId": result["data"]["agentId"],
             "planId": result["data"]["planId"],
-            "txHash": result["data"]["txHash"],
+            "txHash": result["txHash"],
         }
 
     def get_agent(self, agent_id: str) -> Dict[str, Any]:

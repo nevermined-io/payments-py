@@ -23,6 +23,7 @@ from payments_py.plans import (
     get_non_expirable_duration_config,
     ONE_DAY_DURATION,
 )
+from payments_py.utils import get_random_big_int
 
 # Test configuration
 TEST_TIMEOUT = 30
@@ -265,18 +266,20 @@ def test_create_agent_and_plan(payments_builder):
     if not builder_address:
         builder_address = "0x0000000000000000000000000000000000000001"
     agent_metadata = {
-        "name": "My AI Payments Agent",
-        "tags": ["test2"],
-        "description": "My AI Payments Agent",
+        "name": "My AI FIAT Payments Agent",
+        "description": "This is a test agent for the E2E Payments tests",
+        "tags": ["fiat", "test2"],
     }
     agent_api = {"endpoints": [{"POST": "http://localhost:8889/test/:agentId/tasks"}]}
-    crypto_price_config = get_native_token_price_config(500, builder_address)
+    fiat_price_config = get_fiat_price_config(10_000_000, builder_address)
     non_expirable_config = get_non_expirable_duration_config()
+    # Force randomness of the plan by setting a random duration
+    non_expirable_config.duration_secs = get_random_big_int()
     result = payments_builder.agents.register_agent_and_plan(
         agent_metadata,
         agent_api,
         plan_metadata,
-        crypto_price_config,
+        fiat_price_config,
         non_expirable_config,
     )
     agent_and_plan_agent_id = result.get("agentId", None)
