@@ -21,7 +21,7 @@ TEST_API_KEY = os.getenv(
 
 def test_payments_initialization():
     """Test that Payments can be initialized correctly."""
-    payments = Payments({"nvm_api_key": TEST_API_KEY, "environment": "staging_testnet"})
+    payments = Payments({"nvm_api_key": TEST_API_KEY, "environment": "staging_sandbox"})
     assert payments is not None
     assert payments.query is not None
     assert payments.is_browser_instance is False
@@ -31,7 +31,7 @@ def test_payments_initialization():
 def test_payments_initialization_browser():
     """Test that Payments can be initialized in browser mode and methods raise error."""
     payments = Payments(
-        {"nvm_api_key": TEST_API_KEY, "environment": "staging_testnet"},
+        {"nvm_api_key": TEST_API_KEY, "environment": "staging_sandbox"},
         is_browser_instance=True,
     )
     assert payments.is_browser_instance is True
@@ -46,7 +46,7 @@ def test_payments_initialization_browser():
 def test_payments_initialization_without_api_key():
     """Test that Payments cannot be initialized without an API key."""
     with pytest.raises(PaymentsError):
-        Payments({"environment": "staging_testnet"})
+        Payments({"environment": "staging_sandbox"})
 
 
 def test_is_ethereum_address():

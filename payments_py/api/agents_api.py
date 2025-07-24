@@ -82,7 +82,7 @@ class AgentsAPI(BasePaymentsAPI):
             try:
                 error = response.json()
             except Exception:
-                error = {"message": response.text, "code": "register_error"}
+                error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to register agent", error)
         agent_data = response.json()
         return {"agentId": agent_data["agentId"]}
@@ -133,7 +133,7 @@ class AgentsAPI(BasePaymentsAPI):
             try:
                 error = response.json()
             except Exception:
-                error = {"message": response.text, "code": "register_error"}
+                error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to register agent & plan", error)
         result = response.json()
 
@@ -162,7 +162,7 @@ class AgentsAPI(BasePaymentsAPI):
             try:
                 error = response.json()
             except Exception:
-                error = {"message": response.text, "code": "not_found"}
+                error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Agent not found", error)
         return response.json()
 
@@ -195,7 +195,7 @@ class AgentsAPI(BasePaymentsAPI):
             try:
                 error = response.json()
             except Exception:
-                error = {"message": response.text, "code": "get_plans_error"}
+                error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to get agent plans", error)
         return response.json()
 
@@ -221,7 +221,7 @@ class AgentsAPI(BasePaymentsAPI):
             try:
                 error = response.json()
             except Exception:
-                error = {"message": response.text, "code": "add_plan_error"}
+                error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to add plan to agent", error)
         return response.json()
 
@@ -247,7 +247,7 @@ class AgentsAPI(BasePaymentsAPI):
             try:
                 error = response.json()
             except Exception:
-                error = {"message": response.text, "code": "remove_plan_error"}
+                error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to remove plan from agent", error)
         return response.json()
 
@@ -273,7 +273,7 @@ class AgentsAPI(BasePaymentsAPI):
             try:
                 error = response.json()
             except Exception:
-                error = {"message": response.text, "code": "access_token_error"}
+                error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to get agent access token", error)
         return response.json()
 
@@ -308,6 +308,6 @@ class AgentsAPI(BasePaymentsAPI):
             try:
                 error = response.json()
             except Exception:
-                error = {"message": response.text, "code": "update_error"}
+                error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Error updating agent", error)
         return response.json()

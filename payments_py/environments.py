@@ -24,43 +24,31 @@ ZeroAddress = "0x0000000000000000000000000000000000000000"
 
 # Supported environment names
 EnvironmentName = Literal[
-    "local_testnet",
-    "local_mainnet",
-    "staging_testnet",
-    "staging_mainnet",
-    "production_testnet",
-    "production_mainnet",
+    "sandbox",
+    "live",
+    "staging_sandbox",
+    "staging_live",
     "custom",
 ]
 
 # Environments dictionary
 Environments = {
-    "local_testnet": EnvironmentInfo(
-        frontend="http://localhost:3000",
-        backend="http://localhost:3001",
-        proxy="https://localhost:443",
-    ),
-    "local_mainnet": EnvironmentInfo(
-        frontend="http://localhost:3000",
-        backend="http://localhost:3002",
-        proxy="https://localhost:443",
-    ),
-    "staging_testnet": EnvironmentInfo(
+    "staging_sandbox": EnvironmentInfo(
         frontend="https://staging.nevermined.app",
         backend="https://api-base-sepolia.staging.nevermined.app",
         proxy="https://proxy.staging.nevermined.app",
     ),
-    "staging_mainnet": EnvironmentInfo(
+    "staging_live": EnvironmentInfo(
         frontend="https://staging.nevermined.app",
         backend="https://api-base-mainnet.staging.nevermined.app",
         proxy="https://proxy.staging.nevermined.app",
     ),
-    "production_testnet": EnvironmentInfo(
+    "sandbox": EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="https://api-base-sepolia.nevermined.app",
         proxy="https://proxy.testing.nevermined.app",
     ),
-    "production_mainnet": EnvironmentInfo(
+    "live": EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="https://api-base-mainnet.nevermined.app",
         proxy="https://proxy.nevermined.app",

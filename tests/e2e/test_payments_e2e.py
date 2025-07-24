@@ -27,7 +27,7 @@ from payments_py.utils import get_random_big_int
 
 # Test configuration
 TEST_TIMEOUT = 30
-TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging_testnet")
+TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging_sandbox")
 SLEEP_DURATION = 3
 ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 
