@@ -52,7 +52,7 @@ class Payments(BasePaymentsAPI):
             PaymentsError: If nvm_api_key is missing
         """
         if not options.nvm_api_key:
-            raise PaymentsError("Nevermined API Key is required")
+            raise PaymentsError.unauthorized("Nevermined API Key is required")
         return cls(options, False)
 
     @classmethod
@@ -70,7 +70,7 @@ class Payments(BasePaymentsAPI):
             PaymentsError: If return_url is missing
         """
         if not options.return_url:
-            raise PaymentsError("return_url is required")
+            raise PaymentsError.validation("return_url is required")
         return cls(options, True)
 
     def _initialize_api(self, options: PaymentOptions) -> None:
@@ -92,7 +92,7 @@ class Payments(BasePaymentsAPI):
 
         Note: This is a browser-only function.
         """
-        raise PaymentsError("This is a browser-only function")
+        raise PaymentsError.internal("This is a browser-only function")
         return bool(self.nvm_api_key)
 
     def connect(self) -> None:
@@ -102,7 +102,7 @@ class Payments(BasePaymentsAPI):
 
         Note: This is a browser-only function.
         """
-        raise PaymentsError("This is a browser-only function")
+        raise PaymentsError.internal("This is a browser-only function")
         url = f"{self.environment.frontend}/login?returnUrl={self.return_url}"
         # In a browser environment, this would redirect
         print(f"Redirecting to: {url}")
@@ -111,5 +111,5 @@ class Payments(BasePaymentsAPI):
         """
         Logs out the user by removing the NVM API key.
         """
-        raise PaymentsError("This is a browser-only function")
+        raise PaymentsError.internal("This is a browser-only function")
         self.nvm_api_key = ""

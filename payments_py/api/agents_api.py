@@ -23,6 +23,7 @@ from payments_py.api.nvm_api import (
     API_URL_GET_AGENT_ACCESS_TOKEN,
     API_URL_REGISTER_AGENTS_AND_PLAN,
     API_URL_GET_AGENT_PLANS,
+    API_URL_UPDATE_AGENT,
 )
 
 
@@ -78,9 +79,11 @@ class AgentsAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
-                f"Unable to register agent. {response.status_code} - {response.text}"
-            )
+            try:
+                error = response.json()
+            except Exception:
+                error = {"message": response.text, "code": "register_error"}
+            raise PaymentsError.from_backend("Unable to register agent", error)
         agent_data = response.json()
         return {"agentId": agent_data["agentId"]}
 
@@ -127,9 +130,11 @@ class AgentsAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
-                f"Unable to register agent & plan. {response.status_code} - {response.text}"
-            )
+            try:
+                error = response.json()
+            except Exception:
+                error = {"message": response.text, "code": "register_error"}
+            raise PaymentsError.from_backend("Unable to register agent & plan", error)
         result = response.json()
 
         return {
@@ -154,9 +159,11 @@ class AgentsAPI(BasePaymentsAPI):
         url = f"{self.environment.backend}{API_URL_GET_AGENT.format(agent_id=agent_id)}"
         response = requests.get(url)
         if not response.ok:
-            raise PaymentsError(
-                f"Agent not found. {response.status_code} - {response.text}"
-            )
+            try:
+                error = response.json()
+            except Exception:
+                error = {"message": response.text, "code": "not_found"}
+            raise PaymentsError.from_backend("Agent not found", error)
         return response.json()
 
     def get_agent_plans(
@@ -185,9 +192,11 @@ class AgentsAPI(BasePaymentsAPI):
         }
         response = requests.get(url, params=params)
         if not response.ok:
-            raise PaymentsError(
-                f"Unable to get agent plans. {response.status_code} - {response.text}"
-            )
+            try:
+                error = response.json()
+            except Exception:
+                error = {"message": response.text, "code": "get_plans_error"}
+            raise PaymentsError.from_backend("Unable to get agent plans", error)
         return response.json()
 
     def add_plan_to_agent(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
@@ -209,9 +218,11 @@ class AgentsAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
-                f"Unable to add plan to agent. {response.status_code} - {response.text}"
-            )
+            try:
+                error = response.json()
+            except Exception:
+                error = {"message": response.text, "code": "add_plan_error"}
+            raise PaymentsError.from_backend("Unable to add plan to agent", error)
         return response.json()
 
     def remove_plan_from_agent(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
@@ -233,9 +244,11 @@ class AgentsAPI(BasePaymentsAPI):
 
         response = requests.delete(url, **options)
         if not response.ok:
-            raise PaymentsError(
-                f"Unable to remove plan from agent. {response.status_code} - {response.text}"
-            )
+            try:
+                error = response.json()
+            except Exception:
+                error = {"message": response.text, "code": "remove_plan_error"}
+            raise PaymentsError.from_backend("Unable to remove plan from agent", error)
         return response.json()
 
     def get_agent_access_token(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
@@ -257,7 +270,44 @@ class AgentsAPI(BasePaymentsAPI):
 
         response = requests.get(url, **options)
         if not response.ok:
-            raise PaymentsError(
-                f"Unable to get agent access token. {response.status_code} - {response.text}"
-            )
+            try:
+                error = response.json()
+            except Exception:
+                error = {"message": response.text, "code": "access_token_error"}
+            raise PaymentsError.from_backend("Unable to get agent access token", error)
+        return response.json()
+
+    def update_agent_metadata(
+        self,
+        agent_id: str,
+        agent_metadata: AgentMetadata,
+        agent_api: AgentAPIAttributes,
+    ) -> Dict[str, Any]:
+        """
+        Updates the metadata and API attributes of an existing AI Agent.
+
+        Args:
+            agent_id: The unique identifier of the agent
+            agent_metadata: The new metadata attributes for the agent
+            agent_api: The new API attributes for the agent
+
+        Returns:
+            The result of the update operation
+
+        Raises:
+            PaymentsError: If the agent is not found or if the update fails
+        """
+        body = {
+            "metadataAttributes": self.pydantic_to_dict(agent_metadata),
+            "agentApiAttributes": self.pydantic_to_dict(agent_api),
+        }
+        url = f"{self.environment.backend}{API_URL_UPDATE_AGENT.format(agent_id=agent_id)}"
+        options = self.get_backend_http_options("PUT", body)
+        response = requests.put(url, **options)
+        if not response.ok:
+            try:
+                error = response.json()
+            except Exception:
+                error = {"message": response.text, "code": "update_error"}
+            raise PaymentsError.from_backend("Error updating agent", error)
         return response.json()

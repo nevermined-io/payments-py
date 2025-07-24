@@ -70,7 +70,7 @@ class AgentRequestsAPI(BasePaymentsAPI):
         url = f"{self.environment.backend}{initialize_agent_url}"
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to validate access token. {response.status_code} - {response.text}"
             )
 
@@ -99,7 +99,7 @@ class AgentRequestsAPI(BasePaymentsAPI):
         # Decode the access token to get the wallet address and plan ID
         decoded_token = decode_access_token(request_access_token)
         if not decoded_token:
-            raise PaymentsError("Invalid access token provided")
+            raise PaymentsError.validation("Invalid access token provided")
 
         # Extract wallet address and plan ID from the token
         wallet_address = decoded_token.get("authToken", {}).get(
@@ -110,7 +110,9 @@ class AgentRequestsAPI(BasePaymentsAPI):
         )
 
         if not wallet_address or not plan_id:
-            raise PaymentsError("Missing wallet address or plan ID in access token")
+            raise PaymentsError.validation(
+                "Missing wallet address or plan ID in access token"
+            )
 
         body = {
             "agentRequestId": agent_request_id,
@@ -123,8 +125,8 @@ class AgentRequestsAPI(BasePaymentsAPI):
         url = f"{self.environment.backend}{API_URL_REDEEM_PLAN}"
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
-                f"Unable to redeem credits from request. {response.status_code} {response.status_text} - {response.text}"
+            raise PaymentsError.internal(
+                f"Unable to redeem credits from request. {response.status_code} - {response.text}"
             )
 
         return response.json()
@@ -164,7 +166,7 @@ class AgentRequestsAPI(BasePaymentsAPI):
         response = requests.post(url, **options)
 
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to track agent sub task. {response.status_code} - {response.text}"
             )
 

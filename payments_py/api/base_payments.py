@@ -48,7 +48,7 @@ class BasePaymentsAPI:
             )
             self.account_address = decoded_jwt.get("sub")
         except Exception as e:
-            raise PaymentsError(f"Invalid NVM API Key: {str(e)}")
+            raise PaymentsError.validation(f"Invalid NVM API Key: {str(e)}")
 
     def get_account_address(self) -> Optional[str]:
         """

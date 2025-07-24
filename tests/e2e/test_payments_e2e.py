@@ -34,11 +34,11 @@ ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 # Test API keys (these should be replaced with test keys in a real environment)
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
-    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweGFFMzcxNDlGOWU4NWU4ZTQ4QWJGNTY1QUJFOWZEMjdFNjgyZTQ0YWIiLCJqdGkiOiIweGUzNjA2M2UwZTU3ZTAyNjRmZDA4ZTU3NGI3M2IxNzI0MTNmMmM1MzE4NmIxMjc2YzU5MTdiZTg3Zjc5Yzc3ZjYiLCJleHAiOjE3ODQyMjIwNDh9.XKVVIhwl1Ax-bXb8f44OjghLIN3stOPiz4NbMZ9D9vcMOiItU9_BUEEWYTcA04zz0pkByW0f1MQ0xHXNbDFUWxs",
+    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweGFFMzcxNDlGOWU4NWU4ZTQ4QWJGNTY1QUJFOWZEMjdFNjgyZTQ0YWIiLCJqdGkiOiIweDVjZGU1NmEzYzBlMjY1NTMyNDM2ODBkZjVkZTRkZjkxYmU2NThiYzM0MDY0ZGE3ZDU2YWVlN2NmMTg1OGFiNTAiLCJleHAiOjE3ODQ4MjE0Njl9.FO-OOwzh0C3mPD1VElZoaTtDWjUGCGd8Po9K6uoKqQxsUKuYnCsLfR1PF-KtMVHPWG_hS2aAAPe9PEAFWIpeyBs",
 )
 BUILDER_API_KEY = os.getenv(
     "TEST_BUILDER_API_KEY",
-    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweENFQTkxOUZBZTBDQjNDNzdmZDIwNDk3NDdmOEQ3OEZFRjIwQTREMDciLCJqdGkiOiIweDJiODk0MDRmODQ2ZGZiODdlZjhhYjY1M2ZjZGU1ZjVkODc5MTZiNjM4Yjg5Y2IyN2ZiZDM1OTEyOGUzNTAwYTIiLCJleHAiOjE3ODQyMjE5ODB9.04DrXaNi50-nD1xkp6Q546BjxRRoTAtT5byHVStyveEH0bT-Iwvi1CZXIuXBraaB9GlhrWufXbJLd5Ln-RQvmhw",
+    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweENFQTkxOUZBZTBDQjNDNzdmZDIwNDk3NDdmOEQ3OEZFRjIwQTREMDciLCJqdGkiOiIweDcxZWZiN2QwZTY4MzE5ZjliNDRkYjI3ZmE3YjFiYzNkMWI2ODhmM2RlODVkNjYyZDE4YWZlYWU3Y2MyOWVkMGUiLCJleHAiOjE3ODQ4MjUyMDl9.BmjTWjLbItW1rGqicPIygncpVHiqHdgrWQj6eq4sKY0TztDk1bWM89b0dlZZJRzp73fIQ3btmMM5EaIf-ttH0Bw",
 )
 
 # Test endpoints
@@ -82,16 +82,15 @@ class MockAgentHandler(BaseHTTPRequestHandler):
 
         try:
             if mock_payments_builder and mock_agent_id:
-                # Note: This would need to be implemented in the Python SDK
-                # isValidReq = await self.payments_builder.is_valid_request(
-                #     self.agent_id, auth_header, requested_url, http_verb
-                # )
-                # For now, we'll simulate a valid request
-                if (
-                    auth_header
-                    and auth_header.startswith("Bearer ")
-                    and "INVALID_TOKEN" not in auth_header
-                ):
+                # Validate the request using the real Nevermined logic
+                result = mock_payments_builder.requests.start_processing_request(
+                    mock_agent_id,
+                    auth_header,
+                    requested_url,
+                    http_verb,
+                )
+                # If the request is valid and the user is a subscriber
+                if result and result.get("balance", {}).get("isSubscriber"):
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
@@ -101,7 +100,8 @@ class MockAgentHandler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f"Unauthorized access attempt: {auth_header}, error: {e}")
 
-        self.send_response(403)
+        # If the request is not valid or there is an exception, respond with 402
+        self.send_response(402)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         response = {"error": "Unauthorized"}
@@ -420,7 +420,48 @@ class TestE2ESubscriberAgentFlow:
 
         response = requests.post(agent_url, headers=headers)
         assert response is not None
-        assert response.status_code == 403
+        assert response.status_code == 402
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_wrong_endpoint_agent_request(self):
+        """Test that querying an agent using the wrong endpoint fails with 402."""
+        global agent_access_params
+        assert (
+            agent_access_params is not None
+        ), "agent_access_params must be set by previous test"
+
+        # Use an incorrect endpoint
+        wrong_agent_url = "http://localhost:8889/wrong/endpoint"
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {agent_access_params.get('accessToken')}",
+        }
+
+        response = requests.post(wrong_agent_url, headers=headers)
+        assert response is not None
+        print(f"Wrong endpoint response: {response.status_code} {response.text}")
+        assert response.status_code == 402
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_fix_agent_endpoints(self, payments_builder):
+        """Test that agent endpoints can be updated (fix endpoints)."""
+        global agent_id
+        assert agent_id is not None, "agent_id must be set by previous test"
+
+        agent_metadata = {
+            "name": "E2E Payments Agent Updated",
+            "description": "This is a test agent for the E2E Payments tests",
+            "tags": ["test"],
+        }
+        agent_api = {"endpoints": [{"POST": "http://localhost:8889/test/12345/tasks"}]}
+
+        result = payments_builder.agents.update_agent_metadata(
+            agent_id, agent_metadata, agent_api
+        )
+        assert result is not None
+        print(f"Update agent result: {result}")
+        assert result.get("success", True)  # Accept True or missing (legacy)
 
 
 @pytest.mark.timeout(TEST_TIMEOUT)

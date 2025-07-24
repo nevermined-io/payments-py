@@ -91,7 +91,7 @@ class PlansAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to register plan. {response.status_code} - {response.text}"
             )
 
@@ -125,12 +125,12 @@ class PlansAPI(BasePaymentsAPI):
             PlanCreditsType.FIXED,
             PlanCreditsType.DYNAMIC,
         ]:
-            raise PaymentsError(
+            raise PaymentsError.validation(
                 "The creditsConfig.creditsType must be FIXED or DYNAMIC"
             )
 
         if credits_config.min_amount > credits_config.max_amount:
-            raise PaymentsError(
+            raise PaymentsError.validation(
                 "The creditsConfig.minAmount can not be more than creditsConfig.maxAmount"
             )
 
@@ -161,7 +161,9 @@ class PlansAPI(BasePaymentsAPI):
             PaymentsError: If the credits configuration is invalid
         """
         if credits_config.credits_type != PlanCreditsType.EXPIRABLE:
-            raise PaymentsError("The creditsConfig.creditsType must be EXPIRABLE")
+            raise PaymentsError.validation(
+                "The creditsConfig.creditsType must be EXPIRABLE"
+            )
 
         return self.register_plan(plan_metadata, price_config, credits_config)
 
@@ -225,7 +227,7 @@ class PlansAPI(BasePaymentsAPI):
         url = f"{self.environment.backend}{API_URL_GET_PLAN.format(plan_id=plan_id)}"
         response = requests.get(url)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.validation(
                 f"Plan not found. {response.status_code} - {response.text}"
             )
         return response.json()
@@ -256,7 +258,7 @@ class PlansAPI(BasePaymentsAPI):
             headers={"Accept": "application/json", "Content-Type": "application/json"},
         )
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to get plan balance. {response.status_code} - {response.text}"
             )
         return response.json()
@@ -279,7 +281,7 @@ class PlansAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to order plan. {response.status_code} - {response.text}"
             )
         return response.json()
@@ -311,7 +313,7 @@ class PlansAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to mint credits. {response.status_code} - {response.text}"
             )
         return response.json()
@@ -349,7 +351,7 @@ class PlansAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to mint expirable credits. {response.status_code} - {response.text}"
             )
         return response.json()
@@ -377,7 +379,7 @@ class PlansAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to burn credits. {response.status_code} - {response.text}"
             )
         return response.json()
@@ -408,7 +410,7 @@ class PlansAPI(BasePaymentsAPI):
         }
         response = requests.get(url, params=params)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to get agents associated to plan. {response.status_code} - {response.text}"
             )
         return response.json()
@@ -432,7 +434,7 @@ class PlansAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to order fiat plan. {response.status_code} - {response.text}"
             )
         return response.json()
@@ -470,7 +472,7 @@ class PlansAPI(BasePaymentsAPI):
 
         response = requests.post(url, **options)
         if not response.ok:
-            raise PaymentsError(
+            raise PaymentsError.internal(
                 f"Unable to redeem credits. {response.status_code} - {response.text}"
             )
         return response.json()
