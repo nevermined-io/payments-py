@@ -2,8 +2,9 @@
 name = "payments-py"
 version = "0.7.3"
 description = ""
-authors = ["enrique <enrique@nevermined.io>"]
+authors = ["enrique <enrique@nevermined.io>", "Charly López <charly@nevermined.io>"]
 readme = "README.md"
+packages = [{include = "payments_py"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -19,11 +20,11 @@ pytest-asyncio = "^0.24.0"
 websocket-client = "^1.8.0"
 black = "^25.1.0"
 
-
-
 [tool.poetry.group.test.dependencies]
 pytest = "^8.1.1"
 requests-mock = "^1.11.0"
+pytest-timeout = "^2.2.0"
+pytest-cov = "^4.1.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -35,3 +36,27 @@ in-project = true
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "session"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+#addopts = "-v --cov=payments_py --cov-report=term-missing"
+timeout = 30
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = "E203"
