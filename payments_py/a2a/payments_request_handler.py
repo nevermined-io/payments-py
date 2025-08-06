@@ -127,6 +127,43 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
     ) -> None:  # noqa: D401
         self._migrate_http_ctx_from_message_to_task(message_id, task_id)
 
+    async def validate_request(
+        self,
+        agent_id: str,
+        bearer_token: str,
+        url_requested: str,
+        http_method_requested: str,
+    ) -> Any:
+        """
+        Validates a request using the payments service.
+        This method is used by the middleware to validate credits before processing requests.
+
+        Args:
+            agent_id: The agent ID to validate
+            bearer_token: The bearer token for authentication
+            url_requested: The URL being requested
+            http_method_requested: The HTTP method being used
+
+        Returns:
+            The validation result containing agentRequestId and other validation data
+
+        Raises:
+            PaymentsError: If validation fails
+        """
+        # Use run_in_executor since start_processing_request is synchronous
+        import asyncio
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._payments.requests.start_processing_request(  # type: ignore[attr-defined]
+                agent_id,
+                bearer_token,
+                url_requested,
+                http_method_requested,
+            ),
+        )
+
     # ------------------------------------------------------------------
     # Overrides --------------------------------------------------------
     # ------------------------------------------------------------------
@@ -143,10 +180,10 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             raise PaymentsError.bad_request("message.messageId is required.")
 
         # Get HTTP context for the task or message
-        task_id = params.message.task_id
+        prev_task_id = params.message.task_id
         http_ctx = None
-        if task_id:
-            http_ctx = self._get_http_ctx(task_id, None)
+        if prev_task_id:
+            http_ctx = self._get_http_ctx(prev_task_id, None)
         else:
             http_ctx = self._get_http_ctx(None, params.message.message_id)
 
@@ -157,32 +194,17 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         # Get agentId from agent card (like TypeScript)
         agent_card = await self.get_agent_card()
+
+        # Extract agentId from payment extension (agent_card is a dict-like object)
         agent_id = None
-        if (
-            hasattr(agent_card, "capabilities")
-            and agent_card.capabilities
-            and hasattr(agent_card.capabilities, "extensions")
-            and agent_card.capabilities.extensions
-        ):
-            for ext in agent_card.capabilities.extensions:
-                if hasattr(ext, "uri") and ext.uri == "urn:nevermined:payment":
-                    if hasattr(ext, "params") and hasattr(ext.params, "agentId"):
-                        agent_id = ext.params.agentId
-                        break
+        extensions = agent_card.get("capabilities", {}).get("extensions", [])
+        for ext in extensions:
+            if ext.get("uri") == "urn:nevermined:payment":
+                agent_id = ext.get("params", {}).get("agentId")
+                break
 
         if not agent_id:
             raise PaymentsError.internal("Agent ID not found in payment extension.")
-
-        # Generate taskId if not present and migrate HTTP context
-        if not task_id:
-            from uuid import uuid4
-
-            task_id = str(uuid4())
-            self._migrate_http_ctx_from_message_to_task(
-                params.message.message_id, task_id
-            )
-            # Update the message with the new taskId
-            params.message.task_id = task_id
 
         # Setup message execution (equivalent to TS setup)
         (
@@ -192,6 +214,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             result_aggregator,
             producer_task,
         ) = await self._setup_message_execution(params, context)
+
+        # migrate HTTP context from message to task
+        if not prev_task_id:
+            self._migrate_http_ctx_from_message_to_task(
+                params.message.message_id, task_id
+            )
+            # Update the message with the new taskId
+            params.message.task_id = task_id
 
         consumer = EventConsumer(queue)
         producer_task.add_done_callback(consumer.agent_task_callback)
@@ -256,9 +286,12 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
     ) -> tuple[Task | Message, bool]:
         """Process events with credit burning, mimicking parent's consume_and_break_on_interrupt."""
 
+        # Store the original consume_all method before replacing it
+        original_consume_all = consumer.consume_all
+
         # Create a custom event processor that intercepts events for credit burning
         async def credit_burning_event_processor():
-            async for event in consumer.consume_all():
+            async for event in original_consume_all():
                 # Handle credit burning on TaskStatusUpdateEvent (like TypeScript handleTaskFinalization)
                 if (
                     isinstance(event, TaskStatusUpdateEvent)
@@ -273,7 +306,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 yield event
 
         # Replace consumer's consume_all with our credit burning processor
-        original_consume_all = consumer.consume_all
         consumer.consume_all = credit_burning_event_processor
 
         try:

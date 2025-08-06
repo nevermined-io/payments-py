@@ -87,6 +87,11 @@ async def _on_error(method, exc, req):  # noqa: D401
 
 
 def test_hooks_invoked(agent_card, dummy_payments):  # noqa: D401
+    # Reset flag before test
+    flag["before"] = False
+    flag["after"] = False
+    flag["error"] = False
+
     hooks = {
         "beforeRequest": _before,
         "afterRequest": _after,
@@ -103,15 +108,25 @@ def test_hooks_invoked(agent_card, dummy_payments):  # noqa: D401
     )
 
     client = TestClient(srv.app)
-    # Minimal JSON-RPC call to trigger hooks
+    # Use message/send method which should exist
     payload = {
         "jsonrpc": "2.0",
-        "method": "ping",
-        "params": {},
+        "method": "message/send",
+        "params": {
+            "message": {
+                "messageId": "test-msg-123",
+                "contextId": "test-ctx-123",
+                "role": "user",
+                "parts": [{"kind": "text", "text": "Hello"}],
+            }
+        },
         "id": 1,
     }
     headers = {"Authorization": "Bearer TOKEN"}
-    client.post("/rpc", json=payload, headers=headers)
+    response = client.post("/rpc", json=payload, headers=headers)
 
+    # The call might fail (which would trigger onError) or succeed (which would trigger before/after)
     # At least one hook should have been triggered
-    assert any(flag.values())
+    assert any(
+        flag.values()
+    ), f"No hooks triggered. Response: {response.status_code} - {response.text}"

@@ -88,6 +88,60 @@ class PaymentsA2AServer:  # noqa: D101
             rpc_url = base_path if base_path != "/" else "/"
             builder.add_routes_to_app(app, rpc_url=rpc_url)
 
+        # Configure hooks via middleware if provided
+        if hooks:
+            # Add hooks middleware that intercepts JSON-RPC requests
+            @app.middleware("http")  # type: ignore[misc]
+            async def hooks_middleware(request, call_next):  # noqa: ANN001, D401
+                # Only handle JSON-RPC requests
+                if request.method == "POST" and request.url.path.startswith(base_path):
+                    # Parse JSON-RPC to get method name
+                    body = await request.body()
+                    try:
+                        import json
+
+                        rpc_data = json.loads(body)
+                        method = rpc_data.get("method", "unknown")
+
+                        # Call beforeRequest hook
+                        if "beforeRequest" in hooks:
+                            try:
+                                await hooks["beforeRequest"](
+                                    method, rpc_data.get("params", {}), request
+                                )
+                            except Exception:
+                                pass  # Swallow hook errors
+
+                        # Restore body for downstream processing
+                        request._body = body
+
+                        try:
+                            response = await call_next(request)
+
+                            # Call afterRequest hook
+                            if "afterRequest" in hooks:
+                                try:
+                                    await hooks["afterRequest"](
+                                        method, "result", request
+                                    )
+                                except Exception:
+                                    pass  # Swallow hook errors
+
+                            return response
+                        except Exception as e:
+                            # Call onError hook
+                            if "onError" in hooks:
+                                try:
+                                    await hooks["onError"](method, e, request)
+                                except Exception:
+                                    pass  # Swallow hook errors
+                            raise
+                    except Exception:
+                        # If we can't parse JSON, just proceed normally
+                        pass
+
+                return await call_next(request)
+
         # -----------------------------------------------------------------
         # Middleware: extract bearer token, validate credits, store context
         # -----------------------------------------------------------------
