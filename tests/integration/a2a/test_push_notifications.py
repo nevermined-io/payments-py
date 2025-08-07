@@ -496,8 +496,6 @@ async def test_push_notifications_failure_handling():
             assert mock_payments.requests.redeem_call_count == 1
             assert mock_payments.requests.last_redeem_credits == 1
 
-            # Wait for webhook attempt
-            await asyncio.sleep(0.1)
-
-            # The webhook should have been attempted but failed silently
-            # No exception should have been raised
+            # Verify that despite webhook failure, the task execution completed successfully
+            # (the webhook failure should be silent and not break the main flow)
+            # No explicit wait needed since on_message_send is blocking and should complete fully

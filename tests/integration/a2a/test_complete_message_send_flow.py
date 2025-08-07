@@ -225,13 +225,26 @@ async def test_complete_message_send_with_credit_burning():
     response_data = response.json()
     assert "result" in response_data
 
-    # Verify that validation was called
+    # Verify that validation was called exactly once
     assert mock_payments.requests.validation_call_count == 1
 
-    # Verify that credits were burned (may be async, so we wait a bit)
-    await asyncio.sleep(0.2)
-    assert mock_payments.requests.redeem_call_count == 1
-    assert mock_payments.requests.last_redeem_credits == 3
+    # Verify response contains the completed task (blocking mode should wait for completion)
+    task_result = response_data["result"]
+    assert task_result["kind"] == "task"
+    assert task_result["status"]["state"] == "completed"
+    assert task_result["status"]["message"]["role"] == "agent"
+    assert (
+        task_result["status"]["message"]["parts"][0]["text"]
+        == "Request completed successfully!"
+    )
+
+    # Verify that credits were burned exactly once (no sleep needed, blocking mode waits)
+    assert (
+        mock_payments.requests.redeem_call_count == 1
+    ), f"Expected 1 redeem call, got {mock_payments.requests.redeem_call_count}"
+    assert (
+        mock_payments.requests.last_redeem_credits == 3
+    ), f"Expected 3 credits burned, got {mock_payments.requests.last_redeem_credits}"
 
 
 @pytest.mark.asyncio
@@ -293,9 +306,13 @@ async def test_message_send_with_validation_failure():
     assert "error" in response_data
     assert "Validation error" in response_data["error"]["message"]
 
-    # Verify validation was attempted but credits were not burned
-    assert mock_payments.requests.validation_call_count == 1
-    assert mock_payments.requests.redeem_call_count == 0
+    # Verify validation was attempted exactly once but credits were not burned
+    assert (
+        mock_payments.requests.validation_call_count == 1
+    ), f"Expected exactly 1 validation attempt, got {mock_payments.requests.validation_call_count}"
+    assert (
+        mock_payments.requests.redeem_call_count == 0
+    ), f"No credits should be redeemed on validation failure, but {mock_payments.requests.redeem_call_count} calls were made"
 
 
 @pytest.mark.asyncio
@@ -356,8 +373,12 @@ async def test_message_send_with_missing_bearer_token():
     assert "Missing bearer token" in response_data["error"]["message"]
 
     # No validation or credit burning should occur
-    assert mock_payments.requests.validation_call_count == 0
-    assert mock_payments.requests.redeem_call_count == 0
+    assert (
+        mock_payments.requests.validation_call_count == 0
+    ), f"No validation should occur without bearer token, but {mock_payments.requests.validation_call_count} calls were made"
+    assert (
+        mock_payments.requests.redeem_call_count == 0
+    ), f"No credits should be redeemed without bearer token, but {mock_payments.requests.redeem_call_count} calls were made"
 
 
 @pytest.mark.asyncio
@@ -434,9 +455,11 @@ async def test_non_blocking_execution_with_polling():
     # The non-blocking execution continues in background
     # In a real scenario, you'd poll the task or use webhooks
 
-    # Verify initial validation occurred
+    # Verify initial validation occurred exactly once
     initial_validation_count = mock_payments.requests.validation_call_count
-    assert initial_validation_count >= 1
+    assert (
+        initial_validation_count == 1
+    ), f"Expected exactly 1 validation call, got {initial_validation_count}"
 
     # Poll for task completion - now that we've fixed the background processing,
     # the task should actually complete and credits should be burned
