@@ -1,1 +1,0 @@
-"""E2E test helpers package."""

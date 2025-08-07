@@ -60,7 +60,18 @@ class PaymentsA2AServer:  # noqa: D101
                     super().__init__(data)
                     # Expose top-level properties as attributes
                     for key, value in data.items():
-                        setattr(self, key, value)
+                        # Convert nested dicts to objects with attributes too
+                        if isinstance(value, dict) and key == "capabilities":
+
+                            class _Capabilities(dict):
+                                def __init__(self, cap_data):
+                                    super().__init__(cap_data)
+                                    for cap_key, cap_value in cap_data.items():
+                                        setattr(self, cap_key, cap_value)
+
+                            setattr(self, key, _Capabilities(value))
+                        else:
+                            setattr(self, key, value)
 
             agent_card = _Card(agent_card)  # type: ignore[assignment]
 
