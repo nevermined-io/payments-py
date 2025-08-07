@@ -195,12 +195,28 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         # Get agentId from agent card (like TypeScript)
         agent_card = await self.get_agent_card()
 
-        # Extract agentId from payment extension (agent_card is a dict-like object)
+        # Extract agentId from payment extension (handle both dict and SimpleNamespace)
         agent_id = None
-        extensions = agent_card.get("capabilities", {}).get("extensions", [])
+        if hasattr(agent_card, "get"):
+            # Dictionary-style access
+            extensions = agent_card.get("capabilities", {}).get("extensions", [])
+        else:
+            # Object-style access (SimpleNamespace)
+            capabilities = getattr(agent_card, "capabilities", None)
+            extensions = getattr(capabilities, "extensions", []) if capabilities else []
+
         for ext in extensions:
-            if ext.get("uri") == "urn:nevermined:payment":
-                agent_id = ext.get("params", {}).get("agentId")
+            if (hasattr(ext, "get") and ext.get("uri") == "urn:nevermined:payment") or (
+                hasattr(ext, "uri") and ext.uri == "urn:nevermined:payment"
+            ):
+                # Handle both dict and SimpleNamespace for params
+                if hasattr(ext, "get"):
+                    agent_id = ext.get("params", {}).get("agentId")
+                else:
+                    ext_params = getattr(ext, "params", None)
+                    agent_id = (
+                        getattr(ext_params, "agentId", None) if ext_params else None
+                    )
                 break
 
         if not agent_id:
