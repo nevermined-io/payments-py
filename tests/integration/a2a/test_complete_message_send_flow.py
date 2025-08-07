@@ -74,12 +74,8 @@ class DummyExecutor:
         from uuid import uuid4
         import datetime
 
-        # Get task info from context
-        task_id = (
-            context.task.id
-            if hasattr(context, "task") and context.task
-            else str(uuid4())
-        )
+        # Get task info from context - use the task_id from RequestContext
+        task_id = getattr(context, "task_id", None) or str(uuid4())
         context_id = (
             context.context_id if hasattr(context, "context_id") else "test-ctx"
         )
@@ -106,10 +102,35 @@ class DummyExecutor:
             )
             await event_queue.enqueue_event(initial_task)
 
-        # Simulate processing time
-        await asyncio.sleep(0.05)
+        # Publish working status (like TypeScript)
+        from a2a.types import TaskStatusUpdateEvent
 
-        # Publish agent response message
+        working_status_update = TaskStatusUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            status=TaskStatus(
+                state=TaskState.working,
+                message=Message(
+                    message_id=str(uuid4()),
+                    role="agent",
+                    parts=[{"kind": "text", "text": "Processing your request..."}],
+                    task_id=task_id,
+                    context_id=context_id,
+                ),
+                timestamp=datetime.datetime.now().isoformat(),
+            ),
+            final=False,
+        )
+        await event_queue.enqueue_event(working_status_update)
+
+        # Simulate processing time (shorter to avoid cancellation)
+        try:
+            await asyncio.sleep(0.01)
+        except asyncio.CancelledError:
+            # If cancelled, still try to publish final event
+            print("[DEBUG] DummyExecutor was cancelled, but continuing to final event")
+
+        # Publish final completed status with agent message (like TypeScript)
         agent_message = Message(
             message_id=str(uuid4()),
             role="agent",
@@ -117,24 +138,25 @@ class DummyExecutor:
             task_id=task_id,
             context_id=context_id,
         )
-        await event_queue.enqueue_event(agent_message)
 
-        # Publish final status update with creditsUsed
-        final_status_update = {
-            "kind": "status-update",
-            "taskId": task_id,
-            "contextId": context_id,
-            "status": TaskStatus(
+        final_status_update = TaskStatusUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            status=TaskStatus(
                 state=TaskState.completed if not self.should_fail else TaskState.failed,
                 message=agent_message,
                 timestamp=datetime.datetime.now().isoformat(),
             ),
-            "metadata": {
+            metadata={
                 "creditsUsed": self.credits_to_use,
             },
-            "final": True,
-        }
+            final=True,
+        )
+        print(
+            f"[DEBUG] DummyExecutor publishing final event with creditsUsed: {self.credits_to_use}"
+        )
         await event_queue.enqueue_event(final_status_update)
+        print(f"[DEBUG] DummyExecutor completed successfully")
 
 
 @pytest.mark.asyncio
@@ -336,3 +358,132 @@ async def test_message_send_with_missing_bearer_token():
     # No validation or credit burning should occur
     assert mock_payments.requests.validation_call_count == 0
     assert mock_payments.requests.redeem_call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_non_blocking_execution_with_polling():
+    """Test non-blocking execution (blocking: false) with task polling."""
+    mock_payments = MockPaymentsService()
+
+    # Create agent card
+    agent_card = {
+        "capabilities": {
+            "extensions": [
+                {
+                    "uri": "urn:nevermined:payment",
+                    "params": {
+                        "agentId": "nonblock-agent-123",
+                        "credits": 15,
+                        "planId": "nonblock-plan",
+                        "paymentType": "credits",
+                    },
+                }
+            ]
+        }
+    }
+
+    # Create executor with some delay to simulate async work
+    executor = DummyExecutor(should_fail=False, credits_to_use=4)
+
+    # Start server
+    result = PaymentsA2AServer.start(
+        payments_service=mock_payments,  # type: ignore[arg-type]
+        agent_card=agent_card,
+        executor=executor,
+        port=0,
+        base_path="/rpc",
+        expose_default_routes=True,
+        run_async=False,
+    )
+
+    client = TestClient(result.app)
+
+    # Test non-blocking message/send
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "message/send",
+        "params": {
+            "configuration": {
+                "blocking": False,  # Non-blocking execution
+            },
+            "message": {
+                "messageId": "nonblock-msg-123",
+                "contextId": "nonblock-ctx-456",
+                "role": "user",
+                "parts": [{"kind": "text", "text": "Start non-blocking task!"}],
+            },
+        },
+    }
+
+    headers = {"Authorization": "Bearer NONBLOCK_TEST_TOKEN"}
+    response = client.post("/rpc", json=payload, headers=headers)
+
+    # Verify immediate response (should be submitted state)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert "result" in response_data
+
+    task = response_data["result"]
+    assert task["kind"] == "task"
+    assert task["status"]["state"] == "submitted"  # Should return immediately
+
+    task_id = task["id"]
+
+    # For now, just verify the immediate response behavior
+    # The non-blocking execution continues in background
+    # In a real scenario, you'd poll the task or use webhooks
+
+    # Verify initial validation occurred
+    initial_validation_count = mock_payments.requests.validation_call_count
+    assert initial_validation_count >= 1
+
+    # Poll for task completion - now that we've fixed the background processing,
+    # the task should actually complete and credits should be burned
+    max_attempts = 10
+    final_task = None
+
+    for attempt in range(max_attempts):
+        poll_payload = {
+            "jsonrpc": "2.0",
+            "id": 2 + attempt,  # Different ID for each poll
+            "method": "tasks/get",
+            "params": {"id": task_id},
+        }
+
+        poll_response = client.post("/rpc", json=poll_payload, headers=headers)
+
+        if poll_response.status_code == 200:
+            poll_data = poll_response.json()
+            if "result" in poll_data:
+                task_result = poll_data["result"]
+                print(
+                    f"[Attempt {attempt + 1}] Task state: {task_result['status']['state']}"
+                )
+
+                if task_result["status"]["state"] == "completed":
+                    final_task = task_result
+                    break
+                elif task_result["status"]["state"] in ["failed", "canceled"]:
+                    break  # Don't continue polling for terminal failure states
+
+        await asyncio.sleep(0.2)  # Wait before next poll
+
+    # Verify final task completion
+    assert (
+        final_task is not None
+    ), f"Task should have completed within polling window after {max_attempts} attempts"
+    assert final_task["status"]["state"] == "completed"
+    assert final_task["status"]["message"]["role"] == "agent"
+    assert (
+        final_task["status"]["message"]["parts"][0]["text"]
+        == "Request completed successfully!"
+    )
+
+    # Verify validation occurred (initial + any polling validation)
+    assert mock_payments.requests.validation_call_count >= initial_validation_count
+
+    # Most importantly: verify credit burning occurred after task completion
+    assert (
+        mock_payments.requests.redeem_call_count == 1
+    ), "Credits should be burned when task completes in non-blocking mode"

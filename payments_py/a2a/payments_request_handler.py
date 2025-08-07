@@ -237,7 +237,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         interrupted_or_non_blocking = False
         try:
-            # Process events with credit burning (like TypeScript processEventsWithFinalization)
+            # Both blocking and non-blocking use the same method, but with different early return behavior
             (result, interrupted_or_non_blocking) = (
                 await self._consume_and_burn_credits(
                     result_aggregator, consumer, http_ctx, blocking
@@ -264,9 +264,104 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         finally:
             # Cleanup like parent implementation
             if interrupted_or_non_blocking:
+                # For non-blocking mode, schedule background cleanup (like parent SDK does)
                 asyncio.create_task(self._cleanup_producer(producer_task, task_id))
             else:
                 await self._cleanup_producer(producer_task, task_id)
+
+    async def _monitor_for_final_events(
+        self,
+        task_id: str,
+        http_ctx: HttpRequestContext,
+        producer_task: "asyncio.Task[None]",
+        queue: "EventQueue",
+    ) -> None:
+        """Monitor for final events with credit burning in non-blocking mode."""
+        try:
+            print(f"[DEBUG] Starting monitor for final events for {task_id}")
+
+            # Wait for the producer task to complete (this publishes the final event)
+            await producer_task
+            print(f"[DEBUG] Producer task completed for {task_id}")
+
+            # Create a new consumer to check for any remaining events in the queue
+            from a2a.server.events import EventConsumer
+
+            final_consumer = EventConsumer(queue)
+
+            print(
+                f"[DEBUG] Created final consumer for {task_id}, checking for final events"
+            )
+
+            # Check for any remaining events (with timeout)
+            try:
+                async for event in final_consumer.consume_all():
+                    print(
+                        f"[DEBUG] monitor_for_final_events got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')}"
+                    )
+
+                    if (
+                        isinstance(event, TaskStatusUpdateEvent)
+                        and event.final is True
+                        and hasattr(event, "metadata")
+                        and event.metadata
+                        and event.metadata.get("creditsUsed") is not None
+                        and http_ctx.bearer_token
+                    ):
+                        print(
+                            f"[DEBUG] Found final event with creditsUsed: {event.metadata.get('creditsUsed')}"
+                        )
+                        await self._handle_task_finalization_from_event(event, http_ctx)
+                        break
+
+            except Exception as e:
+                print(f"[DEBUG] Error consuming final events: {e}")
+
+            # Give a bit more time for any delayed events
+            await asyncio.sleep(0.2)
+
+        except asyncio.CancelledError:
+            print(f"[DEBUG] Monitor task cancelled for {task_id}")
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                f"Monitor task failed for {task_id}: {e}"
+            )
+            print(f"[DEBUG] Monitor task exception: {e}")
+        finally:
+            # Clean up HTTP context
+            self.delete_http_ctx_for_task(task_id)
+            print(f"[DEBUG] Monitor cleanup completed for {task_id}")
+
+    async def _delayed_cleanup_for_non_blocking(
+        self,
+        producer_task: "asyncio.Task[None]",
+        task_id: str,
+        http_ctx: HttpRequestContext,
+        result_aggregator: ResultAggregator,
+    ) -> None:
+        """Wait for task completion in non-blocking mode, then cleanup."""
+        try:
+            # Wait for the producer task to complete naturally (don't cancel it)
+            await producer_task
+
+            # After producer completes, ensure we've processed all events
+            # Give some time for final events to be processed
+            await asyncio.sleep(0.1)
+
+        except asyncio.CancelledError:
+            # If cancelled, that's expected behavior
+            pass
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                f"Producer task failed for {task_id}: {e}"
+            )
+        finally:
+            # Clean up HTTP context
+            self.delete_http_ctx_for_task(task_id)
 
     async def _cleanup_producer(self, producer_task, task_id: str) -> None:
         """Cleanup producer task (from parent implementation)."""
@@ -284,14 +379,22 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         http_ctx: HttpRequestContext,
         blocking: bool = True,
     ) -> tuple[Task | Message, bool]:
-        """Process events with credit burning, mimicking parent's consume_and_break_on_interrupt."""
+        """Process events with credit burning (like TypeScript processEventsWithFinalization).
 
+        This mirrors TypeScript processEventsWithFinalization with:
+        - Credit burning on final events with creditsUsed metadata
+        - Background processing continuation when interrupted (via SDK's _continue_consuming)
+        """
         # Store the original consume_all method before replacing it
         original_consume_all = consumer.consume_all
 
         # Create a custom event processor that intercepts events for credit burning
         async def credit_burning_event_processor():
             async for event in original_consume_all():
+                print(
+                    f"[DEBUG] credit_burning_event_processor got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')} - metadata: {getattr(event, 'metadata', 'no-metadata')}"
+                )
+
                 # Handle credit burning on TaskStatusUpdateEvent (like TypeScript handleTaskFinalization)
                 if (
                     isinstance(event, TaskStatusUpdateEvent)
@@ -301,6 +404,9 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                     and event.metadata.get("creditsUsed") is not None
                     and http_ctx.bearer_token
                 ):
+                    print(
+                        f"[DEBUG] Processing credit burning for final event: {event.metadata.get('creditsUsed')} credits"
+                    )
                     await self._handle_task_finalization_from_event(event, http_ctx)
 
                 yield event
@@ -309,13 +415,63 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         consumer.consume_all = credit_burning_event_processor
 
         try:
-            # Use parent's logic for event processing
-            return await result_aggregator.consume_and_break_on_interrupt(
-                consumer, blocking=blocking
-            )
+            if blocking:
+                # Blocking mode: intercept events in main flow (current working approach)
+                return await result_aggregator.consume_and_break_on_interrupt(
+                    consumer, blocking=blocking
+                )
+            else:
+                # Non-blocking mode: don't intercept main flow, but intercept background processing
+                # First, restore original consumer to avoid interfering with SDK's early return logic
+                consumer.consume_all = original_consume_all
+
+                # Intercept the _continue_consuming method for background credit burning
+                original_continue_consuming = result_aggregator._continue_consuming
+
+                async def background_credit_burning_processor(event_stream):
+                    """Process background events with credit burning."""
+                    async for event in event_stream:
+                        print(
+                            f"[DEBUG] background_credit_burning_processor got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')}"
+                        )
+
+                        # Process the event normally (like original _continue_consuming)
+                        await result_aggregator.task_manager.process(event)
+
+                        # Check for credit burning on final events
+                        if (
+                            isinstance(event, TaskStatusUpdateEvent)
+                            and event.final is True
+                            and hasattr(event, "metadata")
+                            and event.metadata
+                            and event.metadata.get("creditsUsed") is not None
+                            and http_ctx.bearer_token
+                        ):
+                            print(
+                                f"[DEBUG] Background credit burning for: {event.metadata.get('creditsUsed')} credits"
+                            )
+                            await self._handle_task_finalization_from_event(
+                                event, http_ctx
+                            )
+
+                # Replace _continue_consuming temporarily
+                result_aggregator._continue_consuming = (
+                    background_credit_burning_processor
+                )
+
+                try:
+                    # Let SDK do its normal non-blocking flow
+                    result = await result_aggregator.consume_and_break_on_interrupt(
+                        consumer, blocking=blocking
+                    )
+                    return result
+                finally:
+                    # Restore original _continue_consuming
+                    result_aggregator._continue_consuming = original_continue_consuming
         finally:
-            # Restore original consume_all
-            consumer.consume_all = original_consume_all
+            # Restore original consume_all if it wasn't already restored
+            if consumer.consume_all != original_consume_all:
+                consumer.consume_all = original_consume_all
 
     async def _handle_task_finalization_from_event(
         self, event: TaskStatusUpdateEvent, http_ctx: HttpRequestContext
@@ -323,6 +479,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         """Handle credit burning from TaskStatusUpdateEvent (like TypeScript handleTaskFinalization)."""
         if not event.metadata or not event.metadata.get("creditsUsed"):
             return
+
+        print(f"[DEBUG] Handling task finalization from event: {event}")
 
         credits_used = event.metadata["creditsUsed"]
         try:
@@ -411,6 +569,28 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                     pass
 
             yield event
+
+    async def _send_push_notification_if_needed(
+        self, task_id: str, result_aggregator: Any
+    ) -> None:
+        """Send push notification if needed for completed task."""
+        try:
+            # Get the final result to check if task is completed
+            task = await result_aggregator.task_manager.get_task()
+            if task and task.status.state in _TERMINAL_STATES:
+                # Get push notification config
+                push_cfg = await self.on_get_task_push_notification_config(
+                    TaskIdParams(id=task_id)
+                )
+                if push_cfg and "pushNotificationConfig" in push_cfg:
+                    await self._send_push_notification(
+                        task_id,
+                        task.status.state,
+                        push_cfg["pushNotificationConfig"],
+                    )
+        except Exception:  # noqa: BLE001
+            # Swallow push notification errors (non-blocking)
+            pass
 
     # ------------------------------------------------------------------
     # Push notification helper -----------------------------------------

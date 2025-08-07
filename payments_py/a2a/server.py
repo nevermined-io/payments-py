@@ -56,19 +56,18 @@ class PaymentsA2AServer:  # noqa: D101
             class _Card(dict):
                 supports_authenticated_extended_card = False
 
+                def __init__(self, data):
+                    super().__init__(data)
+                    # Expose top-level properties as attributes
+                    for key, value in data.items():
+                        setattr(self, key, value)
+
             agent_card = _Card(agent_card)  # type: ignore[assignment]
 
         # ------------------------------------------------------------------
         # Handler instantiation
         # ------------------------------------------------------------------
-        if isinstance(agent_card, dict) and not hasattr(
-            agent_card, "supports_authenticated_extended_card"
-        ):
-
-            class _Card(dict):
-                supports_authenticated_extended_card = False
-
-            agent_card = _Card(agent_card)  # type: ignore[assignment]
+        # agent_card is already normalized above, no need to do it again
 
         handler: PaymentsRequestHandler | Any
         if custom_request_handler is not None:
