@@ -1,8 +1,7 @@
 """Unit test for PaymentsRequestHandler streaming credit burn."""
 
-import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 

@@ -11,8 +11,6 @@ from payments_py.common.types import (
     PlanPriceConfig,
     PlanCreditsConfig,
     PlanCreditsType,
-    PlanBalance,
-    Address,
     PaginationOptions,
 )
 from payments_py.api.base_payments import BasePaymentsAPI

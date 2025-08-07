@@ -94,7 +94,8 @@ class BasePaymentsAPI:
             HTTP options object
         """
         # Disable SSL verification for development/staging environments
-        # For now, disable SSL verification for all environments to handle self-signed certificates
+        # For now, disable SSL verification for all environments to handle
+        # self-signed certificates
         verify_ssl = False
 
         options = {

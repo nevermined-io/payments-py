@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Literal, Union
+from typing import Literal
 
 
 @dataclass

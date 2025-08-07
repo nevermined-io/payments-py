@@ -2,7 +2,7 @@
 Main Payments class for the Nevermined Payments protocol.
 """
 
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.query_api import AIQueryApi
@@ -10,6 +10,7 @@ from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.plans_api import PlansAPI
 from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
+
 # A2A integration
 from payments_py.a2a.agent_card import build_payment_agent_card
 
@@ -136,7 +137,10 @@ class Payments(BasePaymentsAPI):
             return self._a2a_registry.get_client(**options)
 
         return {
-            "start": lambda **opts: PaymentsA2AServer.start(payments_service=self, **opts),  # type: ignore[lambda-assign]
+            # type: ignore[lambda-assign]
+            "start": lambda **opts: PaymentsA2AServer.start(
+                payments_service=self, **opts
+            ),
             "get_client": _get_client,
         }
 

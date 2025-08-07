@@ -65,4 +65,6 @@ def test_different_instance_for_different_keys():  # noqa: D401
 def test_missing_parameter_raises():  # noqa: D401
     registry = _create_registry()
     with pytest.raises(ValueError):
-        registry.get_client(agent_base_url="https://agent.example", agent_id="agent1", plan_id="")  # type: ignore[arg-type]
+        registry.get_client(
+            agent_base_url="https://agent.example", agent_id="agent1", plan_id=""
+        )  # type: ignore[arg-type]

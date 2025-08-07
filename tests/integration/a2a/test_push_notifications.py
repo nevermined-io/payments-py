@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -21,12 +20,10 @@ from a2a.types import (
     TaskStatus,
     TaskState,
     TaskStatusUpdateEvent,
-    TaskIdParams,
 )
 
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import MessageSendParams, HttpRequestContext
-from payments_py.a2a.server import PaymentsA2AServer
 
 
 class DummyWebhookExecutor(AgentExecutor):
@@ -84,7 +81,6 @@ class DummyWebhookExecutor(AgentExecutor):
 
     async def cancel(self, context, queue):
         """Cancel execution."""
-        pass
 
 
 class MockPaymentsService:
@@ -215,7 +211,8 @@ async def test_push_notifications_with_webhook():
             "httpx.AsyncClient.post", new_callable=AsyncMock, side_effect=mock_post
         ):
 
-            # Create a message that will complete the task (no task_id, let SDK generate)
+            # Create a message that will complete the task (no task_id, let SDK
+            # generate)
             message = Message(
                 message_id=str(uuid4()),
                 role=Role.user,
@@ -498,4 +495,5 @@ async def test_push_notifications_failure_handling():
 
             # Verify that despite webhook failure, the task execution completed successfully
             # (the webhook failure should be silent and not break the main flow)
-            # No explicit wait needed since on_message_send is blocking and should complete fully
+            # No explicit wait needed since on_message_send is blocking and should
+            # complete fully

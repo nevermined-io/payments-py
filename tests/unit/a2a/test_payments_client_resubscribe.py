@@ -1,6 +1,5 @@
 """Unit test for PaymentsClient resubscribe_task."""
 
-import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -38,7 +37,8 @@ async def test_resubscribe_task():  # noqa: D401
         gf.return_value = client_mock
 
         collected = []
-        async for ev in pc.resubscribe_task({"taskId": "tid"}):  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        async for ev in pc.resubscribe_task({"taskId": "tid"}):
             collected.append(ev)
 
     assert collected == [{"kind": "task"}]

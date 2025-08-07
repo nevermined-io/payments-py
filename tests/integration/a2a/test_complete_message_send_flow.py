@@ -1,7 +1,6 @@
 """Integration tests for complete message/send flow with credit burning."""
 
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
 from fastapi.testclient import TestClient
 import pytest
 from payments_py.a2a.server import PaymentsA2AServer
@@ -228,7 +227,8 @@ async def test_complete_message_send_with_credit_burning():
     # Verify that validation was called exactly once
     assert mock_payments.requests.validation_call_count == 1
 
-    # Verify response contains the completed task (blocking mode should wait for completion)
+    # Verify response contains the completed task (blocking mode should wait
+    # for completion)
     task_result = response_data["result"]
     assert task_result["kind"] == "task"
     assert task_result["status"]["state"] == "completed"
@@ -238,7 +238,8 @@ async def test_complete_message_send_with_credit_burning():
         == "Request completed successfully!"
     )
 
-    # Verify that credits were burned exactly once (no sleep needed, blocking mode waits)
+    # Verify that credits were burned exactly once (no sleep needed, blocking
+    # mode waits)
     assert (
         mock_payments.requests.redeem_call_count == 1
     ), f"Expected 1 redeem call, got {mock_payments.requests.redeem_call_count}"

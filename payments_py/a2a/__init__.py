@@ -3,8 +3,6 @@
 from .client_registry import ClientRegistry
 from .payments_client import PaymentsClient
 from .agent_card import build_payment_agent_card
-from .client_registry import ClientRegistry
-from .payments_client import PaymentsClient
 
 # IMPORTANT: we avoid importing server & handler at package-import time to prevent
 # optional dependencies (FastAPI, uvicorn) or circular imports during unit tests.

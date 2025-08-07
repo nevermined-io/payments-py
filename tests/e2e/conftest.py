@@ -44,7 +44,6 @@ async def setup_test_environment():
 
     # Cleanup after test
     # Add any global cleanup here
-    pass
 
 
 @pytest.fixture

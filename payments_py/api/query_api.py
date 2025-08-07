@@ -2,8 +2,7 @@
 AI Query API implementation for the Nevermined Payments protocol
 """
 
-from typing import Optional, Dict, Any, Union
-from payments_py.common.payments_error import PaymentsError
+from typing import Optional, Any
 from payments_py.common.types import AgentAccessCredentials
 from payments_py.api.nvm_api import AbstractHTTPClient, HTTPRequestOptions
 

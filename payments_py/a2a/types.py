@@ -1,6 +1,7 @@
 """Internal helper types for payments_py.a2a package."""
 
 from __future__ import annotations
+from a2a.types import MessageSendParams as MessageSendParams  # noqa: F401
 
 from dataclasses import dataclass
 from typing import Any, Dict, TypedDict
@@ -25,9 +26,6 @@ class PaymentMetadata(TypedDict, total=False):  # noqa: D101
     planId: str
     paymentType: str
     costDescription: str
-
-
-from a2a.types import MessageSendParams as MessageSendParams  # re-export
 
 
 class PaymentAgentCardMetadata(TypedDict, total=False):  # noqa: D101

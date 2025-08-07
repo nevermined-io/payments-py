@@ -44,11 +44,13 @@ async def payments_client(monkeypatch):  # noqa: D401
 async def test_access_token_cached(payments_client):  # noqa: D401
     # First call should fetch token and cache it
     await payments_client.send_message({})  # type: ignore[arg-type]
-    # Token fetching occurs once; call again and ensure get_agent_access_token not called again
+    # Token fetching occurs once; call again and ensure get_agent_access_token
+    # not called again
     await payments_client.send_message({})  # type: ignore[arg-type]
 
     # The mocked get_agent_access_token should have been awaited exactly once
-    get_token_mock = payments_client._payments._get_token_mock  # type: ignore[attr-defined]
+    # type: ignore[attr-defined]
+    get_token_mock = payments_client._payments._get_token_mock
     assert get_token_mock.await_count == 1
 
 

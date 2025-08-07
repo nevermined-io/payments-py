@@ -478,7 +478,6 @@ class A2ATestServer:
 
     def start(self, payments_service, agent_card, executor, webhook_config=None):
         """Start the A2A server in a background thread."""
-        import socket
         from payments_py.a2a.server import PaymentsA2AServer
 
         # Use fixed port 41243 if not specified (important for payments validation)
@@ -543,7 +542,7 @@ class A2ATestServer:
                 if response.status_code == 200:
                     print(f"[A2A Server] Server is ready at {self.base_url}")
                     return self.base_url
-            except:
+            except BaseException:
                 pass
             time.sleep(0.5)
 
@@ -665,7 +664,6 @@ class TestA2AE2EFlow:
 
     def teardown_method(self):
         """Cleanup after each test method."""
-        pass
 
     @pytest.mark.asyncio
     async def test_check_balance_and_order_if_needed(self):
@@ -1120,7 +1118,8 @@ class TestA2AE2EFlow:
 
         agent_card = build_payment_agent_card(agent_card, payment_metadata)
 
-        # Use 1 credit to match plan configuration, longer execution time for cancellation test
+        # Use 1 credit to match plan configuration, longer execution time for
+        # cancellation test
         executor = BasicE2EExecutor(execution_time=3.0, credits_to_use=1)
 
         # Start REAL A2A server
@@ -1287,7 +1286,8 @@ class TestA2AE2EFlow:
                 print(
                     "⚠️ No webhooks received by real server - webhook might be disabled or failed"
                 )
-                # Don't fail the test, just warn - webhook functionality might not be fully enabled
+                # Don't fail the test, just warn - webhook functionality might not be
+                # fully enabled
 
         finally:
             # Always clean up both servers

@@ -5,7 +5,6 @@ Utility functions for the payments library.
 import uuid
 import time
 import secrets
-import json
 from urllib.parse import urlparse
 import jwt
 from typing import Optional, Dict, Any, List

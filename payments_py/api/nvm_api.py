@@ -69,7 +69,6 @@ class AbstractHTTPClient:
         """
         Initialize the HTTP client.
         """
-        pass
 
     def parse_url(self, url_requested: str, req_options: HTTPRequestOptions) -> str:
         """

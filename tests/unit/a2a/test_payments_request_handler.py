@@ -109,14 +109,15 @@ async def test_on_message_send_validates_and_calls_parent(monkeypatch):  # noqa:
 
     # Should return the task
     assert result is completed_task
-    # Since we mocked _process_events_with_finalization, credit burning logic wasn't called
+    # Since we mocked _process_events_with_finalization, credit burning logic
+    # wasn't called
     assert redeem_mock.call_count == 0
 
 
 @pytest.mark.asyncio()  # noqa: D401
 async def test_on_message_send_burns_credits_from_events():  # noqa: D401
     """Test that on_message_send burns credits when processing TaskStatusUpdateEvent with creditsUsed."""
-    from a2a.types import Task, TaskStatus, TaskState, TaskStatusUpdateEvent
+    from a2a.types import Task, TaskStatus, TaskState
 
     # Mock redeem method - must be synchronous since it's called via run_in_executor
     redeem_mock = Mock(return_value={"txHash": "0xabc"})
