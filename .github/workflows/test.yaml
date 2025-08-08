@@ -21,7 +21,7 @@ jobs:
         run: poetry install --with test --no-interaction --no-ansi
       - name: Build
         run: poetry build
-      - name: Run unit and integration tests (skip slow E2E)
+      - name: Run unit and integration tests
         env:
           NVM_API_KEY: ${{ secrets.NVM_API_KEY }}
           NVM_API_KEY2: ${{ secrets.NVM_API_KEY2 }}
