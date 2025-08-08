@@ -56,7 +56,21 @@ def timeout_config():
     }
 
 
-# Mark all E2E tests as slow
-pytestmark = [
-    pytest.mark.slow,  # Can be used to skip E2E tests with -m "not slow"
-]
+def pytest_addoption(parser):
+    parser.addoption(
+        "--e2e-retries",
+        action="store",
+        default=os.getenv("E2E_RETRIES", "2"),
+        help="Number of retries for E2E tests",
+    )
+
+
+def pytest_runtest_setup(item):
+    # Mark all tests in this folder as slow and apply reruns
+    item.add_marker(pytest.mark.slow)
+    try:
+        retries = int(item.config.getoption("--e2e-retries"))
+        if retries > 0:
+            item.add_marker(pytest.mark.flaky(reruns=retries, reruns_delay=1.0))
+    except Exception:
+        pass

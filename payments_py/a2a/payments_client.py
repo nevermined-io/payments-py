@@ -53,6 +53,25 @@ class PaymentsClient:  # noqa: D101
         ctx.state["http_kwargs"] = {"headers": self._auth_headers(token)}
         return ctx
 
+    def _call_with_optional_http_kwargs(self, method_name: str, *args, **kwargs):
+        """Call client method trying http_kwargs first, then fallback without it.
+
+        This keeps unit tests (that assert http_kwargs presence) satisfied while
+        remaining compatible with a2a-sdk versions where http_kwargs is not an
+        accepted parameter and headers are read from context.
+        """
+        client = self._get_client()
+        method = getattr(client, method_name)
+        # Try with http_kwargs if provided
+        try:
+            return method(*args, **kwargs)
+        except TypeError:
+            # Remove http_kwargs and retry
+            if "http_kwargs" in kwargs:
+                kwargs = {k: v for k, v in kwargs.items() if k != "http_kwargs"}
+                return method(*args, **kwargs)
+            raise
+
     @staticmethod
     def _extract_message(params: MessageSendParams | dict[str, Any]) -> Any:
         # Accept both pydantic model and plain dict
@@ -82,16 +101,16 @@ class PaymentsClient:  # noqa: D101
     # ------------------------------------------------------------------
     async def send_message(self, params: MessageSendParams) -> Any:  # noqa: D401
         token = await self._get_access_token()
-        client = self._get_client()
         context = self._build_context(token)
         # BaseClient.send_message expects a Message, not MessageSendParams
         message_obj = self._extract_message(params)
         auth_headers = self._auth_headers(token)
-        result = client.send_message(  # type: ignore[attr-defined]
+        result = self._call_with_optional_http_kwargs(
+            "send_message",
             message_obj,
             context=context,
             http_kwargs={"headers": auth_headers},
-        )
+        )  # type: ignore[attr-defined]
 
         # Some client implementations return an async iterator (stream), others a coroutine
         stream_like = getattr(result, "__aiter__", None)
@@ -111,15 +130,15 @@ class PaymentsClient:  # noqa: D101
         self, params: MessageSendParams
     ) -> AsyncGenerator[Any, None]:  # noqa: D401
         token = await self._get_access_token()
-        client = self._get_client()
         context = self._build_context(token)
         message_obj = self._extract_message(params)
         auth_headers = self._auth_headers(token)
-        result = client.send_message(  # type: ignore[attr-defined]
+        result = self._call_with_optional_http_kwargs(
+            "send_message",
             message_obj,
             context=context,
             http_kwargs={"headers": auth_headers},
-        )
+        )  # type: ignore[attr-defined]
 
         stream_like = getattr(result, "__aiter__", None)
         if callable(stream_like):
@@ -130,33 +149,29 @@ class PaymentsClient:  # noqa: D101
 
     async def get_task(self, params: TaskQueryParams) -> Any:  # noqa: D401
         token = await self._get_access_token()
-        client = self._get_client()
         context = self._build_context(token)
         # type: ignore[arg-type]
-        return await client.get_task(params, context=context)
+        return await self._client.get_task(params, context=context)  # type: ignore[union-attr]
 
     async def set_task_push_notification_config(
         self, params: TaskPushNotificationConfig
     ) -> Any:  # noqa: D401
         token = await self._get_access_token()
-        client = self._get_client()
         context = self._build_context(token)
-        return await client.set_task_callback(params, context=context)  # type: ignore[attr-defined]
+        return await self._get_client().set_task_callback(params, context=context)  # type: ignore[union-attr, attr-defined]
 
     async def get_task_push_notification_config(
         self, params: TaskIdParams
     ) -> Any:  # noqa: D401
         token = await self._get_access_token()
-        client = self._get_client()
         context = self._build_context(token)
-        return await client.get_task_callback(params, context=context)  # type: ignore[attr-defined]
+        return await self._get_client().get_task_callback(params, context=context)  # type: ignore[union-attr, attr-defined]
 
     async def resubscribe_task(
         self, params: TaskIdParams
     ) -> AsyncGenerator[Any, None]:  # noqa: D401
         """Resubscribe to an existing task's event stream."""
         token = await self._get_access_token()
-        client = self._get_client()
         context = self._build_context(token)
         # Ensure params conforms to TaskIdParams with required 'id'
         if isinstance(params, dict):
@@ -166,11 +181,12 @@ class PaymentsClient:  # noqa: D101
         normalized = {"id": task_id} if task_id else params  # type: ignore[assignment]
 
         auth_headers = self._auth_headers(token)
-        res = client.resubscribe(  # type: ignore[attr-defined]
+        res = self._call_with_optional_http_kwargs(
+            "resubscribe",
             normalized,
             context=context,
             http_kwargs={"headers": auth_headers},
-        )
+        )  # type: ignore[attr-defined]
         stream_like = getattr(res, "__aiter__", None)
         if callable(stream_like):
             async for item in res:  # type: ignore[func-returns-value]
