@@ -11,8 +11,7 @@ from payments_py.common.types import (
     PlanPriceConfig,
     PlanCreditsConfig,
     PlanCreditsType,
-    PlanBalance,
-    Address,
+    PlanRedemptionType,
     PaginationOptions,
 )
 from payments_py.api.base_payments import BasePaymentsAPI
@@ -29,6 +28,7 @@ from payments_py.api.nvm_api import (
     API_URL_REDEEM_PLAN,
 )
 from payments_py.utils import get_random_big_int, is_ethereum_address
+from payments_py import plans as plan_utils
 
 
 class PlansAPI(BasePaymentsAPI):
@@ -414,6 +414,93 @@ class PlansAPI(BasePaymentsAPI):
                 f"Unable to get agents associated to plan. {response.status_code} - {response.text}"
             )
         return response.json()
+
+    # ------------------------------------------------------------------
+    # Static helper methods to build price/credits configurations
+    # These mirror functions in payments_py/plans.py for ergonomic access as
+    # Payments.plans.<method>(...)
+    # ------------------------------------------------------------------
+
+    # Expose duration constants for convenience
+    ONE_DAY_DURATION: int = plan_utils.ONE_DAY_DURATION
+    ONE_WEEK_DURATION: int = plan_utils.ONE_WEEK_DURATION
+    ONE_MONTH_DURATION: int = plan_utils.ONE_MONTH_DURATION
+    ONE_YEAR_DURATION: int = plan_utils.ONE_YEAR_DURATION
+
+    # Price configuration builders -------------------------------------
+    @staticmethod
+    def get_fiat_price_config(amount: int, receiver: str) -> PlanPriceConfig:
+        """Build a fiat price configuration."""
+        return plan_utils.get_fiat_price_config(amount, receiver)
+
+    @staticmethod
+    def get_crypto_price_config(
+        amount: int,
+        receiver: str,
+        token_address: str = "0x0000000000000000000000000000000000000000",
+    ) -> PlanPriceConfig:
+        """Build a crypto (native/ERC20) price configuration."""
+        return plan_utils.get_crypto_price_config(amount, receiver, token_address)
+
+    @staticmethod
+    def get_erc20_price_config(
+        amount: int, token_address: str, receiver: str
+    ) -> PlanPriceConfig:
+        """Build an ERC20 price configuration."""
+        return plan_utils.get_erc20_price_config(amount, token_address, receiver)
+
+    @staticmethod
+    def get_free_price_config() -> PlanPriceConfig:
+        """Build a free price configuration."""
+        return plan_utils.get_free_price_config()
+
+    @staticmethod
+    def get_native_token_price_config(amount: int, receiver: str) -> PlanPriceConfig:
+        """Build a native token price configuration."""
+        return plan_utils.get_native_token_price_config(amount, receiver)
+
+    # Credits configuration builders -----------------------------------
+    @staticmethod
+    def get_expirable_duration_config(duration_of_plan: int) -> PlanCreditsConfig:
+        """Build an expirable duration credits configuration."""
+        return plan_utils.get_expirable_duration_config(duration_of_plan)
+
+    @staticmethod
+    def get_non_expirable_duration_config() -> PlanCreditsConfig:
+        """Build a non-expirable duration credits configuration."""
+        return plan_utils.get_non_expirable_duration_config()
+
+    @staticmethod
+    def get_fixed_credits_config(
+        credits_granted: int, credits_per_request: int = 1
+    ) -> PlanCreditsConfig:
+        """Build a fixed credits configuration."""
+        return plan_utils.get_fixed_credits_config(credits_granted, credits_per_request)
+
+    @staticmethod
+    def get_dynamic_credits_config(
+        credits_granted: int,
+        min_credits_per_request: int = 1,
+        max_credits_per_request: int = 1,
+    ) -> PlanCreditsConfig:
+        """Build a dynamic credits configuration."""
+        return plan_utils.get_dynamic_credits_config(
+            credits_granted, min_credits_per_request, max_credits_per_request
+        )
+
+    @staticmethod
+    def set_redemption_type(
+        credits_config: PlanCreditsConfig, redemption_type: PlanRedemptionType
+    ) -> PlanCreditsConfig:
+        """Set redemption type on a credits configuration (returns new object)."""
+        return plan_utils.set_redemption_type(credits_config, redemption_type)
+
+    @staticmethod
+    def set_proof_required(
+        credits_config: PlanCreditsConfig, proof_required: bool = True
+    ) -> PlanCreditsConfig:
+        """Set proof requirement on a credits configuration (returns new object)."""
+        return plan_utils.set_proof_required(credits_config, proof_required)
 
     def order_fiat_plan(self, plan_id: str) -> Dict[str, Any]:
         """

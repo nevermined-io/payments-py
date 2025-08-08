@@ -2,10 +2,7 @@
 Helper functions for the Nevermined Payments protocol.
 """
 
-import re
 from typing import Any
-from urllib.parse import urlparse
-from payments_py.common.types import Endpoint
 
 
 def json_replacer(obj: Any) -> Any:

@@ -102,12 +102,25 @@ class AgentRequestsAPI(BasePaymentsAPI):
             raise PaymentsError.validation("Invalid access token provided")
 
         # Extract wallet address and plan ID from the token
-        wallet_address = decoded_token.get("authToken", {}).get(
-            "sub"
-        ) or decoded_token.get("sub")
-        plan_id = decoded_token.get("authToken", {}).get("planId") or decoded_token.get(
-            "planId"
-        )
+        # Check if authToken is a nested JWT string that needs to be decoded
+        auth_token_value = decoded_token.get("authToken")
+        if auth_token_value and isinstance(auth_token_value, str):
+            auth_token_decoded = decode_access_token(auth_token_value)
+        else:
+            auth_token_decoded = auth_token_value
+
+        # Extract wallet address and plan ID with fallback logic like TypeScript version
+        wallet_address = None
+        if auth_token_decoded and isinstance(auth_token_decoded, dict):
+            wallet_address = auth_token_decoded.get("sub")
+        if not wallet_address:
+            wallet_address = decoded_token.get("sub")
+
+        plan_id = None
+        if auth_token_decoded and isinstance(auth_token_decoded, dict):
+            plan_id = auth_token_decoded.get("planId")
+        if not plan_id:
+            plan_id = decoded_token.get("planId")
 
         if not wallet_address or not plan_id:
             raise PaymentsError.validation(
@@ -116,7 +129,7 @@ class AgentRequestsAPI(BasePaymentsAPI):
 
         body = {
             "agentRequestId": agent_request_id,
-            "planId": int(plan_id),
+            "planId": str(plan_id),  # Keep as string to avoid scientific notation
             "redeemFrom": wallet_address,
             "amount": credits_to_burn,
         }

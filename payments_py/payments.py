@@ -2,7 +2,7 @@
 Main Payments class for the Nevermined Payments protocol.
 """
 
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.query_api import AIQueryApi
@@ -10,6 +10,9 @@ from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.plans_api import PlansAPI
 from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
+
+# A2A integration
+from payments_py.a2a.agent_card import build_payment_agent_card
 
 
 class Payments(BasePaymentsAPI):
@@ -113,3 +116,35 @@ class Payments(BasePaymentsAPI):
         """
         raise PaymentsError.internal("This is a browser-only function")
         self.nvm_api_key = ""
+
+        # ---------------------------------------------------------------------
+        # A2A integration helpers
+        # ---------------------------------------------------------------------
+
+    # A2A client registry cache
+    _a2a_registry: "ClientRegistry | None" = None  # type: ignore[name-defined]
+
+    @property
+    def a2a(self) -> Dict[str, Any]:
+        """Expose A2A helpers (start server / get client) for Nevermined Payments."""
+        # Local imports to avoid circular dependencies
+        from payments_py.a2a.server import PaymentsA2AServer  # noqa: WPS433
+        from payments_py.a2a.client_registry import ClientRegistry  # noqa: WPS433
+
+        def _get_client(**options: Any):  # noqa: WPS430
+            if self._a2a_registry is None:
+                self._a2a_registry = ClientRegistry(self)  # type: ignore[arg-type]
+            return self._a2a_registry.get_client(**options)
+
+        return {
+            # type: ignore[lambda-assign]
+            "start": lambda **opts: PaymentsA2AServer.start(
+                payments_service=self, **opts
+            ),
+            "get_client": _get_client,
+        }
+
+    # Static helpers (class attribute)
+    a2a_helpers: Dict[str, Any] = {  # noqa: WPS110
+        "build_payment_agent_card": build_payment_agent_card,
+    }

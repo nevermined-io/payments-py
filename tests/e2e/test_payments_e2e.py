@@ -24,6 +24,7 @@ from payments_py.plans import (
     ONE_DAY_DURATION,
 )
 from payments_py.utils import get_random_big_int
+from tests.e2e.utils import retry_with_backoff, wait_for_condition
 
 # Test configuration
 TEST_TIMEOUT = 30
@@ -186,8 +187,12 @@ def test_create_credits_plan(payments_builder):
     price_config = get_erc20_price_config(20, ERC20_ADDRESS, builder_address)
     credits_config = get_fixed_credits_config(100)
     print(" **** PRICE CONFIG ***", price_config)
-    response = payments_builder.plans.register_credits_plan(
-        plan_metadata, price_config, credits_config
+    response = retry_with_backoff(
+        lambda: payments_builder.plans.register_credits_plan(
+            plan_metadata, price_config, credits_config
+        ),
+        label="Credits Plan Registration",
+        attempts=6,
     )
     assert response is not None
     credits_plan_id = response.get("planId", None)
@@ -204,8 +209,12 @@ def test_create_time_plan(payments_builder):
         builder_address = "0x0000000000000000000000000000000000000001"
     price_config = get_erc20_price_config(50, ERC20_ADDRESS, builder_address)
     credits_config = get_expirable_duration_config(ONE_DAY_DURATION)  # 1 day
-    response = payments_builder.plans.register_time_plan(
-        plan_metadata, price_config, credits_config
+    response = retry_with_backoff(
+        lambda: payments_builder.plans.register_time_plan(
+            plan_metadata, price_config, credits_config
+        ),
+        label="Expirable Plan Registration",
+        attempts=6,
     )
     assert response is not None
     expirable_plan_id = response.get("planId", None)
@@ -222,8 +231,12 @@ def test_create_trial_plan(payments_builder):
     price_config = get_free_price_config()
     credits_config = get_expirable_duration_config(ONE_DAY_DURATION)
     print(" **** PRICE CONFIG ***", price_config)
-    response = payments_builder.plans.register_time_trial_plan(
-        trial_plan_metadata, price_config, credits_config
+    response = retry_with_backoff(
+        lambda: payments_builder.plans.register_time_trial_plan(
+            trial_plan_metadata, price_config, credits_config
+        ),
+        label="Trial Plan Registration",
+        attempts=6,
     )
     assert response is not None
     trial_plan_id = response.get("planId", None)
@@ -250,8 +263,12 @@ def test_create_agent(payments_builder):
     agent_api = {"endpoints": AGENT_ENDPOINTS}
     payment_plans = [credits_plan_id, expirable_plan_id]
     payment_plans = [pid for pid in payment_plans if pid]
-    result = payments_builder.agents.register_agent(
-        agent_metadata, agent_api, payment_plans
+    result = retry_with_backoff(
+        lambda: payments_builder.agents.register_agent(
+            agent_metadata, agent_api, payment_plans
+        ),
+        label="Agent Registration",
+        attempts=5,
     )
     print("RESULT", result)
     agent_id = result.get("agentId", None)
@@ -276,12 +293,16 @@ def test_create_agent_and_plan(payments_builder):
     non_expirable_config = get_non_expirable_duration_config()
     # Force randomness of the plan by setting a random duration
     non_expirable_config.duration_secs = get_random_big_int()
-    result = payments_builder.agents.register_agent_and_plan(
-        agent_metadata,
-        agent_api,
-        plan_metadata,
-        fiat_price_config,
-        non_expirable_config,
+    result = retry_with_backoff(
+        lambda: payments_builder.agents.register_agent_and_plan(
+            agent_metadata,
+            agent_api,
+            plan_metadata,
+            fiat_price_config,
+            non_expirable_config,
+        ),
+        label="Agent and Plan Registration",
+        attempts=5,
     )
     agent_and_plan_agent_id = result.get("agentId", None)
     agent_and_plan_plan_id = result.get("planId", None)
@@ -318,7 +339,11 @@ def test_order_plan(payments_subscriber):
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
     print(credits_plan_id)
     print(" SUBSCRIBER ADDRESS = ", payments_subscriber.account_address)
-    order_result = payments_subscriber.plans.order_plan(credits_plan_id)
+    order_result = retry_with_backoff(
+        lambda: payments_subscriber.plans.order_plan(credits_plan_id),
+        label="Plan Order",
+        attempts=6,
+    )
     assert order_result is not None
     print("Order Result", order_result)
     assert order_result.get("success") is True
@@ -329,10 +354,28 @@ def test_get_plan_balance(payments_subscriber):
     """Test getting plan balance."""
     global credits_plan_id
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
-    balance_result = payments_subscriber.plans.get_plan_balance(credits_plan_id)
-    assert balance_result is not None
-    print("Balance Result", balance_result)
-    assert int(balance_result.get("balance", 0)) > 0
+
+    # Poll balance briefly to account for backend latency
+    def _poll_balance():
+        result = payments_subscriber.plans.get_plan_balance(credits_plan_id)
+        if not result:
+            return None
+        try:
+            bal = int(result.get("balance", 0))
+        except Exception:
+            bal = 0
+        if bal > 0 and result.get("isSubscriber"):
+            return result
+        return None
+
+    final_balance = wait_for_condition(
+        _poll_balance,
+        label="Plan Balance Availability",
+        timeout_secs=60.0,
+        poll_interval_secs=2.0,
+    )
+    assert final_balance is not None
+    assert int(final_balance.get("balance", 0)) > 0
 
 
 @pytest.mark.timeout(TEST_TIMEOUT * 2)
@@ -341,7 +384,11 @@ def test_order_trial_plan(payments_subscriber):
     global trial_plan_id
     assert trial_plan_id is not None, "trial_plan_id must be set by previous test"
 
-    order_result = payments_subscriber.plans.order_plan(trial_plan_id)
+    order_result = retry_with_backoff(
+        lambda: payments_subscriber.plans.order_plan(trial_plan_id),
+        label="Trial Plan Order",
+        attempts=6,
+    )
     assert order_result is not None
     assert order_result.get("success") is True
     print("Order Result", order_result)
@@ -381,8 +428,12 @@ class TestE2ESubscriberAgentFlow:
         ), "credits_plan_id must be set by previous test"
         assert agent_id is not None, "agent_id must be set by previous test"
 
-        agent_access_params = payments_subscriber.agents.get_agent_access_token(
-            credits_plan_id, agent_id
+        agent_access_params = retry_with_backoff(
+            lambda: payments_subscriber.agents.get_agent_access_token(
+                credits_plan_id, agent_id
+            ),
+            label="Access Token Generation",
+            attempts=5,
         )
         assert agent_access_params is not None
         print("Agent Access Params", agent_access_params)
@@ -456,8 +507,12 @@ class TestE2ESubscriberAgentFlow:
         }
         agent_api = {"endpoints": [{"POST": "http://localhost:8889/test/12345/tasks"}]}
 
-        result = payments_builder.agents.update_agent_metadata(
-            agent_id, agent_metadata, agent_api
+        result = retry_with_backoff(
+            lambda: payments_builder.agents.update_agent_metadata(
+                agent_id, agent_metadata, agent_api
+            ),
+            label="Agent Metadata Update",
+            attempts=5,
         )
         assert result is not None
         print(f"Update agent result: {result}")
