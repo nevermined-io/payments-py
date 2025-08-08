@@ -329,10 +329,24 @@ def test_get_plan_balance(payments_subscriber):
     """Test getting plan balance."""
     global credits_plan_id
     assert credits_plan_id is not None, "credits_plan_id must be set by previous test"
-    balance_result = payments_subscriber.plans.get_plan_balance(credits_plan_id)
-    assert balance_result is not None
-    print("Balance Result", balance_result)
-    assert int(balance_result.get("balance", 0)) > 0
+    # Poll balance briefly to account for backend latency
+    attempts = 10
+    sleep_secs = 2
+    last_result = None
+    for i in range(attempts):
+        balance_result = payments_subscriber.plans.get_plan_balance(credits_plan_id)
+        assert balance_result is not None
+        last_result = balance_result
+        print("Balance Result (attempt", i + 1, ")", balance_result)
+        try:
+            bal = int(balance_result.get("balance", 0))
+        except Exception:
+            bal = 0
+        if bal > 0 and balance_result.get("isSubscriber"):
+            break
+        time.sleep(sleep_secs)
+    assert last_result is not None
+    assert int(last_result.get("balance", 0)) > 0
 
 
 @pytest.mark.timeout(TEST_TIMEOUT * 2)

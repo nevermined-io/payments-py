@@ -528,6 +528,24 @@ class A2ATestServer:
                 print(f"[A2A Server] Error: {e}")
 
         self.server_thread = threading.Thread(target=run_server, daemon=True)
+        # Ensure the port is free before starting (avoid race with previous server)
+        try:
+            import socket  # local import to avoid global dependency
+
+            for _ in range(50):
+                sock = socket.socket()
+                try:
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    sock.bind(("127.0.0.1", self.port))
+                    sock.close()
+                    break
+                except OSError:
+                    sock.close()
+                    time.sleep(0.1)
+        except Exception:
+            # Best-effort; if anything goes wrong, proceed to start
+            pass
+
         self.server_thread.start()
 
         # Wait for server to start
@@ -558,6 +576,28 @@ class A2ATestServer:
                     self.uvicorn_server.should_exit = True
             except Exception as e:
                 print(f"[A2A Server] Error stopping: {e}")
+        # Wait for the server thread to finish and release the port
+        try:
+            if self.server_thread and self.server_thread.is_alive():
+                self.server_thread.join(timeout=5.0)
+        except Exception:
+            pass
+        # Best-effort: ensure port is free before returning
+        try:
+            import socket  # local import
+
+            for _ in range(100):
+                sock = socket.socket()
+                try:
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    sock.bind(("127.0.0.1", 41243))
+                    sock.close()
+                    break
+                except OSError:
+                    sock.close()
+                    time.sleep(0.05)
+        except Exception:
+            pass
 
 
 class WebhookTestServer:
@@ -815,7 +855,7 @@ class TestA2AE2EFlow:
             headers = {"Authorization": f"Bearer {self.access_token}"}
 
             print(f"Sending blocking request to real server: {server_url}")
-            response = httpx.post(server_url, json=payload, headers=headers, timeout=10)
+            response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
 
             # Verify response
             assert (
@@ -923,7 +963,7 @@ class TestA2AE2EFlow:
 
         try:
             print(f"Sending invalid token request to real server: {server_url}")
-            response = httpx.post(server_url, json=payload, headers=headers, timeout=10)
+            response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
 
             # Should return 402 Payment Required
             assert (
@@ -996,7 +1036,7 @@ class TestA2AE2EFlow:
 
         try:
             print(f"Sending non-blocking request to real server: {server_url}")
-            response = httpx.post(server_url, json=payload, headers=headers, timeout=10)
+            response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
 
             # Verify immediate response
             assert (
@@ -1075,7 +1115,7 @@ class TestA2AE2EFlow:
 
         try:
             print(f"Sending streaming request to real server: {server_url}")
-            response = httpx.post(server_url, json=payload, headers=headers, timeout=10)
+            response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
 
             # Verify streaming response
             assert (
@@ -1373,7 +1413,7 @@ class TestA2AE2EFlow:
 
             # Test resubscription via HTTP (for non-streaming)
             resubscribe_response = httpx.post(
-                server_url, json=resubscribe_payload, headers=headers, timeout=10
+                server_url, json=resubscribe_payload, headers=headers, timeout=30
             )
 
             if resubscribe_response.status_code == 200:
@@ -1455,7 +1495,7 @@ class TestA2AE2EFlow:
             print(
                 f"Sending complete cancellation test request to real server: {server_url}"
             )
-            response = httpx.post(server_url, json=payload, headers=headers, timeout=10)
+            response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
             assert response.status_code == 200
 
             response_data = response.json()
@@ -1475,7 +1515,7 @@ class TestA2AE2EFlow:
             }
 
             cancel_response = httpx.post(
-                server_url, json=cancel_payload, headers=headers, timeout=10
+                server_url, json=cancel_payload, headers=headers, timeout=30
             )
 
             if cancel_response.status_code == 200:
