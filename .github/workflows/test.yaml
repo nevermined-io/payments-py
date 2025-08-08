@@ -17,6 +17,8 @@ jobs:
           python-version: "3.10.x"
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
+      - name: Resolve lockfile
+        run: poetry lock --no-interaction --no-ansi
       - name: Install the project dependencies
         run: poetry install --with test --no-interaction --no-ansi
       - name: Build
@@ -39,6 +41,8 @@ jobs:
           python-version: "3.10.x"
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
+      - name: Resolve lockfile
+        run: poetry lock --no-interaction --no-ansi
       - name: Install the project dependencies
         run: poetry install --with test --no-interaction --no-ansi
       - name: Build
