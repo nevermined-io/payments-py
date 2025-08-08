@@ -56,9 +56,6 @@ def timeout_config():
     }
 
 
-# Configure pytest markers
-pytest_plugins = ["pytest_asyncio"]
-
 # Mark all E2E tests as slow
 pytestmark = [
     pytest.mark.slow,  # Can be used to skip E2E tests with -m "not slow"
