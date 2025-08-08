@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import AsyncGenerator, Any
-from collections.abc import AsyncIterator
 
 from a2a.client.client import ClientConfig
 from a2a.client.client_factory import ClientFactory, minimal_agent_card
@@ -87,16 +86,26 @@ class PaymentsClient:  # noqa: D101
         context = self._build_context(token)
         # BaseClient.send_message expects a Message, not MessageSendParams
         message_obj = self._extract_message(params)
-        stream: AsyncIterator[Any] = client.send_message(message_obj, context=context)  # type: ignore[attr-defined]
-        # Consume first item and return it (non-streaming convenience)
-        try:
-            first_item = None
-            async for item in stream:
-                first_item = item
-                break
-            return first_item
-        except StopAsyncIteration:  # pragma: no cover
-            return None
+        auth_headers = self._auth_headers(token)
+        result = client.send_message(  # type: ignore[attr-defined]
+            message_obj,
+            context=context,
+            http_kwargs={"headers": auth_headers},
+        )
+
+        # Some client implementations return an async iterator (stream), others a coroutine
+        stream_like = getattr(result, "__aiter__", None)
+        if callable(stream_like):
+            try:
+                first_item = None
+                async for item in result:  # type: ignore[func-returns-value]
+                    first_item = item
+                    break
+                return first_item
+            except StopAsyncIteration:  # pragma: no cover
+                return None
+        # Fallback: await coroutine and return its value
+        return await result  # type: ignore[no-any-return]
 
     async def send_message_stream(
         self, params: MessageSendParams
@@ -105,9 +114,19 @@ class PaymentsClient:  # noqa: D101
         client = self._get_client()
         context = self._build_context(token)
         message_obj = self._extract_message(params)
-        stream: AsyncIterator[Any] = client.send_message(message_obj, context=context)  # type: ignore[attr-defined]
-        async for item in stream:
-            yield item
+        auth_headers = self._auth_headers(token)
+        result = client.send_message(  # type: ignore[attr-defined]
+            message_obj,
+            context=context,
+            http_kwargs={"headers": auth_headers},
+        )
+
+        stream_like = getattr(result, "__aiter__", None)
+        if callable(stream_like):
+            async for item in result:  # type: ignore[func-returns-value]
+                yield item
+            return
+        yield await result  # type: ignore[misc]
 
     async def get_task(self, params: TaskQueryParams) -> Any:  # noqa: D401
         token = await self._get_access_token()
@@ -146,8 +165,19 @@ class PaymentsClient:  # noqa: D101
             task_id = getattr(params, "task_id", None) or getattr(params, "id", None)
         normalized = {"id": task_id} if task_id else params  # type: ignore[assignment]
 
-        async for item in client.resubscribe(normalized, context=context):  # type: ignore[attr-defined]
-            yield item
+        auth_headers = self._auth_headers(token)
+        res = client.resubscribe(  # type: ignore[attr-defined]
+            normalized,
+            context=context,
+            http_kwargs={"headers": auth_headers},
+        )
+        stream_like = getattr(res, "__aiter__", None)
+        if callable(stream_like):
+            async for item in res:  # type: ignore[func-returns-value]
+                yield item
+            return
+        # If a coroutine is returned, await once and yield the value
+        yield await res  # type: ignore[misc]
 
     # Utilities --------------------------------------------------------
     def clear_token(self) -> None:  # noqa: D401
