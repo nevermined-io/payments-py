@@ -3,26 +3,24 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+import base64
+import logging
 from typing import Any, Dict
 
-from a2a.server.request_handlers.default_request_handler import DefaultRequestHandler
-from a2a.server.events.event_queue import EventQueue
+import httpx
 from a2a.server.events.event_consumer import EventConsumer
+from a2a.server.events.event_queue import EventQueue
+from a2a.server.request_handlers.default_request_handler import DefaultRequestHandler
 from a2a.server.tasks.result_aggregator import ResultAggregator
-from a2a.server.tasks.task_manager import TaskManager
 from a2a.types import (
+    Message,
     MessageSendParams,
     Task,
-    Message,
-    TaskStatusUpdateEvent,
     TaskIdParams,
-    TaskStatus,
-    TaskState,
-    Part,
+    TaskStatusUpdateEvent,
 )
-from payments_py.payments import Payments
 from payments_py.common.payments_error import PaymentsError
+from payments_py.payments import Payments
 
 from .types import HttpRequestContext
 
@@ -99,23 +97,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             ctx = self._http_ctx_by_message.pop(message_id)
             self._http_ctx_by_task[task_id] = ctx
 
-    # ------------------------------------------------------------------
-    # Validation helper called by middleware ---------------------------
-    # ------------------------------------------------------------------
-    async def validate_request(
-        self, bearer_token: str, url_requested: str, http_method_requested: str
-    ) -> Dict[str, Any]:  # noqa: D401
-        """Validate payments for incoming request."""
-        import asyncio  # noqa: WPS433
-
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None,
-            lambda: self._payments.requests.start_processing_request(  # type: ignore[attr-defined]
-                bearer_token, url_requested, http_method_requested
-            ),
-        )
-
     def delete_http_ctx_for_task(self, task_id: str) -> None:  # noqa: D401
         self._http_ctx_by_task.pop(task_id, None)
 
@@ -151,8 +132,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             PaymentsError: If validation fails
         """
         # Use run_in_executor since start_processing_request is synchronous
-        import asyncio
-
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None,
@@ -253,7 +232,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         interrupted_or_non_blocking = False
         try:
-            # Both blocking and non-blocking use the same method, but with different early return behavior
+            # Both blocking and non-blocking use the same method, but with different
+            # early return behavior
             (result, interrupted_or_non_blocking) = (
                 await self._consume_and_burn_credits(
                     result_aggregator, consumer, http_ctx, blocking
@@ -273,14 +253,13 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             return result
 
         except Exception as e:
-            import logging
-
             logging.getLogger(__name__).error(f"Agent execution failed. Error: {e}")
             raise
         finally:
             # Cleanup like parent implementation
             if interrupted_or_non_blocking:
-                # For non-blocking mode, schedule background cleanup (like parent SDK does)
+                # For non-blocking mode, schedule background cleanup (like parent SDK
+                # does)
                 asyncio.create_task(self._cleanup_producer(producer_task, task_id))
             else:
                 await self._cleanup_producer(producer_task, task_id)
@@ -301,8 +280,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             print(f"[DEBUG] Producer task completed for {task_id}")
 
             # Create a new consumer to check for any remaining events in the queue
-            from a2a.server.events import EventConsumer
-
             final_consumer = EventConsumer(queue)
 
             print(
@@ -339,8 +316,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         except asyncio.CancelledError:
             print(f"[DEBUG] Monitor task cancelled for {task_id}")
         except Exception as e:
-            import logging
-
             logging.getLogger(__name__).warning(
                 f"Monitor task failed for {task_id}: {e}"
             )
@@ -370,8 +345,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             # If cancelled, that's expected behavior
             pass
         except Exception as e:
-            import logging
-
             logging.getLogger(__name__).warning(
                 f"Producer task failed for {task_id}: {e}"
             )
@@ -411,7 +384,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                     f"[DEBUG] credit_burning_event_processor got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')} - metadata: {getattr(event, 'metadata', 'no-metadata')}"
                 )
 
-                # Handle credit burning on TaskStatusUpdateEvent (like TypeScript handleTaskFinalization)
+                # Handle credit burning on TaskStatusUpdateEvent (like TypeScript
+                # handleTaskFinalization)
                 if (
                     isinstance(event, TaskStatusUpdateEvent)
                     and event.final is True
@@ -432,13 +406,15 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         try:
             if blocking:
-                # Blocking mode: intercept events in main flow (current working approach)
+                # Blocking mode: intercept events in main flow (current working
+                # approach)
                 return await result_aggregator.consume_and_break_on_interrupt(
                     consumer, blocking=blocking
                 )
             else:
                 # Non-blocking mode: don't intercept main flow, but intercept background processing
-                # First, restore original consumer to avoid interfering with SDK's early return logic
+                # First, restore original consumer to avoid interfering with SDK's early
+                # return logic
                 consumer.consume_all = original_consume_all
 
                 # Intercept the _continue_consuming method for background credit burning
@@ -500,8 +476,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         credits_used = event.metadata["creditsUsed"]
         try:
-            import asyncio  # noqa: WPS433
-
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,
@@ -535,7 +509,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             )
 
         # Call parent streaming method and process events
-        async for event in super().on_message_send_stream(params, context):  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        async for event in super().on_message_send_stream(params, context):
             # Handle credit burning on final status updates
             if (
                 isinstance(event, dict)
@@ -546,8 +521,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             ):
                 credits_used = event["metadata"]["creditsUsed"]
                 try:
-                    import asyncio  # noqa: WPS433
-
                     loop = asyncio.get_running_loop()
                     await loop.run_in_executor(
                         None,
@@ -619,15 +592,11 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         payload: Dict[str, Any] | None = None,
     ) -> None:
         """Send HTTP push notification (best-effort)."""
-        import httpx  # noqa: WPS433
-
         headers: Dict[str, str] = {"Content-Type": "application/json"}
         if auth := push_notification_config.get("authentication"):
             schemes = auth.get("schemes", [])
             creds = auth.get("credentials")
             if "basic" in schemes:
-                import base64
-
                 headers["Authorization"] = (
                     "Basic " + base64.b64encode(creds.encode()).decode()
                 )

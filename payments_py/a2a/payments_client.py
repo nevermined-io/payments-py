@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import AsyncGenerator, Any
 
-from a2a.client.client_factory import ClientFactory
+from a2a.client.client import ClientConfig
+from a2a.client.client_factory import ClientFactory, minimal_agent_card
 from a2a.types import (
     MessageSendParams,
     TaskQueryParams,
@@ -15,7 +16,7 @@ from a2a.types import (
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover
-    from payments_py.payments import Payments  # noqa: WPS433
+    from payments_py.payments import Payments
 
 
 class PaymentsClient:  # noqa: D101
@@ -45,9 +46,6 @@ class PaymentsClient:  # noqa: D101
 
     def _get_client(self):  # noqa: D401
         if self._client is None:
-            from a2a.client.client import ClientConfig  # noqa: WPS433
-            from a2a.client.client_factory import minimal_agent_card  # noqa: WPS433
-
             factory = ClientFactory(config=ClientConfig())
             self._client = factory.create(minimal_agent_card(self._agent_base_url))
         return self._client
@@ -58,7 +56,10 @@ class PaymentsClient:  # noqa: D101
     async def send_message(self, params: MessageSendParams) -> Any:  # noqa: D401
         token = await self._get_access_token()
         client = self._get_client()
-        return await client.send_message(params, http_kwargs={"headers": self._auth_headers(token)})  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        return await client.send_message(
+            params, http_kwargs={"headers": self._auth_headers(token)}
+        )
 
     async def send_message_stream(
         self, params: MessageSendParams
@@ -74,7 +75,10 @@ class PaymentsClient:  # noqa: D101
     async def get_task(self, params: TaskQueryParams) -> Any:  # noqa: D401
         token = await self._get_access_token()
         client = self._get_client()
-        return await client.get_task(params, http_kwargs={"headers": self._auth_headers(token)})  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        return await client.get_task(
+            params, http_kwargs={"headers": self._auth_headers(token)}
+        )
 
     async def set_task_push_notification_config(
         self, params: TaskPushNotificationConfig

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from .payments_client import PaymentsClient
 
 if TYPE_CHECKING:  # pragma: no cover
-    from payments_py.payments import Payments  # noqa: WPS433
+    from payments_py.payments import Payments
 
 
 class ClientRegistry:  # noqa: D101

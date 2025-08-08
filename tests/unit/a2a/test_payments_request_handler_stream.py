@@ -6,6 +6,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
+from a2a.server.tasks.inmemory_push_notification_config_store import (
+    InMemoryPushNotificationConfigStore,
+)
+from a2a.types import Task, TaskStatus, TaskState
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import HttpRequestContext
 
@@ -37,11 +41,6 @@ async def test_streaming_burns_credits():  # noqa: D401
         "payments_py.a2a.payments_request_handler.DefaultRequestHandler.on_message_send_stream",
         new=fake_stream,
     ):
-        from a2a.server.tasks.inmemory_push_notification_config_store import (
-            InMemoryPushNotificationConfigStore,
-        )
-        from a2a.types import Task, TaskStatus, TaskState
-
         # Create task store and add the task that will be referenced
         task_store = InMemoryTaskStore()
         test_task = Task(

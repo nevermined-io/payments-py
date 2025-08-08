@@ -1,7 +1,7 @@
 """Unit tests for ClientRegistry."""
 
 from types import SimpleNamespace
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
 
@@ -19,8 +19,6 @@ def _create_registry():  # noqa: D401
 
 @pytest.fixture(autouse=True)  # noqa: D401
 def patch_client_factory(monkeypatch):  # noqa: D401
-    from unittest.mock import MagicMock
-
     def _factory_side_effect(*args, **kwargs):  # noqa: D401
         return MagicMock()
 

@@ -1,8 +1,12 @@
 """Integration tests for complete message/send flow with credit burning."""
 
 import asyncio
+import datetime
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 import pytest
+from a2a.types import Task, TaskStatus, TaskState, Message, TaskStatusUpdateEvent
 from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.common.payments_error import PaymentsError
 
@@ -69,9 +73,6 @@ class DummyExecutor:
 
     async def execute(self, context, event_queue):
         """Execute method that publishes events like TypeScript version."""
-        from a2a.types import Task, TaskStatus, TaskState, Message
-        from uuid import uuid4
-        import datetime
 
         # Get task info from context - use the task_id from RequestContext
         task_id = getattr(context, "task_id", None) or str(uuid4())
@@ -102,8 +103,6 @@ class DummyExecutor:
             await event_queue.enqueue_event(initial_task)
 
         # Publish working status (like TypeScript)
-        from a2a.types import TaskStatusUpdateEvent
-
         working_status_update = TaskStatusUpdateEvent(
             task_id=task_id,
             context_id=context_id,

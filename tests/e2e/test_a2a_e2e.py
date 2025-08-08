@@ -1482,7 +1482,7 @@ class TestA2AE2EFlow:
                 cancel_data = cancel_response.json()
                 if "result" in cancel_data:
                     print(
-                        f"✅ E2E task cancellation test passed - task cancelled successfully"
+                        "✅ E2E task cancellation test passed - task cancelled successfully"
                     )
                 else:
                     print(

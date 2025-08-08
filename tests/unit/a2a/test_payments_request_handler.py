@@ -5,7 +5,16 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from a2a.server.events.event_queue import EventQueue
 from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
+from a2a.server.tasks.result_aggregator import ResultAggregator
+from a2a.server.tasks.task_manager import TaskManager
+from a2a.types import (
+    Task,
+    TaskStatus,
+    TaskState,
+    TaskStatusUpdateEvent,
+)
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import HttpRequestContext
 from payments_py.common.payments_error import PaymentsError
@@ -19,8 +28,6 @@ class DummyExecutor:  # noqa: D101
 @pytest.mark.asyncio()  # noqa: D401
 async def test_on_message_send_validates_and_calls_parent(monkeypatch):  # noqa: D401
     """Test that on_message_send validates request and processes events."""
-    from a2a.types import Task, TaskStatus, TaskState
-
     # Mock redeem method - must be synchronous since it's called via run_in_executor
     redeem_mock = Mock(return_value={"txHash": "0xabc"})
     dummy_payments = SimpleNamespace(
@@ -37,10 +44,6 @@ async def test_on_message_send_validates_and_calls_parent(monkeypatch):  # noqa:
 
     # Mock _setup_message_execution to return our components
     async def mock_setup(*args, **kwargs):
-        from a2a.server.tasks.task_manager import TaskManager
-        from a2a.server.events.event_queue import EventQueue
-        from a2a.server.tasks.result_aggregator import ResultAggregator
-
         task_store = InMemoryTaskStore()
         # Add the task to the store so TaskManager can find it
         await task_store.save(completed_task)
@@ -117,8 +120,6 @@ async def test_on_message_send_validates_and_calls_parent(monkeypatch):  # noqa:
 @pytest.mark.asyncio()  # noqa: D401
 async def test_on_message_send_burns_credits_from_events():  # noqa: D401
     """Test that on_message_send burns credits when processing TaskStatusUpdateEvent with creditsUsed."""
-    from a2a.types import Task, TaskStatus, TaskState
-
     # Mock redeem method - must be synchronous since it's called via run_in_executor
     redeem_mock = Mock(return_value={"txHash": "0xabc"})
     dummy_payments = SimpleNamespace(
@@ -135,10 +136,6 @@ async def test_on_message_send_burns_credits_from_events():  # noqa: D401
 
     # Mock _setup_message_execution to return our components
     async def mock_setup(*args, **kwargs):
-        from a2a.server.tasks.task_manager import TaskManager
-        from a2a.server.events.event_queue import EventQueue
-        from a2a.server.tasks.result_aggregator import ResultAggregator
-
         task_store = InMemoryTaskStore()
         await task_store.save(completed_task)
 
@@ -306,8 +303,6 @@ async def test_on_message_send_handles_missing_http_context():  # noqa: D401
 @pytest.mark.asyncio()  # noqa: D401
 async def test_on_message_send_generates_task_id_when_missing():  # noqa: D401
     """Test that on_message_send generates taskId and migrates HTTP context when taskId is missing."""
-    from a2a.types import Task, TaskStatus, TaskState
-
     dummy_payments = SimpleNamespace(
         requests=SimpleNamespace(redeem_credits_from_request=Mock()),
     )
@@ -321,10 +316,6 @@ async def test_on_message_send_generates_task_id_when_missing():  # noqa: D401
 
     # Mock setup and consume methods
     async def mock_setup(*args, **kwargs):
-        from a2a.server.tasks.task_manager import TaskManager
-        from a2a.server.events.event_queue import EventQueue
-        from a2a.server.tasks.result_aggregator import ResultAggregator
-
         task_store = InMemoryTaskStore()
         await task_store.save(completed_task)
 
@@ -405,7 +396,6 @@ async def test_on_message_send_generates_task_id_when_missing():  # noqa: D401
 @pytest.mark.asyncio()  # noqa: D401
 async def test_handle_task_finalization_from_event_burns_credits():  # noqa: D401
     """Test that _handle_task_finalization_from_event burns credits correctly."""
-    from a2a.types import TaskStatus, TaskState, TaskStatusUpdateEvent
 
     # Mock redeem method
     redeem_mock = Mock(return_value={"txHash": "0xabc"})
@@ -446,7 +436,6 @@ async def test_handle_task_finalization_from_event_burns_credits():  # noqa: D40
 @pytest.mark.asyncio()  # noqa: D401
 async def test_handle_task_finalization_from_event_no_credits():  # noqa: D401
     """Test that _handle_task_finalization_from_event does nothing when no creditsUsed."""
-    from a2a.types import TaskStatus, TaskState, TaskStatusUpdateEvent
 
     # Mock redeem method
     redeem_mock = Mock(return_value={"txHash": "0xabc"})
@@ -487,7 +476,6 @@ async def test_handle_task_finalization_from_event_no_credits():  # noqa: D401
 @pytest.mark.asyncio()  # noqa: D401
 async def test_handle_task_finalization_from_event_no_metadata():  # noqa: D401
     """Test that _handle_task_finalization_from_event does nothing when no metadata."""
-    from a2a.types import TaskStatus, TaskState, TaskStatusUpdateEvent
 
     # Mock redeem method
     redeem_mock = Mock(return_value={"txHash": "0xabc"})
@@ -528,7 +516,6 @@ async def test_handle_task_finalization_from_event_no_metadata():  # noqa: D401
 @pytest.mark.asyncio()  # noqa: D401
 async def test_handle_task_finalization_swallows_errors():  # noqa: D401
     """Test that _handle_task_finalization_from_event swallows redeem errors."""
-    from a2a.types import TaskStatus, TaskState, TaskStatusUpdateEvent
 
     # Mock redeem method to raise an exception
     redeem_mock = Mock(side_effect=Exception("Redeem failed"))

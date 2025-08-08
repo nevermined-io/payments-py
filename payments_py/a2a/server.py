@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import uvicorn
@@ -12,9 +13,7 @@ from a2a.server.apps.jsonrpc.fastapi_app import A2AFastAPIApplication
 from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
 
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
-from payments_py.a2a.types import (
-    AgentCard,
-)  # Placeholder; to be replaced with a2a.types.AgentCard
+from payments_py.a2a.types import AgentCard, HttpRequestContext
 from payments_py.payments import Payments
 
 
@@ -108,8 +107,6 @@ class PaymentsA2AServer:  # noqa: D101
                     # Parse JSON-RPC to get method name
                     body = await request.body()
                     try:
-                        import json
-
                         rpc_data = json.loads(body)
                         method = rpc_data.get("method", "unknown")
 
@@ -221,8 +218,6 @@ class PaymentsA2AServer:  # noqa: D101
             # Parse JSON body early to capture method / messageId / taskId
             body = await request.body()
             try:
-                import json
-
                 body_json = json.loads(body)
             except Exception:  # noqa: BLE001
                 body_json = {}
@@ -232,8 +227,6 @@ class PaymentsA2AServer:  # noqa: D101
                 "taskId"
             ) or body_json.get("params", {}).get("taskId")
             message_id = body_json.get("params", {}).get("message", {}).get("messageId")
-
-            from payments_py.a2a.types import HttpRequestContext  # noqa: WPS433
 
             ctx = HttpRequestContext(
                 bearer_token=bearer_token,

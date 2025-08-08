@@ -19,8 +19,7 @@ from a2a.types import (
     TaskStatusUpdateEvent,
 )
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
-from payments_py.a2a.types import MessageSendParams
-from payments_py.a2a.types import AgentCard
+from payments_py.a2a.types import MessageSendParams, AgentCard, HttpRequestContext
 
 
 class DummyStreamingExecutor(AgentExecutor):  # noqa: D101
@@ -122,8 +121,6 @@ async def test_stream_and_resubscribe(agent_card, payments_stub):  # noqa: D401
     )
 
     # Set up HTTP context for the task
-    from payments_py.a2a.types import HttpRequestContext
-
     http_ctx = HttpRequestContext(
         bearer_token="TOK",
         url_requested="/rpc",
