@@ -13,7 +13,6 @@ from a2a.types import (
     Message,
     Role,
     Part,
-    Task,
     TaskStatus,
     TaskState,
     TaskStatusUpdateEvent,
@@ -111,13 +110,6 @@ async def test_stream_and_resubscribe(agent_card, payments_stub):  # noqa: D401
         task_store=None,
         agent_executor=None,
         payments_service=payments,
-    )
-
-    # Create a mock task with completed status
-    completed_task = Task(
-        id="task-123",
-        context_id="ctx-123",
-        status=TaskStatus(state=TaskState.completed),
     )
 
     # Set up HTTP context for the task

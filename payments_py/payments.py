@@ -12,7 +12,7 @@ from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
 
 # A2A integration
-from payments_py.a2a.agent_card import build_payment_agent_card
+# Lazy import for a2a to avoid hard dependency unless used
 
 
 class Payments(BasePaymentsAPI):
@@ -85,6 +85,22 @@ class Payments(BasePaymentsAPI):
         self.requests = AgentRequestsAPI.get_instance(options)
         self.query = AIQueryApi.get_instance()
 
+        # Cached MCP integration
+        self._mcp_integration = None
+
+    @property
+    def mcp(self):
+        """
+        Returns the MCP integration API. The instance is memoized so that configuration
+        set via configure({ agentId, serverName }) persists across calls.
+        """
+        if self._mcp_integration is None:
+            # Local import to avoid import cycles
+            from payments_py.mcp.index import build_mcp_integration  # noqa: WPS433
+
+            self._mcp_integration = build_mcp_integration(self)
+        return self._mcp_integration
+
     @property
     def is_logged_in(self) -> bool:
         """
@@ -122,7 +138,7 @@ class Payments(BasePaymentsAPI):
         # ---------------------------------------------------------------------
 
     # A2A client registry cache
-    _a2a_registry: "ClientRegistry | None" = None  # type: ignore[name-defined]
+    _a2a_registry: Any | None = None
 
     @property
     def a2a(self) -> Dict[str, Any]:
@@ -145,6 +161,13 @@ class Payments(BasePaymentsAPI):
         }
 
     # Static helpers (class attribute)
+    def _build_payment_agent_card_lazy(*args: Any, **kwargs: Any):  # noqa: D401, WPS430
+        from payments_py.a2a.agent_card import (
+            build_payment_agent_card as _build_payment_agent_card,
+        )
+
+        return _build_payment_agent_card(*args, **kwargs)
+
     a2a_helpers: Dict[str, Any] = {  # noqa: WPS110
-        "build_payment_agent_card": build_payment_agent_card,
+        "build_payment_agent_card": _build_payment_agent_card_lazy,
     }

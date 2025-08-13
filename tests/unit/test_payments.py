@@ -52,8 +52,8 @@ def test_payments_initialization_without_api_key():
 def test_is_ethereum_address():
     """Test the is_ethereum_address helper function."""
     assert is_ethereum_address("0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d")
-    assert is_ethereum_address("0x75faf114eafb1BDbe2F0316DF893fd58CE46") == False
-    assert is_ethereum_address(None) == False
+    assert not is_ethereum_address("0x75faf114eafb1BDbe2F0316DF893fd58CE46")
+    assert not is_ethereum_address(None)
 
 
 def test_snake_to_camel():

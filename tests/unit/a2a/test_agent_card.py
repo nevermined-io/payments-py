@@ -1,6 +1,7 @@
 """Unit tests for build_payment_agent_card utility."""
 
 from payments_py.a2a.agent_card import build_payment_agent_card
+import pytest
 
 
 def test_build_payment_agent_card_success():  # noqa: D401
@@ -16,9 +17,6 @@ def test_build_payment_agent_card_success():  # noqa: D401
     ext = card["capabilities"]["extensions"][-1]
     assert ext["uri"] == "urn:nevermined:payment"
     assert ext["params"]["agentId"] == "agent-1"
-
-
-import pytest
 
 
 # noqa: WPS437
