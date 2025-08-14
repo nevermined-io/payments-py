@@ -13,6 +13,7 @@ from payments_py.api.requests_api import AgentRequestsAPI
 
 # A2A integration
 from payments_py.a2a.agent_card import build_payment_agent_card
+from payments_py.a2a.client_registry import ClientRegistry
 
 
 class Payments(BasePaymentsAPI):
@@ -85,6 +86,22 @@ class Payments(BasePaymentsAPI):
         self.requests = AgentRequestsAPI.get_instance(options)
         self.query = AIQueryApi.get_instance()
 
+        # Cached MCP integration
+        self._mcp_integration = None
+
+    @property
+    def mcp(self):
+        """
+        Returns the MCP integration API. The instance is memoized so that configuration
+        set via configure({ agentId, serverName }) persists across calls.
+        """
+        if self._mcp_integration is None:
+            # Local import to avoid import cycles
+            from payments_py.mcp.index import build_mcp_integration  # noqa: WPS433
+
+            self._mcp_integration = build_mcp_integration(self)
+        return self._mcp_integration
+
     @property
     def is_logged_in(self) -> bool:
         """
@@ -126,10 +143,10 @@ class Payments(BasePaymentsAPI):
 
     @property
     def a2a(self) -> Dict[str, Any]:
+        from payments_py.a2a.server import PaymentsA2AServer
+
         """Expose A2A helpers (start server / get client) for Nevermined Payments."""
         # Local imports to avoid circular dependencies
-        from payments_py.a2a.server import PaymentsA2AServer  # noqa: WPS433
-        from payments_py.a2a.client_registry import ClientRegistry  # noqa: WPS433
 
         def _get_client(**options: Any):  # noqa: WPS430
             if self._a2a_registry is None:
@@ -144,7 +161,6 @@ class Payments(BasePaymentsAPI):
             "get_client": _get_client,
         }
 
-    # Static helpers (class attribute)
     a2a_helpers: Dict[str, Any] = {  # noqa: WPS110
         "build_payment_agent_card": build_payment_agent_card,
     }

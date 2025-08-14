@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "payments-py"
-version = "0.7.5"
+version = "0.7.6"
 description = ""
 authors = ["enrique <enrique@nevermined.io>", "Charly López <charly@nevermined.io>"]
 readme = "README.md"
@@ -19,6 +19,7 @@ aiohttp = "^3.10.8"
 pytest-asyncio = "^0.26.0"
 websocket-client = "^1.8.0"
 black = "^25.1.0"
+a2a-sdk = "^0.3.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.1.1"
@@ -27,8 +28,8 @@ pytest-timeout = "^2.2.0"
 pytest-cov = "^4.1.0"
 pytest-asyncio = "^0.26.0"
 httpx = "^0.28.1"
-fastapi = "^0.114.0"
-a2a-sdk = "^0.3.0"
+fastapi = "^0.115.2"
+a2a-sdk = {version = "^0.3.1", extras = ["http-server"]}
 uvicorn = "^0.30.0"
 pytest-rerunfailures = "^14.0.0"
 

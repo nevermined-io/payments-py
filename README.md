@@ -79,7 +79,7 @@ Important:
 ```python
 from payments_py.payments import Payments
 
-payments_builder = Payments.get_instance({
+payments_builder = Payments({
     "nvm_api_key": "<BUILDER_API_KEY>",
     "environment": "staging_sandbox",
 })
@@ -139,7 +139,7 @@ server = PaymentsA2AServer.start(
 ### Use the A2A client
 
 ```python
-payments_subscriber = Payments.get_instance({
+payments_subscriber = Payments({
     "nvm_api_key": "<SUBSCRIBER_API_KEY>",
     "environment": "staging_sandbox",
 })
@@ -178,7 +178,7 @@ cc = payments_builder.plans.get_fixed_credits_config(100)
 from payments_py.payments import Payments
 from payments_py.common.types import PlanMetadata
 
-payments = Payments.get_instance({"nvm_api_key": "<KEY>", "environment": "sandbox"})
+payments = Payments({"nvm_api_key": "<KEY>", "environment": "sandbox"})
 
 # Create a plan
 plan_metadata = PlanMetadata(name="My Plan")

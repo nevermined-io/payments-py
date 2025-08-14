@@ -154,7 +154,7 @@ class DummyExecutor:
             f"[DEBUG] DummyExecutor publishing final event with creditsUsed: {self.credits_to_use}"
         )
         await event_queue.enqueue_event(final_status_update)
-        print(f"[DEBUG] DummyExecutor completed successfully")
+        print("[DEBUG] DummyExecutor completed successfully")
 
 
 @pytest.mark.asyncio
