@@ -12,7 +12,8 @@ from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
 
 # A2A integration
-# Lazy import for a2a to avoid hard dependency unless used
+from payments_py.a2a.agent_card import build_payment_agent_card
+from payments_py.a2a.client_registry import ClientRegistry
 
 
 class Payments(BasePaymentsAPI):
@@ -138,14 +139,14 @@ class Payments(BasePaymentsAPI):
         # ---------------------------------------------------------------------
 
     # A2A client registry cache
-    _a2a_registry: Any | None = None
+    _a2a_registry: "ClientRegistry | None" = None  # type: ignore[name-defined]
 
     @property
     def a2a(self) -> Dict[str, Any]:
+        from payments_py.a2a.server import PaymentsA2AServer
+
         """Expose A2A helpers (start server / get client) for Nevermined Payments."""
         # Local imports to avoid circular dependencies
-        from payments_py.a2a.server import PaymentsA2AServer  # noqa: WPS433
-        from payments_py.a2a.client_registry import ClientRegistry  # noqa: WPS433
 
         def _get_client(**options: Any):  # noqa: WPS430
             if self._a2a_registry is None:
@@ -160,14 +161,6 @@ class Payments(BasePaymentsAPI):
             "get_client": _get_client,
         }
 
-    # Static helpers (class attribute)
-    def _build_payment_agent_card_lazy(*args: Any, **kwargs: Any):  # noqa: D401, WPS430
-        from payments_py.a2a.agent_card import (
-            build_payment_agent_card as _build_payment_agent_card,
-        )
-
-        return _build_payment_agent_card(*args, **kwargs)
-
     a2a_helpers: Dict[str, Any] = {  # noqa: WPS110
-        "build_payment_agent_card": _build_payment_agent_card_lazy,
+        "build_payment_agent_card": build_payment_agent_card,
     }
