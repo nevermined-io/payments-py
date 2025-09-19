@@ -181,16 +181,35 @@ class PaywallDecorator:
                     ),
                 )
 
-            await self._redeem(
+            # Non-streaming: redeem immediately and add metadata
+            credits_result = await self._redeem(
                 auth_result["requestId"], auth_result["token"], credits, options
             )
+
+            # Add metadata to result if redemption was successful
+            if credits_result["success"]:
+                # Add metadata as a key
+                if "metadata" not in result or result["metadata"] is None:
+                    result["metadata"] = {}
+                if not isinstance(result["metadata"], dict):
+                    result["metadata"] = {}
+
+                result["metadata"].update(
+                    {
+                        "txHash": credits_result["txHash"],
+                        "requestId": credits_result["requestId"],
+                        "creditsRedeemed": credits_result["creditsRedeemed"],
+                        "success": True,
+                    }
+                )
+
             return result
 
         return wrapped
 
     async def _redeem(
         self, request_id: str, token: str, credits: int, options: PaywallOptions
-    ) -> None:
+    ) -> Dict[str, Any]:
         """Redeem credits for a processed request.
 
         Args:
@@ -198,19 +217,45 @@ class PaywallDecorator:
             token: Authorization token used for the request.
             credits: Number of credits to redeem.
             options: Paywall options to control error propagation.
+
+        Returns:
+            Dictionary containing success status and transaction hash if successful.
         """
         try:
             if credits and int(credits) > 0:
-                await self._maybe_await(
+                redeem_result = await self._maybe_await(
                     self._payments.requests.redeem_credits_from_request(
                         request_id, token, int(credits)
                     )
                 )
+                # Check if the redeem operation was successful
+                redeem_success = redeem_result.get(
+                    "success", True
+                )  # Default to True for backward compatibility
+                return {
+                    "success": redeem_success,
+                    "txHash": redeem_result.get("txHash") if redeem_success else None,
+                    "requestId": request_id,
+                    "creditsRedeemed": str(credits),
+                }
+            else:
+                return {
+                    "success": True,
+                    "txHash": None,
+                    "requestId": request_id,
+                    "creditsRedeemed": "0",
+                }
         except Exception:
             if options.get("onRedeemError") == "propagate":
                 raise create_rpc_error(
                     ERROR_CODES["Misconfiguration"], "Failed to redeem credits"
                 )
+            return {
+                "success": False,
+                "txHash": None,
+                "requestId": request_id,
+                "creditsRedeemed": "0",
+            }
 
     async def _maybe_await(self, maybe_awaitable: Any) -> Any:
         """Await a value if it is awaitable; otherwise return it directly."""
@@ -224,16 +269,19 @@ class PaywallDecorator:
 class _RedeemOnCloseAsyncIterator:
     """Wrap an async-iterable to ensure a callback runs on completion or early close."""
 
-    def __init__(self, async_iterable: Any, on_finally: Callable[[], Awaitable[None]]):
+    def __init__(
+        self, async_iterable: Any, on_finally: Callable[[], Awaitable[Dict[str, Any]]]
+    ):
         """Initialize the wrapper for an async-iterable.
 
         Args:
             async_iterable: The original async-iterable to wrap.
-            on_finally: Callback executed when iteration finishes or closes.
+            on_finally: Callback executed when iteration finishes or closes, returns credits result.
         """
         self._async_iterable = async_iterable
         self._on_finally = on_finally
         self._ait = None
+        self._credits_result = None
 
     def __aiter__(self):  # noqa: D401
         # Create a fresh async iterator
@@ -245,14 +293,15 @@ class _RedeemOnCloseAsyncIterator:
         try:
             return await self._ait.__anext__()
         except StopAsyncIteration:
-            # Natural completion
-            await self._on_finally()
+            # Natural completion - execute callback and get credits result
+            self._credits_result = await self._on_finally()
             raise
 
     async def aclose(self):  # Ensure redeem on early cancellation/break
         """Close the iterator and execute the finalization callback."""
         try:
-            await self._on_finally()
+            if self._credits_result is None:
+                self._credits_result = await self._on_finally()
         finally:
             if self._ait is not None and hasattr(self._ait, "aclose"):
                 try:

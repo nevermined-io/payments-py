@@ -5,10 +5,11 @@ from payments_py.mcp import build_mcp_integration
 
 
 class PaymentsMock:
-    def __init__(self):
+    def __init__(self, redeem_result=None):
         class Req:
-            def __init__(self, parent):
+            def __init__(self, parent, redeem_result):
                 self._parent = parent
+                self._redeem_result = redeem_result or {"success": True}
 
             def start_processing_request(self, agent_id, token, url, method):
                 self._parent.calls.append(("start", agent_id, token, url, method))
@@ -16,13 +17,13 @@ class PaymentsMock:
 
             def redeem_credits_from_request(self, request_id, token, credits):
                 self._parent.calls.append(("redeem", request_id, token, int(credits)))
-                return {"success": True}
+                return self._redeem_result
 
         class Agents:
             def get_agent_plans(self, agent_id):
                 return {"plans": []}
 
-        self.requests = Req(self)
+        self.requests = Req(self, redeem_result)
         self.agents = Agents()
         self.calls = []
 
@@ -41,6 +42,76 @@ def test_burns_fixed_credits_after_successful_call():
     assert out
     assert ("start", "did:nv:agent", "token") in [(c[0], c[1], c[2]) for c in pm.calls]
     assert ("redeem", "req-1", "token", 2) in pm.calls
+
+
+def test_adds_metadata_to_result_after_successful_redemption():
+    """Test that metadata is added to the result after successful credit redemption."""
+    pm = PaymentsMock()
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+
+    async def base(_args, _extra=None):
+        return {"content": [{"type": "text", "text": "ok"}]}
+
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 3})
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    # Verify the result has metadata
+    assert "metadata" in out
+    assert out["metadata"] is not None
+    assert isinstance(out["metadata"], dict)
+
+    # Verify metadata contains expected fields
+    assert out["metadata"].get("success") is True
+    assert out["metadata"].get("requestId") == "req-1"
+    assert out["metadata"].get("creditsRedeemed") == "3"
+    # txHash should be None since our mock doesn't return it
+    assert out["metadata"].get("txHash") is None
+
+
+def test_adds_metadata_with_txhash_when_redeem_returns_it():
+    """Test that metadata includes txHash when redeem_credits_from_request returns it."""
+    redeem_result = {"success": True, "txHash": "0x1234567890abcdef"}
+    pm = PaymentsMock(redeem_result=redeem_result)
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+
+    async def base(_args, _extra=None):
+        return {"content": [{"type": "text", "text": "ok"}]}
+
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 5})
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    # Verify the result has metadata
+    assert "metadata" in out
+    assert out["metadata"] is not None
+    assert isinstance(out["metadata"], dict)
+
+    # Verify metadata contains expected fields including txHash
+    assert out["metadata"].get("success") is True
+    assert out["metadata"].get("requestId") == "req-1"
+    assert out["metadata"].get("creditsRedeemed") == "5"
+    assert out["metadata"].get("txHash") == "0x1234567890abcdef"
+
+
+def test_does_not_add_metadata_when_redemption_fails():
+    """Test that metadata is not added when credit redemption fails."""
+    redeem_result = {"success": False, "error": "Insufficient credits"}
+    pm = PaymentsMock(redeem_result=redeem_result)
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+
+    async def base(_args, _extra=None):
+        return {"content": [{"type": "text", "text": "ok"}]}
+
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 2})
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    # Verify the result does not have metadata when redemption fails
+    assert "metadata" not in out or out["metadata"] is None or not out["metadata"]
 
 
 def test_rejects_when_authorization_header_missing():
