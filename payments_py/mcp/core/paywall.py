@@ -188,39 +188,20 @@ class PaywallDecorator:
 
             # Add metadata to result if redemption was successful
             if credits_result["success"]:
-                # Handle both dict and object results
-                if isinstance(result, dict):
-                    # For dict results, add metadata as a key
-                    if "metadata" not in result or result["metadata"] is None:
-                        result["metadata"] = {}
-                    elif not isinstance(result["metadata"], dict):
-                        result["metadata"] = {}
+                # Add metadata as a key
+                if "metadata" not in result or result["metadata"] is None:
+                    result["metadata"] = {}
+                if not isinstance(result["metadata"], dict):
+                    result["metadata"] = {}
 
-                    # Add payment metadata
-                    result["metadata"].update(
-                        {
-                            "txHash": credits_result["txHash"],
-                            "requestId": credits_result["requestId"],
-                            "creditsRedeemed": credits_result["creditsRedeemed"],
-                            "success": True,
-                        }
-                    )
-                else:
-                    # For object results, add metadata as an attribute
-                    if not hasattr(result, "metadata") or result.metadata is None:
-                        result.metadata = {}
-                    elif not isinstance(result.metadata, dict):
-                        result.metadata = {}
-
-                    # Add payment metadata
-                    result.metadata.update(
-                        {
-                            "txHash": credits_result["txHash"],
-                            "requestId": credits_result["requestId"],
-                            "creditsRedeemed": credits_result["creditsRedeemed"],
-                            "success": True,
-                        }
-                    )
+                result["metadata"].update(
+                    {
+                        "txHash": credits_result["txHash"],
+                        "requestId": credits_result["requestId"],
+                        "creditsRedeemed": credits_result["creditsRedeemed"],
+                        "success": True,
+                    }
+                )
 
             return result
 
