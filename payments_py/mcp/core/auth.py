@@ -84,6 +84,7 @@ class PaywallAuthenticator:
                 "token": token,
                 "agentId": agent_id,
                 "logicalUrl": logical_url,
+                "agentRequest": start,
             }
         except Exception:
             plans_msg = ""
@@ -153,6 +154,7 @@ class PaywallAuthenticator:
                 "token": token,
                 "agentId": agent_id,
                 "logicalUrl": logical_url,
+                "agentRequest": start,
             }
         except Exception:
             plans_msg = ""

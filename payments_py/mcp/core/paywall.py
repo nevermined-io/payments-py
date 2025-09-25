@@ -6,7 +6,7 @@ from typing import Any, Awaitable, Callable, Dict
 
 from ..utils.errors import ERROR_CODES, create_rpc_error
 from ..utils.extra import build_extra_from_fastmcp_context
-from ..types import PaywallOptions
+from ..types import PaywallOptions, PaywallContext
 
 
 class PaywallDecorator:
@@ -151,20 +151,36 @@ class PaywallDecorator:
                 args_or_vars,
             )
 
+            # Resolve initial credits for context
+            initial_credits = self._credits.resolve(
+                options.get("credits"), args_or_vars, None, auth_result
+            )
+
+            # Create paywall context
+            paywall_context: PaywallContext = {
+                "auth_result": auth_result,
+                "credits": initial_credits,
+                "agent_request": auth_result["agentRequest"],
+            }
+
             # Call handler with a compatible signature across tool/resource/prompt
             try:
-                result = handler(*all_args)
+                result = handler(*all_args, paywall_context)
             except TypeError:
                 try:
-                    # For tools/prompts, fall back to (args,) when extra is not accepted
-                    if not is_resource:
-                        result = handler(all_args[0])
-                    else:
-                        # For resources, fall back to (uri, variables)
-                        result = handler(all_args[0], all_args[1])
+                    # Fallback: without context
+                    result = handler(*all_args)
                 except TypeError:
-                    # Re-raise original error when signature incompatible
-                    raise
+                    try:
+                        # For tools/prompts, fall back to (args,) when extra is not accepted
+                        if not is_resource:
+                            result = handler(all_args[0])
+                        else:
+                            # For resources, fall back to (uri, variables)
+                            result = handler(all_args[0], all_args[1])
+                    except TypeError:
+                        # Re-raise original error when signature incompatible
+                        raise
             if hasattr(result, "__await__"):
                 result = await result  # type: ignore[assignment]
 

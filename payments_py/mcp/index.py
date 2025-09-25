@@ -17,7 +17,12 @@ from typing import Any, Awaitable, Callable, Dict, Protocol, Union
 from .core.auth import PaywallAuthenticator
 from .core.credits_context import CreditsContextProvider
 from .core.paywall import PaywallDecorator
-from .types import PaywallOptions, ToolOptions, PromptOptions, ResourceOptions
+from .types import (
+    PaywallOptions,
+    ToolOptions,
+    PromptOptions,
+    ResourceOptions,
+)
 
 
 class _AttachableServer(Protocol):
@@ -79,8 +84,13 @@ class MCPIntegration:
     ) -> Callable[..., Awaitable[Any]]:
         """Wrap a handler with the paywall protection.
 
+        The handler can optionally receive a PaywallContext parameter containing
+        authentication and credit information. Handlers without this parameter
+        will continue to work for backward compatibility.
+
         Args:
-            handler: The tool/resource/prompt handler to protect
+            handler: The tool/resource/prompt handler to protect. Can optionally
+                    accept a PaywallContext parameter as the last argument.
             options: The paywall options including kind, name and credits
 
         Returns:
@@ -128,7 +138,11 @@ class MCPIntegration:
                 handler: Callable[..., Awaitable[Any]] | Callable[..., Any],
                 options: Dict[str, Any] | None = None,
             ) -> None:
-                """Register a tool handler protected by the paywall."""
+                """Register a tool handler protected by the paywall.
+
+                The handler can optionally receive a PaywallContext parameter
+                containing authentication and credit information.
+                """
                 protected = integration.with_paywall(
                     handler, {"kind": "tool", "name": name, **(options or {})}
                 )
@@ -142,7 +156,11 @@ class MCPIntegration:
                 handler: Callable[..., Awaitable[Any]] | Callable[..., Any],
                 options: Dict[str, Any] | None = None,
             ) -> None:
-                """Register a resource handler protected by the paywall."""
+                """Register a resource handler protected by the paywall.
+
+                The handler can optionally receive a PaywallContext parameter
+                containing authentication and credit information.
+                """
                 protected = integration.with_paywall(
                     handler, {"kind": "resource", "name": name, **(options or {})}
                 )
@@ -155,7 +173,11 @@ class MCPIntegration:
                 handler: Callable[..., Awaitable[Any]] | Callable[..., Any],
                 options: Dict[str, Any] | None = None,
             ) -> None:
-                """Register a prompt handler protected by the paywall."""
+                """Register a prompt handler protected by the paywall.
+
+                The handler can optionally receive a PaywallContext parameter
+                containing authentication and credit information.
+                """
                 protected = integration.with_paywall(
                     handler, {"kind": "prompt", "name": name, **(options or {})}
                 )

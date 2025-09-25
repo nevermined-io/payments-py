@@ -12,6 +12,7 @@ class AuthResult(TypedDict):
     token: str
     agentId: str
     logicalUrl: str
+    agentRequest: Dict[str, Any]  # StartAgentRequest as dict
 
 
 CreditsOption = Union[int, Callable[[Dict[str, Any]], int]]
@@ -44,3 +45,11 @@ class PromptOptions(BasePaywallOptions):
 
 
 PaywallOptions = Union[ToolOptions, ResourceOptions, PromptOptions]
+
+
+class PaywallContext(TypedDict):
+    """Context provided to paywall-protected handlers."""
+
+    auth_result: AuthResult
+    credits: int
+    agent_request: Dict[str, Any]  # StartAgentRequest as dict
