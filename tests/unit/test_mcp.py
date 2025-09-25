@@ -346,3 +346,186 @@ def test_redeems_when_consumer_stops_stream_early():
     count = asyncio.get_event_loop().run_until_complete(consume_first_and_close())
     assert count == 1
     assert ("redeem", "req-1", "tok", 2) in pm.calls
+
+
+class PaymentsMockWithAgentRequest:
+    """Mock that includes agentRequest in start_processing_request response."""
+
+    def __init__(self, redeem_result=None):
+        class Req:
+            def __init__(self, parent, redeem_result):
+                self._parent = parent
+                self._redeem_result = redeem_result or {"success": True}
+
+            def start_processing_request(self, agent_id, token, url, method):
+                self._parent.calls.append(("start", agent_id, token, url, method))
+                return {
+                    "agentRequestId": "req-123",
+                    "agentName": "Test Agent",
+                    "agentId": agent_id,
+                    "balance": {
+                        "balance": 1000,
+                        "creditsContract": "0x123",
+                        "isSubscriber": True,
+                        "pricePerCredit": 0.01,
+                    },
+                    "urlMatching": url,
+                    "verbMatching": method,
+                    "batch": False,
+                }
+
+            def redeem_credits_from_request(self, request_id, token, credits):
+                self._parent.calls.append(("redeem", request_id, token, int(credits)))
+                return self._redeem_result
+
+        class Agents:
+            def get_agent_plans(self, agent_id):
+                return {"plans": []}
+
+        self.requests = Req(self, redeem_result)
+        self.agents = Agents()
+        self.calls = []
+
+
+def test_backward_compatibility_handlers_without_context():
+    """Test that handlers without context parameter still work."""
+    pm = PaymentsMockWithAgentRequest()
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+
+    async def old_handler(args, extra=None):
+        return {
+            "content": [{"type": "text", "text": f"Hello {args.get('name', 'World')}"}]
+        }
+
+    wrapped = mcp.with_paywall(
+        old_handler, {"kind": "tool", "name": "test", "credits": 2}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    out = asyncio.get_event_loop().run_until_complete(wrapped({"name": "Alice"}, extra))
+
+    assert out["content"][0]["text"] == "Hello Alice"
+    assert ("start", "did:nv:agent", "token") in [(c[0], c[1], c[2]) for c in pm.calls]
+    assert ("redeem", "req-123", "token", 2) in pm.calls
+
+
+def test_handlers_with_context_receive_paywall_context():
+    """Test that handlers with context parameter receive PaywallContext."""
+    pm = PaymentsMockWithAgentRequest()
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+
+    captured_context = None
+
+    async def new_handler(args, extra=None, context=None):
+        nonlocal captured_context
+        captured_context = context
+        return {
+            "content": [{"type": "text", "text": f"Hello {args.get('name', 'World')}"}]
+        }
+
+    wrapped = mcp.with_paywall(
+        new_handler, {"kind": "tool", "name": "test", "credits": 3}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    out = asyncio.get_event_loop().run_until_complete(wrapped({"name": "Bob"}, extra))
+
+    assert out["content"][0]["text"] == "Hello Bob"
+    assert captured_context is not None
+    assert isinstance(captured_context, dict)
+
+
+def test_paywall_context_structure():
+    """Test that PaywallContext contains all expected fields."""
+    pm = PaymentsMockWithAgentRequest()
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+
+    captured_context = None
+
+    async def context_handler(args, extra=None, context=None):
+        nonlocal captured_context
+        captured_context = context
+        return {"content": [{"type": "text", "text": "ok"}]}
+
+    wrapped = mcp.with_paywall(
+        context_handler, {"kind": "tool", "name": "test", "credits": 5}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    # Verify PaywallContext structure
+    assert captured_context is not None
+    assert "auth_result" in captured_context
+    assert "credits" in captured_context
+    assert "agent_request" in captured_context
+
+    # Verify auth_result structure
+    auth_result = captured_context["auth_result"]
+    assert auth_result["requestId"] == "req-123"
+    assert auth_result["token"] == "token"
+    assert auth_result["agentId"] == "did:nv:agent"
+    assert auth_result["logicalUrl"].startswith("mcp://test-mcp/tools/test")
+    assert "agentRequest" in auth_result
+
+    # Verify agent_request structure
+    agent_request = captured_context["agent_request"]
+    assert agent_request["agentRequestId"] == "req-123"
+    assert agent_request["agentName"] == "Test Agent"
+    assert agent_request["agentId"] == "did:nv:agent"
+    assert agent_request["balance"]["isSubscriber"] is True
+    assert agent_request["balance"]["balance"] == 1000
+    assert agent_request["urlMatching"].startswith("mcp://test-mcp/tools/test")
+    assert agent_request["verbMatching"] == "POST"
+    assert agent_request["batch"] is False
+
+    # Verify credits
+    assert captured_context["credits"] == 5
+
+
+def test_context_handlers_can_use_agent_request_data():
+    """Test that handlers can access and use agent request data from context."""
+    pm = PaymentsMockWithAgentRequest()
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+
+    async def business_logic_handler(args, extra=None, context=None):
+        if not context:
+            return {"error": "No context provided"}
+
+        agent_request = context["agent_request"]
+        auth_result = context["auth_result"]
+        credits = context["credits"]
+
+        # Use agent request data for business logic
+        if not agent_request["balance"]["isSubscriber"]:
+            return {"error": "Not a subscriber"}
+
+        if agent_request["balance"]["balance"] < credits:
+            return {"error": "Insufficient balance"}
+
+        return {
+            "content": [{"type": "text", "text": "Success"}],
+            "metadata": {
+                "agentName": agent_request["agentName"],
+                "requestId": auth_result["requestId"],
+                "creditsUsed": credits,
+                "balanceRemaining": agent_request["balance"]["balance"] - credits,
+            },
+        }
+
+    wrapped = mcp.with_paywall(
+        business_logic_handler, {"kind": "tool", "name": "business", "credits": 3}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    out = asyncio.get_event_loop().run_until_complete(
+        wrapped({"action": "test"}, extra)
+    )
+
+    # Verify handler used context data correctly
+    assert "error" not in out
+    assert out["content"][0]["text"] == "Success"
+    assert out["metadata"]["agentName"] == "Test Agent"
+    assert out["metadata"]["requestId"] == "req-123"
+    assert out["metadata"]["creditsUsed"] == 3
+    assert out["metadata"]["balanceRemaining"] == 997  # 1000 - 3
