@@ -26,27 +26,35 @@ class BasePaymentsAPI:
         Args:
             options: The options to initialize the payments class
         """
-        self.nvm_api_key = options.get("nvm_api_key")
-        self.return_url = options.get("return_url") or ""
-        self.environment = get_environment(options.get("environment"))
-        self.app_id = options.get("app_id")
-        self.version = options.get("version")
+        self.nvm_api_key = options.nvm_api_key
+        self.return_url = options.return_url or ""
+        self.environment = get_environment(options.environment)
+        self.environment_name = options.environment
+        self.app_id = options.app_id
+        self.version = options.version
         self.account_address: Optional[str] = None
+        self.helicone_api_key: Optional[str] = None
         self.is_browser_instance = True
         self._parse_nvm_api_key()
 
     def _parse_nvm_api_key(self) -> None:
         """
-        Parse the NVM API Key to get the account address.
+        Parse the NVM API Key to get the account address and helicone API key.
 
         Raises:
             PaymentsError: If the API key is invalid
         """
         try:
+            # Strip environment prefix if present (e.g., "sandbox-staging:")
+            jwt_token = self.nvm_api_key
+            if ":" in jwt_token:
+                jwt_token = jwt_token.split(":", 1)[1]
+
             decoded_jwt = jwt.decode(
-                self.nvm_api_key, options={"verify_signature": False}
+                jwt_token, options={"verify_signature": False}
             )
             self.account_address = decoded_jwt.get("sub")
+            self.helicone_api_key = decoded_jwt.get("o11y")
         except Exception as e:
             raise PaymentsError.validation(f"Invalid NVM API Key: {str(e)}")
 

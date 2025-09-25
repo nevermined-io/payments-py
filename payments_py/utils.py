@@ -187,3 +187,70 @@ def get_service_host_from_endpoints(endpoints: List[Dict[str, str]]) -> Optional
             return f"{parsed.scheme}://{parsed.netloc}"
 
     return None
+
+
+######################## OBSERVABILITY ########################
+
+def generate_deterministic_agent_id(agent_id: str, class_name: Optional[str] = None) -> str:
+    """
+    Generate deterministic agent ID: if no class_name, return agent_id as is;
+    if class_name provided, hash it.
+
+    Args:
+        agent_id: The agent ID
+        class_name: Optional class name to hash
+
+    Returns:
+        The deterministic agent ID
+    """
+    if not class_name:
+        return agent_id
+
+    import hashlib
+    hash_obj = hashlib.sha256(class_name.encode()).hexdigest()[:32]
+    # Format as UUID: 8-4-4-4-12
+    return f"{hash_obj[:8]}-{hash_obj[8:12]}-{hash_obj[12:16]}-{hash_obj[16:20]}-{hash_obj[20:32]}"
+
+
+def generate_session_id() -> str:
+    """
+    Generate random session ID.
+
+    Returns:
+        A random UUID string
+    """
+    return str(uuid.uuid4())
+
+
+def log_session_info(agent_id: str, session_id: str, agent_name: str = "SceneTechnicalExtractor") -> None:
+    """
+    Log session information.
+
+    Args:
+        agent_id: The agent ID
+        session_id: The session ID
+        agent_name: The agent name (default: "SceneTechnicalExtractor")
+    """
+    import os
+    import json
+    from datetime import datetime
+
+    timestamp = datetime.utcnow().isoformat() + "Z"
+    logs_dir = os.path.join(os.path.dirname(__file__), "logs")
+
+    # Ensure logs directory exists
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir, exist_ok=True)
+
+    log_entry = {
+        "timestamp": timestamp,
+        "agentId": agent_id,
+        "sessionId": session_id,
+        "agentName": agent_name,
+    }
+
+    log_file = os.path.join(logs_dir, "session_info.log")
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(log_entry) + "\n")
+
+    print(f"[{timestamp}] Agent: {agent_name} | Session: {session_id} | Agent ID: {agent_id}")

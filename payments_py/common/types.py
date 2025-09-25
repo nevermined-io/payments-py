@@ -150,10 +150,13 @@ class PlanBalance(BaseModel):
     """
 
     plan_id: str
+    plan_name: str
+    plan_type: str
     holder_address: str
     balance: int
     credits_contract: str
     is_subscriber: bool
+    price_per_credit: float
 
 
 class PaginationOptions(BaseModel):
@@ -195,6 +198,8 @@ class StartAgentRequest(BaseModel):
     """
 
     agent_request_id: str
+    agent_name: str
+    agent_id: str
     balance: PlanBalance
     url_matching: str
     verb_matching: str

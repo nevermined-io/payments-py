@@ -24,6 +24,7 @@ from payments_py.api.plans_api import PlansAPI
 from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
 from payments_py.api.base_payments import BasePaymentsAPI
+from payments_py.api.observability_api import ObservabilityAPI
 
 # Import utility functions
 from payments_py.utils import (
@@ -88,6 +89,7 @@ __all__ = [
     "AgentsAPI",
     "AgentRequestsAPI",
     "BasePaymentsAPI",
+    "ObservabilityAPI",
     # Utility functions
     "is_ethereum_address",
     "generate_step_id",

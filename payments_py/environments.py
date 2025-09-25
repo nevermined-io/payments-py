@@ -12,11 +12,13 @@ class EnvironmentInfo:
         frontend (str): Frontend URL
         backend (str): Backend URL
         proxy (str): Proxy URL
+        helicone_url (str): Helicone URL
     """
 
     backend: str
     proxy: str
     frontend: str = None
+    helicone_url: str = "https://helicone.nevermined.dev"
 
 
 # Zero address constant
