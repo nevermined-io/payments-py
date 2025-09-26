@@ -44,9 +44,7 @@ class BasePaymentsAPI:
         """
         try:
             [_, key] = self.nvm_api_key.split(":")
-            decoded_jwt = jwt.decode(
-                key, options={"verify_signature": False}
-            )
+            decoded_jwt = jwt.decode(key, options={"verify_signature": False})
             self.account_address = decoded_jwt.get("sub")
         except Exception as e:
             raise PaymentsError.validation(f"Invalid NVM API Key: {str(e)}")
