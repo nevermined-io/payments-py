@@ -43,8 +43,9 @@ class BasePaymentsAPI:
             PaymentsError: If the API key is invalid
         """
         try:
+            [_, key] = self.nvm_api_key.split(":")
             decoded_jwt = jwt.decode(
-                self.nvm_api_key, options={"verify_signature": False}
+                key, options={"verify_signature": False}
             )
             self.account_address = decoded_jwt.get("sub")
         except Exception as e:
