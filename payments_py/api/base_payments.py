@@ -45,14 +45,8 @@ class BasePaymentsAPI:
             PaymentsError: If the API key is invalid
         """
         try:
-            # Strip environment prefix if present (e.g., "sandbox-staging:")
-            jwt_token = self.nvm_api_key
-            if ":" in jwt_token:
-                jwt_token = jwt_token.split(":", 1)[1]
-
-            decoded_jwt = jwt.decode(
-                jwt_token, options={"verify_signature": False}
-            )
+            [_, key] = self.nvm_api_key.split(":")
+            decoded_jwt = jwt.decode(key, options={"verify_signature": False})
             self.account_address = decoded_jwt.get("sub")
             self.helicone_api_key = decoded_jwt.get("o11y")
         except Exception as e:
