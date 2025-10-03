@@ -14,8 +14,6 @@ from helicone_helpers.manual_logger import HeliconeResultRecorder
 
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.common.types import PaymentOptions, StartAgentRequest
-from payments_py.utils import generate_deterministic_agent_id, generate_session_id, log_session_info
-
 
 # Type variables for generic functions
 T = TypeVar('T')
@@ -71,6 +69,9 @@ class NeverminedHeliconeHeaders:
     agent_request_id: str
     price_per_credit: str
     environment_name: str
+    batch: str
+    ismargin_based: str
+    margin_percent: str
 
 
 @dataclass
@@ -119,6 +120,12 @@ def get_default_helicone_headers(
         agent_request_id = start_agent_request.agent_request_id
         price_per_credit = start_agent_request.balance.price_per_credit
 
+    # Extract batch value
+    if isinstance(start_agent_request, dict):
+        batch = start_agent_request.get("batch", False)
+    else:
+        batch = start_agent_request.batch
+
     # Build Nevermined headers
     nevermined_headers = {
         'Helicone-Auth': f'Bearer {helicone_api_key}',
@@ -132,6 +139,9 @@ def get_default_helicone_headers(
         'Helicone-Property-agentRequestId': agent_request_id,
         'Helicone-Property-pricePerCredit': str(price_per_credit),
         'Helicone-Property-environmentName': environment_name,
+        'Helicone-Property-batch': str(batch).lower(),
+        'Helicone-Property-ismarginBased': 'false',
+        'Helicone-Property-marginPercent': '0',
     }
 
     # Add custom property headers
@@ -203,7 +213,7 @@ def create_helicone_response(config: HeliconeResponseConfig) -> Dict[str, Any]:
     }
 
 
-async def with_helicone_logging(
+async def with_manual_logging(
     agent_name: str,
     payload_config: HeliconePayloadConfig,
     operation: Callable[[], Awaitable[T]],
@@ -218,16 +228,9 @@ async def with_helicone_logging(
     custom_properties: CustomProperties,
 ) -> R:
     """
-    Wraps an async operation with Helicone logging
+    Wraps an async operation with manual logging
     """
-    # Extract agentId and sessionId from properties, or generate defaults
-    agent_id = custom_properties.get('agentid') or generate_deterministic_agent_id('')
-    session_id = custom_properties.get('sessionid') or generate_session_id()
-
-    # Log session info if these weren't provided in custom properties
-    if 'agentid' not in custom_properties or 'sessionid' not in custom_properties:
-        log_session_info(agent_id, session_id, agent_name)
-
+    # Get default headers
     default_headers = get_default_helicone_headers(
         helicone_api_key,
         account_address,
@@ -318,7 +321,7 @@ def calculate_dummy_song_usage() -> UsageDetails:
     return calculate_song_usage(6)  # Default dummy token count
 
 
-def with_helicone_langchain(
+def with_langchain(
     model: str,
     api_key: str,
     helicone_api_key: str,
@@ -329,7 +332,7 @@ def with_helicone_langchain(
     custom_properties: CustomProperties,
 ) -> ChatOpenAIConfiguration:
     """
-    Creates a ChatOpenAI configuration with Helicone logging enabled
+    Creates a ChatOpenAI configuration with logging enabled
     """
     default_headers = get_default_helicone_headers(
         helicone_api_key,
@@ -349,7 +352,7 @@ def with_helicone_langchain(
     )
 
 
-def with_helicone_openai(
+def with_openai(
     api_key: str,
     helicone_api_key: str,
     helicone_base_logging_url: str,
@@ -359,7 +362,7 @@ def with_helicone_openai(
     custom_properties: CustomProperties,
 ) -> OpenAIConfiguration:
     """
-    Creates an OpenAI client configuration with Helicone logging enabled
+    Creates an OpenAI client configuration with logging enabled
     """
     default_headers = get_default_helicone_headers(
         helicone_api_key,
@@ -405,7 +408,7 @@ class ObservabilityAPI(BasePaymentsAPI):
         """
         return cls(options)
 
-    async def with_helicone_logging(
+    async def with_manual_logging(
         self,
         agent_name: str,
         payload_config: HeliconePayloadConfig,
@@ -417,9 +420,9 @@ class ObservabilityAPI(BasePaymentsAPI):
         custom_properties: CustomProperties,
     ) -> R:
         """
-        Wraps an async operation with Helicone logging
+        Wraps an async operation with manual logging
         """
-        return await with_helicone_logging(
+        return await with_manual_logging(
             agent_name,
             payload_config,
             operation,
@@ -434,7 +437,7 @@ class ObservabilityAPI(BasePaymentsAPI):
             custom_properties,
         )
 
-    def with_helicone_langchain(
+    def with_langchain(
         self,
         model: str,
         api_key: str,
@@ -442,9 +445,9 @@ class ObservabilityAPI(BasePaymentsAPI):
         custom_properties: CustomProperties,
     ) -> ChatOpenAIConfiguration:
         """
-        Creates a ChatOpenAI configuration with Helicone logging enabled
+        Creates a ChatOpenAI configuration with logging enabled
         """
-        return with_helicone_langchain(
+        return with_langchain(
             model,
             api_key,
             self.helicone_api_key,
@@ -455,16 +458,16 @@ class ObservabilityAPI(BasePaymentsAPI):
             custom_properties,
         )
 
-    def with_helicone_openai(
+    def with_openai(
         self,
         api_key: str,
         start_agent_request: StartAgentRequest,
         custom_properties: CustomProperties,
     ) -> OpenAIConfiguration:
         """
-        Creates an OpenAI client configuration with Helicone logging enabled
+        Creates an OpenAI client configuration with logging enabled
         """
-        return with_helicone_openai(
+        return with_openai(
             api_key,
             self.helicone_api_key,
             self.helicone_base_logging_url,
