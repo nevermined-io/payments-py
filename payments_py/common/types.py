@@ -157,6 +157,7 @@ class PlanBalance(BaseModel):
     credits_contract: str
     is_subscriber: bool
     price_per_credit: float
+    batch: bool
 
 
 class PaginationOptions(BaseModel):
