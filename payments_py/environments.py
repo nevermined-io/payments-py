@@ -17,8 +17,8 @@ class EnvironmentInfo:
 
     backend: str
     proxy: str
+    helicone_url: str
     frontend: str = None
-    helicone_url: str = "https://helicone.nevermined.dev"
 
 
 # Zero address constant
@@ -39,26 +39,31 @@ Environments = {
         frontend="https://nevermined.dev",
         backend="https://api.sandbox.nevermined.dev",
         proxy="https://proxy.sandbox.nevermined.dev",
+        helicone_url="https://helicone.nevermined.dev",
     ),
     "staging_live": EnvironmentInfo(
         frontend="https://nevermined.dev",
         backend="https://api.live.nevermined.dev",
         proxy="https://proxy.live.nevermined.dev",
+        helicone_url="https://helicone.nevermined.dev",
     ),
     "sandbox": EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="https://api.sandbox.nevermined.app",
         proxy="https://proxy.sandbox.nevermined.app",
+        helicone_url="https://helicone.nevermined.dev",
     ),
     "live": EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="https://api.live.nevermined.app",
         proxy="https://proxy.live.nevermined.app",
+        helicone_url="https://helicone.nevermined.dev",
     ),
     "custom": EnvironmentInfo(
         frontend=os.getenv("NVM_FRONTEND_URL", "http://localhost:3000"),
         backend=os.getenv("NVM_BACKEND_URL", "http://localhost:3001"),
         proxy=os.getenv("NVM_PROXY_URL", "https://localhost:443"),
+        helicone_url=os.getenv("HELICONE_URL", "http://localhost:8585"),
     ),
 }
 

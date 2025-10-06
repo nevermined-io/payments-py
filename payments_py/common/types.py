@@ -203,6 +203,7 @@ class StartAgentRequest(BaseModel):
     balance: PlanBalance
     url_matching: str
     verb_matching: str
+    batch: bool
 
 
 class AgentAccessCredentials(BaseModel):

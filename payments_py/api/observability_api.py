@@ -70,7 +70,7 @@ class NeverminedHeliconeHeaders:
     price_per_credit: str
     environment_name: str
     batch: str
-    ismargin_based: str
+    is_margin_based: str
     margin_percent: str
 
 
