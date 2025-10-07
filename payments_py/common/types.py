@@ -209,6 +209,15 @@ class StartAgentRequest(BaseModel):
     batch: bool
 
 
+class AgentAccessToken(BaseModel):
+    """
+    Agent access token response from the API.
+    """
+    model_config = ConfigDict(populate_by_name=True)
+
+    access_token: str = Field(alias="accessToken")
+
+
 class AgentAccessCredentials(BaseModel):
     """
     Access credentials for an agent.

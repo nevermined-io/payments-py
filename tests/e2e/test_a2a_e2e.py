@@ -24,6 +24,7 @@ from a2a.types import (
 )
 
 from payments_py import Payments
+from payments_py.common.types import PaymentOptions
 
 # Credentials for E2E testing
 BUILDER_API_KEY = os.getenv(
@@ -693,10 +694,10 @@ class TestA2AE2EFlow:
         """Setup for each test method."""
         # Create Payments instances
         self.payments_publisher = Payments(
-            {"nvm_api_key": BUILDER_API_KEY, "environment": TEST_ENVIRONMENT}
+            PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
         )
         self.payments_subscriber = Payments(
-            {"nvm_api_key": SUBSCRIBER_API_KEY, "environment": TEST_ENVIRONMENT}
+            PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
         )
 
         print(f"Publisher address: {self.payments_publisher.account_address}")
@@ -722,7 +723,7 @@ class TestA2AE2EFlow:
                     PLAN_ID
                 )
                 print(f"Raw balance result: {balance_result}")
-                current_balance = int(balance_result.get("balance", 0))
+                current_balance = int(balance_result.balance)
                 print(f"Current balance: {current_balance}")
             except Exception as balance_error:
                 print(f"❌ Error getting balance: {balance_error}")
@@ -749,7 +750,7 @@ class TestA2AE2EFlow:
                     balance_result = self.payments_subscriber.plans.get_plan_balance(
                         PLAN_ID
                     )
-                    new_balance = int(balance_result.get("balance", 0))
+                    new_balance = int(balance_result.balance)
                     print(f"New balance after ordering: {new_balance}")
                 except Exception as balance_error2:
                     print(f"❌ Error getting balance after order: {balance_error2}")
@@ -771,10 +772,10 @@ class TestA2AE2EFlow:
                 )
             )
             assert agent_access_params is not None
-            assert len(agent_access_params.get("accessToken", "")) > 0
+            assert len(agent_access_params.access_token) > 0
 
             # Store for other tests
-            self.access_token = agent_access_params.get("accessToken")
+            self.access_token = agent_access_params.access_token
             print(f"✅ Got access token: {self.access_token[:20]}...")
 
         except Exception as e:
@@ -794,7 +795,7 @@ class TestA2AE2EFlow:
             balance_before_result = self.payments_subscriber.plans.get_plan_balance(
                 PLAN_ID
             )
-            balance_before = int(balance_before_result.get("balance", 0))
+            balance_before = int(balance_before_result.balance)
             print(f"📊 Balance BEFORE: {balance_before} credits")
         except Exception as e:
             print(f"❌ Error getting balance before: {e}")
@@ -884,7 +885,7 @@ class TestA2AE2EFlow:
                 balance_after_result = self.payments_subscriber.plans.get_plan_balance(
                     PLAN_ID
                 )
-                balance_after = int(balance_after_result.get("balance", 0))
+                balance_after = int(balance_after_result.balance)
                 print(f"📊 Balance AFTER: {balance_after} credits")
 
                 if balance_before is not None:

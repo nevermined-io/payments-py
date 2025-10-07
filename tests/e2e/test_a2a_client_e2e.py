@@ -19,7 +19,7 @@ import requests
 from payments_py.payments import Payments
 from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.a2a.agent_card import build_payment_agent_card
-from payments_py.common.types import PlanMetadata
+from payments_py.common.types import PlanMetadata, PaymentOptions
 from types import SimpleNamespace
 
 
@@ -54,13 +54,13 @@ def _wait_for_server_ready(
 
 @pytest.fixture(scope="module")
 def payments_builder() -> Payments:
-    return Payments({"nvm_api_key": BUILDER_API_KEY, "environment": TEST_ENVIRONMENT})
+    return Payments(PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT))
 
 
 @pytest.fixture(scope="module")
 def payments_subscriber() -> Payments:
     return Payments(
-        {"nvm_api_key": SUBSCRIBER_API_KEY, "environment": TEST_ENVIRONMENT}
+        PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
     )
 
 
