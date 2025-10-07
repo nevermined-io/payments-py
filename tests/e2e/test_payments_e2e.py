@@ -437,7 +437,7 @@ class TestE2ESubscriberAgentFlow:
         )
         assert agent_access_params is not None
         print("Agent Access Params", agent_access_params)
-        assert len(agent_access_params.access_token) > 0
+        assert len(agent_access_params.get("accessToken", "")) > 0
 
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_send_request_to_agent(self):
@@ -451,7 +451,7 @@ class TestE2ESubscriberAgentFlow:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {agent_access_params.access_token}",
+            "Authorization": f"Bearer {agent_access_params.get('accessToken')}",
         }
 
         response = requests.post(agent_url, headers=headers)
@@ -486,7 +486,7 @@ class TestE2ESubscriberAgentFlow:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {agent_access_params.access_token}",
+            "Authorization": f"Bearer {agent_access_params.get('accessToken')}",
         }
 
         response = requests.post(wrong_agent_url, headers=headers)

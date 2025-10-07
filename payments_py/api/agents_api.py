@@ -9,7 +9,6 @@ from payments_py.common.types import (
     PaymentOptions,
     AgentMetadata,
     AgentAPIAttributes,
-    AgentAccessToken,
     PlanMetadata,
     PlanPriceConfig,
     PlanCreditsConfig,
@@ -252,7 +251,7 @@ class AgentsAPI(BasePaymentsAPI):
             raise PaymentsError.from_backend("Unable to remove plan from agent", error)
         return response.json()
 
-    def get_agent_access_token(self, plan_id: str, agent_id: str) -> AgentAccessToken:
+    def get_agent_access_token(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
         """
         Get an access token for an agent.
 
@@ -276,8 +275,7 @@ class AgentsAPI(BasePaymentsAPI):
             except Exception:
                 error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to get agent access token", error)
-        response_data = response.json()
-        return AgentAccessToken(**response_data)
+        return response.json()
 
     def update_agent_metadata(
         self,

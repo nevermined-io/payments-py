@@ -772,10 +772,10 @@ class TestA2AE2EFlow:
                 )
             )
             assert agent_access_params is not None
-            assert len(agent_access_params.access_token) > 0
+            assert len(agent_access_params.get("accessToken", "")) > 0
 
             # Store for other tests
-            self.access_token = agent_access_params.access_token
+            self.access_token = agent_access_params.get("accessToken")
             print(f"✅ Got access token: {self.access_token[:20]}...")
 
         except Exception as e:
