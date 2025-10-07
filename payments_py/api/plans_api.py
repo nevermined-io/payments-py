@@ -265,8 +265,7 @@ class PlansAPI(BasePaymentsAPI):
 
         # Parse and validate response using Pydantic model to ensure type conversion
         response_data = response.json()
-        validated_balance = PlanBalance(**response_data)
-        return validated_balance.model_dump()
+        return PlanBalance(**response_data)
 
     def order_plan(self, plan_id: str) -> Dict[str, bool]:
         """

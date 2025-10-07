@@ -94,37 +94,21 @@ def get_default_helicone_headers(
     helicone_api_key: str,
     account_address: str,
     environment_name: str,
-    start_agent_request: Union[StartAgentRequest, Dict[str, Any]],
+    start_agent_request: StartAgentRequest,
     custom_properties: CustomProperties,
 ) -> Dict[str, str]:
-    """Build default Helicone headers from either StartAgentRequest object or dict"""
+    """Build default Helicone headers from StartAgentRequest object"""
 
-    # Extract values based on input type (handles both API response dicts and StartAgentRequest objects)
-    if isinstance(start_agent_request, dict):
-        balance_info = start_agent_request.get("balance", {})
-        consumer_address = balance_info.get("holderAddress", "")
-        agent_id = start_agent_request.get("agentId", "")
-        plan_id = balance_info.get("planId", "")
-        plan_type = balance_info.get("planType", "")
-        plan_name = balance_info.get("planName", "")
-        agent_name = start_agent_request.get("agentName", "")
-        agent_request_id = start_agent_request.get("agentRequestId", "")
-        price_per_credit = balance_info.get("pricePerCredit", 0)
-    else:
-        consumer_address = start_agent_request.balance.holder_address
-        agent_id = start_agent_request.agent_id
-        plan_id = start_agent_request.balance.plan_id
-        plan_type = start_agent_request.balance.plan_type
-        plan_name = start_agent_request.balance.plan_name
-        agent_name = start_agent_request.agent_name
-        agent_request_id = start_agent_request.agent_request_id
-        price_per_credit = start_agent_request.balance.price_per_credit
-
-    # Extract batch value
-    if isinstance(start_agent_request, dict):
-        batch = start_agent_request.get("batch", False)
-    else:
-        batch = start_agent_request.batch
+    # Extract values from StartAgentRequest object
+    consumer_address = start_agent_request.balance.holder_address
+    agent_id = start_agent_request.agent_id
+    plan_id = start_agent_request.balance.plan_id
+    plan_type = start_agent_request.balance.plan_type
+    plan_name = start_agent_request.balance.plan_name
+    agent_name = start_agent_request.agent_name
+    agent_request_id = start_agent_request.agent_request_id
+    price_per_credit = start_agent_request.balance.price_per_credit
+    batch = start_agent_request.batch
 
     # Build Nevermined headers
     nevermined_headers = {
@@ -358,7 +342,7 @@ def with_openai(
     helicone_base_logging_url: str,
     account_address: str,
     environment_name: str,
-    start_agent_request: Union[StartAgentRequest, Dict[str, Any]],
+    start_agent_request: StartAgentRequest,
     custom_properties: CustomProperties,
 ) -> OpenAIConfiguration:
     """

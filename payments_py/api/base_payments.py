@@ -5,7 +5,7 @@ Provides common functionality such as parsing the NVM API Key and getting the ac
 
 import jwt
 import json
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any
 from enum import Enum
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
@@ -19,17 +19,13 @@ class BasePaymentsAPI:
     It provides common functionality such as parsing the NVM API Key and getting the account address.
     """
 
-    def __init__(self, options: Union[PaymentOptions, Dict[str, Any]]):
+    def __init__(self, options: PaymentOptions):
         """
         Initialize the base payments API.
 
         Args:
             options: The options to initialize the payments class
         """
-        # Convert dict to PaymentOptions if needed
-        if isinstance(options, dict):
-            options = PaymentOptions(**options)
-
         self.nvm_api_key = options.nvm_api_key
         self.return_url = options.return_url or ""
         self.environment = get_environment(options.environment)

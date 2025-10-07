@@ -108,8 +108,7 @@ class AgentRequestsAPI(BasePaymentsAPI):
 
         # Parse and validate response using Pydantic model to ensure type conversion
         response_data = response.json()
-        validated_response = StartAgentRequest(**response_data)
-        return validated_response.model_dump()
+        return StartAgentRequest(**response_data)
 
     def is_valid_request(
         self,
