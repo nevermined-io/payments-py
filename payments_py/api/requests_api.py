@@ -106,7 +106,10 @@ class AgentRequestsAPI(BasePaymentsAPI):
                 f"Unable to validate access token. {response.status_code} - {response.text}"
             )
 
-        return response.json()
+        # Parse and validate response using Pydantic model to ensure type conversion
+        response_data = response.json()
+        validated_response = StartAgentRequest(**response_data)
+        return validated_response.model_dump()
 
     def is_valid_request(
         self,

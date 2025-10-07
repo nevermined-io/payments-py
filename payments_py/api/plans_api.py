@@ -13,6 +13,7 @@ from payments_py.common.types import (
     PlanCreditsType,
     PlanRedemptionType,
     PaginationOptions,
+    PlanBalance,
 )
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.nvm_api import (
@@ -243,7 +244,7 @@ class PlansAPI(BasePaymentsAPI):
             account_address: The account address to check balance for (defaults to current user)
 
         Returns:
-            The plan balance information
+            The plan balance information with properly typed fields (balance as int)
 
         Raises:
             PaymentsError: If unable to get plan balance
@@ -261,7 +262,11 @@ class PlansAPI(BasePaymentsAPI):
             raise PaymentsError.internal(
                 f"Unable to get plan balance. {response.status_code} - {response.text}"
             )
-        return response.json()
+
+        # Parse and validate response using Pydantic model to ensure type conversion
+        response_data = response.json()
+        validated_balance = PlanBalance(**response_data)
+        return validated_balance.model_dump()
 
     def order_plan(self, plan_id: str) -> Dict[str, bool]:
         """
