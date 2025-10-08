@@ -54,7 +54,9 @@ def _wait_for_server_ready(
 
 @pytest.fixture(scope="module")
 def payments_builder() -> Payments:
-    return Payments(PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT))
+    return Payments(
+        PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
+    )
 
 
 @pytest.fixture(scope="module")

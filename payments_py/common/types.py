@@ -148,6 +148,7 @@ class PlanBalance(BaseModel):
     """
     Balance information for a payment plan.
     """
+
     model_config = ConfigDict(populate_by_name=True)
 
     plan_id: str = Field(alias="planId")
@@ -198,6 +199,7 @@ class StartAgentRequest(BaseModel):
     """
     Information about the initialization of an agent request.
     """
+
     model_config = ConfigDict(populate_by_name=True)
 
     agent_request_id: str = Field(alias="agentRequestId")

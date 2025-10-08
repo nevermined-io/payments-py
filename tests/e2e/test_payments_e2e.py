@@ -139,7 +139,9 @@ def payments_subscriber():
 @pytest.fixture(scope="module")
 def payments_builder():
     """Create a Payments instance for the builder."""
-    return Payments(PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT))
+    return Payments(
+        PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
+    )
 
 
 def test_payments_setup(payments_subscriber, payments_builder):

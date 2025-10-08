@@ -50,7 +50,9 @@ class BasePaymentsAPI:
             self.account_address = decoded_jwt.get("sub")
             helicone_key = decoded_jwt.get("o11y")
             if not helicone_key:
-                raise PaymentsError.validation("Helicone API key not found in NVM API Key")
+                raise PaymentsError.validation(
+                    "Helicone API key not found in NVM API Key"
+                )
             self.helicone_api_key = helicone_key
         except PaymentsError:
             raise

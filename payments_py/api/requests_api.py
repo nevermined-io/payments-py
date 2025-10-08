@@ -140,7 +140,9 @@ class AgentRequestsAPI(BasePaymentsAPI):
         )
         return {
             "agentRequestId": agent_request_info.get("agentRequestId"),
-            "isValidRequest": agent_request_info.get("balance", {}).get("isSubscriber", False),
+            "isValidRequest": agent_request_info.get("balance", {}).get(
+                "isSubscriber", False
+            ),
         }
 
     def redeem_with_margin_from_request(
@@ -164,7 +166,10 @@ class AgentRequestsAPI(BasePaymentsAPI):
             PaymentsError: If unable to redeem credits from the request
         """
         return self._redeem_credits(
-            agent_request_id, request_access_token, batch=False, margin_percent=margin_percent
+            agent_request_id,
+            request_access_token,
+            batch=False,
+            margin_percent=margin_percent,
         )
 
     def redeem_with_margin_from_batch_request(
@@ -188,7 +193,10 @@ class AgentRequestsAPI(BasePaymentsAPI):
             PaymentsError: If unable to redeem credits from the request
         """
         return self._redeem_credits(
-            agent_request_id, request_access_token, batch=True, margin_percent=margin_percent
+            agent_request_id,
+            request_access_token,
+            batch=True,
+            margin_percent=margin_percent,
         )
 
     def redeem_credits_from_batch_request(
@@ -212,7 +220,10 @@ class AgentRequestsAPI(BasePaymentsAPI):
             PaymentsError: If unable to redeem credits from the request
         """
         return self._redeem_credits(
-            agent_request_id, request_access_token, batch=True, credits_to_burn=credits_to_burn
+            agent_request_id,
+            request_access_token,
+            batch=True,
+            credits_to_burn=credits_to_burn,
         )
 
     def redeem_credits_from_request(
@@ -236,7 +247,10 @@ class AgentRequestsAPI(BasePaymentsAPI):
             PaymentsError: If unable to redeem credits from the request
         """
         return self._redeem_credits(
-            agent_request_id, request_access_token, batch=False, credits_to_burn=credits_to_burn
+            agent_request_id,
+            request_access_token,
+            batch=False,
+            credits_to_burn=credits_to_burn,
         )
 
     def _redeem_credits(

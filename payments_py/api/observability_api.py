@@ -16,8 +16,8 @@ from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.common.types import PaymentOptions, StartAgentRequest
 
 # Type variables for generic functions
-T = TypeVar('T')
-R = TypeVar('R')
+T = TypeVar("T")
+R = TypeVar("R")
 
 CustomProperties = Dict[str, str]
 
@@ -25,6 +25,7 @@ CustomProperties = Dict[str, str]
 @dataclass
 class HeliconePayloadConfig:
     """Configuration for creating a Helicone payload"""
+
     model: str
     input_data: Dict[str, Any]
     temperature: Optional[float] = None
@@ -38,6 +39,7 @@ class HeliconePayloadConfig:
 @dataclass
 class UsageDetails:
     """Token usage details"""
+
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
@@ -48,6 +50,7 @@ class UsageDetails:
 @dataclass
 class HeliconeResponseConfig:
     """Configuration for creating a Helicone response"""
+
     id_prefix: str
     model: str
     result_data: Any
@@ -58,6 +61,7 @@ class HeliconeResponseConfig:
 @dataclass
 class NeverminedHeliconeHeaders:
     """Nevermined-specific Helicone headers"""
+
     helicone_auth: str
     account_address: str
     consumer_address: str
@@ -77,6 +81,7 @@ class NeverminedHeliconeHeaders:
 @dataclass
 class ChatOpenAIConfiguration:
     """Configuration for ChatOpenAI with Helicone"""
+
     model: str
     api_key: str
     configuration: Dict[str, Any]
@@ -85,6 +90,7 @@ class ChatOpenAIConfiguration:
 @dataclass
 class OpenAIConfiguration:
     """Configuration for OpenAI client with Helicone"""
+
     api_key: str
     base_url: str
     default_headers: Dict[str, str]
@@ -112,26 +118,26 @@ def get_default_helicone_headers(
 
     # Build Nevermined headers
     nevermined_headers = {
-        'Helicone-Auth': f'Bearer {helicone_api_key}',
-        'Helicone-Property-accountAddress': account_address,
-        'Helicone-Property-consumerAddress': consumer_address,
-        'Helicone-Property-agentId': agent_id,
-        'Helicone-Property-planId': plan_id,
-        'Helicone-Property-planType': plan_type,
-        'Helicone-Property-planName': plan_name,
-        'Helicone-Property-agentName': agent_name,
-        'Helicone-Property-agentRequestId': agent_request_id,
-        'Helicone-Property-pricePerCredit': str(price_per_credit),
-        'Helicone-Property-environmentName': environment_name,
-        'Helicone-Property-batch': str(batch).lower(),
-        'Helicone-Property-ismarginBased': 'false',
-        'Helicone-Property-marginPercent': '0',
+        "Helicone-Auth": f"Bearer {helicone_api_key}",
+        "Helicone-Property-accountAddress": account_address,
+        "Helicone-Property-consumerAddress": consumer_address,
+        "Helicone-Property-agentId": agent_id,
+        "Helicone-Property-planId": plan_id,
+        "Helicone-Property-planType": plan_type,
+        "Helicone-Property-planName": plan_name,
+        "Helicone-Property-agentName": agent_name,
+        "Helicone-Property-agentRequestId": agent_request_id,
+        "Helicone-Property-pricePerCredit": str(price_per_credit),
+        "Helicone-Property-environmentName": environment_name,
+        "Helicone-Property-batch": str(batch).lower(),
+        "Helicone-Property-ismarginBased": "false",
+        "Helicone-Property-marginPercent": "0",
     }
 
     # Add custom property headers
     custom_headers = {}
     for key, value in custom_properties.items():
-        custom_headers[f'Helicone-Property-{key}'] = str(value)
+        custom_headers[f"Helicone-Property-{key}"] = str(value)
 
     return {**nevermined_headers, **custom_headers}
 
@@ -139,17 +145,17 @@ def get_default_helicone_headers(
 def create_helicone_payload(config: HeliconePayloadConfig) -> Dict[str, Any]:
     """Creates a standardized Helicone payload for API logging"""
     return {
-        'model': config.model,
-        'temperature': config.temperature or 1.0,
-        'top_p': config.top_p or 1.0,
-        'frequency_penalty': config.frequency_penalty or 0.0,
-        'presence_penalty': config.presence_penalty or 0.0,
-        'n': config.n or 1,
-        'stream': config.stream or False,
-        'messages': [
+        "model": config.model,
+        "temperature": config.temperature or 1.0,
+        "top_p": config.top_p or 1.0,
+        "frequency_penalty": config.frequency_penalty or 0.0,
+        "presence_penalty": config.presence_penalty or 0.0,
+        "n": config.n or 1,
+        "stream": config.stream or False,
+        "messages": [
             {
-                'role': 'user',
-                'content': json.dumps(config.input_data),
+                "role": "user",
+                "content": json.dumps(config.input_data),
             }
         ],
     }
@@ -160,40 +166,42 @@ def create_helicone_response(config: HeliconeResponseConfig) -> Dict[str, Any]:
     timestamp = int(time.time() * 1000)
 
     return {
-        'id': f'{config.id_prefix}-{timestamp}',
-        'object': 'chat.completion',
-        'created': int(timestamp / 1000),
-        'model': config.model,
-        'choices': [
+        "id": f"{config.id_prefix}-{timestamp}",
+        "object": "chat.completion",
+        "created": int(timestamp / 1000),
+        "model": config.model,
+        "choices": [
             {
-                'index': 0,
-                'message': {
-                    'role': 'assistant',
-                    'content': json.dumps(config.result_data),
-                    'refusal': None,
-                    'annotations': [],
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": json.dumps(config.result_data),
+                    "refusal": None,
+                    "annotations": [],
                 },
-                'logprobs': None,
-                'finish_reason': 'stop',
+                "logprobs": None,
+                "finish_reason": "stop",
             }
         ],
-        'usage': {
-            'prompt_tokens': config.usage.prompt_tokens,
-            'completion_tokens': config.usage.completion_tokens,
-            'total_tokens': config.usage.total_tokens,
-            'prompt_tokens_details': config.usage.prompt_tokens_details or {
-                'cached_tokens': 0,
-                'audio_tokens': 0,
+        "usage": {
+            "prompt_tokens": config.usage.prompt_tokens,
+            "completion_tokens": config.usage.completion_tokens,
+            "total_tokens": config.usage.total_tokens,
+            "prompt_tokens_details": config.usage.prompt_tokens_details
+            or {
+                "cached_tokens": 0,
+                "audio_tokens": 0,
             },
-            'completion_tokens_details': config.usage.completion_tokens_details or {
-                'reasoning_tokens': 0,
-                'audio_tokens': 0,
-                'accepted_prediction_tokens': 0,
-                'rejected_prediction_tokens': 0,
+            "completion_tokens_details": config.usage.completion_tokens_details
+            or {
+                "reasoning_tokens": 0,
+                "audio_tokens": 0,
+                "accepted_prediction_tokens": 0,
+                "rejected_prediction_tokens": 0,
             },
         },
-        'service_tier': 'default',
-        'system_fingerprint': config.system_fingerprint or f'fp_{timestamp}',
+        "service_tier": "default",
+        "system_fingerprint": config.system_fingerprint or f"fp_{timestamp}",
     }
 
 
@@ -227,7 +235,7 @@ async def with_manual_logging(
     helicone_logger = HeliconeManualLogger(
         api_key=helicone_api_key,
         logging_endpoint=helicone_manual_logging_url,
-        headers=default_headers
+        headers=default_headers,
     )
 
     helicone_payload = create_helicone_payload(payload_config)
@@ -238,13 +246,16 @@ async def with_manual_logging(
         usage = usage_calculator(internal_result)
         extracted_result = result_extractor(internal_result)
 
-        helicone_response = create_helicone_response(HeliconeResponseConfig(
-            id_prefix=response_id_prefix,
-            model=payload_config.model,
-            result_data=extracted_result,
-            usage=usage,
-            system_fingerprint=getattr(extracted_result, 'job_id', None) and f'fp_{getattr(extracted_result, "job_id", "")}',
-        ))
+        helicone_response = create_helicone_response(
+            HeliconeResponseConfig(
+                id_prefix=response_id_prefix,
+                model=payload_config.model,
+                result_data=extracted_result,
+                usage=usage,
+                system_fingerprint=getattr(extracted_result, "job_id", None)
+                and f'fp_{getattr(extracted_result, "job_id", "")}',
+            )
+        )
 
         result_recorder.append_results(helicone_response)
         return extracted_result
@@ -258,12 +269,12 @@ def calculate_image_usage(pixels: int) -> UsageDetails:
         prompt_tokens=0,
         completion_tokens=pixels,
         total_tokens=pixels,
-        prompt_tokens_details={'cached_tokens': 0, 'audio_tokens': 0},
+        prompt_tokens_details={"cached_tokens": 0, "audio_tokens": 0},
         completion_tokens_details={
-            'reasoning_tokens': 0,
-            'audio_tokens': 0,
-            'accepted_prediction_tokens': 0,
-            'rejected_prediction_tokens': 0,
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0,
         },
     )
 
@@ -274,12 +285,12 @@ def calculate_video_usage() -> UsageDetails:
         prompt_tokens=0,
         completion_tokens=1,
         total_tokens=1,
-        prompt_tokens_details={'cached_tokens': 0, 'audio_tokens': 0},
+        prompt_tokens_details={"cached_tokens": 0, "audio_tokens": 0},
         completion_tokens_details={
-            'reasoning_tokens': 0,
-            'audio_tokens': 0,
-            'accepted_prediction_tokens': 0,
-            'rejected_prediction_tokens': 0,
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0,
         },
     )
 
@@ -290,12 +301,12 @@ def calculate_song_usage(tokens: int) -> UsageDetails:
         prompt_tokens=0,
         completion_tokens=tokens,
         total_tokens=tokens,
-        prompt_tokens_details={'cached_tokens': 0, 'audio_tokens': 0},
+        prompt_tokens_details={"cached_tokens": 0, "audio_tokens": 0},
         completion_tokens_details={
-            'reasoning_tokens': 0,
-            'audio_tokens': 0,
-            'accepted_prediction_tokens': 0,
-            'rejected_prediction_tokens': 0,
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0,
         },
     )
 
@@ -330,9 +341,9 @@ def with_langchain(
         model=model,
         api_key=api_key,
         configuration={
-            'base_url': helicone_base_logging_url,
-            'default_headers': default_headers,
-        }
+            "base_url": helicone_base_logging_url,
+            "default_headers": default_headers,
+        },
     )
 
 
@@ -374,19 +385,18 @@ class ObservabilityAPI(BasePaymentsAPI):
         # TODO: For testing purposes only. Remove once helicone is deployed to staging
         # Get Helicone API key from environment variable and override the base class property
         import os
-        self.helicone_api_key = os.getenv('HELICONE_API_KEY') or self.helicone_api_key
+
+        self.helicone_api_key = os.getenv("HELICONE_API_KEY") or self.helicone_api_key
 
         self.helicone_base_logging_url = urljoin(
-            self.environment.helicone_url,
-            'jawn/v1/gateway/oai/v1'
+            self.environment.helicone_url, "jawn/v1/gateway/oai/v1"
         )
         self.helicone_manual_logging_url = urljoin(
-            self.environment.helicone_url,
-            'jawn/v1/trace/custom/v1/log'
+            self.environment.helicone_url, "jawn/v1/trace/custom/v1/log"
         )
 
     @classmethod
-    def get_instance(cls, options: PaymentOptions) -> 'ObservabilityAPI':
+    def get_instance(cls, options: PaymentOptions) -> "ObservabilityAPI":
         """
         This method is used to create a singleton instance of the ObservabilityAPI class.
         """
@@ -481,6 +491,8 @@ class ObservabilityAPI(BasePaymentsAPI):
         """Creates a standardized Helicone payload for API logging"""
         return create_helicone_payload(config)
 
-    def create_helicone_response(self, config: HeliconeResponseConfig) -> Dict[str, Any]:
+    def create_helicone_response(
+        self, config: HeliconeResponseConfig
+    ) -> Dict[str, Any]:
         """Creates a standardized Helicone response for API logging"""
         return create_helicone_response(config)
