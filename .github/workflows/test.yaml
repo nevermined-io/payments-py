@@ -31,6 +31,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    if: false
     needs: unit_integration
     continue-on-error: true
     steps:

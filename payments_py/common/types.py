@@ -3,7 +3,7 @@ Type definitions for the Nevermined Payments protocol.
 """
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 
 # Address type alias
@@ -149,11 +149,17 @@ class PlanBalance(BaseModel):
     Balance information for a payment plan.
     """
 
-    plan_id: str
-    holder_address: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    plan_id: str = Field(alias="planId")
+    plan_name: str = Field(alias="planName")
+    plan_type: str = Field(alias="planType")
+    holder_address: str = Field(alias="holderAddress")
     balance: int
-    credits_contract: str
-    is_subscriber: bool
+    credits_contract: str = Field(alias="creditsContract")
+    is_subscriber: bool = Field(alias="isSubscriber")
+    price_per_credit: float = Field(alias="pricePerCredit")
+    batch: Optional[bool] = None
 
 
 class PaginationOptions(BaseModel):
@@ -194,10 +200,15 @@ class StartAgentRequest(BaseModel):
     Information about the initialization of an agent request.
     """
 
-    agent_request_id: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    agent_request_id: str = Field(alias="agentRequestId")
+    agent_name: str = Field(alias="agentName")
+    agent_id: str = Field(alias="agentId")
     balance: PlanBalance
-    url_matching: str
-    verb_matching: str
+    url_matching: str = Field(alias="urlMatching")
+    verb_matching: str = Field(alias="verbMatching")
+    batch: bool
 
 
 class AgentAccessCredentials(BaseModel):

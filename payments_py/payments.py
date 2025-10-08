@@ -10,6 +10,7 @@ from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.plans_api import PlansAPI
 from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
+from payments_py.api.observability_api import ObservabilityAPI
 
 # A2A integration
 from payments_py.a2a.agent_card import build_payment_agent_card
@@ -85,6 +86,7 @@ class Payments(BasePaymentsAPI):
         self.agents = AgentsAPI.get_instance(options)
         self.requests = AgentRequestsAPI.get_instance(options)
         self.query = AIQueryApi.get_instance()
+        self.observability = ObservabilityAPI.get_instance(options)
 
         # Cached MCP integration
         self._mcp_integration = None

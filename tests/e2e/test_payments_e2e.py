@@ -11,7 +11,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import requests
 from payments_py.payments import Payments
-from payments_py.common.types import PlanMetadata, PlanPriceType
+from payments_py.common.types import PlanMetadata, PlanPriceType, PaymentOptions
 from payments_py.environments import ZeroAddress
 from payments_py.plans import (
     get_erc20_price_config,
@@ -91,7 +91,7 @@ class MockAgentHandler(BaseHTTPRequestHandler):
                     http_verb,
                 )
                 # If the request is valid and the user is a subscriber
-                if result and result.get("balance", {}).get("isSubscriber"):
+                if result and result.balance.is_subscriber:
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
@@ -132,14 +132,16 @@ def create_mock_server(payments_builder, agent_id):
 def payments_subscriber():
     """Create a Payments instance for the subscriber."""
     return Payments(
-        {"nvm_api_key": SUBSCRIBER_API_KEY, "environment": TEST_ENVIRONMENT}
+        PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
     )
 
 
 @pytest.fixture(scope="module")
 def payments_builder():
     """Create a Payments instance for the builder."""
-    return Payments({"nvm_api_key": BUILDER_API_KEY, "environment": TEST_ENVIRONMENT})
+    return Payments(
+        PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
+    )
 
 
 def test_payments_setup(payments_subscriber, payments_builder):
@@ -361,10 +363,10 @@ def test_get_plan_balance(payments_subscriber):
         if not result:
             return None
         try:
-            bal = int(result.get("balance", 0))
+            bal = int(result.balance)
         except Exception:
             bal = 0
-        if bal > 0 and result.get("isSubscriber"):
+        if bal > 0 and result.is_subscriber:
             return result
         return None
 

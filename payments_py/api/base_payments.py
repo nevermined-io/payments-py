@@ -26,26 +26,36 @@ class BasePaymentsAPI:
         Args:
             options: The options to initialize the payments class
         """
-        self.nvm_api_key = options.get("nvm_api_key")
-        self.return_url = options.get("return_url") or ""
-        self.environment = get_environment(options.get("environment"))
-        self.app_id = options.get("app_id")
-        self.version = options.get("version")
+        self.nvm_api_key = options.nvm_api_key
+        self.return_url = options.return_url or ""
+        self.environment = get_environment(options.environment)
+        self.environment_name = options.environment
+        self.app_id = options.app_id
+        self.version = options.version
         self.account_address: Optional[str] = None
+        self.helicone_api_key: str = None
         self.is_browser_instance = True
         self._parse_nvm_api_key()
 
     def _parse_nvm_api_key(self) -> None:
         """
-        Parse the NVM API Key to get the account address.
+        Parse the NVM API Key to get the account address and helicone API key.
 
         Raises:
-            PaymentsError: If the API key is invalid
+            PaymentsError: If the API key is invalid or missing required fields
         """
         try:
             [_, key] = self.nvm_api_key.split(":")
             decoded_jwt = jwt.decode(key, options={"verify_signature": False})
             self.account_address = decoded_jwt.get("sub")
+            helicone_key = decoded_jwt.get("o11y")
+            if not helicone_key:
+                raise PaymentsError.validation(
+                    "Helicone API key not found in NVM API Key"
+                )
+            self.helicone_api_key = helicone_key
+        except PaymentsError:
+            raise
         except Exception as e:
             raise PaymentsError.validation(f"Invalid NVM API Key: {str(e)}")
 
