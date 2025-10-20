@@ -421,10 +421,7 @@ class AgentRequestsAPI(BasePaymentsAPI):
         return response.json()
 
     def finish_simulation_request(
-        self,
-        agent_request_id: str,
-        margin_percent: float = 0.2,
-        batch: bool = False
+        self, agent_request_id: str, margin_percent: float = 0.2, batch: bool = False
     ) -> Dict[str, Any]:
         """
         Simulates the redemption of credits for an agent request.
@@ -444,7 +441,7 @@ class AgentRequestsAPI(BasePaymentsAPI):
         body = {
             "agentRequestId": agent_request_id,
             "marginPercent": margin_percent,
-            "batch": batch
+            "batch": batch,
         }
         options = self.get_backend_http_options("POST", body)
         url = urljoin(self.environment.backend, API_URL_SIMULATE_REDEEM_AGENT_REQUEST)
