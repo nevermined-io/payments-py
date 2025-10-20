@@ -3,6 +3,7 @@ The AgentRequestsAPI class provides methods to manage the requests received by A
 """
 
 import requests
+import time
 from urllib.parse import urljoin
 from typing import Dict, Any
 from payments_py.common.payments_error import PaymentsError
@@ -418,7 +419,8 @@ class AgentRequestsAPI(BasePaymentsAPI):
                 f"Unable to start simulation request. {response.status_code} - {response.text}"
             )
 
-        return response.json()
+        response_data = response.json()
+        return StartAgentRequest(**response_data)
 
     def finish_simulation_request(
         self, agent_request_id: str, margin_percent: float = 0.2, batch: bool = False
@@ -445,11 +447,29 @@ class AgentRequestsAPI(BasePaymentsAPI):
         }
         options = self.get_backend_http_options("POST", body)
         url = urljoin(self.environment.backend, API_URL_SIMULATE_REDEEM_AGENT_REQUEST)
-        response = requests.post(url, **options)
 
-        if not response.ok:
-            raise PaymentsError.internal(
-                f"Unable to finish simulation request. {response.status_code} - {response.text}"
-            )
+        # Since this method is usually called immediately after the llm call
+        # the request might not be immediately available on helicone, so we need to retry.
+        max_retries = 3
+        last_error = None
 
-        return response.json()
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(url, **options)
+                if not response.ok:
+                    last_error = PaymentsError.internal(
+                        f"Unable to finish simulation request. {response.status_code} - {response.text}"
+                    )
+                    if attempt < max_retries - 1:
+                        time.sleep(1)
+                        continue
+                    raise last_error
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                last_error = PaymentsError.internal(
+                    f"Unable to finish simulation request. Request failed: {str(e)}"
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+                    continue
+                raise last_error
