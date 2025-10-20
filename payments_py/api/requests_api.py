@@ -388,8 +388,8 @@ class AgentRequestsAPI(BasePaymentsAPI):
         self,
         price_per_credit: float = 0.01,
         batch: bool = False,
-        agent_name: str = "Simulated Agent",
-        plan_name: str = "Simulated Plan",
+        agent_name: str = None,
+        plan_name: str = None,
     ) -> StartAgentRequest:
         """
         This method simulates an agent request.
@@ -407,9 +407,11 @@ class AgentRequestsAPI(BasePaymentsAPI):
         body = {
             "pricePerCredit": price_per_credit,
             "batch": batch,
-            "agentName": agent_name,
-            "planName": plan_name,
         }
+        if agent_name is not None:
+            body["agentName"] = agent_name
+        if plan_name is not None:
+            body["planName"] = plan_name
         options = self.get_backend_http_options("POST", body)
         url = urljoin(self.environment.backend, API_URL_SIMULATE_AGENT_REQUEST)
         response = requests.post(url, **options)
