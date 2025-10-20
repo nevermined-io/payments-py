@@ -27,6 +27,8 @@ API_URL_TRACK_AGENT_SUB_TASK = "/api/v1/protocol/agent-sub-tasks"
 API_URL_REGISTER_AGENTS_AND_PLAN = "/api/v1/protocol/agents/plans"
 API_URL_GET_AGENT_PLANS = "/api/v1/protocol/agents/{agent_id}/plans"
 API_URL_UPDATE_AGENT = "/api/v1/protocol/agents/{agent_id}"
+API_URL_SIMULATE_AGENT_REQUEST = "/api/v1/protocol/agents/simulate/start"
+API_URL_SIMULATE_REDEEM_AGENT_REQUEST = "/api/v1/protocol/agents/simulate/finish"
 
 # Token endpoints
 API_URL_GET_AGENT_ACCESS_TOKEN = "/api/v1/protocol/token/{plan_id}/{agent_id}"

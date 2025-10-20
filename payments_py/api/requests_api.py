@@ -3,6 +3,7 @@ The AgentRequestsAPI class provides methods to manage the requests received by A
 """
 
 import requests
+from urllib.parse import urljoin
 from typing import Dict, Any
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import (
@@ -15,6 +16,8 @@ from payments_py.api.nvm_api import (
     API_URL_REDEEM_PLAN,
     API_URL_INITIALIZE_AGENT,
     API_URL_TRACK_AGENT_SUB_TASK,
+    API_URL_SIMULATE_AGENT_REQUEST,
+    API_URL_SIMULATE_REDEEM_AGENT_REQUEST,
 )
 from payments_py.utils import decode_access_token
 
@@ -376,6 +379,80 @@ class AgentRequestsAPI(BasePaymentsAPI):
         if not response.ok:
             raise PaymentsError.internal(
                 f"Unable to track agent sub task. {response.status_code} - {response.text}"
+            )
+
+        return response.json()
+
+    def start_simulation_request(
+        self,
+        price_per_credit: float = 0.01,
+        batch: bool = False,
+        agent_name: str = "Simulated Agent",
+        plan_name: str = "Simulated Plan",
+    ) -> StartAgentRequest:
+        """
+        This method simulates an agent request.
+
+        Args:
+            price_per_credit: The price per credit in USD
+            batch: Whether the request is a batch request
+            agent_name: The name of the agent
+            plan_name: The name of the plan
+
+        Returns:
+            The information about the simulation of the request
+        """
+
+        body = {
+            "pricePerCredit": price_per_credit,
+            "batch": batch,
+            "agentName": agent_name,
+            "planName": plan_name,
+        }
+        options = self.get_backend_http_options("POST", body)
+        url = urljoin(self.environment.backend, API_URL_SIMULATE_AGENT_REQUEST)
+        response = requests.post(url, **options)
+
+        if not response.ok:
+            raise PaymentsError.internal(
+                f"Unable to start simulation request. {response.status_code} - {response.text}"
+            )
+
+        return response.json()
+
+    def finish_simulation_request(
+        self,
+        agent_request_id: str,
+        margin_percent: float = 0.2,
+        batch: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Simulates the redemption of credits for an agent request.
+
+        Args:
+            agent_request_id: The unique identifier of the agent request.
+            margin_percent: The margin percentage to apply. Defaults to 0.2.
+            batch: Whether the request is a batch request. Defaults to False.
+
+        Returns:
+            A dictionary containing the result of the simulation, including the credits to redeem and the success status.
+
+        Raises:
+            PaymentsError: If unable to finish the simulation request.
+        """
+
+        body = {
+            "agentRequestId": agent_request_id,
+            "marginPercent": margin_percent,
+            "batch": batch
+        }
+        options = self.get_backend_http_options("POST", body)
+        url = urljoin(self.environment.backend, API_URL_SIMULATE_REDEEM_AGENT_REQUEST)
+        response = requests.post(url, **options)
+
+        if not response.ok:
+            raise PaymentsError.internal(
+                f"Unable to finish simulation request. {response.status_code} - {response.text}"
             )
 
         return response.json()
