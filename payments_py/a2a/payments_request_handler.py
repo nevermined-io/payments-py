@@ -420,7 +420,9 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 # Intercept the _continue_consuming method for background credit burning
                 original_continue_consuming = result_aggregator._continue_consuming
 
-                async def background_credit_burning_processor(event_stream):
+                async def background_credit_burning_processor(
+                    event_stream, event_callback=None
+                ):
                     """Process background events with credit burning."""
                     async for event in event_stream:
                         print(
@@ -429,6 +431,10 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
                         # Process the event normally (like original _continue_consuming)
                         await result_aggregator.task_manager.process(event)
+
+                        # Call the event callback if provided (to match SDK signature)
+                        if event_callback:
+                            await event_callback(event)
 
                         # Check for credit burning on final events
                         if (
