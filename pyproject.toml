@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "payments-py"
-version = "0.7.7"
+version = "0.8.1"
 description = ""
 authors = ["enrique <enrique@nevermined.io>", "Charly López <charly@nevermined.io>"]
 readme = "README.md"
@@ -20,6 +20,7 @@ pytest-asyncio = "^0.26.0"
 websocket-client = "^1.8.0"
 black = "^25.1.0"
 a2a-sdk = "^0.3.0"
+helicone-helpers = "^1.1.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.1.1"

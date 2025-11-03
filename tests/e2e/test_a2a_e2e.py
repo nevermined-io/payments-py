@@ -24,15 +24,16 @@ from a2a.types import (
 )
 
 from payments_py import Payments
+from payments_py.common.types import PaymentOptions
 
 # Credentials for E2E testing
 BUILDER_API_KEY = os.getenv(
     "TEST_BUILDER_API_KEY",
-    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEQzNzU3YkU0OTgwM0I3ZTUyZDY1ODI2ZkI0N2MyZWY1YjI1QThBYjMiLCJqdGkiOiIweDdmNmNkYWRkYTk1ZWEwOTQyNGVjNDEyN2NiMzk1ODI0NzQ0Mjc4NDRmYTViYTIyZThjMzNiNDczZTc3MWJlODMiLCJleHAiOjE3ODYxMTg0ODd9.vg49k99QZHCyiz09q9arEpYJXAhfPCDLN5-kI_BXEcs0RnO1Hrhx2a0ArC8CLW2twIX_ISkT1rMa_L2GW25VARs",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweDY1MTY0MWRkMjlmY2JjOTUzY2VhMGJkN2ViNDcyNmIxYzQ5N2M1NmZjMmY1ODMwMzMwNmY5ZDM3MzQyMmVkNTgiLCJleHAiOjE3OTA0NTcxNDgsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.i7L7UeHwzYtzYuomJajA3ye_CwYZKU2bMEw3NZl4yJlzJtRMXwIXU_fGrPvKlQKKGgCVk7Enk94RcBMM7D-zMxw",
 )
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
-    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDEzOTgzNERGN2MxODE4OEU4RjczM0JDMTFFOUU1OTdCODg1NjNCNTkiLCJqdGkiOiIweDM4ZTY2ZTBhYTM4ZGRhZWY5YjQ2ZjlhY2IwYjY1MjljNGRjYjczZWZjMTEwMWNiODhkMjczZWEwMzNhMTU5YTIiLCJleHAiOjE3ODYwNjU0ODJ9.nhsDccnsdCIL39I9_seeIqbwsV9TpisdX8OhrE3dzIUwURN5d9eS7YamKPct33GC9Ja8_cTa5QalQiFMhQe-8hw",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweGFmYmRhNWFmNjE2MDU0NDQ2ZGM3MTViOGUwMjYyZDY3NDVlNTFlNGMyYjM3NzgxZWQ2MmNlMTljYjhkOTA5ZDMiLCJleHAiOjE3OTA0NTcwNTYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.N-ugPJUCT2Addz39R-n9SDLahDbfGOcUuCNHz7opZKFdnyi_o4SXdNc4p3OgnI0bU2aENjaCqTGYcAlaZQrdoBs",
 )
 
 # Agent and plan IDs
@@ -693,10 +694,10 @@ class TestA2AE2EFlow:
         """Setup for each test method."""
         # Create Payments instances
         self.payments_publisher = Payments(
-            {"nvm_api_key": BUILDER_API_KEY, "environment": TEST_ENVIRONMENT}
+            PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
         )
         self.payments_subscriber = Payments(
-            {"nvm_api_key": SUBSCRIBER_API_KEY, "environment": TEST_ENVIRONMENT}
+            PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
         )
 
         print(f"Publisher address: {self.payments_publisher.account_address}")
@@ -722,7 +723,7 @@ class TestA2AE2EFlow:
                     PLAN_ID
                 )
                 print(f"Raw balance result: {balance_result}")
-                current_balance = int(balance_result.get("balance", 0))
+                current_balance = int(balance_result.balance)
                 print(f"Current balance: {current_balance}")
             except Exception as balance_error:
                 print(f"❌ Error getting balance: {balance_error}")
@@ -749,7 +750,7 @@ class TestA2AE2EFlow:
                     balance_result = self.payments_subscriber.plans.get_plan_balance(
                         PLAN_ID
                     )
-                    new_balance = int(balance_result.get("balance", 0))
+                    new_balance = int(balance_result.balance)
                     print(f"New balance after ordering: {new_balance}")
                 except Exception as balance_error2:
                     print(f"❌ Error getting balance after order: {balance_error2}")
@@ -794,7 +795,7 @@ class TestA2AE2EFlow:
             balance_before_result = self.payments_subscriber.plans.get_plan_balance(
                 PLAN_ID
             )
-            balance_before = int(balance_before_result.get("balance", 0))
+            balance_before = int(balance_before_result.balance)
             print(f"📊 Balance BEFORE: {balance_before} credits")
         except Exception as e:
             print(f"❌ Error getting balance before: {e}")
@@ -884,7 +885,7 @@ class TestA2AE2EFlow:
                 balance_after_result = self.payments_subscriber.plans.get_plan_balance(
                     PLAN_ID
                 )
-                balance_after = int(balance_after_result.get("balance", 0))
+                balance_after = int(balance_after_result.balance)
                 print(f"📊 Balance AFTER: {balance_after} credits")
 
                 if balance_before is not None:

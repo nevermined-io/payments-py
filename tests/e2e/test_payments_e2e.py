@@ -11,7 +11,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import requests
 from payments_py.payments import Payments
-from payments_py.common.types import PlanMetadata, PlanPriceType
+from payments_py.common.types import PlanMetadata, PlanPriceType, PaymentOptions
 from payments_py.environments import ZeroAddress
 from payments_py.plans import (
     get_erc20_price_config,
@@ -35,11 +35,11 @@ ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 # Test API keys (these should be replaced with test keys in a real environment)
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
-    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDhmMDQ1QkM3QzA0RjRjYzViNjNjOTcyNWM1YTZCMzI5OWQ0YUMxRTIiLCJqdGkiOiIweGY4MWM2YzcwMzk1YjEzZWY3NTgxOWE0NTAzZGNkOGYyNGNmMzg5ZTBkM2U4YmZjZWQ0NzVhMGQwZWU2ZWY1MGUiLCJleHAiOjE3ODYwNDM4OTR9.sGeDtFfR20jadzIwM-uugR7fFX5FkntysPD9a4quyfZ5cy27fxdxWxXzSqGqk2DEVedYIhUU19AbzM9GjK9cUhw",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweGFmYmRhNWFmNjE2MDU0NDQ2ZGM3MTViOGUwMjYyZDY3NDVlNTFlNGMyYjM3NzgxZWQ2MmNlMTljYjhkOTA5ZDMiLCJleHAiOjE3OTA0NTcwNTYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.N-ugPJUCT2Addz39R-n9SDLahDbfGOcUuCNHz7opZKFdnyi_o4SXdNc4p3OgnI0bU2aENjaCqTGYcAlaZQrdoBs",
 )
 BUILDER_API_KEY = os.getenv(
     "TEST_BUILDER_API_KEY",
-    "eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDhmMDQ1QkM3QzA0RjRjYzViNjNjOTcyNWM1YTZCMzI5OWQ0YUMxRTIiLCJqdGkiOiIweGNhZDk3MzVhOGQzOGYxZmZhY2ViMjFhZTE1MjY2NDY4YjkwMmJkNGJiNjhhYWU5MDIxYTUxOTc0NWZlMDViZmQiLCJleHAiOjE3ODYwNDM5NTF9.QALDS9oeukDqDWe7aqv0ZDvL44W3yJp5YFsYRCbGgnV86tfqbSsc9OyDilNEJCip6NH0JAppTaGzcWup7QubBBw",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweDY1MTY0MWRkMjlmY2JjOTUzY2VhMGJkN2ViNDcyNmIxYzQ5N2M1NmZjMmY1ODMwMzMwNmY5ZDM3MzQyMmVkNTgiLCJleHAiOjE3OTA0NTcxNDgsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.i7L7UeHwzYtzYuomJajA3ye_CwYZKU2bMEw3NZl4yJlzJtRMXwIXU_fGrPvKlQKKGgCVk7Enk94RcBMM7D-zMxw",
 )
 
 # Test endpoints
@@ -91,7 +91,7 @@ class MockAgentHandler(BaseHTTPRequestHandler):
                     http_verb,
                 )
                 # If the request is valid and the user is a subscriber
-                if result and result.get("balance", {}).get("isSubscriber"):
+                if result and result.balance.is_subscriber:
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
@@ -132,14 +132,16 @@ def create_mock_server(payments_builder, agent_id):
 def payments_subscriber():
     """Create a Payments instance for the subscriber."""
     return Payments(
-        {"nvm_api_key": SUBSCRIBER_API_KEY, "environment": TEST_ENVIRONMENT}
+        PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
     )
 
 
 @pytest.fixture(scope="module")
 def payments_builder():
     """Create a Payments instance for the builder."""
-    return Payments({"nvm_api_key": BUILDER_API_KEY, "environment": TEST_ENVIRONMENT})
+    return Payments(
+        PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
+    )
 
 
 def test_payments_setup(payments_subscriber, payments_builder):
@@ -361,10 +363,10 @@ def test_get_plan_balance(payments_subscriber):
         if not result:
             return None
         try:
-            bal = int(result.get("balance", 0))
+            bal = int(result.balance)
         except Exception:
             bal = 0
-        if bal > 0 and result.get("isSubscriber"):
+        if bal > 0 and result.is_subscriber:
             return result
         return None
 
