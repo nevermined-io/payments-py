@@ -29,7 +29,7 @@ from payments_py.common.types import PaymentOptions
 # Credentials for E2E testing
 BUILDER_API_KEY = os.getenv(
     "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweDY1MTY0MWRkMjlmY2JjOTUzY2VhMGJkN2ViNDcyNmIxYzQ5N2M1NmZjMmY1ODMwMzMwNmY5ZDM3MzQyMmVkNTgiLCJleHAiOjE3OTA0NTcxNDgsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.i7L7UeHwzYtzYuomJajA3ye_CwYZKU2bMEw3NZl4yJlzJtRMXwIXU_fGrPvKlQKKGgCVk7Enk94RcBMM7D-zMxw",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDdkMjZGRWE4YzVkRDg2MDQ5N0RlNTcwQTc0MTE1MDBhZThFNjUyMkUiLCJqdGkiOiIweDEyMzFjZjNkNTg2OTBiOTI1MjE3NDNmNGYxZjQyMjY2NWJkZjQ1NWQ4ODExM2NmNmIxNjRmNGQyY2MwMjA3MTUiLCJleHAiOjE3OTMzODIzNjgsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.cs19A1-4kBOqufGyVpEdufLUylhm_U4wiFMcPoB5EIkpBWRfWSAZpfvVzQdx1kLAoGxm9TvZ3p3bPbw3L9s26Bs",
 )
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
@@ -37,10 +37,11 @@ SUBSCRIBER_API_KEY = os.getenv(
 )
 
 # Agent and plan IDs
-AGENT_ID = "did:nv:c8f19425ce6dbd62978daf2b455ad5e9f6af6b042ab32ecf56a7e0bf996a4c62"
+AGENT_ID = "did:nv:b4bd6076d769e3eb5253a706af3859cef6cc889213177541adff9dce42eb48fe"
 PLAN_ID = (
-    "66755282194406419306481768016489452625417338265161588823974478568901678904102"
+    "16306740134321831230265340901959750841342260005867505992375605237690344159195"
 )
+PORT = 6782
 
 # Test environment
 TEST_ENVIRONMENT = "staging_sandbox"
@@ -177,7 +178,7 @@ class E2EStreamingExecutor(AgentExecutor):
                         parts=[
                             {
                                 "kind": "text",
-                                "text": f"Streaming update {i+1}/3...",
+                                "text": f"Streaming update {i + 1}/3...",
                             }
                         ],
                         task_id=task_id,
@@ -481,11 +482,11 @@ class A2ATestServer:
         """Start the A2A server in a background thread."""
         from payments_py.a2a.server import PaymentsA2AServer
 
-        # Use fixed port 41243 if not specified (important for payments validation)
+        # Use fixed port 6782 if not specified (important for payments validation)
         if self.port == 0:
-            self.port = 41243
+            self.port = PORT
 
-        self.base_url = f"http://localhost:{self.port}/a2a"
+        self.base_url = f"http://localhost:{self.port}/a2a/"
         print(f"[A2A Server] Starting real A2A server at: {self.base_url}")
 
         # Store references
@@ -501,7 +502,7 @@ class A2ATestServer:
                     agent_card=agent_card,
                     executor=executor,
                     port=self.port,
-                    base_path="/a2a",
+                    base_path="/a2a/",
                     expose_default_routes=True,
                     async_execution=False,
                     webhook_config=webhook_config,
@@ -565,7 +566,9 @@ class A2ATestServer:
                 pass
             time.sleep(0.5)
 
-        print(f"[A2A Server] Warning: Server may not be ready yet after {max_wait/2}s")
+        print(
+            f"[A2A Server] Warning: Server may not be ready yet after {max_wait / 2}s"
+        )
         return self.base_url
 
     def stop(self):
