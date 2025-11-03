@@ -125,7 +125,6 @@ def wait_for_condition(
             try:
                 on_wait(poll_interval_secs)
             except Exception:
-                print(f"Error in on_wait callback: {e}")
                 pass
         time.sleep(poll_interval_secs)
 
