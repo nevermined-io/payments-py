@@ -17,6 +17,7 @@ from payments_py.plans import (
     get_erc20_price_config,
     get_expirable_duration_config,
     get_fiat_price_config,
+    get_crypto_price_config,
     get_fixed_credits_config,
     get_free_price_config,
     get_native_token_price_config,
@@ -284,14 +285,20 @@ def test_create_agent_and_plan(payments_builder):
     """Test creating an agent and plan in one step."""
     global builder_address
     if not builder_address:
-        builder_address = "0x0000000000000000000000000000000000000001"
+        builder_address = payments_builder.account_address
+    timestamp = datetime.now().isoformat()
+    plan_metadata = {
+        "name": f"E2E test Payments Plan PYTHON {timestamp}",
+    }
     agent_metadata = {
         "name": "My AI FIAT Payments Agent",
         "description": "This is a test agent for the E2E Payments tests",
         "tags": ["fiat", "test2"],
     }
     agent_api = {"endpoints": [{"POST": "http://localhost:8889/test/:agentId/tasks"}]}
-    fiat_price_config = get_fiat_price_config(10_000_000, builder_address)
+    crypto_price_config = get_crypto_price_config(
+        10_000_000, builder_address, ERC20_ADDRESS
+    )
     non_expirable_config = get_non_expirable_duration_config()
     # Force randomness of the plan by setting a random duration
     non_expirable_config.duration_secs = get_random_big_int()
@@ -300,7 +307,7 @@ def test_create_agent_and_plan(payments_builder):
             agent_metadata,
             agent_api,
             plan_metadata,
-            fiat_price_config,
+            crypto_price_config,
             non_expirable_config,
         ),
         label="Agent and Plan Registration",
@@ -377,7 +384,7 @@ def test_get_plan_balance(payments_subscriber):
         poll_interval_secs=2.0,
     )
     assert final_balance is not None
-    assert int(final_balance.get("balance", 0)) > 0
+    assert int(final_balance.balance) > 0
 
 
 @pytest.mark.timeout(TEST_TIMEOUT * 2)

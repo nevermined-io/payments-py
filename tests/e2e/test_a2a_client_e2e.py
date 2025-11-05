@@ -26,11 +26,12 @@ from types import SimpleNamespace
 TEST_TIMEOUT = 30
 TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging_sandbox")
 
-SUBSCRIBER_API_KEY = os.getenv("TEST_SUBSCRIBER_API_KEY") or (
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweGFmYmRhNWFmNjE2MDU0NDQ2ZGM3MTViOGUwMjYyZDY3NDVlNTFlNGMyYjM3NzgxZWQ2MmNlMTljYjhkOTA5ZDMiLCJleHAiOjE3OTA0NTcwNTYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.N-ugPJUCT2Addz39R-n9SDLahDbfGOcUuCNHz7opZKFdnyi_o4SXdNc4p3OgnI0bU2aENjaCqTGYcAlaZQrdoBs"
-)
 BUILDER_API_KEY = os.getenv("TEST_BUILDER_API_KEY") or (
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweDY1MTY0MWRkMjlmY2JjOTUzY2VhMGJkN2ViNDcyNmIxYzQ5N2M1NmZjMmY1ODMwMzMwNmY5ZDM3MzQyMmVkNTgiLCJleHAiOjE3OTA0NTcxNDgsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.i7L7UeHwzYtzYuomJajA3ye_CwYZKU2bMEw3NZl4yJlzJtRMXwIXU_fGrPvKlQKKGgCVk7Enk94RcBMM7D-zMxw"
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDdkMjZGRWE4YzVkRDg2MDQ5N0RlNTcwQTc0MTE1MDBhZThFNjUyMkUiLCJqdGkiOiIweDEyMzFjZjNkNTg2OTBiOTI1MjE3NDNmNGYxZjQyMjY2NWJkZjQ1NWQ4ODExM2NmNmIxNjRmNGQyY2MwMjA3MTUiLCJleHAiOjE3OTMzODIzNjgsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.cs19A1-4kBOqufGyVpEdufLUylhm_U4wiFMcPoB5EIkpBWRfWSAZpfvVzQdx1kLAoGxm9TvZ3p3bPbw3L9s26Bs"
+)
+
+SUBSCRIBER_API_KEY = os.getenv("TEST_SUBSCRIBER_API_KEY") or (
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEQxMzA3RmRlRDU2RDc2RDVFOWE1MjY5OGUzNDVDYzUwMjhkQmZjMTQiLCJqdGkiOiIweDZjN2ZlMGM3ODlkOTJhMjljYjNhMzQ3N2Y5OTg3MzkxOTRjZmIzMzE0NDk3Mzc4YTA2MDM3MjZmMGVlMjc0OWYiLCJleHAiOjE3OTMzODI3NjIsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.E3uEMkdaXNHj61su8yth1LrKdRXJQx8XkkWUKaG_EgU-xVMss6_CPQAn5s7cezGAe-G891vDCljlhMyQ4zyrEhw"
 )
 
 ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
@@ -70,33 +71,32 @@ def payments_subscriber() -> Payments:
 def setup_plan_and_agent(payments_builder: Payments, payments_subscriber: Payments):
     """Register plan, order it, and register agent with matching endpoint."""
     # Build a TRIAL plan with FREE price to avoid on-chain allowance in tests
-    price_config = payments_builder.plans.get_free_price_config()
-    credits_config = payments_builder.plans.get_expirable_duration_config(
-        86_400
-    )  # 1 day
-
+    price_config = payments_builder.plans.get_erc20_price_config(
+        1, ERC20_ADDRESS, payments_builder.account_address
+    )
+    credits_config = payments_builder.plans.get_dynamic_credits_config(200, 1, 100)
     plan_metadata = PlanMetadata(name="E2E A2A Client Test Plan PY")
-    plan_result: Dict[str, Any] = payments_builder.plans.register_time_trial_plan(
+    plan_result: Dict[str, Any] = payments_builder.plans.register_credits_plan(
         plan_metadata, price_config, credits_config
     )
     plan_id = plan_result.get("planId")
     assert plan_id, "Plan registration failed"
-
-    # Order plan for subscriber to get credits
-    order_result = payments_subscriber.plans.order_plan(plan_id)
-    assert order_result.get("success") is True
 
     # Register agent with endpoint matching our server
     agent_metadata = {
         "name": "E2E A2A Client Test Agent PY",
         "description": "A2A client test",
     }
-    agent_api = {"endpoints": [{"POST": "http://localhost:41243/a2a/"}]}
+    agent_api = {"endpoints": [{"POST": "http://localhost:6782/a2a/"}]}
     agent_result = payments_builder.agents.register_agent(
         agent_metadata, agent_api, [plan_id]
     )
     agent_id = agent_result.get("agentId")
     assert agent_id, "Agent registration failed"
+
+    # Order plan for subscriber to get credits
+    order_result = payments_subscriber.plans.order_plan(plan_id)
+    assert order_result.get("success") is True
 
     return {"plan_id": plan_id, "agent_id": agent_id}
 
@@ -135,7 +135,7 @@ def running_server(payments_builder: Payments, setup_plan_and_agent):
         "defaultInputModes": ["text"],
         "defaultOutputModes": ["text"],
         "skills": [],
-        "url": "http://localhost:41243/a2a/",
+        "url": "http://localhost:6782/a2a/",
         "version": "1.0.0",
     }
     agent_card = build_payment_agent_card(
@@ -211,9 +211,9 @@ def running_server(payments_builder: Payments, setup_plan_and_agent):
         async def cancelTask(self, _task_id):  # noqa: N802, D401
             return None
 
-    # If server already running on 41243, reuse it
+    # If server already running on 6782, reuse it
     try:
-        _wait_for_server_ready(41243, "/a2a/", retries=4)
+        _wait_for_server_ready(6782, "/a2a/", retries=4)
         yield {"server": None}
         return
     except Exception:
@@ -224,7 +224,7 @@ def running_server(payments_builder: Payments, setup_plan_and_agent):
         agent_card=agent_card,
         executor=_StreamingExecutor(),
         payments_service=payments_builder,
-        port=41243,
+        port=6782,
         base_path="/a2a/",
     )
 
@@ -235,7 +235,7 @@ def running_server(payments_builder: Payments, setup_plan_and_agent):
 
     t = threading.Thread(target=_run, daemon=True)
     t.start()
-    _wait_for_server_ready(41243, "/a2a/")
+    _wait_for_server_ready(6782, "/a2a/")
     yield server_result
     try:
         server_result.server.should_exit = True  # type: ignore[attr-defined]
@@ -250,7 +250,7 @@ class TestA2AClientE2E:
         self, payments_subscriber: Payments, setup_plan_and_agent, running_server
     ):  # noqa: D401
         client = payments_subscriber.a2a["get_client"](
-            agent_base_url="http://localhost:41243/a2a/",
+            agent_base_url="http://localhost:6782/a2a/",
             agent_id=setup_plan_and_agent["agent_id"],
             plan_id=setup_plan_and_agent["plan_id"],
         )
@@ -265,7 +265,7 @@ class TestA2AClientE2E:
         self, payments_subscriber: Payments, setup_plan_and_agent, running_server
     ):  # noqa: D401
         client = payments_subscriber.a2a["get_client"](
-            agent_base_url="http://localhost:41243/a2a/",
+            agent_base_url="http://localhost:6782/a2a/",
             agent_id=setup_plan_and_agent["agent_id"],
             plan_id=setup_plan_and_agent["plan_id"],
         )
@@ -314,7 +314,7 @@ class TestA2AClientE2E:
         self, payments_subscriber: Payments, setup_plan_and_agent, running_server
     ):  # noqa: D401
         client = payments_subscriber.a2a["get_client"](
-            agent_base_url="http://localhost:41243/a2a/",
+            agent_base_url="http://localhost:6782/a2a/",
             agent_id=setup_plan_and_agent["agent_id"],
             plan_id=setup_plan_and_agent["plan_id"],
         )
