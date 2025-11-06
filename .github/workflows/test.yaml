@@ -25,13 +25,13 @@ jobs:
         run: poetry build
       - name: Run unit and integration tests
         env:
-          NVM_API_KEY: ${{ secrets.NVM_API_KEY }}
-          NVM_API_KEY2: ${{ secrets.NVM_API_KEY2 }}
+          TEST_SUBSCRIBER_API_KEY: ${{ secrets.TEST_SUBSCRIBER_API_KEY }}
+          TEST_BUILDER_API_KEY: ${{ secrets.TEST_BUILDER_API_KEY }}
         run: poetry run pytest -m "not slow" -v -s
 
   e2e:
     runs-on: ubuntu-latest
-    if: false
+
     needs: unit_integration
     continue-on-error: true
     steps:
@@ -50,6 +50,6 @@ jobs:
         run: poetry build
       - name: Run E2E tests
         env:
-          NVM_API_KEY: ${{ secrets.NVM_API_KEY }}
-          NVM_API_KEY2: ${{ secrets.NVM_API_KEY2 }}
+          TEST_SUBSCRIBER_API_KEY: ${{ secrets.TEST_SUBSCRIBER_API_KEY }}
+          TEST_BUILDER_API_KEY: ${{ secrets.TEST_BUILDER_API_KEY }}
         run: poetry run pytest -m "slow" -v -s
