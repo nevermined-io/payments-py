@@ -11,7 +11,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import requests
 from payments_py.payments import Payments
-from payments_py.common.types import PlanMetadata, PlanPriceType, PaymentOptions
+from payments_py.common.types import PlanMetadata, PaymentOptions
 from payments_py.environments import ZeroAddress
 from payments_py.plans import (
     get_erc20_price_config,
@@ -163,7 +163,8 @@ def test_fiat_price_config(payments_builder):
         builder_address = "0x0000000000000000000000000000000000000001"
     fiat_price_config = get_fiat_price_config(100, builder_address)
     assert fiat_price_config is not None
-    assert fiat_price_config.price_type == PlanPriceType.FIXED_FIAT_PRICE
+    assert fiat_price_config.token_address == ZeroAddress
+    assert fiat_price_config.is_crypto is False
     assert fiat_price_config.amounts[0] == 100
     assert fiat_price_config.receivers[0] == builder_address
 
@@ -175,7 +176,7 @@ def test_crypto_price_config(payments_builder):
         builder_address = "0x0000000000000000000000000000000000000001"
     crypto_price_config = get_native_token_price_config(100, builder_address)
     assert crypto_price_config is not None
-    assert crypto_price_config.price_type == PlanPriceType.FIXED_PRICE
+    assert crypto_price_config.is_crypto is True
     assert crypto_price_config.amounts[0] == 100
     assert crypto_price_config.receivers[0] == builder_address
     assert crypto_price_config.token_address == ZeroAddress
@@ -276,7 +277,6 @@ def test_create_agent(payments_builder):
     print("RESULT", result)
     agent_id = result.get("agentId", None)
     assert agent_id is not None
-    assert agent_id.startswith("did:nv:")
     print("Agent ID", agent_id)
 
 

@@ -85,7 +85,7 @@ class AgentsAPI(BasePaymentsAPI):
                 error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to register agent", error)
         agent_data = response.json()
-        return {"agentId": agent_data["agentId"]}
+        return {"agentId": agent_data["data"]["agentId"]}
 
     def register_agent_and_plan(
         self,

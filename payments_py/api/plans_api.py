@@ -10,7 +10,6 @@ from payments_py.common.types import (
     PlanMetadata,
     PlanPriceConfig,
     PlanCreditsConfig,
-    PlanCreditsType,
     PlanRedemptionType,
     PaginationOptions,
     PlanBalance,
@@ -122,13 +121,6 @@ class PlansAPI(BasePaymentsAPI):
         Raises:
             PaymentsError: If the credits configuration is invalid
         """
-        if credits_config.credits_type not in [
-            PlanCreditsType.FIXED,
-            PlanCreditsType.DYNAMIC,
-        ]:
-            raise PaymentsError.validation(
-                "The creditsConfig.creditsType must be FIXED or DYNAMIC"
-            )
 
         if credits_config.min_amount > credits_config.max_amount:
             raise PaymentsError.validation(
@@ -161,10 +153,6 @@ class PlansAPI(BasePaymentsAPI):
         Raises:
             PaymentsError: If the credits configuration is invalid
         """
-        if credits_config.credits_type != PlanCreditsType.EXPIRABLE:
-            raise PaymentsError.validation(
-                "The creditsConfig.creditsType must be EXPIRABLE"
-            )
 
         return self.register_plan(plan_metadata, price_config, credits_config)
 
