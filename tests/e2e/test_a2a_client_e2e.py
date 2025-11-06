@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any, Dict
 
 import pytest
 import requests
@@ -19,7 +18,7 @@ import requests
 from payments_py.payments import Payments
 from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.a2a.agent_card import build_payment_agent_card
-from payments_py.common.types import PlanMetadata, PaymentOptions
+from payments_py.common.types import PaymentOptions
 from types import SimpleNamespace
 
 
@@ -37,6 +36,14 @@ BUILDER_API_KEY = os.getenv(
 )
 
 ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+# Agent and plan IDs
+AGENT_ID = (
+    "76304161501296170986003805931327430457475695436611863657937359113430503753297"
+)
+PLAN_ID = (
+    "102028311772782145803359435846682240394763208787555791442493408645601088122811"
+)
+PORT = 6782
 
 
 def _wait_for_server_ready(
@@ -71,36 +78,14 @@ def payments_subscriber() -> Payments:
 
 @pytest.fixture(scope="module")
 def setup_plan_and_agent(payments_builder: Payments, payments_subscriber: Payments):
-    """Register plan, order it, and register agent with matching endpoint."""
-    # Build a TRIAL plan with FREE price to avoid on-chain allowance in tests
-    price_config = payments_builder.plans.get_erc20_price_config(
-        1, ERC20_ADDRESS, payments_builder.account_address
-    )
-    credits_config = payments_builder.plans.get_dynamic_credits_config(200, 1, 100)
-    plan_metadata = PlanMetadata(name="E2E A2A Client Test Plan PY")
-    plan_result: Dict[str, Any] = payments_builder.plans.register_credits_plan(
-        plan_metadata, price_config, credits_config
-    )
-    plan_id = plan_result.get("planId")
-    assert plan_id, "Plan registration failed"
-
-    # Register agent with endpoint matching our server
-    agent_metadata = {
-        "name": "E2E A2A Client Test Agent PY",
-        "description": "A2A client test",
-    }
-    agent_api = {"endpoints": [{"POST": "http://localhost:6782/a2a/"}]}
-    agent_result = payments_builder.agents.register_agent(
-        agent_metadata, agent_api, [plan_id]
-    )
-    agent_id = agent_result.get("agentId")
-    assert agent_id, "Agent registration failed"
+    """Order an existing plan and agent"""
+    global PLAN_ID, AGENT_ID
 
     # Order plan for subscriber to get credits
-    order_result = payments_subscriber.plans.order_plan(plan_id)
+    order_result = payments_subscriber.plans.order_plan(PLAN_ID)
     assert order_result.get("success") is True
 
-    return {"plan_id": plan_id, "agent_id": agent_id}
+    return {"plan_id": PLAN_ID, "agent_id": AGENT_ID}
 
 
 @pytest.fixture(autouse=True)
