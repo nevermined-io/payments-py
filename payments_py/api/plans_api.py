@@ -3,7 +3,7 @@ The PlansAPI class provides methods to register and interact with payment plans 
 """
 
 import requests
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Literal
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import (
     PaymentOptions,
@@ -55,6 +55,9 @@ class PlansAPI(BasePaymentsAPI):
         price_config: PlanPriceConfig,
         credits_config: PlanCreditsConfig,
         nonce: Optional[int] = None,
+        access_limit: Optional[
+            Literal["credits", "time"]
+        ] = None,  # 'credits' or 'time'
     ) -> Dict[str, str]:
         """
         Allows an AI Builder to create a Payment Plan on Nevermined in a flexible manner.
@@ -75,6 +78,14 @@ class PlansAPI(BasePaymentsAPI):
         Raises:
             PaymentsError: If registration fails
         """
+        if access_limit and access_limit not in ["credits", "time"]:
+            raise PaymentsError.validation(
+                "Invalid access limit",
+                "accessLimit must be either 'credits' or 'time'",
+            )
+        if not access_limit:
+            access_limit = "time" if credits_config.duration_secs > 0 else "credits"
+
         if nonce is None:
             nonce = get_random_big_int()
 
@@ -84,6 +95,7 @@ class PlansAPI(BasePaymentsAPI):
             "creditsConfig": self.pydantic_to_dict(credits_config),
             "nonce": nonce,
             "isTrialPlan": getattr(plan_metadata, "is_trial_plan", False),
+            "accessLimit": access_limit,
         }
 
         options = self.get_backend_http_options("POST", body)
@@ -127,7 +139,9 @@ class PlansAPI(BasePaymentsAPI):
                 "The creditsConfig.minAmount can not be more than creditsConfig.maxAmount"
             )
 
-        return self.register_plan(plan_metadata, price_config, credits_config)
+        return self.register_plan(
+            plan_metadata, price_config, credits_config, access_limit="credits"
+        )
 
     def register_time_plan(
         self,
@@ -154,7 +168,9 @@ class PlansAPI(BasePaymentsAPI):
             PaymentsError: If the credits configuration is invalid
         """
 
-        return self.register_plan(plan_metadata, price_config, credits_config)
+        return self.register_plan(
+            plan_metadata, price_config, credits_config, access_limit="time"
+        )
 
     def register_credits_trial_plan(
         self,

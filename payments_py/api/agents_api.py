@@ -3,7 +3,7 @@ The AgentsAPI class provides methods to register and interact with AI Agents on 
 """
 
 import requests
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Literal
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import (
     PaymentOptions,
@@ -94,6 +94,7 @@ class AgentsAPI(BasePaymentsAPI):
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
         credits_config: PlanCreditsConfig,
+        access_limit: Optional[Literal["credits", "time"]] = None,
     ) -> Dict[str, str]:
         """
         Registers a new AI Agent and a Payment Plan associated to this new agent.
@@ -106,18 +107,27 @@ class AgentsAPI(BasePaymentsAPI):
             plan_metadata: Plan metadata
             price_config: Plan price configuration
             credits_config: Plan credits configuration
-
+            access_limit: Optional access limit for the plan
         Returns:
             Dictionary containing agentId, planId, and txHash
 
         Raises:
             PaymentsError: If registration fails
         """
+        if access_limit and access_limit not in ["credits", "time"]:
+            raise PaymentsError.validation(
+                "Invalid access limit",
+                "accessLimit must be either 'credits' or 'time'",
+            )
+        if not access_limit:
+            access_limit = "time" if credits_config.duration_secs > 0 else "credits"
+
         body = {
             "plan": {
                 "metadataAttributes": self.pydantic_to_dict(plan_metadata),
                 "priceConfig": self.pydantic_to_dict(price_config),
                 "creditsConfig": self.pydantic_to_dict(credits_config),
+                "accessLimit": access_limit,
             },
             "agent": {
                 "metadataAttributes": self.pydantic_to_dict(agent_metadata),
