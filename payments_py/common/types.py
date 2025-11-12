@@ -121,12 +121,14 @@ class PlanPriceConfig(BaseModel):
     Definition of the price configuration for a Payment Plan.
     """
 
-    price_type: PlanPriceType
     token_address: Optional[str] = None
     amounts: List[int] = Field(default_factory=list)
     receivers: List[str] = Field(default_factory=list)
     contract_address: Optional[str] = None
     fee_controller: Optional[str] = None
+    external_price_address: Optional[str] = None
+    template_address: Optional[str] = None
+    is_crypto: bool = False
 
 
 class PlanCreditsConfig(BaseModel):
@@ -134,11 +136,11 @@ class PlanCreditsConfig(BaseModel):
     Definition of the credits configuration for a payment plan.
     """
 
-    credits_type: PlanCreditsType
+    is_redemption_amount_fixed: bool = False
     redemption_type: PlanRedemptionType
     proof_required: bool
     duration_secs: int
-    amount: int
+    amount: str
     min_amount: int
     max_amount: int
     nft_address: Optional[str] = None

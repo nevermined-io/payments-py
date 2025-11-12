@@ -11,7 +11,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import requests
 from payments_py.payments import Payments
-from payments_py.common.types import PlanMetadata, PlanPriceType, PaymentOptions
+from payments_py.common.types import PlanMetadata, PaymentOptions
 from payments_py.environments import ZeroAddress
 from payments_py.plans import (
     get_erc20_price_config,
@@ -36,11 +36,11 @@ ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 # Test API keys (these should be replaced with test keys in a real environment)
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweGFmYmRhNWFmNjE2MDU0NDQ2ZGM3MTViOGUwMjYyZDY3NDVlNTFlNGMyYjM3NzgxZWQ2MmNlMTljYjhkOTA5ZDMiLCJleHAiOjE3OTA0NTcwNTYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.N-ugPJUCT2Addz39R-n9SDLahDbfGOcUuCNHz7opZKFdnyi_o4SXdNc4p3OgnI0bU2aENjaCqTGYcAlaZQrdoBs",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEQxMzA3RmRlRDU2RDc2RDVFOWE1MjY5OGUzNDVDYzUwMjhkQmZjMTQiLCJqdGkiOiIweGViM2Q5MmRiNGY2Y2YzYjY3MTNjZjIyMTI5YzE0NWZjYjcwYTZhYWM1YjdiZGExOGVmMTljNTNlYWQwOTY4MDYiLCJleHAiOjE3OTQ0MTA4MDksIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.hhl0nLfHRSwYjR6zkOY-3plPEUQTypwKYPFhYK35j91e_kHeuskt7S5hI8PXrHT_H768KBD8q74O-gk6EtkxoBw",
 )
 BUILDER_API_KEY = os.getenv(
     "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweDY1MTY0MWRkMjlmY2JjOTUzY2VhMGJkN2ViNDcyNmIxYzQ5N2M1NmZjMmY1ODMwMzMwNmY5ZDM3MzQyMmVkNTgiLCJleHAiOjE3OTA0NTcxNDgsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.i7L7UeHwzYtzYuomJajA3ye_CwYZKU2bMEw3NZl4yJlzJtRMXwIXU_fGrPvKlQKKGgCVk7Enk94RcBMM7D-zMxw",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDdkMjZGRWE4YzVkRDg2MDQ5N0RlNTcwQTc0MTE1MDBhZThFNjUyMkUiLCJqdGkiOiIweDgzY2NmZmFmMDI5Nzc5ODhkMmM2OWVkY2RhYTA0YjU0ZTNhYmQwYzgzMmM0MWI3ODAyYWFlYTBhMmQ1MmQzNDMiLCJleHAiOjE3OTQ0MDk5NjYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.LrAuW4Kl60o2tD-jGVSO_GOtmKVpcAOGsy1KTppAIo0LmUoBK2h4mhjCDy8kO6EPp_7LOZEdp1fUQc61E_qnbRw",
 )
 
 # Test endpoints
@@ -163,7 +163,8 @@ def test_fiat_price_config(payments_builder):
         builder_address = "0x0000000000000000000000000000000000000001"
     fiat_price_config = get_fiat_price_config(100, builder_address)
     assert fiat_price_config is not None
-    assert fiat_price_config.price_type == PlanPriceType.FIXED_FIAT_PRICE
+    assert fiat_price_config.token_address == ZeroAddress
+    assert fiat_price_config.is_crypto is False
     assert fiat_price_config.amounts[0] == 100
     assert fiat_price_config.receivers[0] == builder_address
 
@@ -175,7 +176,7 @@ def test_crypto_price_config(payments_builder):
         builder_address = "0x0000000000000000000000000000000000000001"
     crypto_price_config = get_native_token_price_config(100, builder_address)
     assert crypto_price_config is not None
-    assert crypto_price_config.price_type == PlanPriceType.FIXED_PRICE
+    assert crypto_price_config.is_crypto is True
     assert crypto_price_config.amounts[0] == 100
     assert crypto_price_config.receivers[0] == builder_address
     assert crypto_price_config.token_address == ZeroAddress
@@ -276,7 +277,6 @@ def test_create_agent(payments_builder):
     print("RESULT", result)
     agent_id = result.get("agentId", None)
     assert agent_id is not None
-    assert agent_id.startswith("did:nv:")
     print("Agent ID", agent_id)
 
 
@@ -309,6 +309,7 @@ def test_create_agent_and_plan(payments_builder):
             plan_metadata,
             crypto_price_config,
             non_expirable_config,
+            "time",
         ),
         label="Agent and Plan Registration",
         attempts=5,

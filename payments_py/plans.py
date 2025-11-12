@@ -4,9 +4,7 @@ Utility functions for creating and managing payment plans.
 
 from payments_py.common.types import (
     PlanCreditsConfig,
-    PlanCreditsType,
     PlanPriceConfig,
-    PlanPriceType,
     PlanRedemptionType,
     Address,
 )
@@ -39,12 +37,14 @@ def get_fiat_price_config(amount: int, receiver: Address) -> PlanPriceConfig:
     if not is_ethereum_address(receiver):
         raise ValueError(f"Receiver address {receiver} is not a valid Ethereum address")
     return PlanPriceConfig(
-        price_type=PlanPriceType.FIXED_FIAT_PRICE,
         token_address=ZeroAddress,
         amounts=[amount],
         receivers=[receiver],
         contract_address=ZeroAddress,
         fee_controller=ZeroAddress,
+        external_price_address=ZeroAddress,
+        template_address=ZeroAddress,
+        is_crypto=False,
     )
 
 
@@ -68,12 +68,14 @@ def get_crypto_price_config(
     if not is_ethereum_address(receiver):
         raise ValueError(f"Receiver address {receiver} is not a valid Ethereum address")
     return PlanPriceConfig(
-        price_type=PlanPriceType.FIXED_PRICE,
         token_address=token_address,
         amounts=[amount],
         receivers=[receiver],
         contract_address=ZeroAddress,
         fee_controller=ZeroAddress,
+        external_price_address=ZeroAddress,
+        template_address=ZeroAddress,
+        is_crypto=True,
     )
 
 
@@ -102,12 +104,14 @@ def get_free_price_config() -> PlanPriceConfig:
         A PlanPriceConfig object configured for free plans
     """
     return PlanPriceConfig(
-        price_type=PlanPriceType.FIXED_PRICE,
         token_address=ZeroAddress,
         amounts=[],
         receivers=[],
         contract_address=ZeroAddress,
         fee_controller=ZeroAddress,
+        external_price_address=ZeroAddress,
+        template_address=ZeroAddress,
+        is_crypto=True,
     )
 
 
@@ -136,11 +140,11 @@ def get_expirable_duration_config(duration_of_plan: int) -> PlanCreditsConfig:
         A PlanCreditsConfig object configured for expirable duration
     """
     return PlanCreditsConfig(
-        credits_type=PlanCreditsType.EXPIRABLE,
+        is_redemption_amount_fixed=False,
         redemption_type=PlanRedemptionType.ONLY_OWNER,
         proof_required=False,
         duration_secs=duration_of_plan,
-        amount=1,
+        amount="1",
         min_amount=1,
         max_amount=1,
     )
@@ -170,11 +174,11 @@ def get_fixed_credits_config(
         A PlanCreditsConfig object configured for fixed credits
     """
     return PlanCreditsConfig(
-        credits_type=PlanCreditsType.FIXED,
+        is_redemption_amount_fixed=True,
         redemption_type=PlanRedemptionType.ONLY_OWNER,
         proof_required=False,
         duration_secs=0,
-        amount=credits_granted,
+        amount=str(credits_granted),
         min_amount=credits_per_request,
         max_amount=credits_per_request,
     )
@@ -197,11 +201,11 @@ def get_dynamic_credits_config(
         A PlanCreditsConfig object configured for dynamic credits
     """
     return PlanCreditsConfig(
-        credits_type=PlanCreditsType.DYNAMIC,
+        is_redemption_amount_fixed=False,
         redemption_type=PlanRedemptionType.ONLY_OWNER,
         proof_required=False,
         duration_secs=0,
-        amount=credits_granted,
+        amount=str(credits_granted),
         min_amount=min_credits_per_request,
         max_amount=max_credits_per_request,
     )

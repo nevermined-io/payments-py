@@ -23,23 +23,27 @@ from a2a.types import (
     TaskStatusUpdateEvent,
 )
 
+# Setup agent card with payment metadata
 from payments_py import Payments
+from payments_py.a2a.agent_card import build_payment_agent_card
 from payments_py.common.types import PaymentOptions
 
 # Credentials for E2E testing
-BUILDER_API_KEY = os.getenv(
-    "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDdkMjZGRWE4YzVkRDg2MDQ5N0RlNTcwQTc0MTE1MDBhZThFNjUyMkUiLCJqdGkiOiIweDEyMzFjZjNkNTg2OTBiOTI1MjE3NDNmNGYxZjQyMjY2NWJkZjQ1NWQ4ODExM2NmNmIxNjRmNGQyY2MwMjA3MTUiLCJleHAiOjE3OTMzODIzNjgsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.cs19A1-4kBOqufGyVpEdufLUylhm_U4wiFMcPoB5EIkpBWRfWSAZpfvVzQdx1kLAoGxm9TvZ3p3bPbw3L9s26Bs",
-)
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDMwNDExNzk1MTU1OTQ3QUFEZTljNjcxNjA5ZTM5OTkyNjFlNEIxQkIiLCJqdGkiOiIweGFmYmRhNWFmNjE2MDU0NDQ2ZGM3MTViOGUwMjYyZDY3NDVlNTFlNGMyYjM3NzgxZWQ2MmNlMTljYjhkOTA5ZDMiLCJleHAiOjE3OTA0NTcwNTYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.N-ugPJUCT2Addz39R-n9SDLahDbfGOcUuCNHz7opZKFdnyi_o4SXdNc4p3OgnI0bU2aENjaCqTGYcAlaZQrdoBs",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEQxMzA3RmRlRDU2RDc2RDVFOWE1MjY5OGUzNDVDYzUwMjhkQmZjMTQiLCJqdGkiOiIweGViM2Q5MmRiNGY2Y2YzYjY3MTNjZjIyMTI5YzE0NWZjYjcwYTZhYWM1YjdiZGExOGVmMTljNTNlYWQwOTY4MDYiLCJleHAiOjE3OTQ0MTA4MDksIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.hhl0nLfHRSwYjR6zkOY-3plPEUQTypwKYPFhYK35j91e_kHeuskt7S5hI8PXrHT_H768KBD8q74O-gk6EtkxoBw",
+)
+BUILDER_API_KEY = os.getenv(
+    "TEST_BUILDER_API_KEY",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDdkMjZGRWE4YzVkRDg2MDQ5N0RlNTcwQTc0MTE1MDBhZThFNjUyMkUiLCJqdGkiOiIweDgzY2NmZmFmMDI5Nzc5ODhkMmM2OWVkY2RhYTA0YjU0ZTNhYmQwYzgzMmM0MWI3ODAyYWFlYTBhMmQ1MmQzNDMiLCJleHAiOjE3OTQ0MDk5NjYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.LrAuW4Kl60o2tD-jGVSO_GOtmKVpcAOGsy1KTppAIo0LmUoBK2h4mhjCDy8kO6EPp_7LOZEdp1fUQc61E_qnbRw",
 )
 
 # Agent and plan IDs
-AGENT_ID = "did:nv:b4bd6076d769e3eb5253a706af3859cef6cc889213177541adff9dce42eb48fe"
+AGENT_ID = (
+    "81442414411209483844529850569317869529733218382832987133171017068727851746458"
+)
 PLAN_ID = (
-    "16306740134321831230265340901959750841342260005867505992375605237690344159195"
+    "24890539045772260786752588595075759241031033752970056153405148590251675518968"
 )
 PORT = 6782
 
@@ -804,9 +808,6 @@ class TestA2AE2EFlow:
             print(f"❌ Error getting balance before: {e}")
             balance_before = None
 
-        # Setup agent card with payment metadata
-        from payments_py.a2a.agent_card import build_payment_agent_card
-
         agent_card = {
             "name": "E2E Blocking Agent",
             "version": "1.0.0",
@@ -830,7 +831,7 @@ class TestA2AE2EFlow:
         executor = BasicE2EExecutor(execution_time=0.5, credits_to_use=credits_to_burn)
 
         # Start REAL A2A server that can receive HTTP requests
-        a2a_server = A2ATestServer()
+        a2a_server = A2ATestServer(port=PORT)
         server_url = a2a_server.start(
             payments_service=self.payments_publisher,
             agent_card=agent_card,
@@ -942,7 +943,7 @@ class TestA2AE2EFlow:
         executor = E2ETestExecutor()
 
         # Start REAL A2A server
-        a2a_server = A2ATestServer()
+        a2a_server = A2ATestServer(port=PORT)
         server_url = a2a_server.start(
             payments_service=self.payments_publisher,
             agent_card=agent_card,
@@ -1012,7 +1013,7 @@ class TestA2AE2EFlow:
         executor = E2ETestExecutor(execution_time=1.5, credits_to_use=1)
 
         # Start REAL A2A server that can receive HTTP requests
-        a2a_server = A2ATestServer()
+        a2a_server = A2ATestServer(port=PORT)
         server_url = a2a_server.start(
             payments_service=self.payments_publisher,
             agent_card=agent_card,
@@ -1094,7 +1095,7 @@ class TestA2AE2EFlow:
         executor = E2EStreamingTestExecutor(execution_time=0.5, credits_to_use=1)
 
         # Start REAL A2A server
-        a2a_server = A2ATestServer()
+        a2a_server = A2ATestServer(port=PORT)
         server_url = a2a_server.start(
             payments_service=self.payments_publisher,
             agent_card=agent_card,
@@ -1167,7 +1168,7 @@ class TestA2AE2EFlow:
         executor = BasicE2EExecutor(execution_time=3.0, credits_to_use=1)
 
         # Start REAL A2A server
-        a2a_server = A2ATestServer()
+        a2a_server = A2ATestServer(port=PORT)
         server_url = a2a_server.start(
             payments_service=self.payments_publisher,
             agent_card=agent_card,
