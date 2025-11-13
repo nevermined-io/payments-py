@@ -3,18 +3,18 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Nevermined" /><link rel="canonical" href="https://github.com/nevermined-io/payments-py/environments/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Nevermined" /><link rel="canonical" href="https://github.com/nevermined-io/payments-py/mcp/" />
       <link rel="shortcut icon" href="../img/favicon.ico" />
-    <title>Environments - payments-py</title>
+    <title>Mcp - payments-py</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Environments";
-        var mkdocs_page_input_path = "environments.md";
-        var mkdocs_page_url = "/nevermined-io/payments-py/environments/";
+        var mkdocs_page_name = "Mcp";
+        var mkdocs_page_input_path = "mcp.md";
+        var mkdocs_page_url = "/nevermined-io/payments-py/mcp/";
       </script>
     
     <!--[if lt IE 9]>
@@ -51,28 +51,20 @@
                 <li class="toctree-l1"><a class="reference internal" href="../data_models/">Data models</a>
                 </li>
               </ul>
-              <ul class="current">
-                <li class="toctree-l1 current"><a class="reference internal current" href="#">Environments</a>
-    <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#global-variables">Global Variables</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#function-get_environment">function get_environment</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#class-environmentinfo">class EnvironmentInfo</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#method-__init__">method __init__</a>
-    </li>
-        </ul>
-    </li>
-    </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../environments/">Environments</a>
                 </li>
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../mcp.index/">Mcp.index</a>
                 </li>
               </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../mcp/">Mcp</a>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Mcp</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#global-variables">Global Variables</a>
+    </li>
+    </ul>
                 </li>
               </ul>
               <ul>
@@ -109,7 +101,7 @@
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
     <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
-      <li class="breadcrumb-item active">Environments</li>
+      <li class="breadcrumb-item active">Mcp</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -120,61 +112,25 @@
               
                 <!-- markdownlint-disable -->
 
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/environments.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h1 id="module-environments"><kbd>module</kbd> <code>environments</code></h1>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/mcp/__init__.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h1 id="module-mcp"><kbd>module</kbd> <code>mcp</code></h1>
+<p>MCP integration for Nevermined Payments (Python). </p>
+<p>Exposes the factory <code>build_mcp_integration</code> and small helpers. </p>
 <h2 id="global-variables"><strong>Global Variables</strong></h2>
 <ul>
-<li><strong>ZeroAddress</strong></li>
-<li><strong>Environments</strong></li>
+<li><strong>core</strong></li>
+<li><strong>utils</strong></li>
+<li><strong>types</strong></li>
+<li><strong>index</strong></li>
 </ul>
-<hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/environments.py#L71"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h2 id="function-get_environment"><kbd>function</kbd> <code>get_environment</code></h2>
-<pre><code class="language-python">get_environment(
-    name: Literal['sandbox', 'live', 'staging_sandbox', 'staging_live', 'custom']
-) → EnvironmentInfo
-</code></pre>
-<p>Get the environment configuration by name. </p>
-<p><strong>Args:</strong></p>
-<ul>
-<li><b><code>name</code></b>:  The name of the environment. </li>
-</ul>
-<p><strong>Returns:</strong></p>
-<ul>
-<li><b><code>EnvironmentInfo</code></b>:  The environment configuration. </li>
-</ul>
-<p><strong>Raises:</strong></p>
-<ul>
-<li><b><code>ValueError</code></b>:  If the environment name is not defined. </li>
-</ul>
-<hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/environments.py#L6"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h2 id="class-environmentinfo"><kbd>class</kbd> <code>EnvironmentInfo</code></h2>
-<p>Data class to store environment information. </p>
-<p><strong>Attributes:</strong></p>
-<ul>
-<li><b><code>frontend</code></b> (str):  Frontend URL </li>
-<li><b><code>backend</code></b> (str):  Backend URL </li>
-<li><b><code>proxy</code></b> (str):  Proxy URL </li>
-<li><b><code>helicone_url</code></b> (str):  Helicone URL </li>
-</ul>
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/\<string>"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
-<pre><code class="language-python">__init__(
-    backend: str,
-    proxy: str,
-    helicone_url: str,
-    frontend: str = None
-) → None
-</code></pre>
 <hr />
 <p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../data_models/" class="btn btn-neutral float-left" title="Data models"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../mcp.index/" class="btn btn-neutral float-right" title="Mcp.index">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../mcp.index/" class="btn btn-neutral float-left" title="Mcp.index"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../mcp.types/" class="btn btn-neutral float-right" title="Mcp.types">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -197,10 +153,10 @@
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../data_models/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../mcp.index/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../mcp.index/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../mcp.types/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

@@ -4,61 +4,49 @@
 
 ## Modules
 
-- [`data_models`](./data_models.md#module-data_models)
 - [`environments`](./environments.md#module-environments)
-- [`nvm_backend`](./nvm_backend.md#module-nvm_backend)
-- [`payments`](./payments.md#module-payments)
-- [`utils`](./utils.md#module-utils)
+- [`mcp`](./mcp.md#module-mcp): MCP integration for Nevermined Payments (Python).
+- [`mcp.index`](./mcp.index.md#module-mcpindex): MCP integration entry-point for the Nevermined Payments Python SDK.
+- [`mcp.types`](./mcp.types.md#module-mcptypes): Types for MCP paywall functionality.
+- [`plans`](./plans.md#module-plans): Utility functions for creating and managing payment plans.
+- [`utils`](./utils.md#module-utils): Utility functions for the payments library.
 
 ## Classes
 
-- [`data_models.AgentExecutionStatus`](./data_models.md#class-agentexecutionstatus): An enumeration.
-- [`data_models.ApiResponse`](./data_models.md#class-apiresponse)
-- [`data_models.Artifact`](./data_models.md#class-artifact)
-- [`data_models.BalanceResultDto`](./data_models.md#class-balanceresultdto)
-- [`data_models.BaseStepDto`](./data_models.md#class-basestepdto)
-- [`data_models.BurnResultDto`](./data_models.md#class-burnresultdto)
-- [`data_models.CreateAgentAndPlanResultDto`](./data_models.md#class-createagentandplanresultdto)
-- [`data_models.CreateAgentDto`](./data_models.md#class-createagentdto)
-- [`data_models.CreateAssetResultDto`](./data_models.md#class-createassetresultdto)
-- [`data_models.CreateCreditsPlanDto`](./data_models.md#class-createcreditsplandto)
-- [`data_models.CreateFileDto`](./data_models.md#class-createfiledto)
-- [`data_models.CreateServiceDto`](./data_models.md#class-createservicedto)
-- [`data_models.CreateStepsDto`](./data_models.md#class-createstepsdto)
-- [`data_models.CreateTaskDto`](./data_models.md#class-createtaskdto)
-- [`data_models.CreateTimePlanDto`](./data_models.md#class-createtimeplandto)
-- [`data_models.DownloadFileResultDto`](./data_models.md#class-downloadfileresultdto)
-- [`data_models.ExecutionInput`](./data_models.md#class-executioninput)
-- [`data_models.ExecutionOptions`](./data_models.md#class-executionoptions)
-- [`data_models.ExecutionOutput`](./data_models.md#class-executionoutput)
-- [`data_models.FullTaskDto`](./data_models.md#class-fulltaskdto)
-- [`data_models.GetStepsDtoResult`](./data_models.md#class-getstepsdtoresult)
-- [`data_models.GetTasksDtoResult`](./data_models.md#class-gettasksdtoresult)
-- [`data_models.MintResultDto`](./data_models.md#class-mintresultdto)
-- [`data_models.NewStepDto`](./data_models.md#class-newstepdto)
-- [`data_models.OrderPlanResultDto`](./data_models.md#class-orderplanresultdto)
-- [`data_models.PlanType`](./data_models.md#class-plantype): An enumeration.
-- [`data_models.SearchSteps`](./data_models.md#class-searchsteps)
-- [`data_models.SearchStepsDtoResult`](./data_models.md#class-searchstepsdtoresult)
-- [`data_models.SearchTasks`](./data_models.md#class-searchtasks)
-- [`data_models.SearchTasksDtoResult`](./data_models.md#class-searchtasksdtoresult)
-- [`data_models.ServiceTokenResultDto`](./data_models.md#class-servicetokenresultdto)
-- [`data_models.Step`](./data_models.md#class-step)
-- [`data_models.Task`](./data_models.md#class-task)
-- [`data_models.TaskEntityDto`](./data_models.md#class-taskentitydto)
-- [`data_models.TaskLog`](./data_models.md#class-tasklog)
-- [`data_models.UpdateStepDto`](./data_models.md#class-updatestepdto)
-- [`environments.Environment`](./environments.md#class-environment): Enum class to define the different environments
-- [`nvm_backend.BackendApiOptions`](./nvm_backend.md#class-backendapioptions): Represents the backend API options.
-- [`nvm_backend.NVMBackendApi`](./nvm_backend.md#class-nvmbackendapi)
-- [`payments.Payments`](./payments.md#class-payments): A class representing a payment system.
+- [`environments.EnvironmentInfo`](./environments.md#class-environmentinfo): Data class to store environment information.
+- [`index.MCPIntegration`](./mcp.index.md#class-mcpintegration): Class-based MCP integration for Payments.
+- [`types.AuthResult`](./mcp.types.md#class-authresult): Result returned by authentication routines.
+- [`types.BasePaywallOptions`](./mcp.types.md#class-basepaywalloptions): Common paywall options shared by all handler kinds.
+- [`types.PaywallContext`](./mcp.types.md#class-paywallcontext): Context provided to paywall-protected handlers.
+- [`types.PromptOptions`](./mcp.types.md#class-promptoptions): Paywall options for a prompt handler.
+- [`types.ResourceOptions`](./mcp.types.md#class-resourceoptions): Paywall options for a resource handler.
+- [`types.ToolOptions`](./mcp.types.md#class-tooloptions): Paywall options for a tool handler.
 
 ## Functions
 
-- [`utils.generate_step_id`](./utils.md#function-generate_step_id): Generate a random ID.
-- [`utils.get_ai_hub_open_api_url`](./utils.md#function-get_ai_hub_open_api_url): Get the AI Hub Open API URL.
-- [`utils.get_query_protocol_endpoints`](./utils.md#function-get_query_protocol_endpoints): Get the query protocol endpoints.
-- [`utils.is_id_valid`](./utils.md#function-is_id_valid): Check if the ID is valid.
+- [`environments.get_environment`](./environments.md#function-get_environment): Get the environment configuration by name.
+- [`index.build_mcp_integration`](./mcp.index.md#function-build_mcp_integration): Factory that builds the class-based MCP integration.
+- [`plans.get_crypto_price_config`](./plans.md#function-get_crypto_price_config): Get a fixed crypto price configuration for a plan.
+- [`plans.get_dynamic_credits_config`](./plans.md#function-get_dynamic_credits_config): Get a dynamic credits configuration for a plan.
+- [`plans.get_erc20_price_config`](./plans.md#function-get_erc20_price_config): Get a fixed ERC20 token price configuration for a plan.
+- [`plans.get_expirable_duration_config`](./plans.md#function-get_expirable_duration_config): Get an expirable duration configuration for a plan.
+- [`plans.get_fiat_price_config`](./plans.md#function-get_fiat_price_config): Get a fixed fiat price configuration for a plan.
+- [`plans.get_fixed_credits_config`](./plans.md#function-get_fixed_credits_config): Get a fixed credits configuration for a plan.
+- [`plans.get_free_price_config`](./plans.md#function-get_free_price_config): Get a free price configuration for a plan.
+- [`plans.get_native_token_price_config`](./plans.md#function-get_native_token_price_config): Get a fixed native token price configuration for a plan.
+- [`plans.get_non_expirable_duration_config`](./plans.md#function-get_non_expirable_duration_config): Get a non-expirable duration configuration for a plan.
+- [`plans.set_proof_required`](./plans.md#function-set_proof_required): Set whether proof is required for a credits configuration.
+- [`plans.set_redemption_type`](./plans.md#function-set_redemption_type): Set the redemption type for a credits configuration.
+- [`utils.decode_access_token`](./utils.md#function-decode_access_token): Decode an access token to extract wallet address and plan ID.
+- [`utils.generate_step_id`](./utils.md#function-generate_step_id): Generate a random step id.
+- [`utils.get_ai_hub_open_api_url`](./utils.md#function-get_ai_hub_open_api_url): Returns the URL to the OpenAPI documentation of the AI Hub.
+- [`utils.get_query_protocol_endpoints`](./utils.md#function-get_query_protocol_endpoints): Returns the list of endpoints that are used by agents/services implementing the Nevermined Query Protocol.
+- [`utils.get_random_big_int`](./utils.md#function-get_random_big_int): Generate a random big integer with the specified number of bits.
+- [`utils.get_service_host_from_endpoints`](./utils.md#function-get_service_host_from_endpoints): Extract the service host from a list of endpoints.
+- [`utils.is_ethereum_address`](./utils.md#function-is_ethereum_address): Check if a string is a valid Ethereum address.
+- [`utils.is_step_id_valid`](./utils.md#function-is_step_id_valid): Check if the step id has the right format.
+- [`utils.json_replacer`](./utils.md#function-json_replacer): Custom JSON replacer function to handle special values.
+- [`utils.sleep`](./utils.md#function-sleep): Sleep for the specified number of milliseconds.
 - [`utils.snake_to_camel`](./utils.md#function-snake_to_camel): Convert snake_case to camelCase.
 
 

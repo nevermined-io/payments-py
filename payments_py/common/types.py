@@ -46,6 +46,31 @@ class AuthType(str, Enum):
 class AgentAPIAttributes(BaseModel):
     """
     API attributes for an agent.
+
+    Defines the API endpoints and authentication configuration for an agent.
+    Used when registering agents with :meth:`payments.agents.register_agent` or
+    :meth:`payments.agents.register_agent_and_plan`.
+
+    Args:
+        endpoints: List of endpoint dictionaries with HTTP verb as key and URL as value.
+                  URLs can include placeholders like `:agentId` which will be replaced.
+        open_endpoints: List of endpoints that don't require authentication
+        open_api_url: URL to OpenAPI specification
+        auth_type: Authentication type (default: AuthType.NONE)
+        username: Username for basic auth (if auth_type is BASIC)
+        password: Password for basic auth (if auth_type is BASIC)
+        token: Token for bearer auth (if auth_type is BEARER)
+        api_key: API key for authentication
+        headers: Additional headers to include in requests
+
+    Example::
+        agent_api = AgentAPIAttributes(
+            endpoints=[
+                {"POST": "https://example.com/api/v1/agents/:agentId/tasks"},
+                {"GET": "https://example.com/api/v1/agents/:agentId/tasks/:taskId"}
+            ],
+            auth_type=AuthType.BEARER
+        )
     """
 
     endpoints: List[Endpoint]
@@ -62,6 +87,28 @@ class AgentAPIAttributes(BaseModel):
 class AgentMetadata(BaseModel):
     """
     Metadata for an agent.
+
+    Used when registering agents with :meth:`payments.agents.register_agent` or
+    :meth:`payments.agents.register_agent_and_plan`.
+
+    Args:
+        name: The name of the agent (required)
+        description: A description of the agent
+        author: The author of the agent
+        license: License information
+        tags: List of tags for categorization
+        integration: Integration type
+        sample_link: Link to a sample/demo
+        api_description: Description of the API
+        date_created: ISO date string of creation date
+
+    Example::
+        agent_metadata = AgentMetadata(
+            name="My AI Agent",
+            description="A helpful AI assistant",
+            tags=["ai", "assistant"],
+            author="John Doe"
+        )
     """
 
     name: str
@@ -78,6 +125,29 @@ class AgentMetadata(BaseModel):
 class PlanMetadata(AgentMetadata):
     """
     Metadata for a payment plan, extends AgentMetadata.
+
+    Used when registering payment plans with methods like :meth:`payments.plans.register_credits_plan`,
+    :meth:`payments.plans.register_time_plan`, or :meth:`payments.agents.register_agent_and_plan`.
+
+    Args:
+        name: The name of the plan (required, inherited from AgentMetadata)
+        description: A description of the plan (inherited from AgentMetadata)
+        is_trial_plan: Whether this is a trial plan (can only be purchased once per user)
+        All other fields from :class:`AgentMetadata` are also available
+
+    Example::
+        plan_metadata = PlanMetadata(
+            name="Basic Plan",
+            description="100 credits plan",
+            is_trial_plan=False
+        )
+
+        # For trial plans
+        trial_metadata = PlanMetadata(
+            name="Free Trial",
+            description="10 free credits",
+            is_trial_plan=True
+        )
     """
 
     is_trial_plan: Optional[bool] = False
@@ -119,6 +189,28 @@ class PlanRedemptionType(Enum):
 class PlanPriceConfig(BaseModel):
     """
     Definition of the price configuration for a Payment Plan.
+
+    Use helper functions from :mod:`payments_py.plans` to create instances:
+    - :func:`payments_py.plans.get_fiat_price_config` for fiat payments
+    - :func:`payments_py.plans.get_erc20_price_config` for ERC20 token payments
+    - :func:`payments_py.plans.get_native_token_price_config` for native token (ETH) payments
+    - :func:`payments_py.plans.get_free_price_config` for free plans
+
+    Args:
+        token_address: Address of the ERC20 token (ZeroAddress for native token or fiat)
+        amounts: List of payment amounts in smallest unit
+        receivers: List of receiver addresses
+        contract_address: Smart contract address (usually ZeroAddress)
+        fee_controller: Fee controller address (usually ZeroAddress)
+        external_price_address: External price oracle address (usually ZeroAddress)
+        template_address: Template address (usually ZeroAddress)
+        is_crypto: Whether this is a crypto payment (False for fiat)
+
+    Example::
+        # Don't create directly - use helper functions instead:
+        from payments_py.plans import get_erc20_price_config
+
+        price_config = get_erc20_price_config(20, ERC20_ADDRESS, builder_address)
     """
 
     token_address: Optional[str] = None
@@ -134,6 +226,32 @@ class PlanPriceConfig(BaseModel):
 class PlanCreditsConfig(BaseModel):
     """
     Definition of the credits configuration for a payment plan.
+
+    Use helper functions from :mod:`payments_py.plans` to create instances:
+    - :func:`payments_py.plans.get_fixed_credits_config` for fixed credits per request
+    - :func:`payments_py.plans.get_dynamic_credits_config` for variable credits per request
+    - :func:`payments_py.plans.get_expirable_duration_config` for time-limited plans
+    - :func:`payments_py.plans.get_non_expirable_duration_config` for non-expiring plans
+
+    Args:
+        is_redemption_amount_fixed: Whether credits consumed per request is fixed (True) or variable (False)
+        redemption_type: Who can redeem credits (PlanRedemptionType enum)
+        proof_required: Whether proof is required for redemption
+        duration_secs: Duration in seconds (0 for non-expirable, >0 for expirable)
+        amount: Total credits granted as string
+        min_amount: Minimum credits consumed per request
+        max_amount: Maximum credits consumed per request
+        nft_address: Optional NFT address
+
+    Example::
+        # Don't create directly - use helper functions instead:
+        from payments_py.plans import get_fixed_credits_config, ONE_DAY_DURATION, get_expirable_duration_config
+
+        # Fixed credits plan
+        credits_config = get_fixed_credits_config(100, credits_per_request=1)
+
+        # Time-limited plan
+        time_config = get_expirable_duration_config(ONE_DAY_DURATION)
     """
 
     is_redemption_amount_fixed: bool = False
