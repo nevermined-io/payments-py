@@ -100,7 +100,7 @@ class CreateServiceDto(BaseModel):
     token: Optional[str] = None
     endpoints: Optional[List[str]] = None
     open_endpoints: Optional[List[str]] = None
-    open_api_url: Optional[str] = None
+    agent_definition_url: Optional[str] = None
     integration: Optional[str] = None
     sample_link: Optional[str] = None
     api_description: Optional[str] = None
@@ -147,7 +147,8 @@ class CreateAgentDto(BaseModel):
             tags=["ai"]
         )
         agent_api = AgentAPIAttributes(
-            endpoints=[{"POST": "https://example.com/api/v1/agents/:agentId/tasks"}]
+            endpoints=[{"POST": "https://example.com/api/v1/agents/:agentId/tasks"}],
+            agent_definition_url="https://example.com/api/v1/openapi.json"  # OpenAPI spec, MCP Manifest, or A2A agent card
         )
         payment_plans = [plan_id_1, plan_id_2]
 
@@ -167,7 +168,7 @@ class CreateAgentDto(BaseModel):
     token: Optional[str] = None
     endpoints: Optional[List[str]] = None
     open_endpoints: Optional[List[str]] = None
-    open_api_url: Optional[str] = None
+    agent_definition_url: Optional[str] = None
     integration: Optional[str] = None
     sample_link: Optional[str] = None
     api_description: Optional[str] = None

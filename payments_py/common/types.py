@@ -55,7 +55,7 @@ class AgentAPIAttributes(BaseModel):
         endpoints: List of endpoint dictionaries with HTTP verb as key and URL as value.
                   URLs can include placeholders like `:agentId` which will be replaced.
         open_endpoints: List of endpoints that don't require authentication
-        open_api_url: URL to OpenAPI specification
+        agent_definition_url: URL to the agent definition. Can be an OpenAPI spec, MCP Manifest, or A2A agent card. This field is mandatory.
         auth_type: Authentication type (default: AuthType.NONE)
         username: Username for basic auth (if auth_type is BASIC)
         password: Password for basic auth (if auth_type is BASIC)
@@ -69,13 +69,14 @@ class AgentAPIAttributes(BaseModel):
                 {"POST": "https://example.com/api/v1/agents/:agentId/tasks"},
                 {"GET": "https://example.com/api/v1/agents/:agentId/tasks/:taskId"}
             ],
+            agent_definition_url="https://example.com/api/v1/openapi.json",  # OpenAPI spec, MCP Manifest, or A2A agent card
             auth_type=AuthType.BEARER
         )
     """
 
     endpoints: List[Endpoint]
     open_endpoints: Optional[List[str]] = None
-    open_api_url: Optional[str] = None
+    agent_definition_url: str
     auth_type: Optional[AuthType] = AuthType.NONE
     username: Optional[str] = None
     password: Optional[str] = None
