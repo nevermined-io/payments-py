@@ -38,7 +38,19 @@ class CreateAssetResultDto(BaseModel):
 
 
 class CreateCreditsPlanDto(BaseModel):
-    """Create credits plan data transfer object."""
+    """
+    Create credits plan data transfer object.
+
+    Example::
+        from payments_py.common.types import PlanMetadata
+        from payments_py.plans import get_erc20_price_config, get_fixed_credits_config
+
+        plan_metadata = PlanMetadata(name="Plan")
+        price_config = get_erc20_price_config(20, ERC20_ADDRESS, builder_address)
+        credits_config = get_fixed_credits_config(100)
+
+        result = payments.plans.register_credits_plan(plan_metadata, price_config, credits_config)
+    """
 
     name: str
     description: str
@@ -49,7 +61,19 @@ class CreateCreditsPlanDto(BaseModel):
 
 
 class CreateTimePlanDto(BaseModel):
-    """Create time plan data transfer object."""
+    """
+    Create time plan data transfer object.
+
+    Example::
+        from payments_py.common.types import PlanMetadata
+        from payments_py.plans import get_erc20_price_config, get_expirable_duration_config, ONE_DAY_DURATION
+
+        plan_metadata = PlanMetadata(name="Plan")
+        price_config = get_erc20_price_config(50, ERC20_ADDRESS, builder_address)
+        credits_config = get_expirable_duration_config(ONE_DAY_DURATION)
+
+        result = payments.plans.register_time_plan(plan_metadata, price_config, credits_config)
+    """
 
     name: str
     description: str
@@ -76,7 +100,7 @@ class CreateServiceDto(BaseModel):
     token: Optional[str] = None
     endpoints: Optional[List[str]] = None
     open_endpoints: Optional[List[str]] = None
-    open_api_url: Optional[str] = None
+    agent_definition_url: Optional[str] = None
     integration: Optional[str] = None
     sample_link: Optional[str] = None
     api_description: Optional[str] = None
@@ -111,7 +135,25 @@ class CreateFileDto(BaseModel):
 
 
 class CreateAgentDto(BaseModel):
-    """Create agent data transfer object."""
+    """
+    Create agent data transfer object.
+
+    Example::
+        from payments_py.common.types import AgentMetadata, AgentAPIAttributes
+
+        agent_metadata = AgentMetadata(
+            name="Agent",
+            description="Agent description",
+            tags=["ai"]
+        )
+        agent_api = AgentAPIAttributes(
+            endpoints=[{"POST": "https://example.com/api/v1/agents/:agentId/tasks"}],
+            agent_definition_url="https://example.com/api/v1/openapi.json"  # OpenAPI spec, MCP Manifest, or A2A agent card
+        )
+        payment_plans = [plan_id_1, plan_id_2]
+
+        result = payments.agents.register_agent(agent_metadata, agent_api, payment_plans)
+    """
 
     plan_did: str
     name: str
@@ -126,7 +168,7 @@ class CreateAgentDto(BaseModel):
     token: Optional[str] = None
     endpoints: Optional[List[str]] = None
     open_endpoints: Optional[List[str]] = None
-    open_api_url: Optional[str] = None
+    agent_definition_url: Optional[str] = None
     integration: Optional[str] = None
     sample_link: Optional[str] = None
     api_description: Optional[str] = None

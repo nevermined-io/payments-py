@@ -64,11 +64,27 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="mcp.index/">Mcp.index</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="mcp/">Mcp</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="mcp.types/">Mcp.types</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="nvm_backend/">Nvm backend</a>
                 </li>
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="payments/">Payments</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="plans/">Plans</a>
                 </li>
               </ul>
               <ul>
@@ -103,61 +119,49 @@
 <h1 id="api-overview">API Overview</h1>
 <h2 id="modules">Modules</h2>
 <ul>
-<li><a href="data_models/#module-data_models"><code>data_models</code></a></li>
 <li><a href="environments/#module-environments"><code>environments</code></a></li>
-<li><a href="nvm_backend/#module-nvm_backend"><code>nvm_backend</code></a></li>
-<li><a href="payments/#module-payments"><code>payments</code></a></li>
-<li><a href="utils/#module-utils"><code>utils</code></a></li>
+<li><a href="mcp/#module-mcp"><code>mcp</code></a>: MCP integration for Nevermined Payments (Python).</li>
+<li><a href="mcp.index/#module-mcpindex"><code>mcp.index</code></a>: MCP integration entry-point for the Nevermined Payments Python SDK.</li>
+<li><a href="mcp.types/#module-mcptypes"><code>mcp.types</code></a>: Types for MCP paywall functionality.</li>
+<li><a href="plans/#module-plans"><code>plans</code></a>: Utility functions for creating and managing payment plans.</li>
+<li><a href="utils/#module-utils"><code>utils</code></a>: Utility functions for the payments library.</li>
 </ul>
 <h2 id="classes">Classes</h2>
 <ul>
-<li><a href="data_models/#class-agentexecutionstatus"><code>data_models.AgentExecutionStatus</code></a>: An enumeration.</li>
-<li><a href="data_models/#class-apiresponse"><code>data_models.ApiResponse</code></a></li>
-<li><a href="data_models/#class-artifact"><code>data_models.Artifact</code></a></li>
-<li><a href="data_models/#class-balanceresultdto"><code>data_models.BalanceResultDto</code></a></li>
-<li><a href="data_models/#class-basestepdto"><code>data_models.BaseStepDto</code></a></li>
-<li><a href="data_models/#class-burnresultdto"><code>data_models.BurnResultDto</code></a></li>
-<li><a href="data_models/#class-createagentandplanresultdto"><code>data_models.CreateAgentAndPlanResultDto</code></a></li>
-<li><a href="data_models/#class-createagentdto"><code>data_models.CreateAgentDto</code></a></li>
-<li><a href="data_models/#class-createassetresultdto"><code>data_models.CreateAssetResultDto</code></a></li>
-<li><a href="data_models/#class-createcreditsplandto"><code>data_models.CreateCreditsPlanDto</code></a></li>
-<li><a href="data_models/#class-createfiledto"><code>data_models.CreateFileDto</code></a></li>
-<li><a href="data_models/#class-createservicedto"><code>data_models.CreateServiceDto</code></a></li>
-<li><a href="data_models/#class-createstepsdto"><code>data_models.CreateStepsDto</code></a></li>
-<li><a href="data_models/#class-createtaskdto"><code>data_models.CreateTaskDto</code></a></li>
-<li><a href="data_models/#class-createtimeplandto"><code>data_models.CreateTimePlanDto</code></a></li>
-<li><a href="data_models/#class-downloadfileresultdto"><code>data_models.DownloadFileResultDto</code></a></li>
-<li><a href="data_models/#class-executioninput"><code>data_models.ExecutionInput</code></a></li>
-<li><a href="data_models/#class-executionoptions"><code>data_models.ExecutionOptions</code></a></li>
-<li><a href="data_models/#class-executionoutput"><code>data_models.ExecutionOutput</code></a></li>
-<li><a href="data_models/#class-fulltaskdto"><code>data_models.FullTaskDto</code></a></li>
-<li><a href="data_models/#class-getstepsdtoresult"><code>data_models.GetStepsDtoResult</code></a></li>
-<li><a href="data_models/#class-gettasksdtoresult"><code>data_models.GetTasksDtoResult</code></a></li>
-<li><a href="data_models/#class-mintresultdto"><code>data_models.MintResultDto</code></a></li>
-<li><a href="data_models/#class-newstepdto"><code>data_models.NewStepDto</code></a></li>
-<li><a href="data_models/#class-orderplanresultdto"><code>data_models.OrderPlanResultDto</code></a></li>
-<li><a href="data_models/#class-plantype"><code>data_models.PlanType</code></a>: An enumeration.</li>
-<li><a href="data_models/#class-searchsteps"><code>data_models.SearchSteps</code></a></li>
-<li><a href="data_models/#class-searchstepsdtoresult"><code>data_models.SearchStepsDtoResult</code></a></li>
-<li><a href="data_models/#class-searchtasks"><code>data_models.SearchTasks</code></a></li>
-<li><a href="data_models/#class-searchtasksdtoresult"><code>data_models.SearchTasksDtoResult</code></a></li>
-<li><a href="data_models/#class-servicetokenresultdto"><code>data_models.ServiceTokenResultDto</code></a></li>
-<li><a href="data_models/#class-step"><code>data_models.Step</code></a></li>
-<li><a href="data_models/#class-task"><code>data_models.Task</code></a></li>
-<li><a href="data_models/#class-taskentitydto"><code>data_models.TaskEntityDto</code></a></li>
-<li><a href="data_models/#class-tasklog"><code>data_models.TaskLog</code></a></li>
-<li><a href="data_models/#class-updatestepdto"><code>data_models.UpdateStepDto</code></a></li>
-<li><a href="environments/#class-environment"><code>environments.Environment</code></a>: Enum class to define the different environments</li>
-<li><a href="nvm_backend/#class-backendapioptions"><code>nvm_backend.BackendApiOptions</code></a>: Represents the backend API options.</li>
-<li><a href="nvm_backend/#class-nvmbackendapi"><code>nvm_backend.NVMBackendApi</code></a></li>
-<li><a href="payments/#class-payments"><code>payments.Payments</code></a>: A class representing a payment system.</li>
+<li><a href="environments/#class-environmentinfo"><code>environments.EnvironmentInfo</code></a>: Data class to store environment information.</li>
+<li><a href="mcp.index/#class-mcpintegration"><code>index.MCPIntegration</code></a>: Class-based MCP integration for Payments.</li>
+<li><a href="mcp.types/#class-authresult"><code>types.AuthResult</code></a>: Result returned by authentication routines.</li>
+<li><a href="mcp.types/#class-basepaywalloptions"><code>types.BasePaywallOptions</code></a>: Common paywall options shared by all handler kinds.</li>
+<li><a href="mcp.types/#class-paywallcontext"><code>types.PaywallContext</code></a>: Context provided to paywall-protected handlers.</li>
+<li><a href="mcp.types/#class-promptoptions"><code>types.PromptOptions</code></a>: Paywall options for a prompt handler.</li>
+<li><a href="mcp.types/#class-resourceoptions"><code>types.ResourceOptions</code></a>: Paywall options for a resource handler.</li>
+<li><a href="mcp.types/#class-tooloptions"><code>types.ToolOptions</code></a>: Paywall options for a tool handler.</li>
 </ul>
 <h2 id="functions">Functions</h2>
 <ul>
-<li><a href="utils/#function-generate_step_id"><code>utils.generate_step_id</code></a>: Generate a random ID.</li>
-<li><a href="utils/#function-get_ai_hub_open_api_url"><code>utils.get_ai_hub_open_api_url</code></a>: Get the AI Hub Open API URL.</li>
-<li><a href="utils/#function-get_query_protocol_endpoints"><code>utils.get_query_protocol_endpoints</code></a>: Get the query protocol endpoints.</li>
-<li><a href="utils/#function-is_id_valid"><code>utils.is_id_valid</code></a>: Check if the ID is valid.</li>
+<li><a href="environments/#function-get_environment"><code>environments.get_environment</code></a>: Get the environment configuration by name.</li>
+<li><a href="mcp.index/#function-build_mcp_integration"><code>index.build_mcp_integration</code></a>: Factory that builds the class-based MCP integration.</li>
+<li><a href="plans/#function-get_crypto_price_config"><code>plans.get_crypto_price_config</code></a>: Get a fixed crypto price configuration for a plan.</li>
+<li><a href="plans/#function-get_dynamic_credits_config"><code>plans.get_dynamic_credits_config</code></a>: Get a dynamic credits configuration for a plan.</li>
+<li><a href="plans/#function-get_erc20_price_config"><code>plans.get_erc20_price_config</code></a>: Get a fixed ERC20 token price configuration for a plan.</li>
+<li><a href="plans/#function-get_expirable_duration_config"><code>plans.get_expirable_duration_config</code></a>: Get an expirable duration configuration for a plan.</li>
+<li><a href="plans/#function-get_fiat_price_config"><code>plans.get_fiat_price_config</code></a>: Get a fixed fiat price configuration for a plan.</li>
+<li><a href="plans/#function-get_fixed_credits_config"><code>plans.get_fixed_credits_config</code></a>: Get a fixed credits configuration for a plan.</li>
+<li><a href="plans/#function-get_free_price_config"><code>plans.get_free_price_config</code></a>: Get a free price configuration for a plan.</li>
+<li><a href="plans/#function-get_native_token_price_config"><code>plans.get_native_token_price_config</code></a>: Get a fixed native token price configuration for a plan.</li>
+<li><a href="plans/#function-get_non_expirable_duration_config"><code>plans.get_non_expirable_duration_config</code></a>: Get a non-expirable duration configuration for a plan.</li>
+<li><a href="plans/#function-set_proof_required"><code>plans.set_proof_required</code></a>: Set whether proof is required for a credits configuration.</li>
+<li><a href="plans/#function-set_redemption_type"><code>plans.set_redemption_type</code></a>: Set the redemption type for a credits configuration.</li>
+<li><a href="utils/#function-decode_access_token"><code>utils.decode_access_token</code></a>: Decode an access token to extract wallet address and plan ID.</li>
+<li><a href="utils/#function-generate_step_id"><code>utils.generate_step_id</code></a>: Generate a random step id.</li>
+<li><a href="utils/#function-get_ai_hub_open_api_url"><code>utils.get_ai_hub_open_api_url</code></a>: Returns the URL to the OpenAPI documentation of the AI Hub.</li>
+<li><a href="utils/#function-get_query_protocol_endpoints"><code>utils.get_query_protocol_endpoints</code></a>: Returns the list of endpoints that are used by agents/services implementing the Nevermined Query Protocol.</li>
+<li><a href="utils/#function-get_random_big_int"><code>utils.get_random_big_int</code></a>: Generate a random big integer with the specified number of bits.</li>
+<li><a href="utils/#function-get_service_host_from_endpoints"><code>utils.get_service_host_from_endpoints</code></a>: Extract the service host from a list of endpoints.</li>
+<li><a href="utils/#function-is_ethereum_address"><code>utils.is_ethereum_address</code></a>: Check if a string is a valid Ethereum address.</li>
+<li><a href="utils/#function-is_step_id_valid"><code>utils.is_step_id_valid</code></a>: Check if the step id has the right format.</li>
+<li><a href="utils/#function-json_replacer"><code>utils.json_replacer</code></a>: Custom JSON replacer function to handle special values.</li>
+<li><a href="utils/#function-sleep"><code>utils.sleep</code></a>: Sleep for the specified number of milliseconds.</li>
 <li><a href="utils/#function-snake_to_camel"><code>utils.snake_to_camel</code></a>: Convert snake_case to camelCase.</li>
 </ul>
 <hr />
@@ -210,5 +214,5 @@
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-02-25 12:45:32.057255+00:00
+Build Date UTC : 2025-11-13 10:10:30.070812+00:00
 -->

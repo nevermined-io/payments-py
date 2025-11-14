@@ -56,6 +56,18 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../mcp.index/">Mcp.index</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../mcp/">Mcp</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../mcp.types/">Mcp.types</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../nvm_backend/">Nvm backend</a>
                 </li>
               </ul>
@@ -63,18 +75,34 @@
                 <li class="toctree-l1"><a class="reference internal" href="../payments/">Payments</a>
                 </li>
               </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../plans/">Plans</a>
+                </li>
+              </ul>
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Utils</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#function-snake_to_camel">function snake_to_camel</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-is_ethereum_address">function is_ethereum_address</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-get_random_big_int">function get_random_big_int</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#function-generate_step_id">function generate_step_id</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#function-is_id_valid">function is_id_valid</a>
+    <li class="toctree-l2"><a class="reference internal" href="#function-is_step_id_valid">function is_step_id_valid</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-sleep">function sleep</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-json_replacer">function json_replacer</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-decode_access_token">function decode_access_token</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#function-get_query_protocol_endpoints">function get_query_protocol_endpoints</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#function-get_ai_hub_open_api_url">function get_ai_hub_open_api_url</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#function-get_service_host_from_endpoints">function get_service_host_from_endpoints</a>
     </li>
     </ul>
                 </li>
@@ -106,48 +134,120 @@
 
 <p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h1 id="module-utils"><kbd>module</kbd> <code>utils</code></h1>
+<p>Utility functions for the payments library. </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L3"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L13"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h2 id="function-snake_to_camel"><kbd>function</kbd> <code>snake_to_camel</code></h2>
 <pre><code class="language-python">snake_to_camel(name)
 </code></pre>
 <p>Convert snake_case to camelCase. </p>
 <p>:param name: str :return: str </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L14"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h2 id="function-generate_step_id"><kbd>function</kbd> <code>generate_step_id</code></h2>
-<pre><code class="language-python">generate_step_id()
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L24"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-is_ethereum_address"><kbd>function</kbd> <code>is_ethereum_address</code></h2>
+<pre><code class="language-python">is_ethereum_address(address: str) → bool
 </code></pre>
-<p>Generate a random ID. </p>
+<p>Check if a string is a valid Ethereum address. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>address</code></b>:  The address to validate </li>
+</ul>
+<p><strong>Returns:</strong>
+ True if the address is valid, False otherwise </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L51"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-get_random_big_int"><kbd>function</kbd> <code>get_random_big_int</code></h2>
+<pre><code class="language-python">get_random_big_int(bits: int = 128) → int
+</code></pre>
+<p>Generate a random big integer with the specified number of bits. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>bits</code></b>:  The number of bits for the random integer (default: 128) </li>
+</ul>
+<p><strong>Returns:</strong>
+ A random big integer </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L73"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-generate_step_id"><kbd>function</kbd> <code>generate_step_id</code></h2>
+<pre><code class="language-python">generate_step_id() → str
+</code></pre>
+<p>Generate a random step id. </p>
 <p>:return: str </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L23"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
-<h2 id="function-is_id_valid"><kbd>function</kbd> <code>is_id_valid</code></h2>
-<pre><code class="language-python">is_id_valid(id)
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L82"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-is_step_id_valid"><kbd>function</kbd> <code>is_step_id_valid</code></h2>
+<pre><code class="language-python">is_step_id_valid(step_id: str) → bool
 </code></pre>
-<p>Check if the ID is valid. </p>
-<p>:param id: str :return: bool </p>
+<p>Check if the step id has the right format. </p>
+<p>:param step_id: str :return: bool </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L40"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L98"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-sleep"><kbd>function</kbd> <code>sleep</code></h2>
+<pre><code class="language-python">sleep(ms: int) → None
+</code></pre>
+<p>Sleep for the specified number of milliseconds. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>ms</code></b>:  The number of milliseconds to sleep </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L108"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-json_replacer"><kbd>function</kbd> <code>json_replacer</code></h2>
+<pre><code class="language-python">json_replacer(key: str, value: Any) → Any
+</code></pre>
+<p>Custom JSON replacer function to handle special values. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>key</code></b>:  The key being serialized </li>
+<li><b><code>value</code></b>:  The value being serialized </li>
+</ul>
+<p><strong>Returns:</strong>
+ The value to serialize, or None to exclude the key-value pair </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L124"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-decode_access_token"><kbd>function</kbd> <code>decode_access_token</code></h2>
+<pre><code class="language-python">decode_access_token(access_token: str) → Optional[Dict[str, Any]]
+</code></pre>
+<p>Decode an access token to extract wallet address and plan ID. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>access_token</code></b>:  The access token to decode </li>
+</ul>
+<p><strong>Returns:</strong>
+ The decoded token data or None if invalid </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L142"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h2 id="function-get_query_protocol_endpoints"><kbd>function</kbd> <code>get_query_protocol_endpoints</code></h2>
 <pre><code class="language-python">get_query_protocol_endpoints(server_host: str)
 </code></pre>
-<p>Get the query protocol endpoints. </p>
-<p>:return: dict </p>
+<p>Returns the list of endpoints that are used by agents/services implementing the Nevermined Query Protocol. </p>
+<p>:param server_host: str :return: list </p>
 <hr />
-<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L52"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L157"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
 <h2 id="function-get_ai_hub_open_api_url"><kbd>function</kbd> <code>get_ai_hub_open_api_url</code></h2>
-<pre><code class="language-python">get_ai_hub_open_api_url(server_host: str)
+<pre><code class="language-python">get_ai_hub_open_api_url(server_host: str) → str
 </code></pre>
-<p>Get the AI Hub Open API URL. </p>
-<p>:return: str </p>
+<p>Returns the URL to the OpenAPI documentation of the AI Hub. </p>
+<p>:param server_host: str :return: str </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/utils.py#L169"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="function-get_service_host_from_endpoints"><kbd>function</kbd> <code>get_service_host_from_endpoints</code></h2>
+<pre><code class="language-python">get_service_host_from_endpoints(endpoints: List[Dict[str, str]]) → Optional[str]
+</code></pre>
+<p>Extract the service host from a list of endpoints. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>endpoints</code></b>:  List of endpoint dictionaries </li>
+</ul>
+<p><strong>Returns:</strong>
+ The service host URL or None if not found </p>
 <hr />
 <p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../payments/" class="btn btn-neutral float-left" title="Payments"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../plans/" class="btn btn-neutral float-left" title="Plans"><span class="icon icon-circle-arrow-left"></span> Previous</a>
     </div>
 
   <hr/>
@@ -170,7 +270,7 @@
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../payments/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../plans/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
   </span>

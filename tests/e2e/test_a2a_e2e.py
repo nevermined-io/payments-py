@@ -27,24 +27,18 @@ from a2a.types import (
 from payments_py import Payments
 from payments_py.a2a.agent_card import build_payment_agent_card
 from payments_py.common.types import PaymentOptions
+from tests.e2e.helpers.a2a_setup_helpers import create_a2a_test_agent_and_plan
 
 # Credentials for E2E testing
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEQxMzA3RmRlRDU2RDc2RDVFOWE1MjY5OGUzNDVDYzUwMjhkQmZjMTQiLCJqdGkiOiIweGViM2Q5MmRiNGY2Y2YzYjY3MTNjZjIyMTI5YzE0NWZjYjcwYTZhYWM1YjdiZGExOGVmMTljNTNlYWQwOTY4MDYiLCJleHAiOjE3OTQ0MTA4MDksIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.hhl0nLfHRSwYjR6zkOY-3plPEUQTypwKYPFhYK35j91e_kHeuskt7S5hI8PXrHT_H768KBD8q74O-gk6EtkxoBw",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEVCNDk3OTU2OTRBMDc1QTY0ZTY2MzdmMUU5MGYwMjE0Mzg5YjI0YTMiLCJqdGkiOiIweGMzYjYyMWJkYTM5ZDllYWQyMTUyMDliZWY0MDBhMDEzYjM1YjQ2Zjc1NzM4YWFjY2I5ZjdkYWI0ZjQ5MmM5YjgiLCJleHAiOjE3OTQ2NTUwNjAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.YMkGQUjGh7_m07nj8SKXZReNKSryg9mTU3qwJr_TKYATUixbYQTte3CKucjqvgAGzJAd1Kq2ubz3b37n5Zsllxs",
 )
 BUILDER_API_KEY = os.getenv(
     "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDdkMjZGRWE4YzVkRDg2MDQ5N0RlNTcwQTc0MTE1MDBhZThFNjUyMkUiLCJqdGkiOiIweDgzY2NmZmFmMDI5Nzc5ODhkMmM2OWVkY2RhYTA0YjU0ZTNhYmQwYzgzMmM0MWI3ODAyYWFlYTBhMmQ1MmQzNDMiLCJleHAiOjE3OTQ0MDk5NjYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.LrAuW4Kl60o2tD-jGVSO_GOtmKVpcAOGsy1KTppAIo0LmUoBK2h4mhjCDy8kO6EPp_7LOZEdp1fUQc61E_qnbRw",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEFDYjY5YTYzZjljMEI0ZTczNDE0NDM2YjdBODM1NDBGNkM5MmIyMmUiLCJqdGkiOiIweDExZWUwYWYyOGQ5NGVlNmNjZGJhNDJmMDcyNDQyNTQ0ODE5OWRmNTk5ZGRkMDcyMWVlMmI5ZTg5Nzg3MzQ3N2IiLCJleHAiOjE3OTQ2NTU0NTIsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.fnnb-AFxE_ngIAgIRZOY6SpLM3KgpB1z210l_z3T0Fl2G2tHQp9svXrflCsIYoYHW_8kbHllLce827gyfmFvMhw",
 )
 
-# Agent and plan IDs
-AGENT_ID = (
-    "81442414411209483844529850569317869529733218382832987133171017068727851746458"
-)
-PLAN_ID = (
-    "24890539045772260786752588595075759241031033752970056153405148590251675518968"
-)
 PORT = 6782
 
 # Test environment
@@ -697,37 +691,51 @@ class WebhookTestServer:
 class TestA2AE2EFlow:
     """E2E tests for A2A payment flows using Nevermined backend."""
 
-    def setup_method(self):
-        """Setup for each test method."""
+    @classmethod
+    def setup_class(cls):
+        """Setup once for all test methods in the class."""
         # Create Payments instances
-        self.payments_publisher = Payments(
+        cls.payments_publisher = Payments(
             PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
         )
-        self.payments_subscriber = Payments(
+        cls.payments_subscriber = Payments(
             PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
         )
 
-        print(f"Publisher address: {self.payments_publisher.account_address}")
-        print(f"Subscriber address: {self.payments_subscriber.account_address}")
+        print(f"Publisher address: {cls.payments_publisher.account_address}")
+        print(f"Subscriber address: {cls.payments_subscriber.account_address}")
 
-    def teardown_method(self):
-        """Cleanup after each test method."""
+        # Create agent and plan for tests (only once for all tests)
+        setup_result = create_a2a_test_agent_and_plan(
+            cls.payments_publisher,
+            port=PORT,
+            base_path="/a2a/",
+            credits_per_request=1,
+        )
+
+        cls.AGENT_ID = setup_result["agentId"]
+        cls.PLAN_ID = setup_result["planId"]
+        cls.access_token = None  # Will be set after plan is ordered in test_check_balance_and_order_if_needed
+
+    @classmethod
+    def teardown_class(cls):
+        """Cleanup after all test methods in the class."""
 
     @pytest.mark.asyncio
     async def test_check_balance_and_order_if_needed(self):
         """Check subscriber balance and order plan if needed."""
-        print(f"Checking balance for plan: {PLAN_ID}")
+        print(f"Checking balance for plan: {self.PLAN_ID}")
 
         try:
             # Check current balance
-            print(f"Attempting to get balance for plan: {PLAN_ID}")
+            print(f"Attempting to get balance for plan: {self.PLAN_ID}")
             print(
                 f"Using subscriber with address: {self.payments_subscriber.account_address}"
             )
 
             try:
                 balance_result = self.payments_subscriber.plans.get_plan_balance(
-                    PLAN_ID
+                    self.PLAN_ID
                 )
                 print(f"Raw balance result: {balance_result}")
                 current_balance = int(balance_result.balance)
@@ -742,7 +750,9 @@ class TestA2AE2EFlow:
             if current_balance < 10:  # Ensure we have at least 10 credits
                 print("Balance is low, ordering plan...")
                 try:
-                    order_result = self.payments_subscriber.plans.order_plan(PLAN_ID)
+                    order_result = self.payments_subscriber.plans.order_plan(
+                        self.PLAN_ID
+                    )
                     print(f"Order result: {order_result}")
                     if order_result and order_result.get("success"):
                         print("✅ Plan ordered successfully")
@@ -755,7 +765,7 @@ class TestA2AE2EFlow:
                 # Try to check balance again after ordering
                 try:
                     balance_result = self.payments_subscriber.plans.get_plan_balance(
-                        PLAN_ID
+                        self.PLAN_ID
                     )
                     new_balance = int(balance_result.balance)
                     print(f"New balance after ordering: {new_balance}")
@@ -769,38 +779,42 @@ class TestA2AE2EFlow:
             # Don't raise, continue with tests
             print("⚠️ Continuing with tests despite balance check error")
 
-    @pytest.mark.asyncio
-    async def test_get_agent_access_token(self):
-        """Test getting agent access token."""
+        # Get access token after ordering the plan (if ordered)
         try:
             agent_access_params = (
                 self.payments_subscriber.agents.get_agent_access_token(
-                    PLAN_ID, AGENT_ID
+                    self.PLAN_ID, self.AGENT_ID
                 )
             )
-            assert agent_access_params is not None
-            assert len(agent_access_params.get("accessToken", "")) > 0
-
-            # Store for other tests
-            self.access_token = agent_access_params.get("accessToken")
-            print(f"✅ Got access token: {self.access_token[:20]}...")
-
+            self.__class__.access_token = agent_access_params.get("accessToken")
+            print(f"✅ Got access token: {self.__class__.access_token[:20]}...")
         except Exception as e:
-            print(f"❌ Error getting access token: {e}")
-            raise
+            print(f"⚠️ Warning: Could not get access token after ordering: {e}")
+            self.__class__.access_token = None
+
+    @pytest.mark.asyncio
+    async def test_get_agent_access_token(self):
+        """Test getting agent access token."""
+        # Access token is already obtained in setup_class, just verify it exists
+        assert (
+            self.access_token is not None
+        ), "Access token should be set in setup_class"
+        assert len(self.access_token) > 0, "Access token should not be empty"
+        print(f"✅ Access token verified: {self.access_token[:20]}...")
 
     @pytest.mark.asyncio
     async def test_blocking_flow_with_credit_burning(self):
         """Test E2E blocking flow with actual credit burning."""
-        # Ensure we have access token
-        if not hasattr(self, "access_token"):
-            await self.test_get_agent_access_token()
+        # Access token is already set in setup_class
+        assert (
+            self.access_token is not None
+        ), "Access token should be set in setup_class"
 
         # Check balance BEFORE execution
         print("🔍 Checking balance BEFORE execution...")
         try:
             balance_before_result = self.payments_subscriber.plans.get_plan_balance(
-                PLAN_ID
+                self.PLAN_ID
             )
             balance_before = int(balance_before_result.balance)
             print(f"📊 Balance BEFORE: {balance_before} credits")
@@ -815,8 +829,8 @@ class TestA2AE2EFlow:
         }
 
         payment_metadata = {
-            "agentId": AGENT_ID,
-            "planId": PLAN_ID,
+            "agentId": self.AGENT_ID,
+            "planId": self.PLAN_ID,
             "credits": 50,
             "paymentType": "credits",
             "isTrialPlan": False,
@@ -887,7 +901,7 @@ class TestA2AE2EFlow:
             print("🔍 Checking balance AFTER execution...")
             try:
                 balance_after_result = self.payments_subscriber.plans.get_plan_balance(
-                    PLAN_ID
+                    self.PLAN_ID
                 )
                 balance_after = int(balance_after_result.balance)
                 print(f"📊 Balance AFTER: {balance_after} credits")
@@ -932,8 +946,8 @@ class TestA2AE2EFlow:
         }
 
         payment_metadata = {
-            "agentId": AGENT_ID,
-            "planId": PLAN_ID,
+            "agentId": self.AGENT_ID,
+            "planId": self.PLAN_ID,
             "credits": 50,
             "paymentType": "credits",
             "isTrialPlan": False,
@@ -986,9 +1000,10 @@ class TestA2AE2EFlow:
     @pytest.mark.asyncio
     async def test_non_blocking_flow(self):
         """Test E2E non-blocking flow."""
-        # Ensure we have access token
-        if not hasattr(self, "access_token"):
-            await self.test_get_agent_access_token()
+        # Access token is already set in setup_class
+        assert (
+            self.access_token is not None
+        ), "Access token should be set in setup_class"
 
         # Setup
         from payments_py.a2a.agent_card import build_payment_agent_card
@@ -1000,8 +1015,8 @@ class TestA2AE2EFlow:
         }
 
         payment_metadata = {
-            "agentId": AGENT_ID,
-            "planId": PLAN_ID,
+            "agentId": self.AGENT_ID,
+            "planId": self.PLAN_ID,
             "credits": 50,
             "paymentType": "credits",
             "isTrialPlan": False,
@@ -1068,9 +1083,10 @@ class TestA2AE2EFlow:
     @pytest.mark.asyncio
     async def test_streaming_flow(self):
         """Test E2E streaming flow."""
-        # Ensure we have access token
-        if not hasattr(self, "access_token"):
-            await self.test_get_agent_access_token()
+        # Access token is already set in setup_class
+        assert (
+            self.access_token is not None
+        ), "Access token should be set in setup_class"
 
         # Setup agent card with streaming enabled
         from payments_py.a2a.agent_card import build_payment_agent_card
@@ -1082,8 +1098,8 @@ class TestA2AE2EFlow:
         }
 
         payment_metadata = {
-            "agentId": AGENT_ID,
-            "planId": PLAN_ID,
+            "agentId": self.AGENT_ID,
+            "planId": self.PLAN_ID,
             "credits": 50,
             "paymentType": "credits",
             "isTrialPlan": False,
@@ -1140,9 +1156,10 @@ class TestA2AE2EFlow:
     @pytest.mark.asyncio
     async def test_task_cancellation(self):
         """Test E2E task cancellation."""
-        # Ensure we have access token
-        if not hasattr(self, "access_token"):
-            await self.test_get_agent_access_token()
+        # Access token is already set in setup_class
+        assert (
+            self.access_token is not None
+        ), "Access token should be set in setup_class"
 
         # Setup agent card
         from payments_py.a2a.agent_card import build_payment_agent_card
@@ -1154,8 +1171,8 @@ class TestA2AE2EFlow:
         }
 
         payment_metadata = {
-            "agentId": AGENT_ID,
-            "planId": PLAN_ID,
+            "agentId": self.AGENT_ID,
+            "planId": self.PLAN_ID,
             "credits": 50,
             "paymentType": "credits",
             "isTrialPlan": False,
@@ -1210,9 +1227,10 @@ class TestA2AE2EFlow:
     @pytest.mark.asyncio
     async def test_webhook_integration(self):
         """Test E2E webhook functionality with real local webhook server."""
-        # Ensure we have access token
-        if not hasattr(self, "access_token"):
-            await self.test_get_agent_access_token()
+        # Access token is already set in setup_class
+        assert (
+            self.access_token is not None
+        ), "Access token should be set in setup_class"
 
         # Start real webhook server
         webhook_server = WebhookTestServer()
@@ -1231,8 +1249,8 @@ class TestA2AE2EFlow:
             }
 
             payment_metadata = {
-                "agentId": AGENT_ID,
-                "planId": PLAN_ID,
+                "agentId": self.AGENT_ID,
+                "planId": self.PLAN_ID,
                 "credits": 50,
                 "paymentType": "credits",
                 "isTrialPlan": False,
@@ -1342,9 +1360,10 @@ class TestA2AE2EFlow:
     @pytest.mark.asyncio
     async def test_task_resubscription(self):
         """Test E2E task resubscription functionality."""
-        # Ensure we have access token
-        if not hasattr(self, "access_token"):
-            await self.test_get_agent_access_token()
+        # Access token is already set in setup_class
+        assert (
+            self.access_token is not None
+        ), "Access token should be set in setup_class"
 
         # Setup agent card
         from payments_py.a2a.agent_card import build_payment_agent_card
@@ -1356,8 +1375,8 @@ class TestA2AE2EFlow:
         }
 
         payment_metadata = {
-            "agentId": AGENT_ID,
-            "planId": PLAN_ID,
+            "agentId": self.AGENT_ID,
+            "planId": self.PLAN_ID,
             "credits": 50,
             "paymentType": "credits",
             "isTrialPlan": False,
@@ -1443,9 +1462,10 @@ class TestA2AE2EFlow:
     @pytest.mark.asyncio
     async def test_complete_task_cancellation(self):
         """Test complete E2E task cancellation flow."""
-        # Ensure we have access token
-        if not hasattr(self, "access_token"):
-            await self.test_get_agent_access_token()
+        # Access token is already set in setup_class
+        assert (
+            self.access_token is not None
+        ), "Access token should be set in setup_class"
 
         # Setup agent card
         from payments_py.a2a.agent_card import build_payment_agent_card
@@ -1457,8 +1477,8 @@ class TestA2AE2EFlow:
         }
 
         payment_metadata = {
-            "agentId": AGENT_ID,
-            "planId": PLAN_ID,
+            "agentId": self.AGENT_ID,
+            "planId": self.PLAN_ID,
             "credits": 50,
             "paymentType": "credits",
             "isTrialPlan": False,
