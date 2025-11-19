@@ -111,7 +111,9 @@ class FacilitatorAPI(BasePaymentsAPI):
             return response.json()
         except requests.HTTPError as err:
             try:
-                error_message = response.json().get("message", "Permission verification failed")
+                error_message = response.json().get(
+                    "message", "Permission verification failed"
+                )
             except Exception:
                 error_message = "Permission verification failed"
             raise PaymentsError.backend_error(
@@ -175,7 +177,9 @@ class FacilitatorAPI(BasePaymentsAPI):
             return response.json()
         except requests.HTTPError as err:
             try:
-                error_message = response.json().get("message", "Permission settlement failed")
+                error_message = response.json().get(
+                    "message", "Permission settlement failed"
+                )
             except Exception:
                 error_message = "Permission settlement failed"
             raise PaymentsError.backend_error(
@@ -196,4 +200,3 @@ class FacilitatorAPI(BasePaymentsAPI):
                     "subscriber_address": subscriber_address,
                 },
             ) from err
-

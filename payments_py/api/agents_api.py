@@ -316,7 +316,9 @@ class AgentsAPI(BasePaymentsAPI):
             return response.json()
         except requests.HTTPError as err:
             try:
-                error_message = response.json().get("message", "Failed to get X402 access token")
+                error_message = response.json().get(
+                    "message", "Failed to get X402 access token"
+                )
             except Exception:
                 error_message = "Failed to get X402 access token"
             raise PaymentsError.backend_error(
