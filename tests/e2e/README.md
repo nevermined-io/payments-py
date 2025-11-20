@@ -1,20 +1,39 @@
-# E2E Tests for A2A Payment Integration
+# E2E Tests for Payments Integration
 
-This directory contains end-to-end (E2E) tests for the A2A payment integration in Python, which verify complete functionality with real network requests.
+This directory contains end-to-end (E2E) tests for payments integration in Python, which verify complete functionality with real network requests.
 
 ## Test Structure
 
+### `test_payments_e2e.py`
+
+Core payments E2E tests covering:
+
+- **Plans**: Creating credits plans, time plans, and trial plans
+- **Agents**: Registering agents and associating with payment plans
+- **Subscriptions**: Ordering plans and checking balances
+- **Agent Access**: Generating agent access tokens and validating requests
+
+### `test_x402_e2e.py`
+
+X402 Access Token E2E tests covering:
+
+- **X402 Token Generation**: Creating X402 access tokens for delegated permissions
+- **Permission Verification**: Verifying subscriber permissions without burning credits
+- **Permission Settlement**: Settling (burning) credits on behalf of subscribers
+- **ZeroDev Policies**: Testing delegated session key functionality
+- **Credit Management**: Multiple verify/settle operations
+
 ### `a2a_e2e_test.py`
 
-Basic E2E tests covering:
+Basic A2A E2E tests covering:
 
 - **Blocking flow**: Complete verification with credit burning
 - **Invalid authentication**: Handling of incorrect bearer tokens
 - **Non-blocking flow**: Asynchronous execution with polling
 
-### `a2a_e2e_advanced_test.py`
+### `test_a2a_e2e.py`
 
-Advanced E2E tests covering:
+Advanced A2A E2E tests covering:
 
 - **Streaming**: Server-Sent Events with real-time updates
 - **Webhooks**: Push notifications with authentication
@@ -51,14 +70,17 @@ export E2E_SUBSCRIBER_API_KEY="your-subscriber-key"
 # Run all E2E tests
 pytest tests/e2e/ -v
 
-# Run only basic tests
-pytest tests/e2e/a2a_e2e_test.py -v
+# Run only payments tests
+pytest tests/e2e/test_payments_e2e.py -v
 
-# Run only advanced tests
-pytest tests/e2e/a2a_e2e_advanced_test.py -v
+# Run only X402 tests
+pytest tests/e2e/test_x402_e2e.py -v
+
+# Run only A2A tests
+pytest tests/e2e/test_a2a_e2e.py -v
 
 # Run specific test
-pytest tests/e2e/a2a_e2e_test.py::TestA2AE2EFlow::test_blocking_flow_with_credit_burning -v
+pytest tests/e2e/test_x402_e2e.py::TestX402AccessTokenFlow::test_05_get_x402_access_token -v
 
 # Skip E2E tests (if marked as 'slow')
 pytest tests/ -m "not slow"
@@ -69,20 +91,37 @@ pytest tests/e2e/ -v -s --log-cli-level=INFO
 
 ## Verified Functionality
 
-### ✅ Payment Flows
+### ✅ Core Payment Flows
+
+- [x] Plan creation (credits, time, trial)
+- [x] Agent registration and management
+- [x] Plan ordering and subscription
+- [x] Balance checking and credit tracking
+- [x] Agent access token generation
+
+### ✅ X402 Delegated Permissions
+
+- [x] X402 access token generation
+- [x] Permission verification (dry-run)
+- [x] Permission settlement (credit burning)
+- [x] ZeroDev session key policies
+- [x] Multiple verify operations without credit consumption
+- [x] Sequential settlement operations
+
+### ✅ A2A Payment Flows
 
 - [x] Bearer token validation
 - [x] Credit burning on final events
 - [x] Payment error handling (401/402)
 - [x] Different credit amounts
 
-### ✅ Execution Modes
+### ✅ A2A Execution Modes
 
 - [x] Blocking: Waits until completion
 - [x] Non-blocking: Returns immediately, polling for status
 - [x] Streaming: Real-time Server-Sent Events
 
-### ✅ Advanced Features
+### ✅ A2A Advanced Features
 
 - [x] Push notifications via webhooks
 - [x] Webhook authentication (bearer, basic, custom)
@@ -101,8 +140,11 @@ pytest tests/e2e/ -v -s --log-cli-level=INFO
 ### Environment Variables
 
 ```bash
-E2E_BUILDER_API_KEY=test-builder-key          # Builder API key
-E2E_SUBSCRIBER_API_KEY=test-subscriber-key    # Subscriber API key
+TEST_ENVIRONMENT=staging_sandbox              # Test environment
+TEST_SUBSCRIBER_API_KEY=your-subscriber-key   # Subscriber API key
+TEST_BUILDER_API_KEY=your-builder-key         # Builder/Agent API key
+E2E_BUILDER_API_KEY=test-builder-key          # A2A Builder API key
+E2E_SUBSCRIBER_API_KEY=test-subscriber-key    # A2A Subscriber API key
 ```
 
 ### Test Ports

@@ -11,6 +11,7 @@ from payments_py.api.plans_api import PlansAPI
 from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
 from payments_py.api.observability_api import ObservabilityAPI
+from payments_py.api.facilitator_api import FacilitatorAPI
 
 # A2A integration
 from payments_py.a2a.agent_card import build_payment_agent_card
@@ -28,6 +29,7 @@ class Payments(BasePaymentsAPI):
     - `plans`: Manages AI Plans, including registration and ordering and retrieving plan details.
     - `agents`: Handles AI Agents, including registration of AI Agents and access token generation.
     - `requests`: Manages requests received by AI Agents, including validation and tracking.
+    - `facilitator`: Handles X402 permission verification and settlement for AI Agents acting as facilitators.
     """
 
     def __init__(self, options: PaymentOptions, is_browser_instance: bool = False):
@@ -87,6 +89,7 @@ class Payments(BasePaymentsAPI):
         self.requests = AgentRequestsAPI.get_instance(options)
         self.query = AIQueryApi.get_instance()
         self.observability = ObservabilityAPI.get_instance(options)
+        self.facilitator = FacilitatorAPI.get_instance(options)
 
         # Cached MCP integration
         self._mcp_integration = None
