@@ -387,4 +387,3 @@ class TestX402AccessTokenFlow:
             balance_updated
         ), "Balance was not updated correctly after additional settlement"
         print("X402 E2E test suite completed successfully!")
-
