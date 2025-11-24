@@ -321,16 +321,12 @@ class AgentsAPI(BasePaymentsAPI):
                 )
             except Exception:
                 error_message = "Failed to get X402 access token"
-            raise PaymentsError.backend_error(
-                error_message,
-                f"HTTP {response.status_code}",
-                {"plan_id": plan_id, "agent_id": agent_id},
+            raise PaymentsError.internal(
+                f"{error_message} (HTTP {response.status_code})"
             ) from err
         except Exception as err:
-            raise PaymentsError.backend_error(
-                "Network error while getting X402 access token",
-                str(err),
-                {"plan_id": plan_id, "agent_id": agent_id},
+            raise PaymentsError.internal(
+                f"Network error while getting X402 access token: {str(err)}"
             ) from err
 
     def update_agent_metadata(

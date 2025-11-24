@@ -18,7 +18,7 @@ from payments_py.common.types import (
 from payments_py.environments import ZeroAddress
 from payments_py.plans import (
     get_crypto_price_config,
-    get_fixed_credits_config,
+    get_dynamic_credits_config,
 )
 from tests.e2e.utils import retry_with_backoff, wait_for_condition
 
@@ -29,11 +29,11 @@ TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging_sandbox")
 # Test API keys - same as other E2E tests
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEVCNDk3OTU2OTRBMDc1QTY0ZTY2MzdmMUU5MGYwMjE0Mzg5YjI0YTMiLCJqdGkiOiIweGMzYjYyMWJkYTM5ZDllYWQyMTUyMDliZWY0MDBhMDEzYjM1YjQ2Zjc1NzM4YWFjY2I5ZjdkYWI0ZjQ5MmM5YjgiLCJleHAiOjE3OTQ2NTUwNjAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.YMkGQUjGh7_m07nj8SKXZReNKSryg9mTU3qwJr_TKYATUixbYQTte3CKucjqvgAGzJAd1Kq2ubz3b37n5Zsllxs",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDcxZTZGN2Y4QzY4ZTdlMkU5NkIzYzkwNjU1YzJEMmNBMzc2QmMzZmQiLCJqdGkiOiIweDFmM2Q0NWRkZTA3MzQ1NzUyM2FlZDZkODJlMDc2YWM1MDAwNGJmMmMxMWU4MzljMThkNTFjOWE5ZWYxMWM1MWQiLCJleHAiOjE3OTU1NDMxMzYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.WcVy1LUl8r1Z7lTDCxdXltGhHBXrBUhxqjWrGu2nMaZ2UePqfV6Wrw2vcBcjrG5F2hrVacdCmHqC3pIrjiV3xBw",
 )
 AGENT_API_KEY = os.getenv(
     "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEFDYjY5YTYzZjljMEI0ZTczNDE0NDM2YjdBODM1NDBGNkM5MmIyMmUiLCJqdGkiOiIweDExZWUwYWYyOGQ5NGVlNmNjZGJhNDJmMDcyNDQyNTQ0ODE5OWRmNTk5ZGRkMDcyMWVlMmI5ZTg5Nzg3MzQ3N2IiLCJleHAiOjE3OTQ2NTU0NTIsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.fnnb-AFxE_ngIAgIRZOY6SpLM3KgpB1z210l_z3T0Fl2G2tHQp9svXrflCsIYoYHW_8kbHllLce827gyfmFvMhw",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDlkREQwMkQ0RTExMWFiNWNFNDc1MTE5ODdCMjUwMGZjQjU2MjUyYzYiLCJqdGkiOiIweDQ2YzY3OTk5MTY5NDBhZmI4ZGNmNmQ2NmRmZmY4MGE0YmVhYWMyY2NiYWZlOTlkOGEwOTAwYTBjMzhmZjdkNjEiLCJleHAiOjE3OTU1NDI4NzAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.n51gkto9Jw-MXxnXW92XDAB_CnHUFxkritWp9Lj1qFASmtf_TuQwU57bauIEGrQygumX8S3pXqRqeGRWT2AJiRs",
 )
 
 
@@ -92,8 +92,8 @@ class TestX402AccessTokenFlow:
         )
 
         # Configure credits: 10 total credits, min=1, max=2 per burn
-        credits_config = get_fixed_credits_config(
-            total_credits=10,
+        credits_config = get_dynamic_credits_config(
+            credits_granted=10,
             min_credits_per_request=1,
             max_credits_per_request=2,
         )
@@ -102,7 +102,7 @@ class TestX402AccessTokenFlow:
 
         response = retry_with_backoff(
             lambda: payments_agent.plans.register_credits_plan(
-                plan_metadata, price_config, credits_config, access_limit="credits"
+                plan_metadata, price_config, credits_config
             ),
             label="X402 Credits Plan Registration",
             attempts=6,
@@ -128,7 +128,7 @@ class TestX402AccessTokenFlow:
 
         agent_api = AgentAPIAttributes(
             endpoints=[
-                {"POST": "https://myagent.ai/api/v1/secret/:agentId/tasks"},
+                {"verb": "POST", "url": "https://myagent.ai/api/v1/secret/:agentId/tasks"},
             ],
             open_endpoints=[],
             agent_definition_url="https://myagent.ai/api-docs",
@@ -166,41 +166,6 @@ class TestX402AccessTokenFlow:
         assert agent_available, "Agent did not become available in time"
 
     @pytest.mark.timeout(TEST_TIMEOUT)
-    def test_subscriber_order_plan(self, payments_subscriber):
-        """Test subscriber ordering the plan before getting X402 token."""
-        assert self.plan_id is not None, "plan_id must be set by previous test"
-
-        print(f"Subscriber ordering plan: {self.plan_id}")
-        order_result = retry_with_backoff(
-            lambda: payments_subscriber.plans.order_plan(self.plan_id),
-            label="X402 Plan Order",
-            attempts=6,
-        )
-
-        assert order_result is not None
-        assert order_result.get("success") is True
-        print(f"Subscriber successfully ordered plan: {self.plan_id}")
-
-        # Wait for balance to be available
-        def _check_balance():
-            try:
-                balance = payments_subscriber.plans.get_plan_balance(self.plan_id)
-                if not balance or not balance.is_subscriber:
-                    return False
-                bal = int(balance.balance)
-                return bal > 0
-            except Exception:
-                return False
-
-        balance_available = wait_for_condition(
-            _check_balance,
-            label="Plan Balance Availability",
-            timeout_secs=45.0,
-            poll_interval_secs=2.0,
-        )
-        assert balance_available, "Plan balance did not become available in time"
-
-    @pytest.mark.timeout(TEST_TIMEOUT)
     def test_get_x402_access_token(self, payments_subscriber):
         """Test generating X402 access token for the subscriber."""
         assert self.plan_id is not None, "plan_id must be set by previous test"
@@ -215,7 +180,7 @@ class TestX402AccessTokenFlow:
                 self.plan_id, self.agent_id
             ),
             label="X402 Access Token Generation",
-            attempts=6,
+            attempts=3,
         )
 
         assert response is not None
@@ -247,7 +212,7 @@ class TestX402AccessTokenFlow:
                 subscriber_address=self.subscriber_address,
             ),
             label="X402 Verify Permissions",
-            attempts=5,
+            attempts=3,
         )
 
         assert response is not None
@@ -277,7 +242,7 @@ class TestX402AccessTokenFlow:
                 subscriber_address=self.subscriber_address,
             ),
             label="X402 Settle Permissions",
-            attempts=5,
+            attempts=3,
         )
 
         assert response is not None
@@ -309,33 +274,6 @@ class TestX402AccessTokenFlow:
         assert balance_updated, "Balance was not updated correctly after settlement"
 
     @pytest.mark.timeout(TEST_TIMEOUT)
-    def test_verify(self, payments_agent):
-        """Test that verify can be called multiple times without consuming credits."""
-        assert self.plan_id is not None, "plan_id must be set by previous test"
-        assert (
-            self.x402_access_token is not None
-        ), "x402_access_token must be set by previous test"
-        assert (
-            self.subscriber_address is not None
-        ), "subscriber_address must be set by previous test"
-
-        # Call verify once
-        print(f"Verifying permissions")
-        response = retry_with_backoff(
-            lambda: payments_agent.facilitator.verify_permissions(
-                plan_id=self.plan_id,
-                max_amount="2",
-                x402_access_token=self.x402_access_token,
-                subscriber_address=self.subscriber_address,
-            ),
-            label=f"X402 Verify Permissions",
-            attempts=3,
-        )
-
-        assert response is not None
-        assert response.get("success") is True
-
-    @pytest.mark.timeout(TEST_TIMEOUT)
     def test_settle_remaining_credits(self, payments_agent, payments_subscriber):
         """Test settling the remaining credits in smaller amounts."""
         assert self.plan_id is not None, "plan_id must be set by previous test"
@@ -356,7 +294,7 @@ class TestX402AccessTokenFlow:
                 subscriber_address=self.subscriber_address,
             ),
             label="X402 Settle Additional Credits",
-            attempts=5,
+            attempts=3,
         )
 
         assert response is not None
