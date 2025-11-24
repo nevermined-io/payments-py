@@ -128,7 +128,10 @@ class TestX402AccessTokenFlow:
 
         agent_api = AgentAPIAttributes(
             endpoints=[
-                {"verb": "POST", "url": "https://myagent.ai/api/v1/secret/:agentId/tasks"},
+                {
+                    "verb": "POST",
+                    "url": "https://myagent.ai/api/v1/secret/:agentId/tasks",
+                },
             ],
             open_endpoints=[],
             agent_definition_url="https://myagent.ai/api-docs",
