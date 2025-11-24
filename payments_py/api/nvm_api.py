@@ -33,6 +33,11 @@ API_URL_SIMULATE_REDEEM_AGENT_REQUEST = "/api/v1/protocol/agents/simulate/finish
 # Token endpoints
 API_URL_GET_AGENT_ACCESS_TOKEN = "/api/v1/protocol/token/{plan_id}/{agent_id}"
 API_URL_VALIDATE_AGENT_ACCESS_TOKEN = "/api/v1/protocol/token/validate/{agent_id}"
+API_URL_GET_AGENT_X402_ACCESS_TOKEN = "/api/v1/token-x402/{plan_id}/{agent_id}"
+
+# X402 Facilitator endpoints
+API_URL_VERIFY_PERMISSIONS = "/api/v1/verify"
+API_URL_SETTLE_PERMISSIONS = "/api/v1/settle"
 
 # Stripe endpoints
 API_URL_STRIPE_CHECKOUT = "/api/v1/stripe/checkout"
