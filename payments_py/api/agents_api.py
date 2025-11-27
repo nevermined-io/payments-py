@@ -21,7 +21,6 @@ from payments_py.api.nvm_api import (
     API_URL_ADD_PLAN_AGENT,
     API_URL_REMOVE_PLAN_AGENT,
     API_URL_GET_AGENT_ACCESS_TOKEN,
-    API_URL_GET_AGENT_X402_ACCESS_TOKEN,
     API_URL_REGISTER_AGENTS_AND_PLAN,
     API_URL_GET_AGENT_PLANS,
     API_URL_UPDATE_AGENT,
@@ -287,47 +286,6 @@ class AgentsAPI(BasePaymentsAPI):
                 error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to get agent access token", error)
         return response.json()
-
-    def get_x402_access_token(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
-        """
-        Get an X402 access token for the given plan and agent.
-        This token allows the agent to verify and settle permissions on behalf of the subscriber.
-
-        Args:
-            plan_id: The unique identifier of the payment plan
-            agent_id: The unique identifier of the AI agent
-
-        Returns:
-            A dictionary containing the X402 access token
-
-        Raises:
-            PaymentsError: If the request fails
-        """
-        url_path = API_URL_GET_AGENT_X402_ACCESS_TOKEN.format(
-            plan_id=plan_id, agent_id=agent_id
-        )
-        url = f"{self.environment.backend}{url_path}"
-
-        options = self.get_backend_http_options("GET")
-
-        try:
-            response = requests.get(url, **options)
-            response.raise_for_status()
-            return response.json()
-        except requests.HTTPError as err:
-            try:
-                error_message = response.json().get(
-                    "message", "Failed to get X402 access token"
-                )
-            except Exception:
-                error_message = "Failed to get X402 access token"
-            raise PaymentsError.internal(
-                f"{error_message} (HTTP {response.status_code})"
-            ) from err
-        except Exception as err:
-            raise PaymentsError.internal(
-                f"Network error while getting X402 access token: {str(err)}"
-            ) from err
 
     def update_agent_metadata(
         self,

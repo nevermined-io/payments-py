@@ -13,8 +13,8 @@ Example usage:
         )
     )
 
-    # Get X402 access token from agents API
-    token_result = payments.agents.get_x402_access_token(
+    # Get X402 access token from X402 API
+    token_result = payments.x402.get_x402_access_token(
         plan_id="123",
         agent_id="456"
     )

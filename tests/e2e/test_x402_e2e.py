@@ -179,7 +179,7 @@ class TestX402AccessTokenFlow:
         )
 
         response = retry_with_backoff(
-            lambda: payments_subscriber.agents.get_x402_access_token(
+            lambda: payments_subscriber.x402.get_x402_access_token(
                 self.plan_id, self.agent_id
             ),
             label="X402 Access Token Generation",
