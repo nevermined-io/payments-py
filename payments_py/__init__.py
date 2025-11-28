@@ -25,7 +25,21 @@ from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.observability_api import ObservabilityAPI
-from payments_py.api.facilitator_api import FacilitatorAPI
+
+# X402 Payment Protocol Module
+from payments_py.x402 import (
+    PaymentRequirements,
+    NvmPaymentRequiredResponse,
+    PaymentPayload,
+    SessionKeyPayload,
+    VerifyResponse,
+    SettleResponse,
+    SupportedNetworks,
+    SupportedSchemes,
+    NeverminedFacilitator,
+    FacilitatorAPI,
+    X402TokenAPI,
+)
 
 # Import utility functions
 from payments_py.utils import (
@@ -70,6 +84,7 @@ from payments_py.environments import (
 )
 
 __all__ = [
+    # Core
     "Payments",
     "PaymentOptions",
     "PlanMetadata",
@@ -85,13 +100,27 @@ __all__ = [
     "NvmAPIResult",
     "PaginationOptions",
     "PaymentsError",
+    # APIs
     "AIQueryApi",
     "PlansAPI",
     "AgentsAPI",
     "AgentRequestsAPI",
     "BasePaymentsAPI",
     "ObservabilityAPI",
+    # X402 APIs
     "FacilitatorAPI",
+    "X402TokenAPI",
+    # X402 Types
+    "PaymentRequirements",
+    "NvmPaymentRequiredResponse",
+    "PaymentPayload",
+    "SessionKeyPayload",
+    "VerifyResponse",
+    "SettleResponse",
+    "SupportedNetworks",
+    "SupportedSchemes",
+    # X402 Facilitator
+    "NeverminedFacilitator",
     # Utility functions
     "is_ethereum_address",
     "generate_step_id",

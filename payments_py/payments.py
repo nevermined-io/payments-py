@@ -11,7 +11,8 @@ from payments_py.api.plans_api import PlansAPI
 from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
 from payments_py.api.observability_api import ObservabilityAPI
-from payments_py.api.facilitator_api import FacilitatorAPI
+from payments_py.x402.facilitator_api import FacilitatorAPI
+from payments_py.x402.token import X402TokenAPI
 
 # A2A integration
 from payments_py.a2a.agent_card import build_payment_agent_card
@@ -90,6 +91,7 @@ class Payments(BasePaymentsAPI):
         self.query = AIQueryApi.get_instance()
         self.observability = ObservabilityAPI.get_instance(options)
         self.facilitator = FacilitatorAPI.get_instance(options)
+        self.x402 = X402TokenAPI.get_instance(options)
 
         # Cached MCP integration
         self._mcp_integration = None
