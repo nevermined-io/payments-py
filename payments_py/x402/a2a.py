@@ -406,7 +406,7 @@ class X402A2AUtils:
 
         task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_COMPLETED
 
-        # Store settlement receipt
+        # Store settlement receipt in spec-defined location
         if settle_response:
             task.status.message.metadata[self.RECEIPTS_KEY] = (
                 settle_response.model_dump(by_alias=True)
