@@ -50,16 +50,32 @@ from .networks import SupportedNetworks
 from .schemes import SupportedSchemes
 from .facilitator import NeverminedFacilitator
 from .facilitator_api import FacilitatorAPI
+from .a2a import X402A2AUtils, X402Metadata, PaymentStatus as X402PaymentStatus
 from .token import X402TokenAPI, generate_x402_access_token, get_x402_token_response
 
+# V2 extended types
+from .types_v2 import (
+    Extension,
+    ResourceInfo,
+    PaymentRequiredResponseV2,
+    PaymentPayloadV2,
+    Extensions,
+)
+
 __all__ = [
-    # Types
+    # Types (V1)
     "PaymentRequirements",
     "NvmPaymentRequiredResponse",
     "PaymentPayload",
     "SessionKeyPayload",
     "VerifyResponse",
     "SettleResponse",
+    # Types (V2)
+    "Extension",
+    "ResourceInfo",
+    "PaymentRequiredResponseV2",
+    "PaymentPayloadV2",
+    "Extensions",
     # Constants
     "SupportedNetworks",
     "SupportedSchemes",
@@ -71,5 +87,17 @@ __all__ = [
     # Token utilities
     "generate_x402_access_token",
     "get_x402_token_response",
+    # A2A Integration
+    "X402A2AUtils",
+    "X402Metadata",
+    "X402PaymentStatus",
 ]
+
+# Note: For Nevermined extension helpers, import from:
+#   from payments_py.x402.extensions.nevermined import (
+#       NEVERMINED,
+#       declare_nevermined_extension,
+#       extract_nevermined_info,
+#       validate_nevermined_extension
+#   )
 
