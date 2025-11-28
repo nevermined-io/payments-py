@@ -111,17 +111,25 @@ class NeverminedFacilitator:
                 )
 
             # Extract Nevermined info using v2 extension helper (supports v1 fallback)
-            
+
             # Convert payload and requirements to dict for extraction helper
-            payload_dict = payload.model_dump(by_alias=True) if hasattr(payload, 'model_dump') else payload
-            requirements_dict = requirements.model_dump(by_alias=True) if hasattr(requirements, 'model_dump') else requirements
-            
+            payload_dict = (
+                payload.model_dump(by_alias=True)
+                if hasattr(payload, "model_dump")
+                else payload
+            )
+            requirements_dict = (
+                requirements.model_dump(by_alias=True)
+                if hasattr(requirements, "model_dump")
+                else requirements
+            )
+
             nvm_info = extract_nevermined_info(
                 payment_payload=payload_dict,
                 payment_requirements=requirements_dict,
-                validate=True  # Validate v2 extensions if present
+                validate=True,  # Validate v2 extensions if present
             )
-            
+
             if not nvm_info:
                 # Fallback: Extract from v1 requirements directly
                 nvm_info = {
@@ -132,14 +140,14 @@ class NeverminedFacilitator:
                         requirements.extra.get("subscriber_address")
                         if requirements.extra
                         else None
-                    )
+                    ),
                 }
-            
+
             # Extract required fields
             plan_id = nvm_info.get("plan_id")
             max_amount = nvm_info.get("max_amount")
             subscriber_address = nvm_info.get("subscriber_address")
-            
+
             # If subscriber_address not in extension info, check requirements.extra
             if not subscriber_address and requirements.extra:
                 subscriber_address = requirements.extra.get("subscriber_address")
@@ -219,17 +227,25 @@ class NeverminedFacilitator:
                 )
 
             # Extract Nevermined info using v2 extension helper (supports v1 fallback)
-            
+
             # Convert payload and requirements to dict for extraction helper
-            payload_dict = payload.model_dump(by_alias=True) if hasattr(payload, 'model_dump') else payload
-            requirements_dict = requirements.model_dump(by_alias=True) if hasattr(requirements, 'model_dump') else requirements
-            
+            payload_dict = (
+                payload.model_dump(by_alias=True)
+                if hasattr(payload, "model_dump")
+                else payload
+            )
+            requirements_dict = (
+                requirements.model_dump(by_alias=True)
+                if hasattr(requirements, "model_dump")
+                else requirements
+            )
+
             nvm_info = extract_nevermined_info(
                 payment_payload=payload_dict,
                 payment_requirements=requirements_dict,
-                validate=True  # Validate v2 extensions if present
+                validate=True,  # Validate v2 extensions if present
             )
-            
+
             if not nvm_info:
                 # Fallback: Extract from v1 requirements directly
                 nvm_info = {
@@ -240,14 +256,14 @@ class NeverminedFacilitator:
                         requirements.extra.get("subscriber_address")
                         if requirements.extra
                         else None
-                    )
+                    ),
                 }
-            
+
             # Extract required fields
             plan_id = nvm_info.get("plan_id")
             max_amount = nvm_info.get("max_amount")
             subscriber_address = nvm_info.get("subscriber_address")
-            
+
             # If subscriber_address not in extension info, check requirements.extra
             if not subscriber_address and requirements.extra:
                 subscriber_address = requirements.extra.get("subscriber_address")

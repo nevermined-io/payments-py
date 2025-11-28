@@ -79,21 +79,23 @@ logger = logging.getLogger(__name__)
 X402Metadata = x402Metadata  # Alias for consistency with naming convention
 
 
-def _parse_payment_payload(payload_data: dict) -> Union[PaymentPayload, PaymentPayloadV2]:
+def _parse_payment_payload(
+    payload_data: dict,
+) -> Union[PaymentPayload, PaymentPayloadV2]:
     """
     Parse the payment payload using the appropriate Pydantic model.
-    
+
     Supports both v1 and v2 formats (both use x402Version/x402_version).
-    
+
     Args:
         payload_data: Raw payment payload dictionary
-        
+
     Returns:
         Parsed PaymentPayload (v1) or PaymentPayloadV2 (v2)
     """
     # Auto-detect v1 vs v2
     x402_version = payload_data.get("x402Version", payload_data.get("x402_version", 1))
-    
+
     if x402_version == 2:
         # V2: Parse as PaymentPayloadV2
         return PaymentPayloadV2.model_validate(payload_data)

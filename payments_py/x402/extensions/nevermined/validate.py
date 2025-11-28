@@ -58,7 +58,7 @@ def validate_nevermined_extension(extension: NeverminedExtension) -> ValidationR
             # Pydantic Extension model
             info = extension.info
             schema = extension.schema
-        
+
         # Validate info against schema using JSON Schema
         validate(instance=info, schema=schema)
         return {"valid": True, "errors": None}
