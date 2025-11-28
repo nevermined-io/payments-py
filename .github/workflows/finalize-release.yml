@@ -1,0 +1,156 @@
+name: Finalize Release
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  check-pr:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if PR is merged from release branch
+        run: |
+          echo "✅ PR #${{ github.event.pull_request.number }} merged from release branch"
+          echo "Branch: ${{ github.event.pull_request.head.ref }}"
+
+  release:
+    name: Create Tag and GitHub Release
+    needs: check-pr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.API_TOKEN_GITHUB }}
+
+      - name: Configure Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get version from pyproject.toml
+        id: get_version
+        run: |
+          VERSION=$(grep -E '^version = ' pyproject.toml | head -n1 | sed -E 's/version = "(.*)"/\1/')
+
+          if [ -z "$VERSION" ]; then
+            echo "❌ Could not determine version from pyproject.toml"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Detected version: $VERSION"
+
+      - name: Create and push tag
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          TAG="v${VERSION}"
+
+          echo "🏷️  Creating tag: $TAG"
+
+          # Check if tag already exists
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "⚠️  Tag $TAG already exists locally"
+          else
+            git tag "$TAG"
+            echo "✅ Created tag: $TAG"
+          fi
+
+          # Push tag to remote
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
+            echo "⚠️  Tag $TAG already exists on remote"
+          else
+            git push origin "$TAG"
+            echo "✅ Pushed tag: $TAG"
+          fi
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "⚠️  CHANGELOG.md not found, will use auto-generated notes"
+            echo "use_auto_notes=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Extract the section for this version from CHANGELOG.md
+          # This assumes auto-changelog format with version headers
+          CHANGELOG_CONTENT=$(awk "/^## \[?v?${VERSION}\]?/,/^## \[?v?[0-9]/" CHANGELOG.md | sed '1d;$d' || echo "")
+
+          if [ -z "$CHANGELOG_CONTENT" ]; then
+            echo "⚠️  Could not extract changelog for version $VERSION, will use auto-generated notes"
+            echo "use_auto_notes=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Extracted changelog for version $VERSION"
+            echo "use_auto_notes=false" >> $GITHUB_OUTPUT
+            # Save to file for GitHub release
+            echo "$CHANGELOG_CONTENT" > /tmp/release_notes.md
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          TAG="v${VERSION}"
+          USE_AUTO_NOTES="${{ steps.changelog.outputs.use_auto_notes }}"
+
+          # Check if release already exists
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "⚠️  Release $TAG already exists"
+            exit 0
+          fi
+
+          echo "🚀 Creating GitHub release for $TAG"
+
+          # Determine if this is a prerelease
+          PRERELEASE_FLAG=""
+          if [[ "$VERSION" =~ (alpha|beta|rc|pre) ]]; then
+            PRERELEASE_FLAG="--prerelease"
+            echo "🚧 Detected pre-release version"
+          fi
+
+          # Create release with appropriate notes
+          if [ "$USE_AUTO_NOTES" = "true" ] || [ ! -f "/tmp/release_notes.md" ]; then
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --generate-notes \
+              $PRERELEASE_FLAG
+          else
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --notes-file /tmp/release_notes.md \
+              $PRERELEASE_FLAG
+          fi
+
+          echo "✅ Created GitHub release: $TAG"
+
+      - name: Summary
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          TAG="v${VERSION}"
+
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ## 🎉 Release Complete!
+
+          ### Details
+          - **Version:** $TAG
+          - **Release URL:** https://github.com/${{ github.repository }}/releases/tag/$TAG
+
+          ### What happened
+          - ✅ Tag \`$TAG\` created and pushed
+          - ✅ GitHub release published
+
+          ---
+          🤖 This release was automatically created by the \`finalize-release\` workflow.
+          EOF
