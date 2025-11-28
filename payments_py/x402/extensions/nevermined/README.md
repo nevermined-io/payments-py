@@ -1,12 +1,13 @@
 # Nevermined Extension for x402 v2
 
-The **Nevermined extension** enables AI agents to use Nevermined's credit-based payment system with the x402 payment protocol.
+The **Nevermined extension** enables AI agents to use Nevermined's various payment methods with the x402 payment protocol.
 
 This extension follows the x402 v2 extension pattern from the [x402 repository](https://github.com/coinbase/x402/tree/v2-development), specifically the [Bazaar extension](https://github.com/coinbase/x402/tree/v2-development/typescript/packages/extensions/src/bazaar) as a reference implementation.
 
 ## Overview
 
 The Nevermined extension allows:
+
 - **Servers** to declare Nevermined payment requirements
 - **Clients** to copy extension data in payment payloads
 - **Facilitators** to extract and process Nevermined payment info
@@ -83,7 +84,7 @@ if nvm_info:
     agent_id = nvm_info["agent_id"]
     max_amount = nvm_info["max_amount"]
     network = nvm_info["network"]
-    
+
     # Proceed with verification/settlement:
     # 1. Check subscriber balance
     # 2. Order more credits if needed
@@ -98,7 +99,7 @@ if nvm_info:
 └────────────────────────────────────────────────────────────────┘
 
   declare_nevermined_extension(plan_id, agent_id, max_amount)
-  
+
   PaymentRequired Response:
   {
     "x402Version": 2,
@@ -129,7 +130,7 @@ if nvm_info:
 └────────────────────────────────────────────────────────────────┘
 
   nvm_info = extract_nevermined_info(payment_payload)
-  
+
   if nvm_info:
       # Verify subscriber has credits
       # Order more if needed
@@ -163,6 +164,7 @@ This enables seamless migration from v1 to v2.
 Server helper to create extension metadata.
 
 **Parameters:**
+
 - `plan_id` (str): Nevermined pricing plan ID
 - `agent_id` (str): Nevermined AI agent ID
 - `max_amount` (str): Maximum credits to burn
@@ -178,6 +180,7 @@ Server helper to create extension metadata.
 Facilitator helper to extract extension data.
 
 **Parameters:**
+
 - `payment_payload` (dict): Payment payload from client
 - `payment_requirements` (dict, optional): For v1 fallback
 - `validate` (bool): Whether to validate (default: True)
@@ -189,6 +192,7 @@ Facilitator helper to extract extension data.
 Validation helper using JSON Schema.
 
 **Parameters:**
+
 - `extension` (NeverminedExtension): Extension to validate
 
 **Returns:** `ValidationResult`
@@ -196,6 +200,7 @@ Validation helper using JSON Schema.
 ## Implementation Notes
 
 This implementation:
+
 - ✅ Follows the x402 v2 extension pattern from TypeScript/Go implementations
 - ✅ Provides first-class Python support for x402 extensions
 - ✅ Can be contributed back to the x402 ecosystem
@@ -210,4 +215,3 @@ When x402 v2 Python support is officially released, we can contribute this exten
 - [x402 v2 Extensions (TypeScript)](https://github.com/coinbase/x402/tree/v2-development/typescript/packages/extensions)
 - [Bazaar Extension (Go)](https://github.com/coinbase/x402/tree/v2-development/go/extensions/bazaar)
 - [x402 Protocol Specification](https://github.com/coinbase/x402)
-
