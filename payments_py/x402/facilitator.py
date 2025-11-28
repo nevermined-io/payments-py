@@ -15,6 +15,7 @@ from .types import (
     SettleResponse,
     VerifyResponse,
 )
+from .extensions.nevermined import extract_nevermined_info
 from payments_py.common.types import PaymentOptions
 
 
@@ -106,12 +107,35 @@ class NeverminedFacilitator:
 
             x402_access_token = payload.payload.session_key
 
-            # Extract subscriber address from the payload metadata if available
-            subscriber_address = (
-                requirements.extra.get("subscriber_address")
-                if requirements.extra
-                else None
+            # Extract Nevermined info using v2 extension helper (supports v1 fallback)
+            
+            # Convert payload and requirements to dict for extraction helper
+            payload_dict = payload.model_dump(by_alias=True) if hasattr(payload, 'model_dump') else payload
+            requirements_dict = requirements.model_dump(by_alias=True) if hasattr(requirements, 'model_dump') else requirements
+            
+            nvm_info = extract_nevermined_info(
+                payment_payload=payload_dict,
+                payment_requirements=requirements_dict,
+                validate=True  # Validate v2 extensions if present
             )
+            
+            if not nvm_info:
+                # Fallback: Extract from v1 requirements directly
+                nvm_info = {
+                    "plan_id": requirements.plan_id,
+                    "agent_id": requirements.agent_id,
+                    "max_amount": requirements.max_amount,
+                    "subscriber_address": (
+                        requirements.extra.get("subscriber_address")
+                        if requirements.extra
+                        else None
+                    )
+                }
+            
+            # Extract required fields
+            plan_id = nvm_info.get("plan_id")
+            max_amount = nvm_info.get("max_amount")
+            subscriber_address = nvm_info.get("subscriber_address")
 
             if not subscriber_address:
                 return VerifyResponse(
@@ -120,15 +144,15 @@ class NeverminedFacilitator:
                 )
 
             logger.info(
-                f"Verifying permissions for plan: {requirements.plan_id}, "
-                f"max_amount: {requirements.max_amount}, "
+                f"Verifying permissions for plan: {plan_id}, "
+                f"max_amount: {max_amount}, "
                 f"subscriber: {subscriber_address}"
             )
 
             # Call Nevermined API to verify permissions
             verification = self.payments.facilitator.verify_permissions(
-                plan_id=requirements.plan_id,
-                max_amount=requirements.max_amount,
+                plan_id=plan_id,
+                max_amount=max_amount,
                 x402_access_token=x402_access_token,
                 subscriber_address=subscriber_address,
             )
@@ -184,12 +208,35 @@ class NeverminedFacilitator:
 
             x402_access_token = payload.payload.session_key
 
-            # Extract subscriber address
-            subscriber_address = (
-                requirements.extra.get("subscriber_address")
-                if requirements.extra
-                else None
+            # Extract Nevermined info using v2 extension helper (supports v1 fallback)
+            
+            # Convert payload and requirements to dict for extraction helper
+            payload_dict = payload.model_dump(by_alias=True) if hasattr(payload, 'model_dump') else payload
+            requirements_dict = requirements.model_dump(by_alias=True) if hasattr(requirements, 'model_dump') else requirements
+            
+            nvm_info = extract_nevermined_info(
+                payment_payload=payload_dict,
+                payment_requirements=requirements_dict,
+                validate=True  # Validate v2 extensions if present
             )
+            
+            if not nvm_info:
+                # Fallback: Extract from v1 requirements directly
+                nvm_info = {
+                    "plan_id": requirements.plan_id,
+                    "agent_id": requirements.agent_id,
+                    "max_amount": requirements.max_amount,
+                    "subscriber_address": (
+                        requirements.extra.get("subscriber_address")
+                        if requirements.extra
+                        else None
+                    )
+                }
+            
+            # Extract required fields
+            plan_id = nvm_info.get("plan_id")
+            max_amount = nvm_info.get("max_amount")
+            subscriber_address = nvm_info.get("subscriber_address")
 
             if not subscriber_address:
                 return SettleResponse(
@@ -198,15 +245,15 @@ class NeverminedFacilitator:
                 )
 
             logger.info(
-                f"Settling permissions for plan: {requirements.plan_id}, "
-                f"max_amount: {requirements.max_amount}, "
+                f"Settling permissions for plan: {plan_id}, "
+                f"max_amount: {max_amount}, "
                 f"subscriber: {subscriber_address}"
             )
 
             # Call Nevermined API to settle permissions (burn credits)
             settlement = self.payments.facilitator.settle_permissions(
-                plan_id=requirements.plan_id,
-                max_amount=requirements.max_amount,
+                plan_id=plan_id,
+                max_amount=max_amount,
                 x402_access_token=x402_access_token,
                 subscriber_address=subscriber_address,
             )
