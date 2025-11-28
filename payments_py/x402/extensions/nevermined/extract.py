@@ -78,10 +78,10 @@ def extract_nevermined_info(
         extensions = payment_payload.get("extensions", {})
         nvm_extension = extensions.get(NEVERMINED)
 
-        if nvm_extension and isinstance(nvm_extension, dict):
+        if nvm_extension:
             # Found Nevermined extension
             if validate:
-                # Validate against schema
+                # Validate against schema (handles both dict and Extension model)
                 result = validate_nevermined_extension(nvm_extension)  # type: ignore
                 if not result["valid"]:
                     print(
@@ -90,7 +90,12 @@ def extract_nevermined_info(
                     return None
 
             # Return the info part of the extension
-            return nvm_extension.get("info")  # type: ignore
+            # Handle both dict and Pydantic Extension model
+            if isinstance(nvm_extension, dict):
+                return nvm_extension.get("info")  # type: ignore
+            else:
+                # Pydantic Extension model
+                return nvm_extension.info  # type: ignore
 
     # V1 fallback: Check extra field in PaymentRequirements
     if payment_requirements:

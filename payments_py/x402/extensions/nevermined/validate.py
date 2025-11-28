@@ -50,8 +50,17 @@ def validate_nevermined_extension(extension: NeverminedExtension) -> ValidationR
         ...     print(f"Validation errors: {result['errors']}")
     """
     try:
+        # Handle both dict and Pydantic model formats
+        if isinstance(extension, dict):
+            info = extension["info"]
+            schema = extension["schema"]
+        else:
+            # Pydantic Extension model
+            info = extension.info
+            schema = extension.schema
+        
         # Validate info against schema using JSON Schema
-        validate(instance=extension["info"], schema=extension["schema"])
+        validate(instance=info, schema=schema)
         return {"valid": True, "errors": None}
 
     except ValidationError as e:

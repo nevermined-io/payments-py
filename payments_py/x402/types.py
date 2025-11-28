@@ -7,6 +7,7 @@ and responses used in payment verification and settlement.
 
 from typing import Optional, Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.alias_generators import to_camel
 from .networks import SupportedNetworks
 from .schemes import SupportedSchemes
 
@@ -51,16 +52,17 @@ class NvmPaymentRequiredResponse(BaseModel):
     Response indicating payment is required, including accepted payment methods.
 
     Attributes:
-        nvm_version: X402 protocol version
+        x402_version: X402 protocol version
         accepts: List of accepted payment requirements
         error: Error message if payment setup failed
     """
 
-    nvm_version: int
+    x402_version: int = Field(alias="x402Version")
     accepts: list[PaymentRequirements]
     error: str
 
     model_config = ConfigDict(
+        alias_generator=to_camel,
         populate_by_name=True,
         from_attributes=True,
     )
@@ -82,18 +84,19 @@ class PaymentPayload(BaseModel):
     Complete payment payload sent from client to merchant.
 
     Attributes:
-        nvm_version: X402 protocol version
+        x402_version: X402 protocol version
         scheme: Payment scheme identifier
         network: Blockchain network identifier
         payload: The session key payload containing the access token
     """
 
-    nvm_version: int
+    x402_version: int = Field(alias="x402Version")
     scheme: str
     network: str
     payload: SessionKeyPayload
 
     model_config = ConfigDict(
+        alias_generator=to_camel,
         populate_by_name=True,
         from_attributes=True,
     )

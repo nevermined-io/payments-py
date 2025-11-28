@@ -99,13 +99,16 @@ class NeverminedFacilitator:
 
         try:
             # Extract X402 access token from payload
-            if not isinstance(payload.payload, SessionKeyPayload):
+            # Handle both SessionKeyPayload model and dict formats
+            if isinstance(payload.payload, SessionKeyPayload):
+                x402_access_token = payload.payload.session_key
+            elif isinstance(payload.payload, dict) and "session_key" in payload.payload:
+                x402_access_token = payload.payload["session_key"]
+            else:
                 return VerifyResponse(
                     is_valid=False,
-                    invalid_reason="Unsupported payload type - expected SessionKeyPayload",
+                    invalid_reason="Unsupported payload type - expected session_key in payload",
                 )
-
-            x402_access_token = payload.payload.session_key
 
             # Extract Nevermined info using v2 extension helper (supports v1 fallback)
             
@@ -136,6 +139,10 @@ class NeverminedFacilitator:
             plan_id = nvm_info.get("plan_id")
             max_amount = nvm_info.get("max_amount")
             subscriber_address = nvm_info.get("subscriber_address")
+            
+            # If subscriber_address not in extension info, check requirements.extra
+            if not subscriber_address and requirements.extra:
+                subscriber_address = requirements.extra.get("subscriber_address")
 
             if not subscriber_address:
                 return VerifyResponse(
@@ -200,13 +207,16 @@ class NeverminedFacilitator:
 
         try:
             # Extract X402 access token from payload
-            if not isinstance(payload.payload, SessionKeyPayload):
+            # Handle both SessionKeyPayload model and dict formats
+            if isinstance(payload.payload, SessionKeyPayload):
+                x402_access_token = payload.payload.session_key
+            elif isinstance(payload.payload, dict) and "session_key" in payload.payload:
+                x402_access_token = payload.payload["session_key"]
+            else:
                 return SettleResponse(
                     success=False,
-                    error_reason="Unsupported payload type - expected SessionKeyPayload",
+                    error_reason="Unsupported payload type - expected session_key in payload",
                 )
-
-            x402_access_token = payload.payload.session_key
 
             # Extract Nevermined info using v2 extension helper (supports v1 fallback)
             
@@ -237,6 +247,10 @@ class NeverminedFacilitator:
             plan_id = nvm_info.get("plan_id")
             max_amount = nvm_info.get("max_amount")
             subscriber_address = nvm_info.get("subscriber_address")
+            
+            # If subscriber_address not in extension info, check requirements.extra
+            if not subscriber_address and requirements.extra:
+                subscriber_address = requirements.extra.get("subscriber_address")
 
             if not subscriber_address:
                 return SettleResponse(
