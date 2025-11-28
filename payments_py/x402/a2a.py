@@ -28,37 +28,41 @@ from a2a.types import Message, Task, TaskState, TaskStatus, TextPart
 
 from enum import Enum
 
+
 class PaymentStatus(str, Enum):
     """
     Protocol-defined payment states for A2A x402 flow.
-    
+
     As defined in: https://github.com/google-a2a/a2a-x402/blob/main/spec/v0.1/spec.md
     Section 6: State Management
-    
+
     These values are part of the A2A x402 specification and must not be changed.
     """
-    PAYMENT_REQUIRED = "payment-required"    # Payment requirements sent to client
+
+    PAYMENT_REQUIRED = "payment-required"  # Payment requirements sent to client
     PAYMENT_SUBMITTED = "payment-submitted"  # Payment payload received by server
-    PAYMENT_VERIFIED = "payment-verified"    # Payment verified by facilitator
-    PAYMENT_REJECTED = "payment-rejected"    # Payment requirements rejected
+    PAYMENT_VERIFIED = "payment-verified"  # Payment verified by facilitator
+    PAYMENT_REJECTED = "payment-rejected"  # Payment requirements rejected
     PAYMENT_COMPLETED = "payment-completed"  # Payment settled successfully
-    PAYMENT_FAILED = "payment-failed"        # Payment processing failed
+    PAYMENT_FAILED = "payment-failed"  # Payment processing failed
 
 
 class x402Metadata:
     """
     Spec-defined metadata key constants for A2A x402 protocol.
-    
+
     As defined in: https://github.com/google-a2a/a2a-x402/blob/main/spec/v0.1/spec.md
     Section 6: State Management
-    
+
     These keys are part of the A2A x402 specification and must not be changed.
     """
-    STATUS_KEY = "x402.payment.status"       # Current payment flow stage
-    REQUIRED_KEY = "x402.payment.required"   # x402PaymentRequiredResponse object
-    PAYLOAD_KEY = "x402.payment.payload"     # PaymentPayload object
-    RECEIPTS_KEY = "x402.payment.receipts"   # Array of SettleResponse objects
-    ERROR_KEY = "x402.payment.error"         # Error code on failure
+
+    STATUS_KEY = "x402.payment.status"  # Current payment flow stage
+    REQUIRED_KEY = "x402.payment.required"  # x402PaymentRequiredResponse object
+    PAYLOAD_KEY = "x402.payment.payload"  # PaymentPayload object
+    RECEIPTS_KEY = "x402.payment.receipts"  # Array of SettleResponse objects
+    ERROR_KEY = "x402.payment.error"  # Error code on failure
+
 
 from .types import (
     NvmPaymentRequiredResponse,
@@ -82,21 +86,21 @@ def _parse_payment_payload(payload_data: dict) -> PaymentPayload:
 class X402A2AUtils:
     """
     Utilities for managing x402 payment state in A2A messages and tasks.
-    
+
     This class provides methods to:
     - Extract payment status, requirements, and payloads from A2A messages/tasks
     - Create payment-related A2A tasks
     - Manage x402 metadata within the A2A protocol
-    
+
     Example:
         >>> utils = X402A2AUtils()
-        >>> 
+        >>>
         >>> # Extract payment requirements from a task
         >>> requirements = utils.get_payment_requirements(task)
-        >>> 
+        >>>
         >>> # Check payment status
         >>> status = utils.get_payment_status(task)
-        >>> 
+        >>>
         >>> # Create a payment required task
         >>> payment_task = utils.create_payment_required_task(task, payment_required)
     """
@@ -107,15 +111,13 @@ class X402A2AUtils:
     RECEIPTS_KEY = X402Metadata.RECEIPTS_KEY
     ERROR_KEY = X402Metadata.ERROR_KEY
 
-    def get_payment_status_from_message(
-        self, message: Message
-    ) -> Optional[str]:
+    def get_payment_status_from_message(self, message: Message) -> Optional[str]:
         """
         Extract payment status from message metadata.
-        
+
         Args:
             message: A2A Message object
-            
+
         Returns:
             Payment status string or None
         """
@@ -128,10 +130,10 @@ class X402A2AUtils:
     def get_payment_status_from_task(self, task: Task) -> Optional[str]:
         """
         Extract payment status from task's status message metadata.
-        
+
         Args:
             task: A2A Task object
-            
+
         Returns:
             Payment status string or None
         """
@@ -145,10 +147,10 @@ class X402A2AUtils:
     def get_payment_status(self, task: Task) -> Optional[str]:
         """
         Extract payment status from task.
-        
+
         Args:
             task: A2A Task object
-            
+
         Returns:
             Payment status string or None
         """
@@ -159,13 +161,13 @@ class X402A2AUtils:
     ) -> Optional[Union[NvmPaymentRequiredResponse, PaymentRequiredResponseV2]]:
         """
         Extract payment requirements from message metadata.
-        
+
         Supports both v1 (NvmPaymentRequiredResponse) and v2 (PaymentRequiredResponseV2).
         Auto-detects version from the data.
-        
+
         Args:
             message: A2A Message object
-            
+
         Returns:
             Payment requirements (v1 or v2) or None
         """
@@ -177,7 +179,7 @@ class X402A2AUtils:
             try:
                 # Detect version from the data
                 version = req_data.get("x402Version") or req_data.get("nvm_version", 1)
-                
+
                 if version == 2:
                     # V2: Parse as PaymentRequiredResponseV2
                     return PaymentRequiredResponseV2.model_validate(req_data)
@@ -194,12 +196,12 @@ class X402A2AUtils:
     ) -> Optional[Union[NvmPaymentRequiredResponse, PaymentRequiredResponseV2]]:
         """
         Extract payment requirements from task's status message metadata.
-        
+
         Supports both v1 and v2 formats.
-        
+
         Args:
             task: A2A Task object
-            
+
         Returns:
             Payment requirements (v1 or v2) or None
         """
@@ -215,13 +217,13 @@ class X402A2AUtils:
     ) -> Optional[Union[NvmPaymentRequiredResponse, PaymentRequiredResponseV2]]:
         """
         Extract payment requirements from task.
-        
+
         Supports both v1 (NvmPaymentRequiredResponse) and v2 (PaymentRequiredResponseV2).
         Auto-detects version and returns the appropriate type.
-        
+
         Args:
             task: A2A Task object
-            
+
         Returns:
             Payment requirements (v1 or v2) or None
         """
@@ -232,10 +234,10 @@ class X402A2AUtils:
     ) -> Optional[PaymentPayload]:
         """
         Extract payment payload from message metadata.
-        
+
         Args:
             message: A2A Message object
-            
+
         Returns:
             PaymentPayload or None
         """
@@ -254,10 +256,10 @@ class X402A2AUtils:
     def get_payment_payload_from_task(self, task: Task) -> Optional[PaymentPayload]:
         """
         Extract payment payload from task's status message metadata.
-        
+
         Args:
             task: A2A Task object
-            
+
         Returns:
             PaymentPayload or None
         """
@@ -271,10 +273,10 @@ class X402A2AUtils:
     def get_payment_payload(self, task: Task) -> Optional[PaymentPayload]:
         """
         Extract payment payload from task.
-        
+
         Args:
             task: A2A Task object
-            
+
         Returns:
             PaymentPayload or None
         """
@@ -283,15 +285,15 @@ class X402A2AUtils:
     def create_payment_required_task(
         self,
         task: Task,
-        payment_required: Union[NvmPaymentRequiredResponse, PaymentRequiredResponseV2]
+        payment_required: Union[NvmPaymentRequiredResponse, PaymentRequiredResponseV2],
     ) -> Task:
         """
         Set task to payment required state with proper metadata.
-        
+
         Args:
             task: A2A Task object
             payment_required: Payment requirements (v1 or v2)
-            
+
         Returns:
             Updated task with payment required state
         """
@@ -328,10 +330,10 @@ class X402A2AUtils:
     def record_payment_verified(self, task: Task) -> Task:
         """
         Record payment verification in task metadata.
-        
+
         Args:
             task: A2A Task object
-            
+
         Returns:
             Updated task with payment verified status
         """
@@ -359,11 +361,11 @@ class X402A2AUtils:
     ) -> Task:
         """
         Record successful payment in task metadata.
-        
+
         Args:
             task: A2A Task object
             settle_response: Settlement response from facilitator
-            
+
         Returns:
             Updated task with payment completed status
         """
@@ -384,13 +386,13 @@ class X402A2AUtils:
             task.status.message.metadata = {}
 
         task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_COMPLETED
-        
+
         # Store settlement receipt
         if settle_response:
             task.status.message.metadata[self.RECEIPTS_KEY] = (
                 settle_response.model_dump(by_alias=True)
             )
-        
+
         return task
 
     def record_payment_failure(
@@ -398,12 +400,12 @@ class X402A2AUtils:
     ) -> Task:
         """
         Record payment failure in task metadata.
-        
+
         Args:
             task: A2A Task object
             error_code: Error code
             error_response: Settlement response with error details
-            
+
         Returns:
             Updated task with payment failed status
         """
@@ -426,9 +428,11 @@ class X402A2AUtils:
         task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_FAILED
         task.status.message.metadata[self.ERROR_KEY] = {
             "code": error_code,
-            "reason": error_response.error_reason if error_response else "Unknown error",
+            "reason": (
+                error_response.error_reason if error_response else "Unknown error"
+            ),
         }
-        
+
         return task
 
 
@@ -438,4 +442,3 @@ __all__ = [
     "x402Metadata",  # Original protocol-defined name
     "PaymentStatus",  # Protocol-defined enum
 ]
-

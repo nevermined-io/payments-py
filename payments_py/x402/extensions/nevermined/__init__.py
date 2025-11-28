@@ -46,7 +46,7 @@ if nvm_info:
     plan_id = nvm_info["plan_id"]
     agent_id = nvm_info["agent_id"]
     max_amount = nvm_info["max_amount"]
-    
+
     # Proceed with verification/settlement
     # - Check subscriber balance
     # - Order credits if needed
@@ -90,4 +90,3 @@ __all__ = [
     "validate_nevermined_extension",
     "ValidationResult",
 ]
-

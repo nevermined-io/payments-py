@@ -12,7 +12,7 @@ Example Usage:
         PaymentPayload,
         PaymentRequirements,
     )
-    
+
     # Initialize payments
     payments = Payments.get_instance(
         PaymentOptions(
@@ -20,17 +20,17 @@ Example Usage:
             environment="sandbox"
         )
     )
-    
+
     # Initialize facilitator
     facilitator = NeverminedFacilitator(
         nvm_api_key="nvm:your-key",
         environment="sandbox"
     )
-    
+
     # Generate X402 token for subscriber
     token_response = payments.x402.get_x402_access_token(plan_id, agent_id)
     token = token_response["accessToken"]
-    
+
     # Verify and settle payments
     verify_result = await facilitator.verify(payment_payload, requirements)
     if verify_result.is_valid:
@@ -97,4 +97,3 @@ __all__ = [
 #       extract_nevermined_info,
 #       validate_nevermined_extension
 #   )
-

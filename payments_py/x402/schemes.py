@@ -7,4 +7,3 @@ so we only support the "contract" scheme.
 from typing import Literal
 
 SupportedSchemes = Literal["contract"]
-

@@ -65,4 +65,3 @@ def validate_nevermined_extension(extension: NeverminedExtension) -> ValidationR
 
 
 __all__ = ["validate_nevermined_extension", "ValidationResult"]
-

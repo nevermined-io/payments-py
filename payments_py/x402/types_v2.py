@@ -107,7 +107,9 @@ class PaymentRequiredResponseV2(BaseModel):
 
     x402_version: int
     resource: ResourceInfo
-    accepts: List[Any]  # List of payment requirements (using Any to avoid x402 dependency)
+    accepts: List[
+        Any
+    ]  # List of payment requirements (using Any to avoid x402 dependency)
     extensions: Optional[Dict[str, Extension]] = None
     error: Optional[str] = None
 
@@ -175,4 +177,3 @@ __all__ = [
     "PaymentPayloadV2",
     "Extensions",
 ]
-

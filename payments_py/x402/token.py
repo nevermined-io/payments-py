@@ -16,7 +16,7 @@ from payments_py.api.nvm_api import API_URL_GET_AGENT_X402_ACCESS_TOKEN
 class X402TokenAPI(BasePaymentsAPI):
     """
     X402 Token API for generating access tokens.
-    
+
     Handles X402 access token generation for subscribers to authorize
     payment operations with AI agents.
     """
@@ -37,7 +37,7 @@ class X402TokenAPI(BasePaymentsAPI):
     def get_x402_access_token(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
         """
         Get an X402 access token for the given plan and agent.
-        
+
         This token allows the agent to verify and settle permissions on behalf
         of the subscriber. The token contains cryptographically signed session keys
         that delegate specific permissions (order, burn) to the agent.
@@ -58,11 +58,11 @@ class X402TokenAPI(BasePaymentsAPI):
             ```python
             from payments_py import Payments, PaymentOptions
             from payments_py.x402 import X402TokenAPI
-            
+
             payments = Payments.get_instance(
                 PaymentOptions(nvm_api_key="nvm:subscriber-key", environment="sandbox")
             )
-            
+
             token_api = X402TokenAPI.get_instance(payments.options)
             result = token_api.get_x402_access_token(plan_id, agent_id)
             token = result["accessToken"]
@@ -96,4 +96,3 @@ class X402TokenAPI(BasePaymentsAPI):
 
 
 __all__ = ["X402TokenAPI"]
-
