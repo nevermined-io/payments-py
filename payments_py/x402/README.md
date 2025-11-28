@@ -893,7 +893,7 @@ from payments_py.x402.types import (
 from payments_py.x402 import SupportedNetworks, SupportedSchemes
 
 # Networks: "base", "base-sepolia"
-# Schemes: "fixed", "dynamic", "contract"
+# Schemes: "contract" (Nevermined uses smart contract-based payments)
 ```
 
 ---

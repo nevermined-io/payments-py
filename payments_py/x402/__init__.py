@@ -9,7 +9,6 @@ Example Usage:
     from payments_py import Payments, PaymentOptions
     from payments_py.x402 import (
         NeverminedFacilitator,
-        generate_x402_access_token,
         PaymentPayload,
         PaymentRequirements,
     )
@@ -29,7 +28,8 @@ Example Usage:
     )
     
     # Generate X402 token for subscriber
-    token = generate_x402_access_token(payments, plan_id, agent_id)
+    token_response = payments.x402.get_x402_access_token(plan_id, agent_id)
+    token = token_response["accessToken"]
     
     # Verify and settle payments
     verify_result = await facilitator.verify(payment_payload, requirements)
@@ -51,7 +51,7 @@ from .schemes import SupportedSchemes
 from .facilitator import NeverminedFacilitator
 from .facilitator_api import FacilitatorAPI
 from .a2a import X402A2AUtils, X402Metadata, PaymentStatus as X402PaymentStatus
-from .token import X402TokenAPI, generate_x402_access_token, get_x402_token_response
+from .token import X402TokenAPI
 
 # V2 extended types
 from .types_v2 import (
@@ -84,9 +84,6 @@ __all__ = [
     "X402TokenAPI",
     # High-level facilitator
     "NeverminedFacilitator",
-    # Token utilities
-    "generate_x402_access_token",
-    "get_x402_token_response",
     # A2A Integration
     "X402A2AUtils",
     "X402Metadata",

@@ -35,9 +35,6 @@ a2a-sdk = {version = "^0.3.1", extras = ["http-server"]}
 uvicorn = "^0.30.0"
 pytest-rerunfailures = "^14.0.0"
 
-
-[tool.poetry.group.dev.dependencies]
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

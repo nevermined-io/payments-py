@@ -39,8 +39,6 @@ from payments_py.x402 import (
     NeverminedFacilitator,
     FacilitatorAPI,
     X402TokenAPI,
-    generate_x402_access_token,
-    get_x402_token_response,
 )
 
 # Import utility functions
@@ -123,9 +121,6 @@ __all__ = [
     "SupportedSchemes",
     # X402 Facilitator
     "NeverminedFacilitator",
-    # X402 Utilities
-    "generate_x402_access_token",
-    "get_x402_token_response",
     # Utility functions
     "is_ethereum_address",
     "generate_step_id",

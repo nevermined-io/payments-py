@@ -108,8 +108,8 @@ def declare_nevermined_extension(
             },
             "environment": {
                 "type": "string",
-                "description": "Nevermined environment (staging, sandbox, production)",
-                "enum": ["staging", "sandbox", "production"],
+                "description": "Nevermined environment (staging_sandbox, staging_live, sandbox, live, custom)",
+                "enum": ["staging_sandbox", "staging_live", "sandbox", "live", "custom"],
             },
             "subscriber_address": {
                 "type": "string",
