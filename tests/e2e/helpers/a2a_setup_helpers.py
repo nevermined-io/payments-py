@@ -5,6 +5,7 @@ from typing import Dict
 from payments_py.payments import Payments
 from payments_py.common.types import AgentMetadata, PlanMetadata
 from payments_py.plans import get_erc20_price_config, get_fixed_credits_config
+from tests.e2e.utils import retry_with_backoff
 
 ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 
@@ -69,19 +70,26 @@ def create_a2a_test_agent_and_plan(
     credits_config = get_fixed_credits_config(credits_granted, credits_per_request)
 
     # First, register the plan
-    plan_result = payments_builder.plans.register_credits_plan(
-        plan_metadata=plan_metadata,
-        price_config=price_config,
-        credits_config=credits_config,
+    response = retry_with_backoff(
+        lambda: payments_builder.plans.register_credits_plan(
+            plan_metadata=plan_metadata,
+            price_config=price_config,
+            credits_config=credits_config,
+        ),
+        label="A2A Credits Plan Registration",
+        attempts=3,
     )
-
-    plan_id = plan_result["planId"]
+    plan_id = response["planId"]
 
     # Then, register the agent with the created plan
-    agent_result = payments_builder.agents.register_agent(
-        agent_metadata=agent_metadata,
-        agent_api=agent_api,
-        payment_plans=[plan_id],
+    agent_result = retry_with_backoff(
+        lambda: payments_builder.agents.register_agent(
+            agent_metadata=agent_metadata,
+            agent_api=agent_api,
+            payment_plans=[plan_id],
+        ),
+        label="A2A Agent Registration",
+        attempts=3,
     )
 
     agent_id = agent_result["agentId"]

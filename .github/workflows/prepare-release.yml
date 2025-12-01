@@ -1,0 +1,240 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 1.0.0, 1.0.0-rc1)"
+        required: true
+        type: string
+      release_type:
+        description: "Type of release"
+        required: true
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - prerelease
+      base_branch:
+        description: "Base branch for the release PR (default: main)"
+        required: false
+        default: "main"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.API_TOKEN_GITHUB }}
+
+      - name: Setup Node.js (for changelog generation)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install semver for version comparison
+        run: npm install -g semver
+
+      - name: Configure Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global push.autoSetupRemote true
+
+      - name: Determine version and create release branch
+        id: version_info
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+
+          # Strip 'v' prefix if present
+          VERSION="${VERSION#v}"
+
+          BRANCH_NAME="release/v${VERSION}"
+
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+
+          echo "📦 Will create branch: $BRANCH_NAME"
+          echo "🏷️  Target version: $VERSION"
+
+      - name: Verify version is higher than current
+        run: |
+          NEW_VERSION="${{ steps.version_info.outputs.version }}"
+
+          # Get current version from pyproject.toml
+          CURRENT_VERSION=$(grep -E '^version = ' pyproject.toml | head -n1 | sed -E 's/version = "(.*)"/\1/')
+
+          echo "📊 Current version: $CURRENT_VERSION"
+          echo "📊 New version: $NEW_VERSION"
+
+          # Compare versions (semver already installed in previous step)
+          # For prereleases, we use --include-prerelease flag
+          if semver "$NEW_VERSION" -r ">$CURRENT_VERSION" --include-prerelease; then
+            echo "✅ Version $NEW_VERSION is higher than $CURRENT_VERSION"
+          else
+            echo "❌ ERROR: New version must be higher than current version!"
+            echo ""
+            echo "Current version: $CURRENT_VERSION"
+            echo "New version: $NEW_VERSION"
+            echo ""
+            echo "Please provide a version that is higher than the current one."
+            echo "Valid examples:"
+            echo "  • For patch: $(semver -i patch $CURRENT_VERSION)"
+            echo "  • For minor: $(semver -i minor $CURRENT_VERSION)"
+            echo "  • For major: $(semver -i major $CURRENT_VERSION)"
+            echo "  • For prerelease: $(semver -i prerelease $CURRENT_VERSION --preid rc)"
+            exit 1
+          fi
+
+      - name: Create release branch
+        run: |
+          BRANCH_NAME="${{ steps.version_info.outputs.branch_name }}"
+
+          # Check if branch already exists remotely
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "❌ ERROR: Release branch $BRANCH_NAME already exists!"
+            echo ""
+            echo "This could mean:"
+            echo "  • A release for this version is already in progress"
+            echo "  • An old release branch was not cleaned up"
+            echo ""
+            echo "Please either:"
+            echo "  • Use a different version number"
+            echo "  • Delete the existing branch if it's stale: git push origin --delete $BRANCH_NAME"
+            echo "  • Check if there's already an open PR for this release"
+            echo ""
+            exit 1
+          fi
+
+          echo "✨ Creating new branch: $BRANCH_NAME"
+          git checkout -b "$BRANCH_NAME"
+
+      - name: Update version in pyproject.toml
+        run: |
+          VERSION="${{ steps.version_info.outputs.version }}"
+          sed -i "s/^version = ['\"][^'\"]*['\"]/version = \"${VERSION}\"/" pyproject.toml
+          echo "✅ Updated version to ${VERSION} in pyproject.toml"
+
+      - name: Verify version update
+        run: |
+          VERSION="${{ steps.version_info.outputs.version }}"
+          UPDATED_VERSION=$(grep -E '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+          if [ "$UPDATED_VERSION" != "$VERSION" ]; then
+            echo "❌ Version update failed!"
+            echo "Expected: $VERSION"
+            echo "Got: $UPDATED_VERSION"
+            exit 1
+          fi
+          echo "✅ Version verified: $UPDATED_VERSION"
+
+      - name: Update CHANGELOG.md
+        run: |
+          VERSION="${{ steps.version_info.outputs.version }}"
+          npm install auto-changelog
+          npx auto-changelog --latest-version "v${VERSION}"
+
+      - name: Commit version changes
+        run: |
+          VERSION="${{ steps.version_info.outputs.version }}"
+          git add -A
+          git commit -m "chore: bump version to ${VERSION}" || echo "No changes to commit"
+
+      - name: Push release branch
+        run: |
+          BRANCH_NAME="${{ steps.version_info.outputs.branch_name }}"
+          git push -u origin "$BRANCH_NAME"
+
+      - name: Create Pull Request
+        id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.API_TOKEN_GITHUB }}
+        run: |
+          BRANCH_NAME="${{ steps.version_info.outputs.branch_name }}"
+          VERSION="${{ steps.version_info.outputs.version }}"
+          RELEASE_TYPE="${{ steps.version_info.outputs.release_type }}"
+          BASE_BRANCH="${{ github.event.inputs.base_branch || 'main' }}"
+
+          echo "📋 Creating PR to base branch: $BASE_BRANCH"
+
+          # Create PR body
+          if [ "$RELEASE_TYPE" = "prerelease" ]; then
+            PR_TITLE="🚧 Pre-release v$VERSION"
+            PR_BODY=$(printf "%s\n\n%s\n\n%s\n%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n%s\n%s" \
+              "## Pre-release v$VERSION" \
+              "This PR contains version bumps and changelog updates for pre-release **v$VERSION**." \
+              "### Changes" \
+              "- Version bumped to \`$VERSION\`" \
+              "- CHANGELOG.md updated" \
+              "### Next Steps" \
+              "1. Review the version changes and changelog" \
+              "2. Approve and merge this PR" \
+              "3. The release workflow will automatically:" \
+              "   - Create Git tag" \
+              "   - Create GitHub release" \
+              "---" \
+              "🤖 This PR was automatically created by the \`prepare-release\` workflow.")
+          else
+            PR_TITLE="🚀 Release v$VERSION"
+            PR_BODY=$(printf "%s\n\n%s\n\n%s\n%s\n%s\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n%s\n%s" \
+              "## Release v$VERSION" \
+              "This PR contains version bumps and changelog updates for release **v$VERSION**." \
+              "### Changes" \
+              "- Version bumped to \`$VERSION\`" \
+              "- CHANGELOG.md updated" \
+              "### Next Steps" \
+              "1. Review the version changes and changelog" \
+              "2. Approve and merge this PR" \
+              "3. The release workflow will automatically:" \
+              "   - Create Git tag" \
+              "   - Create GitHub release" \
+              "---" \
+              "🤖 This PR was automatically created by the \`prepare-release\` workflow.")
+          fi
+
+          # Create the PR
+          PR_URL=$(gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base "$BASE_BRANCH" \
+            --head "$BRANCH_NAME")
+
+          PR_NUMBER=$(gh pr view "$PR_URL" --json number --jq '.number')
+
+          echo "✅ Created Pull Request: $PR_URL"
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
+      - name: Summary
+        run: |
+          VERSION="${{ steps.version_info.outputs.version }}"
+          BRANCH_NAME="${{ steps.version_info.outputs.branch_name }}"
+          PR_URL="${{ steps.create_pr.outputs.pr_url }}"
+          RELEASE_TYPE="${{ steps.version_info.outputs.release_type }}"
+
+          {
+            echo "## 🎉 Release Preparation Complete!"
+            echo ""
+            echo "### Details"
+            echo "- **Version:** v$VERSION"
+            echo "- **Type:** $RELEASE_TYPE"
+            echo "- **Branch:** $BRANCH_NAME"
+            echo "- **Pull Request:** $PR_URL"
+            echo ""
+            echo "### Next Steps"
+            echo "1. 👀 Review the PR: $PR_URL"
+            echo "2. ✅ Approve and merge the PR"
+            echo "3. 🚀 The release workflow will automatically finalize the release"
+            echo ""
+            echo "---"
+            echo "ℹ️  **Note:** Tags and GitHub release will happen automatically after the PR is merged."
+          } >> $GITHUB_STEP_SUMMARY
