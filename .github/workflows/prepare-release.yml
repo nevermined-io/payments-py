@@ -146,7 +146,7 @@ jobs:
       - name: Commit version changes
         run: |
           VERSION="${{ steps.version_info.outputs.version }}"
-          git add -A
+          git add pyproject.toml CHANGELOG.md
           git commit -m "chore: bump version to ${VERSION}" || echo "No changes to commit"
 
       - name: Push release branch
