@@ -72,11 +72,15 @@ from payments_py.plans import (
     get_dynamic_credits_config,
     set_redemption_type,
     set_proof_required,
+    # Pay As You Go functions
+    get_pay_as_you_go_price_config,
+    get_pay_as_you_go_credits_config,
 )
 
 # Import environment constants
 from payments_py.environments import (
     ZeroAddress,
+    PayAsYouGoTemplateAddress,
     EnvironmentInfo,
     EnvironmentName,
     Environments,
@@ -148,8 +152,12 @@ __all__ = [
     "get_dynamic_credits_config",
     "set_redemption_type",
     "set_proof_required",
+    # Pay As You Go functions
+    "get_pay_as_you_go_price_config",
+    "get_pay_as_you_go_credits_config",
     # Environment constants
     "ZeroAddress",
+    "PayAsYouGoTemplateAddress",
     "EnvironmentInfo",
     "EnvironmentName",
     "Environments",

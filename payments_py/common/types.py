@@ -179,12 +179,13 @@ class PlanCreditsType(Enum):
 class PlanRedemptionType(Enum):
     """
     Different types of redemptions criterias that can be used when redeeming credits.
-    0 - ONLY_GLOBAL_ROLE, 1 - ONLY_OWNER, 2 - ONLY_PLAN_ROLE
+    0 - ONLY_GLOBAL_ROLE, 1 - ONLY_OWNER, 2 - ONLY_PLAN_ROLE, 4 - ONLY_SUBSCRIBER
     """
 
     ONLY_GLOBAL_ROLE = 0
     ONLY_OWNER = 1
     ONLY_PLAN_ROLE = 2
+    ONLY_SUBSCRIBER = 4
 
 
 class PlanPriceConfig(BaseModel):
