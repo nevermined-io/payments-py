@@ -2,7 +2,6 @@
 End-to-end tests for the Payments class.
 """
 
-import os
 import time
 import pytest
 import threading
@@ -27,22 +26,13 @@ from payments_py.plans import (
 from payments_py.utils import get_random_big_int
 from tests.e2e.utils import retry_with_backoff, wait_for_condition
 
+from tests.e2e.conftest import (
+    TEST_TIMEOUT,
+    TEST_ERC20_TOKEN,
+)
+
 # Test configuration
-TEST_TIMEOUT = 30
-TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging_sandbox")
 SLEEP_DURATION = 3
-ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
-
-# Test API keys (these should be replaced with test keys in a real environment)
-SUBSCRIBER_API_KEY = os.getenv(
-    "TEST_SUBSCRIBER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEVCNDk3OTU2OTRBMDc1QTY0ZTY2MzdmMUU5MGYwMjE0Mzg5YjI0YTMiLCJqdGkiOiIweGMzYjYyMWJkYTM5ZDllYWQyMTUyMDliZWY0MDBhMDEzYjM1YjQ2Zjc1NzM4YWFjY2I5ZjdkYWI0ZjQ5MmM5YjgiLCJleHAiOjE3OTQ2NTUwNjAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.YMkGQUjGh7_m07nj8SKXZReNKSryg9mTU3qwJr_TKYATUixbYQTte3CKucjqvgAGzJAd1Kq2ubz3b37n5Zsllxs",
-)
-BUILDER_API_KEY = os.getenv(
-    "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEFDYjY5YTYzZjljMEI0ZTczNDE0NDM2YjdBODM1NDBGNkM5MmIyMmUiLCJqdGkiOiIweDExZWUwYWYyOGQ5NGVlNmNjZGJhNDJmMDcyNDQyNTQ0ODE5OWRmNTk5ZGRkMDcyMWVlMmI5ZTg5Nzg3MzQ3N2IiLCJleHAiOjE3OTQ2NTU0NTIsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.fnnb-AFxE_ngIAgIRZOY6SpLM3KgpB1z210l_z3T0Fl2G2tHQp9svXrflCsIYoYHW_8kbHllLce827gyfmFvMhw",
-)
-
 # Test endpoints
 AGENT_ENDPOINTS = [
     {"POST": "http://localhost:8889/test/:agentId/tasks"},
@@ -129,20 +119,8 @@ def create_mock_server(payments_builder, agent_id):
     return server
 
 
-@pytest.fixture(scope="module")
-def payments_subscriber():
-    """Create a Payments instance for the subscriber."""
-    return Payments(
-        PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
-    )
-
-
-@pytest.fixture(scope="module")
-def payments_builder():
-    """Create a Payments instance for the builder."""
-    return Payments(
-        PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
-    )
+# Fixtures are now provided by conftest.py
+# payments_subscriber and payments_builder are available from conftest.py
 
 
 def test_payments_setup(payments_subscriber, payments_builder):
@@ -188,7 +166,7 @@ def test_create_credits_plan(payments_builder):
     global builder_address, credits_plan_id
     if not builder_address:
         builder_address = "0x0000000000000000000000000000000000000001"
-    price_config = get_erc20_price_config(20, ERC20_ADDRESS, builder_address)
+    price_config = get_erc20_price_config(20, TEST_ERC20_TOKEN, builder_address)
     credits_config = get_fixed_credits_config(100)
     print(" **** PRICE CONFIG ***", price_config)
     response = retry_with_backoff(
@@ -211,7 +189,7 @@ def test_create_time_plan(payments_builder):
     global builder_address, expirable_plan_id
     if not builder_address:
         builder_address = "0x0000000000000000000000000000000000000001"
-    price_config = get_erc20_price_config(50, ERC20_ADDRESS, builder_address)
+    price_config = get_erc20_price_config(50, TEST_ERC20_TOKEN, builder_address)
     credits_config = get_expirable_duration_config(ONE_DAY_DURATION)  # 1 day
     response = retry_with_backoff(
         lambda: payments_builder.plans.register_time_plan(
@@ -303,7 +281,7 @@ def test_create_agent_and_plan(payments_builder):
         "agentDefinitionUrl": "http://localhost:8889/test/openapi.json",
     }
     crypto_price_config = get_crypto_price_config(
-        10_000_000, builder_address, ERC20_ADDRESS
+        10_000_000, builder_address, TEST_ERC20_TOKEN
     )
     non_expirable_config = get_non_expirable_duration_config()
     # Force randomness of the plan by setting a random duration
