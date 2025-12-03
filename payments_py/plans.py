@@ -2,13 +2,14 @@
 Utility functions for creating and managing payment plans.
 """
 
+from typing import Optional
 from payments_py.common.types import (
     PlanCreditsConfig,
     PlanPriceConfig,
     PlanRedemptionType,
     Address,
 )
-from payments_py.environments import ZeroAddress, PayAsYouGoTemplateAddress
+from payments_py.environments import ZeroAddress
 from payments_py.utils import is_ethereum_address
 
 # Duration constants in seconds
@@ -265,7 +266,10 @@ def set_proof_required(
 
 
 def get_pay_as_you_go_price_config(
-    amount: int, receiver: Address, token_address: Address = ZeroAddress
+    amount: int,
+    receiver: Address,
+    token_address: Address = ZeroAddress,
+    template_address: Optional[Address] = None,
 ) -> PlanPriceConfig:
     """
     Get a pay-as-you-go price configuration for a plan.
@@ -277,21 +281,41 @@ def get_pay_as_you_go_price_config(
         amount: The amount per usage in the smallest unit of the token
         receiver: The address that will receive the payment
         token_address: The address of the token to use for payment (defaults to native token)
+        template_address: PayAsYouGoTemplate contract address. Required. Use
+                         Payments.contracts.pay_as_you_go_template or
+                         PlansAPI.get_pay_as_you_go_price_config() to get the address from the API.
 
     Returns:
         A PlanPriceConfig object configured for pay-as-you-go payments
 
     Raises:
         ValueError: If the receiver address is not a valid Ethereum address
+        ValueError: If template_address is not provided
 
     Example::
         from payments_py.plans import get_pay_as_you_go_price_config
 
-        # Pay-as-you-go plan with 100 units per request
-        price_config = get_pay_as_you_go_price_config(100, builder_address, USDC_ADDRESS)
+        # Pay-as-you-go plan with template address from API
+        payments = Payments(PaymentOptions(...))
+        template_addr = payments.contracts.pay_as_you_go_template
+        price_config = get_pay_as_you_go_price_config(
+            100, builder_address, USDC_ADDRESS, template_address=template_addr
+        )
+
+        # Or use PlansAPI method which handles this automatically
+        price_config = payments.plans.get_pay_as_you_go_price_config(
+            100, builder_address, USDC_ADDRESS
+        )
     """
     if not is_ethereum_address(receiver):
         raise ValueError(f"Receiver address {receiver} is not a valid Ethereum address")
+
+    if not template_address:
+        raise ValueError(
+            "template_address is required. Use Payments.contracts.pay_as_you_go_template "
+            "or PlansAPI.get_pay_as_you_go_price_config() to get the address from the API."
+        )
+
     return PlanPriceConfig(
         token_address=token_address,
         amounts=[amount],
@@ -299,7 +323,7 @@ def get_pay_as_you_go_price_config(
         contract_address=ZeroAddress,
         fee_controller=ZeroAddress,
         external_price_address=ZeroAddress,
-        template_address=PayAsYouGoTemplateAddress,
+        template_address=template_address,
         is_crypto=True,
     )
 

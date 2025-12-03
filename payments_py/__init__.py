@@ -80,7 +80,6 @@ from payments_py.plans import (
 # Import environment constants
 from payments_py.environments import (
     ZeroAddress,
-    PayAsYouGoTemplateAddress,
     EnvironmentInfo,
     EnvironmentName,
     Environments,
@@ -157,7 +156,6 @@ __all__ = [
     "get_pay_as_you_go_credits_config",
     # Environment constants
     "ZeroAddress",
-    "PayAsYouGoTemplateAddress",
     "EnvironmentInfo",
     "EnvironmentName",
     "Environments",

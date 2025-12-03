@@ -24,10 +24,6 @@ class EnvironmentInfo:
 # Zero address constant
 ZeroAddress = "0x0000000000000000000000000000000000000000"
 
-# Pay As You Go Template Address (Base Sepolia)
-# This is the contract address for the PayAsYouGoTemplate on Base Sepolia (chain ID 84532)
-PayAsYouGoTemplateAddress = "0x5e852077b30099106Aa65B4d329FFF9b5C9a8e7C"
-
 # Supported environment names
 EnvironmentName = Literal[
     "sandbox",

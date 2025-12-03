@@ -3,7 +3,7 @@ Unit tests for plan helper functions.
 """
 
 import pytest
-from payments_py.environments import ZeroAddress, PayAsYouGoTemplateAddress
+from payments_py.environments import ZeroAddress
 from payments_py.plans import (
     get_pay_as_you_go_price_config,
     get_pay_as_you_go_credits_config,
@@ -16,12 +16,23 @@ TEST_ERC20_TOKEN = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 class TestPayAsYouGoHelperFunctions:
     """Unit tests for Pay As You Go helper functions."""
 
-    def test_pay_as_you_go_price_config_has_correct_template(self):
-        """Test that get_pay_as_you_go_price_config sets the correct template address."""
+    def test_pay_as_you_go_price_config_requires_template_address(self):
+        """Test that get_pay_as_you_go_price_config requires template_address parameter."""
         receiver = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-        price_config = get_pay_as_you_go_price_config(100, receiver)
 
-        assert price_config.template_address == PayAsYouGoTemplateAddress
+        # Should raise ValueError when template_address is not provided
+        with pytest.raises(ValueError, match="template_address is required"):
+            get_pay_as_you_go_price_config(100, receiver)
+
+    def test_pay_as_you_go_price_config_with_template_address(self):
+        """Test that get_pay_as_you_go_price_config works with provided template address."""
+        receiver = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+        template_address = "0x5e852077b30099106Aa65B4d329FFF9b5C9a8e7C"
+        price_config = get_pay_as_you_go_price_config(
+            100, receiver, template_address=template_address
+        )
+
+        assert price_config.template_address == template_address
         assert price_config.is_crypto is True
         assert price_config.amounts == [100]
         assert price_config.receivers == [receiver]
@@ -31,16 +42,22 @@ class TestPayAsYouGoHelperFunctions:
         """Test that get_pay_as_you_go_price_config works with ERC20 tokens."""
         receiver = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
         token = TEST_ERC20_TOKEN
-        price_config = get_pay_as_you_go_price_config(200, receiver, token)
+        template_address = "0x5e852077b30099106Aa65B4d329FFF9b5C9a8e7C"
+        price_config = get_pay_as_you_go_price_config(
+            200, receiver, token, template_address=template_address
+        )
 
-        assert price_config.template_address == PayAsYouGoTemplateAddress
+        assert price_config.template_address == template_address
         assert price_config.token_address == token
         assert price_config.amounts == [200]
 
     def test_pay_as_you_go_price_config_invalid_receiver(self):
         """Test that get_pay_as_you_go_price_config raises on invalid receiver."""
+        template_address = "0x5e852077b30099106Aa65B4d329FFF9b5C9a8e7C"
         with pytest.raises(ValueError, match="not a valid Ethereum address"):
-            get_pay_as_you_go_price_config(100, "invalid-address")
+            get_pay_as_you_go_price_config(
+                100, "invalid-address", template_address=template_address
+            )
 
     def test_pay_as_you_go_credits_config_defaults(self):
         """Test that get_pay_as_you_go_credits_config has correct defaults."""

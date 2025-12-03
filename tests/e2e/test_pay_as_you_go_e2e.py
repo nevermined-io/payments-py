@@ -16,7 +16,6 @@ from payments_py.common.types import (
     AgentMetadata,
     AgentAPIAttributes,
 )
-from payments_py.environments import PayAsYouGoTemplateAddress
 from payments_py.plans import (
     get_pay_as_you_go_price_config,
     get_pay_as_you_go_credits_config,
@@ -59,16 +58,21 @@ class TestPayAsYouGoFlow:
         )
 
         # Create a pay-as-you-go price config (100 units per request)
-        price_config = get_pay_as_you_go_price_config(
+        # Use PlansAPI method which automatically fetches contract address from API
+        price_config = payments_agent.plans.get_pay_as_you_go_price_config(
             amount=100,
             receiver=self.agent_address,
             token_address=TEST_ERC20_TOKEN,
         )
 
-        # Verify the price config has the correct template address
+        # Verify the price config has a template address (from API)
         assert (
-            price_config.template_address == PayAsYouGoTemplateAddress
-        ), "Price config should use PayAsYouGoTemplateAddress"
+            price_config.template_address is not None
+        ), "Price config should have a template address from API"
+        assert (
+            price_config.template_address.lower()
+            == payments_agent.contracts.pay_as_you_go_template.lower()
+        ), "Price config should use contract address from API"
 
         # Configure credits (values default to 1, not functionally used for Pay As You Go)
         credits_config = get_pay_as_you_go_credits_config()
@@ -100,8 +104,10 @@ class TestPayAsYouGoFlow:
                 registry = plan.get("registry", {})
                 price = registry.get("price", {})
                 template_addr = price.get("templateAddress", "")
+                expected_addr = payments_agent.contracts.pay_as_you_go_template
                 print(f"Plan template address: {template_addr}")
-                return template_addr.lower() == PayAsYouGoTemplateAddress.lower()
+                print(f"Expected template address: {expected_addr}")
+                return template_addr.lower() == expected_addr.lower()
             except Exception as e:
                 print(f"Error checking plan: {e}")
                 return False

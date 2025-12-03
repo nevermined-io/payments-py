@@ -11,6 +11,7 @@ from payments_py.api.plans_api import PlansAPI
 from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
 from payments_py.api.observability_api import ObservabilityAPI
+from payments_py.api.contracts_api import ContractsAPI
 from payments_py.x402.facilitator_api import FacilitatorAPI
 from payments_py.x402.token import X402TokenAPI
 
@@ -92,9 +93,23 @@ class Payments(BasePaymentsAPI):
         self.observability = ObservabilityAPI.get_instance(options)
         self.facilitator = FacilitatorAPI.get_instance(options)
         self.x402 = X402TokenAPI.get_instance(options)
+        self.contracts_api = ContractsAPI(options)
 
         # Cached MCP integration
         self._mcp_integration = None
+
+    @property
+    def contracts(self):
+        """
+        Get contract addresses from the deployment info endpoint.
+
+        Returns:
+            Contracts model with all contract addresses accessible via snake_case properties
+
+        Example::
+            template_address = payments.contracts.pay_as_you_go_template
+        """
+        return self.contracts_api.contracts
 
     @property
     def mcp(self):
