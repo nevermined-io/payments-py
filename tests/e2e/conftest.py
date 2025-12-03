@@ -2,18 +2,54 @@
 Pytest configuration for E2E tests.
 
 This module provides fixtures and configuration for end-to-end testing
-of A2A payment flows.
+of payment flows. Common fixtures and test configuration are centralized here
+to avoid duplication across test files.
 """
 
 import asyncio
 import os
 import pytest
 import logging
+from payments_py.payments import Payments
+from payments_py.common.types import PaymentOptions
 
 # Configure logging for E2E tests
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
+# ============================================================================
+# Test Configuration Constants
+# ============================================================================
+
+# Test environment (can be overridden via TEST_ENVIRONMENT env var)
+TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging_sandbox")
+
+# Test timeout in seconds (can be overridden per test file if needed)
+TEST_TIMEOUT = int(os.getenv("TEST_TIMEOUT", "60"))
+
+# Test ERC20 token address (USDC on Base Sepolia)
+# Same address used across all E2E tests
+TEST_ERC20_TOKEN = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+
+# Test API keys - can be overridden via environment variables
+# Default values are for staging_sandbox environment
+SUBSCRIBER_API_KEY = os.getenv(
+    "TEST_SUBSCRIBER_API_KEY",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDcxZTZGN2Y4QzY4ZTdlMkU5NkIzYzkwNjU1YzJEMmNBMzc2QmMzZmQiLCJqdGkiOiIweDFmM2Q0NWRkZTA3MzQ1NzUyM2FlZDZkODJlMDc2YWM1MDAwNGJmMmMxMWU4MzljMThkNTFjOWE5ZWYxMWM1MWQiLCJleHAiOjE3OTU1NDMxMzYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.WcVy1LUl8r1Z7lTDCxdXltGhHBXrBUhxqjWrGu2nMaZ2UePqfV6Wrw2vcBcjrG5F2hrVacdCmHqC3pIrjiV3xBw",
+)
+
+AGENT_API_KEY = os.getenv(
+    "TEST_BUILDER_API_KEY",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDlkREQwMkQ0RTExMWFiNWNFNDc1MTE5ODdCMjUwMGZjQjU2MjUyYzYiLCJqdGkiOiIweDQ2YzY3OTk5MTY5NDBhZmI4ZGNmNmQ2NmRmZmY4MGE0YmVhYWMyY2NiYWZlOTlkOGEwOTAwYTBjMzhmZjdkNjEiLCJleHAiOjE3OTU1NDI4NzAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.n51gkto9Jw-MXxnXW92XDAB_CnHUFxkritWp9Lj1qFASmtf_TuQwU57bauIEGrQygumX8S3pXqRqeGRWT2AJiRs",
+)
+
+# Alias for backward compatibility (some tests use BUILDER_API_KEY)
+BUILDER_API_KEY = AGENT_API_KEY
+
+# ============================================================================
+# Pytest Fixtures
+# ============================================================================
 
 
 # Force asyncio backend for pytest-anyio
@@ -54,6 +90,46 @@ def timeout_config():
         "server_startup_timeout": 10,
         "network_timeout": 15,
     }
+
+
+@pytest.fixture(scope="module")
+def payments_subscriber():
+    """
+    Create a Payments instance for the subscriber.
+
+    This fixture is shared across all E2E test files and provides
+    a Payments instance configured with the subscriber API key.
+    """
+    return Payments(
+        PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
+    )
+
+
+@pytest.fixture(scope="module")
+def payments_agent():
+    """
+    Create a Payments instance for the agent (builder).
+
+    This fixture is shared across all E2E test files and provides
+    a Payments instance configured with the agent/builder API key.
+    """
+    return Payments(
+        PaymentOptions(nvm_api_key=AGENT_API_KEY, environment=TEST_ENVIRONMENT)
+    )
+
+
+# Alias for backward compatibility (some tests use payments_builder)
+@pytest.fixture(scope="module")
+def payments_builder():
+    """
+    Alias for payments_agent fixture.
+
+    Some tests use 'payments_builder' instead of 'payments_agent'.
+    This provides backward compatibility.
+    """
+    return Payments(
+        PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
+    )
 
 
 def pytest_addoption(parser):

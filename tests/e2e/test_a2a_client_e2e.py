@@ -9,7 +9,6 @@ This mirrors the flows covered in the TypeScript test suite (a2a.e2e.test.ts):
 
 from __future__ import annotations
 
-import os
 import time
 
 import pytest
@@ -18,25 +17,13 @@ import requests
 from payments_py.payments import Payments
 from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.a2a.agent_card import build_payment_agent_card
-from payments_py.common.types import PaymentOptions
 from tests.e2e.helpers.a2a_setup_helpers import create_a2a_test_agent_and_plan
+from tests.e2e.conftest import (
+    TEST_TIMEOUT,
+)
 from types import SimpleNamespace
 
-
-TEST_TIMEOUT = 30
-TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging_sandbox")
-
-# Credentials for E2E testing
-SUBSCRIBER_API_KEY = os.getenv(
-    "TEST_SUBSCRIBER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDcxZTZGN2Y4QzY4ZTdlMkU5NkIzYzkwNjU1YzJEMmNBMzc2QmMzZmQiLCJqdGkiOiIweDFmM2Q0NWRkZTA3MzQ1NzUyM2FlZDZkODJlMDc2YWM1MDAwNGJmMmMxMWU4MzljMThkNTFjOWE5ZWYxMWM1MWQiLCJleHAiOjE3OTU1NDMxMzYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.WcVy1LUl8r1Z7lTDCxdXltGhHBXrBUhxqjWrGu2nMaZ2UePqfV6Wrw2vcBcjrG5F2hrVacdCmHqC3pIrjiV3xBw",
-)
-BUILDER_API_KEY = os.getenv(
-    "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDlkREQwMkQ0RTExMWFiNWNFNDc1MTE5ODdCMjUwMGZjQjU2MjUyYzYiLCJqdGkiOiIweDQ2YzY3OTk5MTY5NDBhZmI4ZGNmNmQ2NmRmZmY4MGE0YmVhYWMyY2NiYWZlOTlkOGEwOTAwYTBjMzhmZjdkNjEiLCJleHAiOjE3OTU1NDI4NzAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.n51gkto9Jw-MXxnXW92XDAB_CnHUFxkritWp9Lj1qFASmtf_TuQwU57bauIEGrQygumX8S3pXqRqeGRWT2AJiRs",
-)
-
-ERC20_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+# Use shared ERC20 token address
 PORT = 6782
 
 
@@ -56,18 +43,8 @@ def _wait_for_server_ready(
     raise RuntimeError("A2A test server did not become ready in time")
 
 
-@pytest.fixture(scope="module")
-def payments_builder() -> Payments:
-    return Payments(
-        PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
-    )
-
-
-@pytest.fixture(scope="module")
-def payments_subscriber() -> Payments:
-    return Payments(
-        PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
-    )
+# Fixtures are now provided by conftest.py
+# payments_subscriber and payments_builder are available from conftest.py
 
 
 @pytest.fixture(scope="module")

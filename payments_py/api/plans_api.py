@@ -29,12 +29,27 @@ from payments_py.api.nvm_api import (
 )
 from payments_py.utils import get_random_big_int, is_ethereum_address
 from payments_py import plans as plan_utils
+from payments_py.plans import (
+    get_pay_as_you_go_price_config,
+    get_pay_as_you_go_credits_config,
+)
+from payments_py.api.contracts_api import ContractsAPI
 
 
 class PlansAPI(BasePaymentsAPI):
     """
     The PlansAPI class provides methods to register and interact with payment plans on Nevermined.
     """
+
+    def __init__(self, options: PaymentOptions):
+        """
+        Initialize the PlansAPI class.
+
+        Args:
+            options: The options to initialize the payments class
+        """
+        super().__init__(options)
+        self.contracts_api = ContractsAPI(options)
 
     @classmethod
     def get_instance(cls, options: PaymentOptions) -> "PlansAPI":
@@ -509,6 +524,43 @@ class PlansAPI(BasePaymentsAPI):
     ) -> PlanCreditsConfig:
         """Set proof requirement on a credits configuration (returns new object)."""
         return plan_utils.set_proof_required(credits_config, proof_required)
+
+    # Pay As You Go configuration builders -----------------------------------
+    def get_pay_as_you_go_price_config(
+        self,
+        amount: int,
+        receiver: str,
+        token_address: str = plan_utils.ZeroAddress,
+    ) -> PlanPriceConfig:
+        """
+        Build a pay-as-you-go price configuration using contract address from API.
+
+        This method fetches the PayAsYouGoTemplate contract address from the API info endpoint
+        and uses it to create the price configuration. The address is cached for subsequent calls.
+
+        Args:
+            amount: The amount per usage in the smallest unit of the token
+            receiver: The address that will receive the payment
+            token_address: The address of the token to use for payment (defaults to native token)
+
+        Returns:
+            A PlanPriceConfig object configured for pay-as-you-go payments
+
+        Raises:
+            PaymentsError: If unable to fetch contract address from API
+            ValueError: If the receiver address is not a valid Ethereum address
+        """
+        # Get contract address from contracts API
+        template_address = self.contracts_api.contracts.pay_as_you_go_template
+
+        return get_pay_as_you_go_price_config(
+            amount, receiver, token_address, template_address=template_address
+        )
+
+    @staticmethod
+    def get_pay_as_you_go_credits_config() -> PlanCreditsConfig:
+        """Build a pay-as-you-go credits configuration."""
+        return get_pay_as_you_go_credits_config()
 
     def order_fiat_plan(self, plan_id: str) -> Dict[str, Any]:
         """

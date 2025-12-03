@@ -2,6 +2,7 @@
 Utility functions for creating and managing payment plans.
 """
 
+from typing import Optional
 from payments_py.common.types import (
     PlanCreditsConfig,
     PlanPriceConfig,
@@ -256,4 +257,107 @@ def set_proof_required(
         amount=credits_config.amount,
         min_amount=credits_config.min_amount,
         max_amount=credits_config.max_amount,
+    )
+
+
+# -----------------------------------------------------------------------------
+# Pay As You Go Helper Functions
+# -----------------------------------------------------------------------------
+
+
+def get_pay_as_you_go_price_config(
+    amount: int,
+    receiver: Address,
+    token_address: Address = ZeroAddress,
+    template_address: Optional[Address] = None,
+) -> PlanPriceConfig:
+    """
+    Get a pay-as-you-go price configuration for a plan.
+
+    Pay-as-you-go plans charge users per request/usage rather than upfront.
+    The payment is made when the service is consumed (settle), not when ordering.
+
+    Args:
+        amount: The amount per usage in the smallest unit of the token
+        receiver: The address that will receive the payment
+        token_address: The address of the token to use for payment (defaults to native token)
+        template_address: PayAsYouGoTemplate contract address. Required. Use
+                         Payments.contracts.pay_as_you_go_template or
+                         PlansAPI.get_pay_as_you_go_price_config() to get the address from the API.
+
+    Returns:
+        A PlanPriceConfig object configured for pay-as-you-go payments
+
+    Raises:
+        ValueError: If the receiver address is not a valid Ethereum address
+        ValueError: If template_address is not provided
+
+    Example::
+        from payments_py.plans import get_pay_as_you_go_price_config
+
+        # Pay-as-you-go plan with template address from API
+        payments = Payments(PaymentOptions(...))
+        template_addr = payments.contracts.pay_as_you_go_template
+        price_config = get_pay_as_you_go_price_config(
+            100, builder_address, USDC_ADDRESS, template_address=template_addr
+        )
+
+        # Or use PlansAPI method which handles this automatically
+        price_config = payments.plans.get_pay_as_you_go_price_config(
+            100, builder_address, USDC_ADDRESS
+        )
+    """
+    if not is_ethereum_address(receiver):
+        raise ValueError(f"Receiver address {receiver} is not a valid Ethereum address")
+
+    if not template_address:
+        raise ValueError(
+            "template_address is required. Use Payments.contracts.pay_as_you_go_template "
+            "or PlansAPI.get_pay_as_you_go_price_config() to get the address from the API."
+        )
+
+    return PlanPriceConfig(
+        token_address=token_address,
+        amounts=[amount],
+        receivers=[receiver],
+        contract_address=ZeroAddress,
+        fee_controller=ZeroAddress,
+        external_price_address=ZeroAddress,
+        template_address=template_address,
+        is_crypto=True,
+    )
+
+
+def get_pay_as_you_go_credits_config() -> PlanCreditsConfig:
+    """
+    Get a pay-as-you-go credits configuration for a plan.
+
+    Pay-as-you-go plans use `ONLY_SUBSCRIBER` redemption type, which means
+    only the subscriber who purchased the plan can redeem credits.
+
+    **Important**: For Pay As You Go plans, no credits are minted upfront.
+    The PayAsYouGoTemplate only handles payment locking and distribution per request.
+    The credits config is required by the API and smart contracts for validation,
+    but the actual payment per request comes from the `amount` in the price config,
+    not from the credits config. This helper defaults all values to 1 as they are
+    not functionally used.
+
+    Returns:
+        A PlanCreditsConfig object configured for pay-as-you-go credits.
+        All values default to 1 as they are not used for minting credits.
+
+    Example::
+        from payments_py.plans import get_pay_as_you_go_credits_config
+
+        # Pay-as-you-go credits config (values default to 1, not functionally used)
+        credits_config = get_pay_as_you_go_credits_config()
+    """
+    return PlanCreditsConfig(
+        is_redemption_amount_fixed=False,
+        redemption_type=PlanRedemptionType.ONLY_SUBSCRIBER,
+        proof_required=False,
+        duration_secs=0,
+        amount="1",
+        min_amount=1,
+        max_amount=1,
     )

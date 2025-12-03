@@ -42,6 +42,9 @@ API_URL_SETTLE_PERMISSIONS = "/api/v1/settle"
 # Stripe endpoints
 API_URL_STRIPE_CHECKOUT = "/api/v1/stripe/checkout"
 
+# Info endpoint
+API_URL_INFO = "/"
+
 
 class HTTPRequestOptions:
     """

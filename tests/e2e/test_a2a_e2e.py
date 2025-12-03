@@ -3,7 +3,6 @@ End-to-End tests for A2A Payment Integration using Nevermined backend.
 """
 
 import asyncio
-import os
 import uuid
 from uuid import uuid4
 import threading
@@ -28,21 +27,13 @@ from payments_py import Payments
 from payments_py.a2a.agent_card import build_payment_agent_card
 from payments_py.common.types import PaymentOptions
 from tests.e2e.helpers.a2a_setup_helpers import create_a2a_test_agent_and_plan
-
-# Credentials for E2E testing
-SUBSCRIBER_API_KEY = os.getenv(
-    "TEST_SUBSCRIBER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDcxZTZGN2Y4QzY4ZTdlMkU5NkIzYzkwNjU1YzJEMmNBMzc2QmMzZmQiLCJqdGkiOiIweDFmM2Q0NWRkZTA3MzQ1NzUyM2FlZDZkODJlMDc2YWM1MDAwNGJmMmMxMWU4MzljMThkNTFjOWE5ZWYxMWM1MWQiLCJleHAiOjE3OTU1NDMxMzYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.WcVy1LUl8r1Z7lTDCxdXltGhHBXrBUhxqjWrGu2nMaZ2UePqfV6Wrw2vcBcjrG5F2hrVacdCmHqC3pIrjiV3xBw",
-)
-BUILDER_API_KEY = os.getenv(
-    "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDlkREQwMkQ0RTExMWFiNWNFNDc1MTE5ODdCMjUwMGZjQjU2MjUyYzYiLCJqdGkiOiIweDQ2YzY3OTk5MTY5NDBhZmI4ZGNmNmQ2NmRmZmY4MGE0YmVhYWMyY2NiYWZlOTlkOGEwOTAwYTBjMzhmZjdkNjEiLCJleHAiOjE3OTU1NDI4NzAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.n51gkto9Jw-MXxnXW92XDAB_CnHUFxkritWp9Lj1qFASmtf_TuQwU57bauIEGrQygumX8S3pXqRqeGRWT2AJiRs",
+from tests.e2e.conftest import (
+    SUBSCRIBER_API_KEY,
+    BUILDER_API_KEY,
+    TEST_ENVIRONMENT,
 )
 
 PORT = 6782
-
-# Test environment
-TEST_ENVIRONMENT = "staging_sandbox"
 
 
 class BasicE2EExecutor(AgentExecutor):
@@ -694,7 +685,7 @@ class TestA2AE2EFlow:
     @classmethod
     def setup_class(cls):
         """Setup once for all test methods in the class."""
-        # Create Payments instances
+        # Create Payments instances using shared configuration
         cls.payments_publisher = Payments(
             PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
         )

@@ -5,12 +5,9 @@ This test suite validates the X402 access token flow which allows AI agents
 to verify and settle permissions on behalf of subscribers using delegated session keys.
 """
 
-import os
 import pytest
 from datetime import datetime
-from payments_py.payments import Payments
 from payments_py.common.types import (
-    PaymentOptions,
     PlanMetadata,
     AgentMetadata,
     AgentAPIAttributes,
@@ -21,36 +18,7 @@ from payments_py.plans import (
     get_dynamic_credits_config,
 )
 from tests.e2e.utils import retry_with_backoff, wait_for_condition
-
-# Test configuration
-TEST_TIMEOUT = 60
-TEST_ENVIRONMENT = os.getenv("TEST_ENVIRONMENT", "staging_sandbox")
-
-# Test API keys - same as other E2E tests
-SUBSCRIBER_API_KEY = os.getenv(
-    "TEST_SUBSCRIBER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDcxZTZGN2Y4QzY4ZTdlMkU5NkIzYzkwNjU1YzJEMmNBMzc2QmMzZmQiLCJqdGkiOiIweDFmM2Q0NWRkZTA3MzQ1NzUyM2FlZDZkODJlMDc2YWM1MDAwNGJmMmMxMWU4MzljMThkNTFjOWE5ZWYxMWM1MWQiLCJleHAiOjE3OTU1NDMxMzYsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.WcVy1LUl8r1Z7lTDCxdXltGhHBXrBUhxqjWrGu2nMaZ2UePqfV6Wrw2vcBcjrG5F2hrVacdCmHqC3pIrjiV3xBw",
-)
-AGENT_API_KEY = os.getenv(
-    "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDlkREQwMkQ0RTExMWFiNWNFNDc1MTE5ODdCMjUwMGZjQjU2MjUyYzYiLCJqdGkiOiIweDQ2YzY3OTk5MTY5NDBhZmI4ZGNmNmQ2NmRmZmY4MGE0YmVhYWMyY2NiYWZlOTlkOGEwOTAwYTBjMzhmZjdkNjEiLCJleHAiOjE3OTU1NDI4NzAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.n51gkto9Jw-MXxnXW92XDAB_CnHUFxkritWp9Lj1qFASmtf_TuQwU57bauIEGrQygumX8S3pXqRqeGRWT2AJiRs",
-)
-
-
-@pytest.fixture(scope="module")
-def payments_subscriber():
-    """Create a Payments instance for the subscriber."""
-    return Payments(
-        PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
-    )
-
-
-@pytest.fixture(scope="module")
-def payments_agent():
-    """Create a Payments instance for the agent (builder)."""
-    return Payments(
-        PaymentOptions(nvm_api_key=AGENT_API_KEY, environment=TEST_ENVIRONMENT)
-    )
+from tests.e2e.conftest import TEST_TIMEOUT
 
 
 class TestX402AccessTokenFlow:
