@@ -19,7 +19,6 @@ class DeploymentInfo(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     version: Optional[str] = None
-    chain_id: int = Field(alias="chainId")
     contracts: Dict[str, str]
 
 
