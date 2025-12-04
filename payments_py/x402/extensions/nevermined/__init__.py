@@ -73,20 +73,27 @@ This extension supports both v2 (extensions field) and v1 (extra field) formats
 for seamless migration.
 """
 
-from .types import NEVERMINED, NeverminedInfo, NeverminedExtension
+from .types import (
+    NEVERMINED,
+    nevermined_extension_key,
+    NeverminedInfo,
+    NeverminedExtension,
+)
 from .declare import declare_nevermined_extension
-from .extract import extract_nevermined_info
+from .extract import extract_nevermined_info, extract_all_nevermined_plans
 from .validate import validate_nevermined_extension, ValidationResult
 
 __all__ = [
     # Constants
     "NEVERMINED",
+    "nevermined_extension_key",
     # Types
     "NeverminedInfo",
     "NeverminedExtension",
     # Helpers
     "declare_nevermined_extension",
     "extract_nevermined_info",
+    "extract_all_nevermined_plans",
     "validate_nevermined_extension",
     "ValidationResult",
 ]

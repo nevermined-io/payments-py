@@ -445,9 +445,9 @@ flowchart TB
 
 ### Nevermined Extension
 
-The Nevermined extension enables credit-based payments through the X402 protocol.
+The Nevermined extension enables credit-based payments through the X402 protocol. It supports both single and multiple payment plans.
 
-#### Declaration (Server Side)
+#### Single Plan Declaration (Server Side)
 
 ```python
 from payments_py.x402.extensions.nevermined import declare_nevermined_extension, NEVERMINED
@@ -467,7 +467,42 @@ payment_required = {
     "resource": {"url": "https://api.example.com/data"},
     "accepts": [...],
     "extensions": {
-        NEVERMINED: extension  # Extension declares payment requirements
+        NEVERMINED: extension  # Single plan
+    }
+}
+```
+
+#### Multiple Plans Declaration (Server Side)
+
+Offer multiple payment options using **qualified extension keys**:
+
+```python
+from payments_py.x402.extensions.nevermined import (
+    declare_nevermined_extension,
+    nevermined_extension_key
+)
+
+# Create different plan extensions
+credits_ext = declare_nevermined_extension(
+    plan_id="credits-plan-id",
+    agent_id="your-agent-id",
+    max_amount="2"
+)
+
+payasyougo_ext = declare_nevermined_extension(
+    plan_id="payasyougo-plan-id",
+    agent_id="your-agent-id",
+    max_amount="1"
+)
+
+# Attach multiple plans with qualified keys
+payment_required = {
+    "x402Version": 2,
+    "resource": {"url": "https://api.example.com/data"},
+    "accepts": [...],
+    "extensions": {
+        nevermined_extension_key("credits"): credits_ext,       # "nevermined:credits"
+        nevermined_extension_key("payasyougo"): payasyougo_ext  # "nevermined:payasyougo"
     }
 }
 ```
@@ -475,9 +510,12 @@ payment_required = {
 #### Extraction (Facilitator Side)
 
 ```python
-from payments_py.x402.extensions.nevermined import extract_nevermined_info
+from payments_py.x402.extensions.nevermined import (
+    extract_nevermined_info,
+    extract_all_nevermined_plans
+)
 
-# Facilitator extracts payment info
+# Extract single plan (from PaymentPayload with selected plan)
 nvm_info = extract_nevermined_info(payment_payload, payment_requirements)
 
 if nvm_info:
@@ -485,20 +523,37 @@ if nvm_info:
     plan_id = nvm_info["plan_id"]
     agent_id = nvm_info["agent_id"]
     max_amount = nvm_info["max_amount"]
+    extension_key = nvm_info["extension_key"]  # e.g., "nevermined:credits"
 
     # Process payment based on extracted info
     # - Verify subscriber has credits
     # - Order more credits if needed
     # - Burn credits on settlement
+
+# Extract all available plans (from PaymentRequired response)
+all_plans = extract_all_nevermined_plans(payment_required_response)
+
+for plan in all_plans:
+    print(f"Plan: {plan['extension_key']}")
+    print(f"  Plan ID: {plan['plan_id']}")
+    print(f"  Max Amount: {plan['max_amount']}")
 ```
 
 **What the Extension Provides:**
 
 - ✅ **Declaration helpers** - Create properly formatted extension metadata
-- ✅ **Extraction helpers** - Parse extension data from payloads
+- ✅ **Extraction helpers** - Parse extension data from payloads (single or multiple)
 - ✅ **Validation helpers** - JSON Schema validation
-- ✅ **Type definitions** - Pydantic types for structure validation
+- ✅ **Type definitions** - TypedDict types for structure validation
+- ✅ **Multiple plans support** - Qualified extension keys for multiple payment options
 - ✅ **Backward compatibility** - Supports v1 (extra field) and v2 (extensions)
+
+**Note:** Plan names are not included in extensions. Fetch them from the Nevermined API:
+
+```python
+plan_details = payments.plans.get_plan(plan_id=plan["plan_id"])
+plan_name = plan_details.get("name", "Unnamed Plan")
+```
 
 **Example Data Flow:**
 
@@ -716,6 +771,24 @@ token = result["accessToken"]
 
 Helper functions for working with Nevermined extensions.
 
+#### `nevermined_extension_key()`
+
+Generate a qualified extension key for multiple plan support.
+
+```python
+from payments_py.x402.extensions.nevermined import nevermined_extension_key
+
+key = nevermined_extension_key("credits")       # "nevermined:credits"
+key = nevermined_extension_key("payasyougo")    # "nevermined:payasyougo"
+key = nevermined_extension_key("credits-basic") # "nevermined:credits-basic"
+```
+
+**Parameters:**
+
+- `plan_type` (str): Plan type identifier
+
+**Returns:** Qualified extension key string
+
 #### `declare_nevermined_extension()`
 
 Create a Nevermined extension for PaymentRequired responses.
@@ -744,9 +817,11 @@ extension = declare_nevermined_extension(
 
 **Returns:** `NeverminedExtension` (TypedDict with `info` and `schema`)
 
+**Note:** Plan name is NOT included. Fetch it from the Nevermined API using `payments.plans.get_plan(plan_id)`.
+
 #### `extract_nevermined_info()`
 
-Extract Nevermined information from payment payloads.
+Extract Nevermined information from payment payloads (single plan).
 
 ```python
 from payments_py.x402.extensions.nevermined import extract_nevermined_info
@@ -761,6 +836,7 @@ if nvm_info:
     plan_id = nvm_info["plan_id"]
     agent_id = nvm_info["agent_id"]
     max_amount = nvm_info["max_amount"]
+    extension_key = nvm_info["extension_key"]  # e.g., "nevermined:credits"
 ```
 
 **Parameters:**
@@ -772,6 +848,30 @@ if nvm_info:
 **Returns:** `NeverminedInfo` (TypedDict) or `None` if not found
 
 **Backward Compatibility:** Automatically handles both v2 (extensions) and v1 (extra field) formats.
+
+#### `extract_all_nevermined_plans()`
+
+Extract all Nevermined plans from a payment response (multiple plans).
+
+```python
+from payments_py.x402.extensions.nevermined import extract_all_nevermined_plans
+
+plans = extract_all_nevermined_plans(payment_required_response)
+
+for plan in plans:
+    print(f"Plan: {plan['extension_key']}")
+    print(f"  Plan ID: {plan['plan_id']}")
+    print(f"  Agent ID: {plan['agent_id']}")
+    print(f"  Max Amount: {plan['max_amount']}")
+```
+
+**Parameters:**
+
+- `payment_response` (dict): PaymentRequired response with extensions
+
+**Returns:** `List[NeverminedInfo]` - List of all Nevermined plans found
+
+**Use Case:** Present multiple payment options to users for selection.
 
 #### `validate_nevermined_extension()`
 
