@@ -7,9 +7,25 @@ Defines the structure and types for the Nevermined payment extension.
 from typing import Optional
 from typing_extensions import TypedDict
 
-# Extension identifier constant
-# This is used as the key in the extensions dictionary
+# Extension identifier constants
+# Base identifier for Nevermined extensions
 NEVERMINED = "nevermined"
+
+
+# Qualified extension identifiers for multiple plans
+# Format: "nevermined:{plan_type}" where plan_type is a descriptive identifier
+# Examples: "nevermined:credits", "nevermined:payasyougo"
+def nevermined_extension_key(plan_type: str) -> str:
+    """
+    Generate a qualified extension key for a Nevermined plan.
+
+    Args:
+        plan_type: Descriptive identifier for the plan (e.g., "credits", "payasyougo")
+
+    Returns:
+        Qualified extension key (e.g., "nevermined:credits")
+    """
+    return f"{NEVERMINED}:{plan_type}"
 
 
 class NeverminedInfo(TypedDict, total=False):
@@ -60,6 +76,7 @@ class NeverminedExtension(TypedDict):
 
 __all__ = [
     "NEVERMINED",
+    "nevermined_extension_key",
     "NeverminedInfo",
     "NeverminedExtension",
 ]

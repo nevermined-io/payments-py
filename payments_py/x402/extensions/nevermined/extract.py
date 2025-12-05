@@ -5,7 +5,7 @@ These functions help facilitators parse and validate Nevermined extension
 metadata from payment payloads following the x402 v2 extension pattern.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from .types import NeverminedInfo, NEVERMINED
 from .validate import validate_nevermined_extension
@@ -75,9 +75,27 @@ def extract_nevermined_info(
 
     if x402_version == 2:
         # V2: Check extensions field in PaymentPayload
+        # Look for qualified Nevermined extensions (e.g., "nevermined:credits")
+        # or legacy single "nevermined" extension
         extensions = payment_payload.get("extensions", {})
-        nvm_extension = extensions.get(NEVERMINED)
 
+        # First, try to find any qualified Nevermined extension
+        for ext_key, ext_data in extensions.items():
+            if ext_key.startswith(f"{NEVERMINED}:"):
+                # Found a qualified Nevermined extension
+                if validate:
+                    result = validate_nevermined_extension(ext_data)
+                    if not result["valid"]:
+                        continue  # Try next extension
+
+                # Return the info part
+                if isinstance(ext_data, dict):
+                    return ext_data.get("info")
+                else:
+                    return ext_data.info if hasattr(ext_data, "info") else None
+
+        # Fallback to legacy single "nevermined" extension
+        nvm_extension = extensions.get(NEVERMINED)
         if nvm_extension:
             # Found Nevermined extension
             if validate:
@@ -118,4 +136,105 @@ def extract_nevermined_info(
     return None
 
 
-__all__ = ["extract_nevermined_info"]
+def extract_all_nevermined_plans(
+    payment_required: Dict[str, Any],
+    validate: bool = True,
+) -> List[Dict[str, Any]]:
+    """
+    Extract all Nevermined plans from PaymentRequired response extensions.
+
+    For v2 with multiple plans, each plan is its own extension entry with
+    qualified keys like "nevermined:credits", "nevermined:payasyougo".
+
+    Args:
+        payment_required: The PaymentRequired response from the server
+        validate: Whether to validate against JSON Schema (default: True)
+
+    Returns:
+        List of dictionaries containing plan info, each with:
+        - extension_key: The extension key (e.g., "nevermined:credits")
+        - plan_id: Nevermined plan ID
+        - agent_id: Nevermined agent ID
+        - max_amount: Maximum credits to burn
+        - network: Blockchain network
+        - scheme: Payment scheme
+        - environment: Optional Nevermined environment
+
+    Example:
+        >>> from payments_py.x402.extensions.nevermined import extract_all_nevermined_plans
+        >>>
+        >>> plans = extract_all_nevermined_plans(payment_required_response)
+        >>> for plan in plans:
+        ...     print(f"Plan ID: {plan['plan_id']} ({plan['extension_key']})")
+        ...     print(f"  Amount: {plan['max_amount']} credits")
+        ...     # Plan name can be fetched from Nevermined API using plan_id if needed
+    """
+    plans = []
+
+    # Check if this is v2 with extensions
+    x402_version = payment_required.get(
+        "x402Version", payment_required.get("x402_version", 1)
+    )
+
+    if x402_version == 2:
+        extensions = payment_required.get("extensions", {})
+
+        # Look for all Nevermined extensions (qualified keys like "nevermined:credits")
+        for ext_key, ext_data in extensions.items():
+            if ext_key.startswith(f"{NEVERMINED}:"):
+                # This is a Nevermined plan extension
+                if validate:
+                    result = validate_nevermined_extension(ext_data)
+                    if not result["valid"]:
+                        continue  # Skip invalid extensions
+
+                # Extract info
+                if isinstance(ext_data, dict):
+                    info = ext_data.get("info", {})
+                else:
+                    # Pydantic Extension model
+                    info = ext_data.info if hasattr(ext_data, "info") else {}
+
+                if info and "plan_id" in info:
+                    plans.append(
+                        {
+                            "extension_key": ext_key,
+                            "plan_id": info.get("plan_id"),
+                            "agent_id": info.get("agent_id"),
+                            "max_amount": info.get("max_amount"),
+                            "network": info.get("network"),
+                            "scheme": info.get("scheme"),
+                            "environment": info.get("environment"),
+                        }
+                    )
+
+        # Also check for legacy single "nevermined" extension (backwards compatibility)
+        if NEVERMINED in extensions and not plans:
+            ext_data = extensions[NEVERMINED]
+            if validate:
+                result = validate_nevermined_extension(ext_data)
+                if not result["valid"]:
+                    return plans
+
+            if isinstance(ext_data, dict):
+                info = ext_data.get("info", {})
+            else:
+                info = ext_data.info if hasattr(ext_data, "info") else {}
+
+            if info and "plan_id" in info:
+                plans.append(
+                    {
+                        "extension_key": NEVERMINED,
+                        "plan_id": info.get("plan_id"),
+                        "agent_id": info.get("agent_id"),
+                        "max_amount": info.get("max_amount"),
+                        "network": info.get("network"),
+                        "scheme": info.get("scheme"),
+                        "environment": info.get("environment"),
+                    }
+                )
+
+    return plans
+
+
+__all__ = ["extract_nevermined_info", "extract_all_nevermined_plans"]
