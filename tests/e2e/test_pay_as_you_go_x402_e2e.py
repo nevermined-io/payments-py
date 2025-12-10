@@ -175,18 +175,86 @@ class TestPayAsYouGoFlow:
         assert agent_available, "Agent did not become available in time"
 
     @pytest.mark.timeout(TEST_TIMEOUT)
-    def test_order_pay_as_you_go_plan(self, payments_subscriber):
-        """Subscriber orders the Pay As You Go plan directly (no X402 flow)."""
+    def test_get_x402_access_token_for_pay_as_you_go(self, payments_subscriber):
+        """Test generating X402 access token for the Pay As You Go plan."""
         assert self.plan_id is not None, "plan_id must be set by previous test"
+        assert self.agent_id is not None, "agent_id must be set by previous test"
 
-        print(f"Ordering Pay As You Go plan directly: {self.plan_id}")
+        print(
+            f"Generating X402 Access Token for Pay As You Go plan: {self.plan_id}, agent: {self.agent_id}"
+        )
 
         response = retry_with_backoff(
-            lambda: payments_subscriber.plans.order_plan(self.plan_id),
-            label="Pay As You Go Plan Order",
+            lambda: payments_subscriber.x402.get_x402_access_token(
+                self.plan_id, self.agent_id
+            ),
+            label="X402 Access Token Generation for Pay As You Go",
+            attempts=3,
+        )
+
+        assert response is not None
+        TestPayAsYouGoFlow.x402_access_token = response.get("accessToken")
+        assert self.x402_access_token is not None
+        assert len(self.x402_access_token) > 0
+        print(f"Generated X402 Access Token (length: {len(self.x402_access_token)})")
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_verify_pay_as_you_go_permissions(self, payments_agent):
+        """Test verifying permissions for Pay As You Go using X402 access token."""
+        assert self.plan_id is not None, "plan_id must be set by previous test"
+        assert (
+            self.x402_access_token is not None
+        ), "x402_access_token must be set by previous test"
+        assert (
+            self.subscriber_address is not None
+        ), "subscriber_address must be set by previous test"
+
+        print(
+            f"Verifying Pay As You Go permissions for plan: {self.plan_id}, subscriber: {self.subscriber_address}"
+        )
+
+        response = retry_with_backoff(
+            lambda: payments_agent.facilitator.verify_permissions(
+                plan_id=self.plan_id,
+                max_amount="1",
+                x402_access_token=self.x402_access_token,
+                subscriber_address=self.subscriber_address,
+            ),
+            label="Pay As You Go Verify Permissions",
             attempts=3,
         )
 
         assert response is not None
         assert response.get("success") is True
-        print(f"Pay As You Go order response: {response}")
+        print(f"Pay As You Go verify permissions response: {response}")
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_settle_pay_as_you_go(self, payments_agent, payments_subscriber):
+        """Test settling (ordering) Pay As You Go plan using X402 access token."""
+        assert self.plan_id is not None, "plan_id must be set by previous test"
+        assert (
+            self.x402_access_token is not None
+        ), "x402_access_token must be set by previous test"
+        assert (
+            self.subscriber_address is not None
+        ), "subscriber_address must be set by previous test"
+
+        print(
+            f"Settling Pay As You Go for plan: {self.plan_id}, subscriber: {self.subscriber_address}"
+        )
+
+        response = retry_with_backoff(
+            lambda: payments_agent.facilitator.settle_permissions(
+                plan_id=self.plan_id,
+                max_amount="1",
+                x402_access_token=self.x402_access_token,
+                subscriber_address=self.subscriber_address,
+            ),
+            label="Pay As You Go Settle",
+            attempts=3,
+        )
+
+        assert response is not None
+        assert response.get("success") is True
+        print(f"Pay As You Go settle response: {response}")
+        print("Pay As You Go E2E test suite completed successfully!")
