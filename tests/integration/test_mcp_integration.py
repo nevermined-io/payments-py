@@ -3,9 +3,8 @@ from unittest.mock import patch
 
 from payments_py.mcp import build_mcp_integration
 
-# Mock decode_access_token for tests
+# Mock decode_access_token for tests (x402 tokens only contain subscriberAddress, not planId)
 mock_decode_token = lambda token: {
-    "planId": "plan-123",
     "subscriberAddress": "0xSubscriber123",
 }
 
@@ -50,7 +49,10 @@ def test_validates_and_burns_with_minimal_mocks():
     async def handler(_args):
         return {"content": [{"type": "text", "text": "hello"}]}
 
-    wrapped = mcp.with_paywall(handler, {"kind": "tool", "name": "test", "credits": 1})
+    # planId must be in options since x402 tokens don't contain it
+    wrapped = mcp.with_paywall(
+        handler, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan-123"}
+    )
     extra = {"requestInfo": {"headers": {"Authorization": "Bearer abc"}}}
     out = asyncio.run(wrapped({"city": "Madrid"}, extra))
     assert out
@@ -162,8 +164,10 @@ def test_context_integration_with_real_like_data():
             },
         }
 
+    # planId must be in options since x402 tokens don't contain it
     wrapped = mcp.with_paywall(
-        weather_handler, {"kind": "tool", "name": "get-weather", "credits": 5}
+        weather_handler,
+        {"kind": "tool", "name": "get-weather", "credits": 5, "planId": "plan-123"},
     )
 
     extra = {"requestInfo": {"headers": {"authorization": "Bearer weather-token-123"}}}
@@ -186,10 +190,8 @@ def test_context_integration_with_real_like_data():
     )
 
     # Verify x402 specific data
-    assert context["plan_id"] == "plan-123"  # From mocked decode_access_token
-    assert (
-        context["subscriber_address"] == "0xSubscriber123"
-    )  # From mocked decode_access_token
+    assert context["plan_id"] == "plan-123"  # From options
+    assert context["subscriber_address"] == "0xSubscriber123"  # From x402 token
 
     # Verify credits
     assert context["credits"] == 5
