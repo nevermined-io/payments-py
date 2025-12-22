@@ -11,10 +11,9 @@ from payments_py.a2a.payments_client import PaymentsClient
 
 class DummyPayments:  # noqa: D101
     def __init__(self) -> None:
-        self._get_token_mock = AsyncMock(
-            return_value=SimpleNamespace(access_token="XYZ")
-        )
-        self.agents = SimpleNamespace(get_agent_access_token=self._get_token_mock)
+        self._get_token_mock = AsyncMock(return_value={"accessToken": "XYZ"})
+        self.x402 = SimpleNamespace(get_x402_access_token=self._get_token_mock)
+        self.agents = SimpleNamespace()
         self.requests = SimpleNamespace()
 
 

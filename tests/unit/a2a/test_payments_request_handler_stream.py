@@ -21,10 +21,16 @@ class DummyExecutor:  # noqa: D101
 
 @pytest.mark.asyncio()  # noqa: D401
 async def test_streaming_burns_credits():  # noqa: D401
-    # Mock redeem method - must be synchronous since it's called via run_in_executor
-    redeem_mock = Mock(return_value={})
+    # Mock settle method - must be synchronous since it's called via run_in_executor
+    settle_mock = Mock(
+        return_value={
+            "success": True,
+            "txHash": "0x123",
+            "data": {"creditsBurned": "7"},
+        }
+    )
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=redeem_mock),
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
     )
 
     # Fake stream event Generator
@@ -62,7 +68,7 @@ async def test_streaming_burns_credits():  # noqa: D401
             bearer_token="TOK",
             url_requested="https://x",
             http_method_requested="POST",
-            validation={"agentRequestId": "agentReq"},
+            validation={"plan_id": "plan-123", "subscriber_address": "0xSub123"},
         )
         handler.set_http_ctx_for_task("tid", ctx)
 
@@ -75,4 +81,9 @@ async def test_streaming_burns_credits():  # noqa: D401
             events.append(ev)
 
     assert len(events) == 1
-    redeem_mock.assert_called_once_with("agentReq", "TOK", 7)
+    settle_mock.assert_called_once_with(
+        plan_id="plan-123",
+        max_amount="7",
+        x402_access_token="TOK",
+        subscriber_address="0xSub123",
+    )

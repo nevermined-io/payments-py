@@ -160,7 +160,8 @@ class PaywallDecorator:
             paywall_context: PaywallContext = {
                 "auth_result": auth_result,
                 "credits": initial_credits,
-                "agent_request": auth_result["agentRequest"],
+                "plan_id": auth_result.get("plan_id"),
+                "subscriber_address": auth_result.get("subscriber_address"),
             }
 
             # Call handler with a compatible signature across tool/resource/prompt
@@ -193,13 +194,21 @@ class PaywallDecorator:
                 return _RedeemOnCloseAsyncIterator(
                     result,
                     lambda: self._redeem(
-                        auth_result["requestId"], auth_result["token"], credits, options
+                        auth_result.get("plan_id"),
+                        auth_result["token"],
+                        auth_result.get("subscriber_address"),
+                        credits,
+                        options,
                     ),
                 )
 
             # Non-streaming: redeem immediately and add metadata
             credits_result = await self._redeem(
-                auth_result["requestId"], auth_result["token"], credits, options
+                auth_result.get("plan_id"),
+                auth_result["token"],
+                auth_result.get("subscriber_address"),
+                credits,
+                options,
             )
 
             # Add metadata to result if redemption was successful
@@ -213,7 +222,6 @@ class PaywallDecorator:
                 result["metadata"].update(
                     {
                         "txHash": credits_result["txHash"],
-                        "requestId": credits_result["requestId"],
                         "creditsRedeemed": credits_result["creditsRedeemed"],
                         "success": True,
                     }
@@ -224,52 +232,61 @@ class PaywallDecorator:
         return wrapped
 
     async def _redeem(
-        self, request_id: str, token: str, credits: int, options: PaywallOptions
+        self,
+        plan_id: str,
+        token: str,
+        subscriber_address: str,
+        credits: int,
+        options: PaywallOptions,
     ) -> Dict[str, Any]:
-        """Redeem credits for a processed request.
+        """Settle credits for a processed request using x402 settle_permissions.
 
         Args:
-            request_id: Agent request identifier.
-            token: Authorization token used for the request.
-            credits: Number of credits to redeem.
+            plan_id: The plan identifier from the token.
+            token: X402 access token used for the request.
+            subscriber_address: The subscriber's wallet address.
+            credits: Number of credits to settle.
             options: Paywall options to control error propagation.
 
         Returns:
             Dictionary containing success status and transaction hash if successful.
         """
         try:
-            if credits and int(credits) > 0:
-                redeem_result = await self._maybe_await(
-                    self._payments.requests.redeem_credits_from_request(
-                        request_id, token, int(credits)
+            if credits and int(credits) > 0 and plan_id and subscriber_address:
+                settle_result = await self._maybe_await(
+                    self._payments.facilitator.settle_permissions(
+                        plan_id=plan_id,
+                        max_amount=str(int(credits)),
+                        x402_access_token=token,
+                        subscriber_address=subscriber_address,
                     )
                 )
-                # Check if the redeem operation was successful
-                redeem_success = redeem_result.get(
-                    "success", True
-                )  # Default to True for backward compatibility
+                # Check if the settle operation was successful
+                settle_success = settle_result.get("success", False)
+                credits_burned = (
+                    settle_result.get("data", {}).get("creditsBurned", str(credits))
+                    if settle_success
+                    else "0"
+                )
                 return {
-                    "success": redeem_success,
-                    "txHash": redeem_result.get("txHash") if redeem_success else None,
-                    "requestId": request_id,
-                    "creditsRedeemed": str(credits),
+                    "success": settle_success,
+                    "txHash": settle_result.get("txHash") if settle_success else None,
+                    "creditsRedeemed": credits_burned,
                 }
             else:
                 return {
                     "success": True,
                     "txHash": None,
-                    "requestId": request_id,
                     "creditsRedeemed": "0",
                 }
         except Exception:
             if options.get("onRedeemError") == "propagate":
                 raise create_rpc_error(
-                    ERROR_CODES["Misconfiguration"], "Failed to redeem credits"
+                    ERROR_CODES["Misconfiguration"], "Failed to settle credits"
                 )
             return {
                 "success": False,
                 "txHash": None,
-                "requestId": request_id,
                 "creditsRedeemed": "0",
             }
 

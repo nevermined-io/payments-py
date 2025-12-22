@@ -3,6 +3,7 @@
 import asyncio
 import datetime
 from uuid import uuid4
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 import pytest
@@ -11,56 +12,59 @@ from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.common.payments_error import PaymentsError
 
 
+# Mock decode_access_token for tests
+def mock_decode_token(token):
+    return {"planId": "test-plan", "subscriberAddress": "0xTestSubscriber"}
+
+
 class MockPaymentsService:
     """Mock payments service for testing."""
 
     def __init__(self):
-        self.requests = MockRequestsAPI()
+        self.facilitator = MockFacilitatorAPI()
 
 
-class MockRequestsAPI:
-    """Mock requests API for testing."""
+class MockFacilitatorAPI:
+    """Mock facilitator API for testing x402 flow."""
 
     def __init__(self):
         self.validation_call_count = 0
-        self.redeem_call_count = 0
-        self.last_redeem_credits = None
+        self.settle_call_count = 0
+        self.last_settle_credits = None
         self.should_fail_validation = False
-        self.should_fail_redeem = False
+        self.should_fail_settle = False
 
-    def start_processing_request(
+    def verify_permissions(
         self,
-        agent_id: str,
-        access_token: str,
-        url_requested: str,
-        http_method_requested: str,
+        plan_id: str,
+        max_amount: str,
+        x402_access_token: str,
+        subscriber_address: str,
     ) -> dict:
-        """Mock start_processing_request."""
+        """Mock verify_permissions."""
         self.validation_call_count += 1
         if self.should_fail_validation:
             raise PaymentsError.payment_required("Insufficient credits")
 
-        return {
-            "agentRequestId": f"req-{agent_id}-{self.validation_call_count}",
-            "agentId": agent_id,
-            "accessToken": access_token,
-            "credits": 100,
-            "planId": "test-plan",
-        }
+        return {"success": True}
 
-    def redeem_credits_from_request(
-        self, agent_request_id: str, access_token: str, credits_used: int
+    def settle_permissions(
+        self,
+        plan_id: str,
+        max_amount: str,
+        x402_access_token: str,
+        subscriber_address: str,
     ) -> dict:
-        """Mock redeem_credits_from_request."""
-        self.redeem_call_count += 1
-        self.last_redeem_credits = credits_used
-        if self.should_fail_redeem:
-            raise PaymentsError.payment_required("Failed to redeem credits")
+        """Mock settle_permissions."""
+        self.settle_call_count += 1
+        self.last_settle_credits = int(max_amount)
+        if self.should_fail_settle:
+            raise PaymentsError.payment_required("Failed to settle permissions")
 
         return {
-            "txHash": f"0x{agent_request_id[-8:]}",
-            "creditsRedeemed": credits_used,
-            "remainingCredits": 100 - credits_used,
+            "success": True,
+            "txHash": f"0x{plan_id[-8:]}",
+            "data": {"creditsBurned": max_amount},
         }
 
 
@@ -157,6 +161,9 @@ class DummyExecutor:
         print("[DEBUG] DummyExecutor completed successfully")
 
 
+@patch(
+    "payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token
+)
 @pytest.mark.asyncio
 async def test_complete_message_send_with_credit_burning():
     """Test complete message/send flow with successful credit burning."""
@@ -224,7 +231,7 @@ async def test_complete_message_send_with_credit_burning():
     assert "result" in response_data
 
     # Verify that validation was called exactly once
-    assert mock_payments.requests.validation_call_count == 1
+    assert mock_payments.facilitator.validation_call_count == 1
 
     # Verify response contains the completed task (blocking mode should wait
     # for completion)
@@ -240,19 +247,22 @@ async def test_complete_message_send_with_credit_burning():
     # Verify that credits were burned exactly once (no sleep needed, blocking
     # mode waits)
     assert (
-        mock_payments.requests.redeem_call_count == 1
-    ), f"Expected 1 redeem call, got {mock_payments.requests.redeem_call_count}"
+        mock_payments.facilitator.settle_call_count == 1
+    ), f"Expected 1 settle call, got {mock_payments.facilitator.settle_call_count}"
     assert (
-        mock_payments.requests.last_redeem_credits == 3
-    ), f"Expected 3 credits burned, got {mock_payments.requests.last_redeem_credits}"
+        mock_payments.facilitator.last_settle_credits == 3
+    ), f"Expected 3 credits burned, got {mock_payments.facilitator.last_settle_credits}"
 
 
+@patch(
+    "payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token
+)
 @pytest.mark.asyncio
 async def test_message_send_with_validation_failure():
     """Test message/send flow when validation fails."""
     # Setup mock services with validation failure
     mock_payments = MockPaymentsService()
-    mock_payments.requests.should_fail_validation = True
+    mock_payments.facilitator.should_fail_validation = True
 
     agent_card = {
         "capabilities": {
@@ -308,11 +318,11 @@ async def test_message_send_with_validation_failure():
 
     # Verify validation was attempted exactly once but credits were not burned
     assert (
-        mock_payments.requests.validation_call_count == 1
-    ), f"Expected exactly 1 validation attempt, got {mock_payments.requests.validation_call_count}"
+        mock_payments.facilitator.validation_call_count == 1
+    ), f"Expected exactly 1 validation attempt, got {mock_payments.facilitator.validation_call_count}"
     assert (
-        mock_payments.requests.redeem_call_count == 0
-    ), f"No credits should be redeemed on validation failure, but {mock_payments.requests.redeem_call_count} calls were made"
+        mock_payments.facilitator.settle_call_count == 0
+    ), f"No credits should be settled on validation failure, but {mock_payments.facilitator.settle_call_count} calls were made"
 
 
 @pytest.mark.asyncio
@@ -374,13 +384,16 @@ async def test_message_send_with_missing_bearer_token():
 
     # No validation or credit burning should occur
     assert (
-        mock_payments.requests.validation_call_count == 0
-    ), f"No validation should occur without bearer token, but {mock_payments.requests.validation_call_count} calls were made"
+        mock_payments.facilitator.validation_call_count == 0
+    ), f"No validation should occur without bearer token, but {mock_payments.facilitator.validation_call_count} calls were made"
     assert (
-        mock_payments.requests.redeem_call_count == 0
-    ), f"No credits should be redeemed without bearer token, but {mock_payments.requests.redeem_call_count} calls were made"
+        mock_payments.facilitator.settle_call_count == 0
+    ), f"No credits should be settled without bearer token, but {mock_payments.facilitator.settle_call_count} calls were made"
 
 
+@patch(
+    "payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token
+)
 @pytest.mark.asyncio
 async def test_non_blocking_execution_with_polling():
     """Test non-blocking execution (blocking: false) with task polling."""
@@ -456,7 +469,7 @@ async def test_non_blocking_execution_with_polling():
     # In a real scenario, you'd poll the task or use webhooks
 
     # Verify initial validation occurred exactly once
-    initial_validation_count = mock_payments.requests.validation_call_count
+    initial_validation_count = mock_payments.facilitator.validation_call_count
     assert (
         initial_validation_count == 1
     ), f"Expected exactly 1 validation call, got {initial_validation_count}"
@@ -504,9 +517,9 @@ async def test_non_blocking_execution_with_polling():
     )
 
     # Verify validation occurred (initial + any polling validation)
-    assert mock_payments.requests.validation_call_count >= initial_validation_count
+    assert mock_payments.facilitator.validation_call_count >= initial_validation_count
 
     # Most importantly: verify credit burning occurred after task completion
     assert (
-        mock_payments.requests.redeem_call_count == 1
-    ), "Credits should be burned when task completes in non-blocking mode"
+        mock_payments.facilitator.settle_call_count == 1
+    ), "Credits should be settled when task completes in non-blocking mode"

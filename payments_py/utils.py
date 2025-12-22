@@ -6,7 +6,6 @@ import uuid
 import time
 import secrets
 from urllib.parse import urlparse
-import jwt
 from typing import Optional, Dict, Any, List
 
 
@@ -119,24 +118,6 @@ def json_replacer(key: str, value: Any) -> Any:
     if value is None:
         return None
     return value
-
-
-def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
-    """
-    Decode an access token to extract wallet address and plan ID.
-
-    Args:
-        access_token: The access token to decode
-
-    Returns:
-        The decoded token data or None if invalid
-    """
-    try:
-        # Decode without verification since we're just extracting data
-        decoded = jwt.decode(access_token, options={"verify_signature": False})
-        return decoded
-    except Exception:
-        return None
 
 
 def get_query_protocol_endpoints(server_host: str):

@@ -28,10 +28,10 @@ class DummyExecutor:  # noqa: D101
 @pytest.mark.asyncio()  # noqa: D401
 async def test_on_message_send_validates_and_calls_parent(monkeypatch):  # noqa: D401
     """Test that on_message_send validates request and processes events."""
-    # Mock redeem method - must be synchronous since it's called via run_in_executor
-    redeem_mock = Mock(return_value={"txHash": "0xabc"})
+    # Mock settle method - must be synchronous since it's called via run_in_executor
+    settle_mock = Mock(return_value={"success": True, "txHash": "0xabc"})
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=redeem_mock),
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
     )
 
     # Create completed task
@@ -96,7 +96,7 @@ async def test_on_message_send_validates_and_calls_parent(monkeypatch):  # noqa:
             bearer_token="BEARER",
             url_requested="https://x",
             http_method_requested="POST",
-            validation={"agentRequestId": "agentReq"},
+            validation={"plan_id": "plan123", "subscriber_address": "0x123"},
         )
         handler.set_http_ctx_for_task("tid", ctx)
 
@@ -114,16 +114,16 @@ async def test_on_message_send_validates_and_calls_parent(monkeypatch):  # noqa:
     assert result is completed_task
     # Since we mocked _process_events_with_finalization, credit burning logic
     # wasn't called
-    assert redeem_mock.call_count == 0
+    assert settle_mock.call_count == 0
 
 
 @pytest.mark.asyncio()  # noqa: D401
 async def test_on_message_send_burns_credits_from_events():  # noqa: D401
     """Test that on_message_send burns credits when processing TaskStatusUpdateEvent with creditsUsed."""
-    # Mock redeem method - must be synchronous since it's called via run_in_executor
-    redeem_mock = Mock(return_value={"txHash": "0xabc"})
+    # Mock settle method - must be synchronous since it's called via run_in_executor
+    settle_mock = Mock(return_value={"success": True, "txHash": "0xabc"})
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=redeem_mock),
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
     )
 
     # Create completed task
@@ -151,7 +151,7 @@ async def test_on_message_send_burns_credits_from_events():  # noqa: D401
     async def mock_consume_credits(
         result_aggregator, consumer, http_ctx, blocking=True
     ):
-        # Simulate credit burning by calling redeem_credits_from_request directly
+        # Simulate credit burning by calling settle_permissions directly
         credits_used = 3
         try:
             import asyncio
@@ -159,10 +159,11 @@ async def test_on_message_send_burns_credits_from_events():  # noqa: D401
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,
-                lambda: dummy_payments.requests.redeem_credits_from_request(
-                    http_ctx.validation["agentRequestId"],
-                    http_ctx.bearer_token,
-                    credits_used,
+                lambda: dummy_payments.facilitator.settle_permissions(
+                    plan_id=http_ctx.validation["plan_id"],
+                    max_amount=str(credits_used),
+                    x402_access_token=http_ctx.bearer_token,
+                    subscriber_address=http_ctx.validation["subscriber_address"],
                 ),
             )
         except Exception:
@@ -206,7 +207,7 @@ async def test_on_message_send_burns_credits_from_events():  # noqa: D401
             bearer_token="BEARER",
             url_requested="https://x",
             http_method_requested="POST",
-            validation={"agentRequestId": "agentReq"},
+            validation={"plan_id": "plan123", "subscriber_address": "0x123"},
         )
         handler.set_http_ctx_for_task("tid", ctx)
 
@@ -221,15 +222,20 @@ async def test_on_message_send_burns_credits_from_events():  # noqa: D401
         )
 
     assert result is completed_task
-    # Should have called redeem_credits_from_request
-    redeem_mock.assert_called_once_with("agentReq", "BEARER", 3)
+    # Should have called settle_permissions
+    settle_mock.assert_called_once_with(
+        plan_id="plan123",
+        max_amount="3",
+        x402_access_token="BEARER",
+        subscriber_address="0x123",
+    )
 
 
 @pytest.mark.asyncio()  # noqa: D401
 async def test_on_message_send_fails_when_agent_id_missing():  # noqa: D401
     """Test that on_message_send fails when agentId is not found in agent card."""
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=Mock()),
+        facilitator=SimpleNamespace(settle_permissions=Mock()),
     )
 
     # Mock agent card without payment extension
@@ -254,7 +260,7 @@ async def test_on_message_send_fails_when_agent_id_missing():  # noqa: D401
             bearer_token="BEARER",
             url_requested="https://x",
             http_method_requested="POST",
-            validation={"agentRequestId": "agentReq"},
+            validation={"plan_id": "plan123", "subscriber_address": "0x123"},
         )
         handler.set_http_ctx_for_task("tid", ctx)
 
@@ -276,7 +282,7 @@ async def test_on_message_send_fails_when_agent_id_missing():  # noqa: D401
 async def test_on_message_send_handles_missing_http_context():  # noqa: D401
     """Test that on_message_send fails when HTTP context is missing."""
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=Mock()),
+        facilitator=SimpleNamespace(settle_permissions=Mock()),
     )
 
     handler = PaymentsRequestHandler(
@@ -304,7 +310,7 @@ async def test_on_message_send_handles_missing_http_context():  # noqa: D401
 async def test_on_message_send_generates_task_id_when_missing():  # noqa: D401
     """Test that on_message_send generates taskId and migrates HTTP context when taskId is missing."""
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=Mock()),
+        facilitator=SimpleNamespace(settle_permissions=Mock()),
     )
 
     completed_task = Task(
@@ -374,7 +380,7 @@ async def test_on_message_send_generates_task_id_when_missing():  # noqa: D401
             bearer_token="BEARER",
             url_requested="https://x",
             http_method_requested="POST",
-            validation={"agentRequestId": "agentReq"},
+            validation={"plan_id": "plan123", "subscriber_address": "0x123"},
         )
         handler.set_http_ctx_for_message("mid", ctx)
 
@@ -397,10 +403,10 @@ async def test_on_message_send_generates_task_id_when_missing():  # noqa: D401
 async def test_handle_task_finalization_from_event_burns_credits():  # noqa: D401
     """Test that _handle_task_finalization_from_event burns credits correctly."""
 
-    # Mock redeem method
-    redeem_mock = Mock(return_value={"txHash": "0xabc"})
+    # Mock settle method
+    settle_mock = Mock(return_value={"success": True, "txHash": "0xabc"})
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=redeem_mock),
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
     )
 
     handler = PaymentsRequestHandler(
@@ -423,24 +429,29 @@ async def test_handle_task_finalization_from_event_burns_credits():  # noqa: D40
         bearer_token="BEARER_TOKEN",
         url_requested="https://x",
         http_method_requested="POST",
-        validation={"agentRequestId": "test-agent-req"},
+        validation={"plan_id": "plan123", "subscriber_address": "0x123"},
     )
 
     # Call under test
     await handler._handle_task_finalization_from_event(event, ctx)
 
-    # Should have called redeem_credits_from_request
-    redeem_mock.assert_called_once_with("test-agent-req", "BEARER_TOKEN", 5)
+    # Should have called settle_permissions
+    settle_mock.assert_called_once_with(
+        plan_id="plan123",
+        max_amount="5",
+        x402_access_token="BEARER_TOKEN",
+        subscriber_address="0x123",
+    )
 
 
 @pytest.mark.asyncio()  # noqa: D401
 async def test_handle_task_finalization_from_event_no_credits():  # noqa: D401
     """Test that _handle_task_finalization_from_event does nothing when no creditsUsed."""
 
-    # Mock redeem method
-    redeem_mock = Mock(return_value={"txHash": "0xabc"})
+    # Mock settle method
+    settle_mock = Mock(return_value={"success": True, "txHash": "0xabc"})
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=redeem_mock),
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
     )
 
     handler = PaymentsRequestHandler(
@@ -463,24 +474,24 @@ async def test_handle_task_finalization_from_event_no_credits():  # noqa: D401
         bearer_token="BEARER_TOKEN",
         url_requested="https://x",
         http_method_requested="POST",
-        validation={"agentRequestId": "test-agent-req"},
+        validation={"plan_id": "plan123", "subscriber_address": "0x123"},
     )
 
     # Call under test
     await handler._handle_task_finalization_from_event(event, ctx)
 
-    # Should NOT have called redeem_credits_from_request
-    redeem_mock.assert_not_called()
+    # Should NOT have called settle_permissions
+    settle_mock.assert_not_called()
 
 
 @pytest.mark.asyncio()  # noqa: D401
 async def test_handle_task_finalization_from_event_no_metadata():  # noqa: D401
     """Test that _handle_task_finalization_from_event does nothing when no metadata."""
 
-    # Mock redeem method
-    redeem_mock = Mock(return_value={"txHash": "0xabc"})
+    # Mock settle method
+    settle_mock = Mock(return_value={"success": True, "txHash": "0xabc"})
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=redeem_mock),
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
     )
 
     handler = PaymentsRequestHandler(
@@ -503,24 +514,24 @@ async def test_handle_task_finalization_from_event_no_metadata():  # noqa: D401
         bearer_token="BEARER_TOKEN",
         url_requested="https://x",
         http_method_requested="POST",
-        validation={"agentRequestId": "test-agent-req"},
+        validation={"plan_id": "plan123", "subscriber_address": "0x123"},
     )
 
     # Call under test
     await handler._handle_task_finalization_from_event(event, ctx)
 
-    # Should NOT have called redeem_credits_from_request
-    redeem_mock.assert_not_called()
+    # Should NOT have called settle_permissions
+    settle_mock.assert_not_called()
 
 
 @pytest.mark.asyncio()  # noqa: D401
 async def test_handle_task_finalization_swallows_errors():  # noqa: D401
-    """Test that _handle_task_finalization_from_event swallows redeem errors."""
+    """Test that _handle_task_finalization_from_event swallows settle errors."""
 
-    # Mock redeem method to raise an exception
-    redeem_mock = Mock(side_effect=Exception("Redeem failed"))
+    # Mock settle method to raise an exception
+    settle_mock = Mock(side_effect=Exception("Settle failed"))
     dummy_payments = SimpleNamespace(
-        requests=SimpleNamespace(redeem_credits_from_request=redeem_mock),
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
     )
 
     handler = PaymentsRequestHandler(
@@ -543,11 +554,16 @@ async def test_handle_task_finalization_swallows_errors():  # noqa: D401
         bearer_token="BEARER_TOKEN",
         url_requested="https://x",
         http_method_requested="POST",
-        validation={"agentRequestId": "test-agent-req"},
+        validation={"plan_id": "plan123", "subscriber_address": "0x123"},
     )
 
     # Call under test - should not raise exception
     await handler._handle_task_finalization_from_event(event, ctx)
 
-    # Should have attempted to call redeem_credits_from_request
-    redeem_mock.assert_called_once_with("test-agent-req", "BEARER_TOKEN", 5)
+    # Should have attempted to call settle_permissions
+    settle_mock.assert_called_once_with(
+        plan_id="plan123",
+        max_amount="5",
+        x402_access_token="BEARER_TOKEN",
+        subscriber_address="0x123",
+    )

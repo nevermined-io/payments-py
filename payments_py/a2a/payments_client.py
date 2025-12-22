@@ -39,10 +39,10 @@ class PaymentsClient:  # noqa: D101
     # ------------------------------------------------------------------
     async def _get_access_token(self) -> str:
         if self._access_token is None:
-            token_resp = await self._payments.agents.get_agent_access_token(
+            token_resp = await self._payments.x402.get_x402_access_token(
                 self._plan_id, self._agent_id
             )
-            self._access_token = token_resp.access_token  # type: ignore[attr-defined]
+            self._access_token = token_resp["accessToken"]
         return self._access_token
 
     def _auth_headers(self, token: str) -> dict[str, str]:

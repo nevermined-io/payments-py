@@ -49,11 +49,11 @@ from payments_py.utils import (
     sleep,
     json_replacer,
     get_random_big_int,
-    decode_access_token,
     get_query_protocol_endpoints,
     get_ai_hub_open_api_url,
     get_service_host_from_endpoints,
 )
+from payments_py.x402.token import decode_access_token
 
 # Import plan utility functions
 from payments_py.plans import (
