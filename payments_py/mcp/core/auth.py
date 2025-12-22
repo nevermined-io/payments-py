@@ -81,10 +81,14 @@ class PaywallAuthenticator:
             )
 
             # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
-            subscriber_address = decoded.get("subscriberAddress") or decoded.get("subscriber_address")
+            subscriber_address = decoded.get("subscriberAddress") or decoded.get(
+                "subscriber_address"
+            )
 
             if not plan_id or not subscriber_address:
-                raise ValueError("Cannot determine plan_id or subscriber_address from token")
+                raise ValueError(
+                    "Cannot determine plan_id or subscriber_address from token"
+                )
 
             # Use x402 verify_permissions instead of start_processing_request
             result = self._payments.facilitator.verify_permissions(
@@ -169,10 +173,14 @@ class PaywallAuthenticator:
             plan_id = decoded.get("planId") or decoded.get("plan_id")
 
             # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
-            subscriber_address = decoded.get("subscriberAddress") or decoded.get("subscriber_address")
+            subscriber_address = decoded.get("subscriberAddress") or decoded.get(
+                "subscriber_address"
+            )
 
             if not plan_id or not subscriber_address:
-                raise ValueError("Cannot determine plan_id or subscriber_address from token")
+                raise ValueError(
+                    "Cannot determine plan_id or subscriber_address from token"
+                )
 
             # Use x402 verify_permissions instead of start_processing_request
             result = self._payments.facilitator.verify_permissions(

@@ -4,7 +4,10 @@ from unittest.mock import patch
 from payments_py.mcp import build_mcp_integration
 
 # Mock decode_access_token for tests
-mock_decode_token = lambda token: {"planId": "plan-123", "subscriberAddress": "0xSubscriber123"}
+mock_decode_token = lambda token: {
+    "planId": "plan-123",
+    "subscriberAddress": "0xSubscriber123",
+}
 
 
 class PaymentsMinimal:

@@ -134,8 +134,16 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         """
         # Try to get plan_id from agent card's payment extension first
         plan_id = None
-        capabilities = self._agent_card.get("capabilities", {}) if isinstance(self._agent_card, dict) else getattr(self._agent_card, "capabilities", {})
-        extensions = capabilities.get("extensions", []) if isinstance(capabilities, dict) else getattr(capabilities, "extensions", [])
+        capabilities = (
+            self._agent_card.get("capabilities", {})
+            if isinstance(self._agent_card, dict)
+            else getattr(self._agent_card, "capabilities", {})
+        )
+        extensions = (
+            capabilities.get("extensions", [])
+            if isinstance(capabilities, dict)
+            else getattr(capabilities, "extensions", [])
+        )
         for ext in extensions:
             ext_dict = ext if isinstance(ext, dict) else ext.__dict__
             if ext_dict.get("uri") == "urn:nevermined:payment":
@@ -145,8 +153,12 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         # Decode x402 token to extract subscriber_address (and fallback plan_id if not in agent card)
         decoded = decode_access_token(bearer_token)
-        logging.getLogger(__name__).debug(f"[validate_request] plan_id from agent card: {plan_id}")
-        logging.getLogger(__name__).debug(f"[validate_request] decoded token keys: {list(decoded.keys()) if decoded else 'None'}")
+        logging.getLogger(__name__).debug(
+            f"[validate_request] plan_id from agent card: {plan_id}"
+        )
+        logging.getLogger(__name__).debug(
+            f"[validate_request] decoded token keys: {list(decoded.keys()) if decoded else 'None'}"
+        )
         if not decoded:
             raise PaymentsError.unauthorized("Invalid access token")
 
@@ -155,10 +167,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             plan_id = decoded.get("planId") or decoded.get("plan_id")
 
         # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
-        subscriber_address = decoded.get("subscriberAddress") or decoded.get("subscriber_address")
+        subscriber_address = decoded.get("subscriberAddress") or decoded.get(
+            "subscriber_address"
+        )
 
         if not plan_id or not subscriber_address:
-            logging.getLogger(__name__).error(f"[validate_request] FAILED - plan_id: {plan_id}, subscriber_address: {subscriber_address}")
+            logging.getLogger(__name__).error(
+                f"[validate_request] FAILED - plan_id: {plan_id}, subscriber_address: {subscriber_address}"
+            )
             raise PaymentsError.unauthorized(
                 "Cannot determine plan_id or subscriber_address from token or agent card"
             )
