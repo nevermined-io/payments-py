@@ -7,7 +7,7 @@ from typing import Any, Dict
 from ..utils.request import extract_auth_header, strip_bearer
 from ..utils.logical_url import build_logical_url, build_logical_meta_url
 from ..utils.errors import create_rpc_error, ERROR_CODES
-from payments_py.utils import decode_access_token
+from payments_py.x402.token import decode_access_token
 
 
 class PaywallAuthenticator:
@@ -72,11 +72,19 @@ class PaywallAuthenticator:
             if not decoded:
                 raise ValueError("Invalid access token")
 
-            plan_id = decoded.get("planId")
-            subscriber_address = decoded.get("sub")
+            # Try to get plan_id from options first (if configured), then from token
+            plan_id = (
+                options.get("planId")
+                or options.get("plan_id")
+                or decoded.get("planId")
+                or decoded.get("plan_id")
+            )
+
+            # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
+            subscriber_address = decoded.get("subscriberAddress") or decoded.get("subscriber_address")
 
             if not plan_id or not subscriber_address:
-                raise ValueError("Access token missing required claims")
+                raise ValueError("Cannot determine plan_id or subscriber_address from token")
 
             # Use x402 verify_permissions instead of start_processing_request
             result = self._payments.facilitator.verify_permissions(
@@ -157,11 +165,14 @@ class PaywallAuthenticator:
             if not decoded:
                 raise ValueError("Invalid access token")
 
-            plan_id = decoded.get("planId")
-            subscriber_address = decoded.get("sub")
+            # Try to get plan_id from token
+            plan_id = decoded.get("planId") or decoded.get("plan_id")
+
+            # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
+            subscriber_address = decoded.get("subscriberAddress") or decoded.get("subscriber_address")
 
             if not plan_id or not subscriber_address:
-                raise ValueError("Access token missing required claims")
+                raise ValueError("Cannot determine plan_id or subscriber_address from token")
 
             # Use x402 verify_permissions instead of start_processing_request
             result = self._payments.facilitator.verify_permissions(

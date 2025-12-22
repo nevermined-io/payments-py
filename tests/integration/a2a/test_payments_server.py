@@ -14,7 +14,7 @@ from payments_py.a2a.types import AgentCard
 
 # Mock decode_access_token for tests
 def mock_decode_token(token):
-    return {"planId": "test-plan", "sub": "0xTestSubscriber"}
+    return {"planId": "test-plan", "subscriberAddress": "0xTestSubscriber"}
 
 
 class DummyExecutor:  # noqa: D101

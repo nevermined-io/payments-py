@@ -21,7 +21,7 @@ from a2a.types import (
 )
 from payments_py.common.payments_error import PaymentsError
 from payments_py.payments import Payments
-from payments_py.utils import decode_access_token
+from payments_py.x402.token import decode_access_token
 
 from .types import HttpRequestContext
 
@@ -132,17 +132,35 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         Raises:
             PaymentsError: If validation fails
         """
-        # Decode token to extract plan_id and subscriber_address
+        # Try to get plan_id from agent card's payment extension first
+        plan_id = None
+        capabilities = self._agent_card.get("capabilities", {}) if isinstance(self._agent_card, dict) else getattr(self._agent_card, "capabilities", {})
+        extensions = capabilities.get("extensions", []) if isinstance(capabilities, dict) else getattr(capabilities, "extensions", [])
+        for ext in extensions:
+            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
+            if ext_dict.get("uri") == "urn:nevermined:payment":
+                params = ext_dict.get("params", {})
+                plan_id = params.get("planId") or params.get("plan_id")
+                break
+
+        # Decode x402 token to extract subscriber_address (and fallback plan_id if not in agent card)
         decoded = decode_access_token(bearer_token)
+        logging.getLogger(__name__).debug(f"[validate_request] plan_id from agent card: {plan_id}")
+        logging.getLogger(__name__).debug(f"[validate_request] decoded token keys: {list(decoded.keys()) if decoded else 'None'}")
         if not decoded:
             raise PaymentsError.unauthorized("Invalid access token")
 
-        plan_id = decoded.get("planId")
-        subscriber_address = decoded.get("sub")
+        # If plan_id not found in agent card, try token
+        if not plan_id:
+            plan_id = decoded.get("planId") or decoded.get("plan_id")
+
+        # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
+        subscriber_address = decoded.get("subscriberAddress") or decoded.get("subscriber_address")
 
         if not plan_id or not subscriber_address:
+            logging.getLogger(__name__).error(f"[validate_request] FAILED - plan_id: {plan_id}, subscriber_address: {subscriber_address}")
             raise PaymentsError.unauthorized(
-                "Access token missing required claims (planId or sub)"
+                "Cannot determine plan_id or subscriber_address from token or agent card"
             )
 
         # Use run_in_executor since verify_permissions is synchronous

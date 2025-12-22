@@ -7,7 +7,7 @@ from payments_py.mcp import build_mcp_integration
 
 # Mock the decode_access_token to return plan_id and subscriber_address
 def mock_decode_token(token):
-    return {"planId": "plan123", "sub": "0x123subscriber"}
+    return {"planId": "plan123", "subscriberAddress": "0x123subscriber"}
 
 
 class PaymentsMock:

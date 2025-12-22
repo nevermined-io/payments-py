@@ -78,7 +78,8 @@ def _asyncify_get_x402_access_token(payments_subscriber: Payments):  # noqa: D40
             token = res.get("accessToken") or res.get("access_token")
         else:
             token = getattr(res, "access_token", None)
-        return SimpleNamespace(access_token=token)
+        # Return a dict with accessToken key as expected by PaymentsClient
+        return {"accessToken": token}
 
     payments_subscriber.x402.get_x402_access_token = _async_get  # type: ignore[assignment]
     yield

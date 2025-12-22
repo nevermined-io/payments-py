@@ -5,12 +5,49 @@ Provides X402 access token generation functionality for subscribers.
 Tokens are used to authorize payment verification and settlement.
 """
 
+import base64
+import json
 import requests
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.nvm_api import API_URL_GET_AGENT_X402_ACCESS_TOKEN
+
+
+def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
+    """
+    Decode an x402 access token to extract subscriber address and plan ID.
+
+    The x402 access token is a base64-encoded JSON document containing
+    session key information and permissions.
+
+    Args:
+        access_token: The x402 access token to decode (base64-encoded JSON)
+
+    Returns:
+        The decoded token data or None if invalid
+    """
+    # Try base64-encoded JSON (x402 format)
+    try:
+        # Handle URL-safe base64 (with or without padding)
+        padded = access_token + "=" * (4 - len(access_token) % 4)
+        decoded_bytes = base64.urlsafe_b64decode(padded)
+        decoded = json.loads(decoded_bytes)
+        return decoded
+    except Exception:
+        pass
+
+    # Try standard base64 (non-URL-safe)
+    try:
+        padded = access_token + "=" * (4 - len(access_token) % 4)
+        decoded_bytes = base64.b64decode(padded)
+        decoded = json.loads(decoded_bytes)
+        return decoded
+    except Exception:
+        pass
+
+    return None
 
 
 class X402TokenAPI(BasePaymentsAPI):
@@ -95,4 +132,4 @@ class X402TokenAPI(BasePaymentsAPI):
             ) from err
 
 
-__all__ = ["X402TokenAPI"]
+__all__ = ["X402TokenAPI", "decode_access_token"]

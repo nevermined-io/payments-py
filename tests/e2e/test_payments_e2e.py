@@ -12,7 +12,7 @@ import requests
 from payments_py.payments import Payments
 from payments_py.common.types import PlanMetadata, PaymentOptions
 from payments_py.environments import ZeroAddress
-from payments_py.utils import decode_access_token
+from payments_py.x402.token import decode_access_token
 from payments_py.plans import (
     get_erc20_price_config,
     get_expirable_duration_config,
