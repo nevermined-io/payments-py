@@ -72,18 +72,11 @@ class PaywallAuthenticator:
             if not decoded:
                 raise ValueError("Invalid access token")
 
-            # Try to get plan_id from options first (if configured), then from token
-            plan_id = (
-                options.get("planId")
-                or options.get("plan_id")
-                or decoded.get("planId")
-                or decoded.get("plan_id")
-            )
+            # plan_id must come from options (x402 tokens don't contain planId)
+            plan_id = options.get("planId")
 
-            # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
-            subscriber_address = decoded.get("subscriberAddress") or decoded.get(
-                "subscriber_address"
-            )
+            # Extract subscriber_address from x402 token
+            subscriber_address = decoded.get("subscriberAddress")
 
             if not plan_id or not subscriber_address:
                 raise ValueError(
