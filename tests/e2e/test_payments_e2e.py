@@ -12,6 +12,7 @@ import requests
 from payments_py.payments import Payments
 from payments_py.common.types import PlanMetadata, PaymentOptions
 from payments_py.environments import ZeroAddress
+from payments_py.utils import decode_access_token
 from payments_py.plans import (
     get_erc20_price_config,
     get_expirable_duration_config,
@@ -73,16 +74,24 @@ class MockAgentHandler(BaseHTTPRequestHandler):
         )
 
         try:
-            if mock_payments_builder and mock_agent_id:
-                # Validate the request using the real Nevermined logic
-                result = mock_payments_builder.requests.start_processing_request(
-                    mock_agent_id,
-                    auth_header,
-                    requested_url,
-                    http_verb,
+            if mock_payments_builder and mock_agent_id and auth_header:
+                # Extract token from Bearer header
+                bearer_token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else auth_header
+
+                # Decode token to get plan_id and subscriber_address
+                decoded = decode_access_token(bearer_token)
+                plan_id = decoded.get("planId")
+                subscriber_address = decoded.get("sub")
+
+                # Validate the request using the x402 verify_permissions
+                result = mock_payments_builder.facilitator.verify_permissions(
+                    plan_id=plan_id,
+                    max_amount="1",
+                    x402_access_token=bearer_token,
+                    subscriber_address=subscriber_address,
                 )
-                # If the request is valid and the user is a subscriber
-                if result and result.balance.is_subscriber:
+                # If the request is valid
+                if result and result.get("success"):
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
@@ -415,7 +424,7 @@ class TestE2ESubscriberAgentFlow:
 
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_generate_agent_access_token(self, payments_subscriber):
-        """Test generating agent access token."""
+        """Test generating x402 agent access token."""
         global agent_access_params, credits_plan_id, agent_id
         assert (
             credits_plan_id is not None
@@ -423,7 +432,7 @@ class TestE2ESubscriberAgentFlow:
         assert agent_id is not None, "agent_id must be set by previous test"
 
         agent_access_params = retry_with_backoff(
-            lambda: payments_subscriber.agents.get_agent_access_token(
+            lambda: payments_subscriber.x402.get_x402_access_token(
                 credits_plan_id, agent_id
             ),
             label="Access Token Generation",

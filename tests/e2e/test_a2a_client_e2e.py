@@ -69,8 +69,8 @@ def setup_plan_and_agent(payments_builder: Payments, payments_subscriber: Paymen
 
 
 @pytest.fixture(autouse=True)
-def _asyncify_get_agent_access_token(payments_subscriber: Payments):  # noqa: D401
-    original = payments_subscriber.agents.get_agent_access_token
+def _asyncify_get_x402_access_token(payments_subscriber: Payments):  # noqa: D401
+    original = payments_subscriber.x402.get_x402_access_token
 
     async def _async_get(plan_id, agent_id):  # noqa: D401
         res = original(plan_id, agent_id)
@@ -80,9 +80,9 @@ def _asyncify_get_agent_access_token(payments_subscriber: Payments):  # noqa: D4
             token = getattr(res, "access_token", None)
         return SimpleNamespace(access_token=token)
 
-    payments_subscriber.agents.get_agent_access_token = _async_get  # type: ignore[assignment]
+    payments_subscriber.x402.get_x402_access_token = _async_get  # type: ignore[assignment]
     yield
-    payments_subscriber.agents.get_agent_access_token = original  # type: ignore[assignment]
+    payments_subscriber.x402.get_x402_access_token = original  # type: ignore[assignment]
 
 
 @pytest.fixture(scope="module")

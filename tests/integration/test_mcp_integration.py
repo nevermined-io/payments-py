@@ -1,32 +1,36 @@
 import asyncio
+from unittest.mock import patch
 
 from payments_py.mcp import build_mcp_integration
+
+# Mock decode_access_token for tests
+mock_decode_token = lambda token: {"planId": "plan-123", "sub": "0xSubscriber123"}
 
 
 class PaymentsMinimal:
     def __init__(self, subscriber=True):
-        class Req:
+        class Facilitator:
             def __init__(self, outer, subscriber):
                 self._outer = outer
                 self._subscriber = subscriber
 
-            def start_processing_request(self, agent_id, token, url, method):
-                return {
-                    "agentRequestId": "req-xyz",
-                    "balance": {"isSubscriber": self._subscriber},
-                }
-
-            def redeem_credits_from_request(self, request_id, token, credits):
+            def verify_permissions(self, plan_id, max_amount, x402_access_token, subscriber_address):
+                if not self._subscriber:
+                    raise Exception("Not a subscriber")
                 return {"success": True}
+
+            def settle_permissions(self, plan_id, max_amount, x402_access_token, subscriber_address):
+                return {"success": True, "txHash": "0x123", "data": {"creditsBurned": max_amount}}
 
         class Agents:
             def get_agent_plans(self, agent_id):
                 return {"plans": []}
 
-        self.requests = Req(self, subscriber)
+        self.facilitator = Facilitator(self, subscriber)
         self.agents = Agents()
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_validates_and_burns_with_minimal_mocks():
     payments = PaymentsMinimal()
     mcp = build_mcp_integration(payments)
@@ -41,6 +45,7 @@ def test_validates_and_burns_with_minimal_mocks():
     assert out
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_integration_edge_not_subscriber_triggers_payment_required():
     payments = PaymentsMinimal(subscriber=False)
     mcp = build_mcp_integration(payments)
@@ -65,37 +70,27 @@ def test_integration_edge_not_subscriber_triggers_payment_required():
     assert getattr(err, "code", 0) == -32003
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_context_integration_with_real_like_data():
-    """Test PaywallContext with realistic agent request data."""
+    """Test PaywallContext with x402 context data."""
 
-    class PaymentsWithAgentRequest:
-        def __init__(self, subscriber=True, balance=1000):
-            class Req:
-                def __init__(self, outer, subscriber, balance):
+    class PaymentsWithX402:
+        def __init__(self, subscriber=True):
+            class Facilitator:
+                def __init__(self, outer, subscriber):
                     self._outer = outer
                     self._subscriber = subscriber
-                    self._balance = balance
 
-                def start_processing_request(self, agent_id, token, url, method):
-                    return {
-                        "agentRequestId": f"req-{agent_id}-{hash(token) % 10000}",
-                        "agentName": f"Agent {agent_id.split(':')[-1]}",
-                        "agentId": agent_id,
-                        "balance": {
-                            "balance": self._balance,
-                            "creditsContract": "0x1234567890abcdef",
-                            "isSubscriber": self._subscriber,
-                            "pricePerCredit": 0.01,
-                        },
-                        "urlMatching": url,
-                        "verbMatching": method,
-                        "batch": False,
-                    }
+                def verify_permissions(self, plan_id, max_amount, x402_access_token, subscriber_address):
+                    if not self._subscriber:
+                        raise Exception("Not a subscriber")
+                    return {"success": True}
 
-                def redeem_credits_from_request(self, request_id, token, credits):
+                def settle_permissions(self, plan_id, max_amount, x402_access_token, subscriber_address):
                     return {
                         "success": True,
-                        "txHash": f"0x{hash(f'{request_id}-{token}-{credits}') % 1000000000:x}",
+                        "txHash": f"0x{hash(f'{plan_id}-{max_amount}') % 1000000000:x}",
+                        "data": {"creditsBurned": max_amount},
                     }
 
             class Agents:
@@ -107,10 +102,10 @@ def test_context_integration_with_real_like_data():
                         ]
                     }
 
-            self.requests = Req(self, subscriber, balance)
+            self.facilitator = Facilitator(self, subscriber)
             self.agents = Agents()
 
-    payments = PaymentsWithAgentRequest(subscriber=True, balance=5000)
+    payments = PaymentsWithX402(subscriber=True)
     mcp = build_mcp_integration(payments)
     mcp.configure({"agentId": "did:nv:agent:abc123", "serverName": "weather-service"})
 
@@ -122,20 +117,11 @@ def test_context_integration_with_real_like_data():
         if not context:
             return {"error": "No context provided"}
 
-        agent_request = context["agent_request"]
         auth_result = context["auth_result"]
         credits = context["credits"]
 
         # Simulate business logic using context data
         city = args.get("city", "Unknown")
-
-        # Check if agent has sufficient balance
-        if agent_request["balance"]["balance"] < credits:
-            return {
-                "error": "Insufficient balance",
-                "required": credits,
-                "available": agent_request["balance"]["balance"],
-            }
 
         # Generate weather response with metadata
         weather_data = {
@@ -153,12 +139,10 @@ def test_context_integration_with_real_like_data():
                 }
             ],
             "metadata": {
-                "agentName": agent_request["agentName"],
-                "requestId": auth_result["requestId"],
+                "agentId": auth_result["agentId"],
+                "planId": context.get("plan_id"),
+                "subscriberAddress": context.get("subscriber_address"),
                 "creditsUsed": credits,
-                "balanceRemaining": agent_request["balance"]["balance"] - credits,
-                "isSubscriber": agent_request["balance"]["isSubscriber"],
-                "pricePerCredit": agent_request["balance"]["pricePerCredit"],
                 "weatherData": weather_data,
             },
         }
@@ -178,8 +162,7 @@ def test_context_integration_with_real_like_data():
     assert len(captured_contexts) == 1
     context = captured_contexts[0]
 
-    # Verify PaywallContext structure
-    assert context["auth_result"]["requestId"].startswith("req-did:nv:agent:abc123-")
+    # Verify x402 PaywallContext structure
     assert context["auth_result"]["token"] == "weather-token-123"
     assert context["auth_result"]["agentId"] == "did:nv:agent:abc123"
     assert (
@@ -187,24 +170,15 @@ def test_context_integration_with_real_like_data():
         in context["auth_result"]["logicalUrl"]
     )
 
-    # Verify agent request data
-    assert context["agent_request"]["agentName"] == "Agent abc123"
-    assert context["agent_request"]["agentId"] == "did:nv:agent:abc123"
-    assert context["agent_request"]["balance"]["balance"] == 5000
-    assert context["agent_request"]["balance"]["isSubscriber"] is True
-    assert context["agent_request"]["balance"]["pricePerCredit"] == 0.01
-    assert context["agent_request"]["urlMatching"].startswith(
-        "mcp://weather-service/tools/get-weather"
-    )
-    assert context["agent_request"]["verbMatching"] == "POST"
-    assert context["agent_request"]["batch"] is False
+    # Verify x402 specific data
+    assert context["plan_id"] == "plan-123"  # From mocked decode_access_token
+    assert context["subscriber_address"] == "0xSubscriber123"  # From mocked decode_access_token
 
     # Verify credits
     assert context["credits"] == 5
 
     # Verify metadata in result
-    assert result["metadata"]["agentName"] == "Agent abc123"
+    assert result["metadata"]["agentId"] == "did:nv:agent:abc123"
+    assert result["metadata"]["planId"] == "plan-123"
+    assert result["metadata"]["subscriberAddress"] == "0xSubscriber123"
     assert result["metadata"]["creditsUsed"] == 5
-    assert result["metadata"]["balanceRemaining"] == 4995  # 5000 - 5
-    assert result["metadata"]["isSubscriber"] is True
-    assert result["metadata"]["pricePerCredit"] == 0.01

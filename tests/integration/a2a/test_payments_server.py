@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.a2a.types import AgentCard
+
+
+# Mock decode_access_token for tests
+def mock_decode_token(token):
+    return {"planId": "test-plan", "sub": "0xTestSubscriber"}
 
 
 class DummyExecutor:  # noqa: D101
@@ -37,11 +43,11 @@ def agent_card() -> AgentCard:  # noqa: D401
 
 @pytest.fixture()  # noqa: D401
 def dummy_payments(monkeypatch):  # noqa: D401
-    # Stub validate_request & redeem to avoid HTTP
+    # Stub verify_permissions & settle_permissions to avoid HTTP (x402 flow)
     payments = SimpleNamespace(
-        requests=SimpleNamespace(
-            start_processing_request=lambda *a, **k: {"agentRequestId": "REQ"},
-            redeem_credits_from_request=lambda *a, **k: {},
+        facilitator=SimpleNamespace(
+            verify_permissions=lambda **k: {"success": True},
+            settle_permissions=lambda **k: {"success": True, "txHash": "0x123", "data": {"creditsBurned": "1"}},
         )
     )
     return payments  # type: ignore[return-value]
@@ -85,6 +91,7 @@ async def _on_error(method, exc, req):  # noqa: D401
     flag["error"] = True
 
 
+@patch("payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token)
 def test_hooks_invoked(agent_card, dummy_payments):  # noqa: D401
     # Reset flag before test
     flag["before"] = False

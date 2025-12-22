@@ -1,5 +1,5 @@
 """
-Authentication handler for MCP paywall.
+Authentication handler for MCP paywall using x402 tokens.
 """
 
 from typing import Any, Dict
@@ -7,6 +7,7 @@ from typing import Any, Dict
 from ..utils.request import extract_auth_header, strip_bearer
 from ..utils.logical_url import build_logical_url, build_logical_meta_url
 from ..utils.errors import create_rpc_error, ERROR_CODES
+from payments_py.utils import decode_access_token
 
 
 class PaywallAuthenticator:
@@ -66,25 +67,37 @@ class PaywallAuthenticator:
             }
         )
         try:
-            start = self._payments.requests.start_processing_request(
-                agent_id,
-                token,
-                logical_url,
-                "POST",
+            # Decode token to extract plan_id and subscriber_address
+            decoded = decode_access_token(token)
+            if not decoded:
+                raise ValueError("Invalid access token")
+
+            plan_id = decoded.get("planId")
+            subscriber_address = decoded.get("sub")
+
+            if not plan_id or not subscriber_address:
+                raise ValueError("Access token missing required claims")
+
+            # Use x402 verify_permissions instead of start_processing_request
+            result = self._payments.facilitator.verify_permissions(
+                plan_id=plan_id,
+                max_amount="1",  # Verify at least 1 credit
+                x402_access_token=token,
+                subscriber_address=subscriber_address,
             )
             # support sync or async clients
-            if hasattr(start, "__await__"):
-                start = await start
+            if hasattr(result, "__await__"):
+                result = await result
 
-            if not start or not start.get("balance", {}).get("isSubscriber", False):
-                raise ValueError("Not a subscriber")
+            if not result or not result.get("success"):
+                raise ValueError("Permission verification failed")
 
             return {
-                "requestId": start.get("agentRequestId"),
                 "token": token,
                 "agentId": agent_id,
                 "logicalUrl": logical_url,
-                "agentRequest": start,
+                "plan_id": plan_id,
+                "subscriber_address": subscriber_address,
             }
         except Exception:
             plans_msg = ""
@@ -139,22 +152,34 @@ class PaywallAuthenticator:
         logical_url = build_logical_meta_url(server_name, method)
 
         try:
-            start = self._payments.requests.start_processing_request(
-                agent_id,
-                token,
-                logical_url,
-                "POST",
+            # Decode token to extract plan_id and subscriber_address
+            decoded = decode_access_token(token)
+            if not decoded:
+                raise ValueError("Invalid access token")
+
+            plan_id = decoded.get("planId")
+            subscriber_address = decoded.get("sub")
+
+            if not plan_id or not subscriber_address:
+                raise ValueError("Access token missing required claims")
+
+            # Use x402 verify_permissions instead of start_processing_request
+            result = self._payments.facilitator.verify_permissions(
+                plan_id=plan_id,
+                max_amount="1",  # Verify at least 1 credit
+                x402_access_token=token,
+                subscriber_address=subscriber_address,
             )
-            if hasattr(start, "__await__"):
-                start = await start
-            if not start or not start.get("balance", {}).get("isSubscriber", False):
-                raise ValueError("Not a subscriber")
+            if hasattr(result, "__await__"):
+                result = await result
+            if not result or not result.get("success"):
+                raise ValueError("Permission verification failed")
             return {
-                "requestId": start.get("agentRequestId"),
                 "token": token,
                 "agentId": agent_id,
                 "logicalUrl": logical_url,
-                "agentRequest": start,
+                "plan_id": plan_id,
+                "subscriber_address": subscriber_address,
             }
         except Exception:
             plans_msg = ""

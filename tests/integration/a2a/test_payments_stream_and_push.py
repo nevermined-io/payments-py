@@ -82,19 +82,19 @@ def agent_card() -> AgentCard:  # noqa: D401
 
 @pytest.fixture()
 def payments_stub(monkeypatch):  # noqa: D401
-    redeem_called = {}
+    settle_called = {}
 
-    def redeem(agent_req, token, amt):  # noqa: D401
-        redeem_called["called"] = (agent_req, amt)
-        return {}
+    def settle(**kwargs):  # noqa: D401
+        settle_called["called"] = kwargs
+        return {"success": True, "txHash": "0x123", "data": {"creditsBurned": str(kwargs.get("max_amount", 0))}}
 
     payments = SimpleNamespace(
-        requests=SimpleNamespace(
-            start_processing_request=lambda *a, **k: {"agentRequestId": "REQ"},
-            redeem_credits_from_request=redeem,
+        facilitator=SimpleNamespace(
+            verify_permissions=lambda **k: {"success": True},
+            settle_permissions=settle,
         )
     )
-    return payments, redeem_called
+    return payments, settle_called
 
 
 pytestmark = pytest.mark.anyio
@@ -102,7 +102,7 @@ pytestmark = pytest.mark.anyio
 
 async def test_stream_and_resubscribe(agent_card, payments_stub):  # noqa: D401
     """Test that credits are burned when agent returns a terminal task."""
-    payments, redeem_called = payments_stub
+    payments, settle_called = payments_stub
 
     # Mock objects needed for the test
     handler = PaymentsRequestHandler(
@@ -117,7 +117,7 @@ async def test_stream_and_resubscribe(agent_card, payments_stub):  # noqa: D401
         bearer_token="TOK",
         url_requested="/rpc",
         http_method_requested="POST",
-        validation={"result": "success", "agentRequestId": "req-123"},
+        validation={"result": "success", "plan_id": "plan-123", "subscriber_address": "0xSub123"},
     )
     # Set context by message_id (as the handler looks for it)
     handler.set_http_ctx_for_message("msg-123", http_ctx)
@@ -154,8 +154,8 @@ async def test_stream_and_resubscribe(agent_card, payments_stub):  # noqa: D401
 
         # Debug info
         print(f"Events received: {len(events)}")
-        print(f"redeem_called: {redeem_called}")
+        print(f"settle_called: {settle_called}")
 
-        # Should have called redeem_credits_from_request
-        assert redeem_called
+        # Should have called settle_permissions
+        assert settle_called
         assert len(events) == 1

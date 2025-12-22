@@ -10,10 +10,8 @@ from payments_py.a2a.payments_client import PaymentsClient
 
 class DummyPayments:  # noqa: D101
     def __init__(self):
-        self.agents = SimpleNamespace(
-            get_agent_access_token=AsyncMock(
-                return_value=SimpleNamespace(access_token="TOK")
-            )
+        self.x402 = SimpleNamespace(
+            get_x402_access_token=AsyncMock(return_value={"accessToken": "TOK"})
         )
 
 
@@ -42,4 +40,4 @@ async def test_resubscribe_task():  # noqa: D401
             collected.append(ev)
 
     assert collected == [{"kind": "task"}]
-    dummy_payments.agents.get_agent_access_token.assert_awaited()
+    dummy_payments.x402.get_x402_access_token.assert_awaited()
