@@ -5,9 +5,9 @@ import pytest
 from payments_py.mcp import build_mcp_integration
 
 
-# Mock the decode_access_token to return plan_id and subscriber_address
+# Mock the decode_access_token to return subscriber_address (x402 tokens don't contain planId)
 def mock_decode_token(token):
-    return {"planId": "plan123", "subscriberAddress": "0x123subscriber"}
+    return {"subscriberAddress": "0x123subscriber"}
 
 
 class PaymentsMock:
@@ -54,7 +54,7 @@ def test_burns_fixed_credits_after_successful_call():
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 2})
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 2, "planId": "plan123"})
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
     assert out
@@ -73,7 +73,7 @@ def test_adds_metadata_to_result_after_successful_redemption():
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 3})
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 3, "planId": "plan123"})
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
@@ -104,7 +104,7 @@ def test_adds_metadata_with_txhash_when_settle_returns_it():
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 5})
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 5, "planId": "plan123"})
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
@@ -130,7 +130,7 @@ def test_does_not_add_metadata_when_settlement_fails():
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 2})
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 2, "planId": "plan123"})
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
@@ -146,7 +146,7 @@ def test_rejects_when_authorization_header_missing():
     async def base(_args, _extra=None):
         return {}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 1})
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan123"})
     with pytest.raises(Exception) as err:
         asyncio.get_event_loop().run_until_complete(
             wrapped({}, {"requestInfo": {"headers": {}}})
@@ -164,7 +164,7 @@ def test_burns_dynamic_credits_from_function():
         return {"content": [{"type": "text", "text": "ok"}]}
 
     wrapped = mcp.with_paywall(
-        base, {"kind": "tool", "name": "test", "credits": lambda _ctx: 7}
+        base, {"kind": "tool", "name": "test", "credits": lambda _ctx: 7, "planId": "plan123"}
     )
     asyncio.get_event_loop().run_until_complete(
         wrapped({}, {"requestInfo": {"headers": {"authorization": "Bearer TT"}}})
@@ -181,7 +181,7 @@ def test_defaults_to_one_credit_when_undefined():
     async def base(_args, _extra=None):
         return {"res": True}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test"})
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "planId": "plan123"})
     asyncio.get_event_loop().run_until_complete(
         wrapped({}, {"requestInfo": {"headers": {"Authorization": "Bearer tok"}}})
     )
@@ -198,7 +198,7 @@ def test_does_not_settle_when_zero_credits():
         return {"res": True}
 
     wrapped = mcp.with_paywall(
-        base, {"kind": "tool", "name": "test", "credits": lambda _ctx: 0}
+        base, {"kind": "tool", "name": "test", "credits": lambda _ctx: 0, "planId": "plan123"}
     )
     asyncio.get_event_loop().run_until_complete(
         wrapped({}, {"requestInfo": {"headers": {"Authorization": "Bearer tok"}}})
@@ -237,7 +237,7 @@ def test_propagates_error_on_settle_when_configured():
 
     wrapped = mcp.with_paywall(
         base,
-        {"kind": "tool", "name": "test", "credits": 1, "onRedeemError": "propagate"},
+        {"kind": "tool", "name": "test", "credits": 1, "onRedeemError": "propagate", "planId": "plan123"},
     )
     with pytest.raises(Exception) as err:
         asyncio.get_event_loop().run_until_complete(
@@ -274,7 +274,7 @@ def test_attach_register_resource_wraps_and_burns():
         }
 
     api.registerResource(
-        "res.test", {"tpl": True}, {"cfg": True}, handler, {"credits": 3}
+        "res.test", {"tpl": True}, {"cfg": True}, handler, {"credits": 3, "planId": "plan123"}
     )
     wrapped = captured["wrapped"]
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
@@ -304,7 +304,7 @@ def test_accepts_authorization_from_multiple_header_containers():
     async def base(_args, _extra=None):
         return {"ok": True}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "hdr", "credits": 1})
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "hdr", "credits": 1, "planId": "plan123"})
     for i, variant in enumerate(variants):
         pm.calls.clear()
         asyncio.get_event_loop().run_until_complete(wrapped({}, variant))
@@ -328,7 +328,7 @@ def test_settles_after_async_iterable_completes():
     async def base(_args, _extra=None):
         return await make_iterable(["one", "two", "three"])
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "stream", "credits": 5})
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "stream", "credits": 5, "planId": "plan123"})
     extra = {"requestInfo": {"headers": {"authorization": "Bearer tok"}}}
     iterable = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
     # Not settled yet
@@ -361,7 +361,7 @@ def test_settles_when_consumer_stops_stream_early():
     async def base(_args, _extra=None):
         return await make_iterable(["one", "two", "three"])
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "stream", "credits": 2})
+    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "stream", "credits": 2, "planId": "plan123"})
     extra = {"requestInfo": {"headers": {"authorization": "Bearer tok"}}}
     iterable = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
@@ -434,7 +434,7 @@ def test_backward_compatibility_handlers_without_context():
         }
 
     wrapped = mcp.with_paywall(
-        old_handler, {"kind": "tool", "name": "test", "credits": 2}
+        old_handler, {"kind": "tool", "name": "test", "credits": 2, "planId": "plan123"}
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({"name": "Alice"}, extra))
@@ -461,7 +461,7 @@ def test_handlers_with_context_receive_paywall_context():
         }
 
     wrapped = mcp.with_paywall(
-        new_handler, {"kind": "tool", "name": "test", "credits": 3}
+        new_handler, {"kind": "tool", "name": "test", "credits": 3, "planId": "plan123"}
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({"name": "Bob"}, extra))
@@ -486,7 +486,7 @@ def test_paywall_context_structure():
         return {"content": [{"type": "text", "text": "ok"}]}
 
     wrapped = mcp.with_paywall(
-        context_handler, {"kind": "tool", "name": "test", "credits": 5}
+        context_handler, {"kind": "tool", "name": "test", "credits": 5, "planId": "plan123"}
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
@@ -541,7 +541,7 @@ def test_context_handlers_can_use_x402_context_data():
         }
 
     wrapped = mcp.with_paywall(
-        business_logic_handler, {"kind": "tool", "name": "business", "credits": 3}
+        business_logic_handler, {"kind": "tool", "name": "business", "credits": 3, "planId": "plan123"}
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(
