@@ -105,7 +105,11 @@ class MockPaymentsService:
         def settle_permissions(**kwargs) -> dict:
             self.settle_call_count += 1
             self.last_settle_credits = int(kwargs.get("max_amount", 0))
-            return {"success": True, "txHash": "0x123", "data": {"creditsBurned": kwargs.get("max_amount", "0")}}
+            return {
+                "success": True,
+                "txHash": "0x123",
+                "data": {"creditsBurned": kwargs.get("max_amount", "0")},
+            }
 
         return SimpleNamespace(
             verify_permissions=verify_permissions,
@@ -187,7 +191,11 @@ async def test_push_notifications_with_webhook():
         bearer_token="WEBHOOK_TOKEN",
         url_requested="/rpc",
         http_method_requested="POST",
-        validation={"result": "success", "plan_id": "webhook-plan", "subscriber_address": "0xWebhookSub"},
+        validation={
+            "result": "success",
+            "plan_id": "webhook-plan",
+            "subscriber_address": "0xWebhookSub",
+        },
     )
 
     # Push notification config
@@ -450,7 +458,11 @@ async def test_push_notifications_failure_handling():
         bearer_token="FAILURE_TOKEN",
         url_requested="/rpc",
         http_method_requested="POST",
-        validation={"result": "success", "plan_id": "failure-plan", "subscriber_address": "0xFailureSub"},
+        validation={
+            "result": "success",
+            "plan_id": "failure-plan",
+            "subscriber_address": "0xFailureSub",
+        },
     )
 
     push_config = {

@@ -161,7 +161,9 @@ class DummyExecutor:
         print("[DEBUG] DummyExecutor completed successfully")
 
 
-@patch("payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token)
+@patch(
+    "payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token
+)
 @pytest.mark.asyncio
 async def test_complete_message_send_with_credit_burning():
     """Test complete message/send flow with successful credit burning."""
@@ -252,7 +254,9 @@ async def test_complete_message_send_with_credit_burning():
     ), f"Expected 3 credits burned, got {mock_payments.facilitator.last_settle_credits}"
 
 
-@patch("payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token)
+@patch(
+    "payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token
+)
 @pytest.mark.asyncio
 async def test_message_send_with_validation_failure():
     """Test message/send flow when validation fails."""
@@ -387,7 +391,9 @@ async def test_message_send_with_missing_bearer_token():
     ), f"No credits should be settled without bearer token, but {mock_payments.facilitator.settle_call_count} calls were made"
 
 
-@patch("payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token)
+@patch(
+    "payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token
+)
 @pytest.mark.asyncio
 async def test_non_blocking_execution_with_polling():
     """Test non-blocking execution (blocking: false) with task polling."""

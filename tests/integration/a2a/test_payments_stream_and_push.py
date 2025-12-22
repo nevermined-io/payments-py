@@ -86,7 +86,11 @@ def payments_stub(monkeypatch):  # noqa: D401
 
     def settle(**kwargs):  # noqa: D401
         settle_called["called"] = kwargs
-        return {"success": True, "txHash": "0x123", "data": {"creditsBurned": str(kwargs.get("max_amount", 0))}}
+        return {
+            "success": True,
+            "txHash": "0x123",
+            "data": {"creditsBurned": str(kwargs.get("max_amount", 0))},
+        }
 
     payments = SimpleNamespace(
         facilitator=SimpleNamespace(
@@ -117,7 +121,11 @@ async def test_stream_and_resubscribe(agent_card, payments_stub):  # noqa: D401
         bearer_token="TOK",
         url_requested="/rpc",
         http_method_requested="POST",
-        validation={"result": "success", "plan_id": "plan-123", "subscriber_address": "0xSub123"},
+        validation={
+            "result": "success",
+            "plan_id": "plan-123",
+            "subscriber_address": "0xSub123",
+        },
     )
     # Set context by message_id (as the handler looks for it)
     handler.set_http_ctx_for_message("msg-123", http_ctx)

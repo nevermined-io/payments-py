@@ -14,13 +14,21 @@ class PaymentsMinimal:
                 self._outer = outer
                 self._subscriber = subscriber
 
-            def verify_permissions(self, plan_id, max_amount, x402_access_token, subscriber_address):
+            def verify_permissions(
+                self, plan_id, max_amount, x402_access_token, subscriber_address
+            ):
                 if not self._subscriber:
                     raise Exception("Not a subscriber")
                 return {"success": True}
 
-            def settle_permissions(self, plan_id, max_amount, x402_access_token, subscriber_address):
-                return {"success": True, "txHash": "0x123", "data": {"creditsBurned": max_amount}}
+            def settle_permissions(
+                self, plan_id, max_amount, x402_access_token, subscriber_address
+            ):
+                return {
+                    "success": True,
+                    "txHash": "0x123",
+                    "data": {"creditsBurned": max_amount},
+                }
 
         class Agents:
             def get_agent_plans(self, agent_id):
@@ -81,12 +89,16 @@ def test_context_integration_with_real_like_data():
                     self._outer = outer
                     self._subscriber = subscriber
 
-                def verify_permissions(self, plan_id, max_amount, x402_access_token, subscriber_address):
+                def verify_permissions(
+                    self, plan_id, max_amount, x402_access_token, subscriber_address
+                ):
                     if not self._subscriber:
                         raise Exception("Not a subscriber")
                     return {"success": True}
 
-                def settle_permissions(self, plan_id, max_amount, x402_access_token, subscriber_address):
+                def settle_permissions(
+                    self, plan_id, max_amount, x402_access_token, subscriber_address
+                ):
                     return {
                         "success": True,
                         "txHash": f"0x{hash(f'{plan_id}-{max_amount}') % 1000000000:x}",
@@ -172,7 +184,9 @@ def test_context_integration_with_real_like_data():
 
     # Verify x402 specific data
     assert context["plan_id"] == "plan-123"  # From mocked decode_access_token
-    assert context["subscriber_address"] == "0xSubscriber123"  # From mocked decode_access_token
+    assert (
+        context["subscriber_address"] == "0xSubscriber123"
+    )  # From mocked decode_access_token
 
     # Verify credits
     assert context["credits"] == 5

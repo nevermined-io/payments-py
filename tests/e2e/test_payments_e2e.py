@@ -76,7 +76,11 @@ class MockAgentHandler(BaseHTTPRequestHandler):
         try:
             if mock_payments_builder and mock_agent_id and auth_header:
                 # Extract token from Bearer header
-                bearer_token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else auth_header
+                bearer_token = (
+                    auth_header.replace("Bearer ", "")
+                    if auth_header.startswith("Bearer ")
+                    else auth_header
+                )
 
                 # Decode token to get plan_id and subscriber_address
                 decoded = decode_access_token(bearer_token)

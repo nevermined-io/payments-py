@@ -22,7 +22,13 @@ class DummyExecutor:  # noqa: D101
 @pytest.mark.asyncio()  # noqa: D401
 async def test_streaming_burns_credits():  # noqa: D401
     # Mock settle method - must be synchronous since it's called via run_in_executor
-    settle_mock = Mock(return_value={"success": True, "txHash": "0x123", "data": {"creditsBurned": "7"}})
+    settle_mock = Mock(
+        return_value={
+            "success": True,
+            "txHash": "0x123",
+            "data": {"creditsBurned": "7"},
+        }
+    )
     dummy_payments = SimpleNamespace(
         facilitator=SimpleNamespace(settle_permissions=settle_mock),
     )

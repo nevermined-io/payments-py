@@ -772,10 +772,8 @@ class TestA2AE2EFlow:
 
         # Get x402 access token after ordering the plan (if ordered)
         try:
-            agent_access_params = (
-                self.payments_subscriber.x402.get_x402_access_token(
-                    self.PLAN_ID, self.AGENT_ID
-                )
+            agent_access_params = self.payments_subscriber.x402.get_x402_access_token(
+                self.PLAN_ID, self.AGENT_ID
             )
             self.__class__.access_token = agent_access_params.get("accessToken")
             print(f"✅ Got access token: {self.__class__.access_token[:20]}...")

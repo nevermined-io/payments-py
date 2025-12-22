@@ -47,7 +47,11 @@ def dummy_payments(monkeypatch):  # noqa: D401
     payments = SimpleNamespace(
         facilitator=SimpleNamespace(
             verify_permissions=lambda **k: {"success": True},
-            settle_permissions=lambda **k: {"success": True, "txHash": "0x123", "data": {"creditsBurned": "1"}},
+            settle_permissions=lambda **k: {
+                "success": True,
+                "txHash": "0x123",
+                "data": {"creditsBurned": "1"},
+            },
         )
     )
     return payments  # type: ignore[return-value]
@@ -91,7 +95,9 @@ async def _on_error(method, exc, req):  # noqa: D401
     flag["error"] = True
 
 
-@patch("payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token)
+@patch(
+    "payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token
+)
 def test_hooks_invoked(agent_card, dummy_payments):  # noqa: D401
     # Reset flag before test
     flag["before"] = False
