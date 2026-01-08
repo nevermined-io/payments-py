@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Nevermined" /><link rel="canonical" href="https://github.com/nevermined-io/payments-py/payments/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Payments - payments-py</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Payments";
+        var mkdocs_page_input_path = "payments.md";
+        var mkdocs_page_url = "/nevermined-io/payments-py/payments/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> payments-py
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../ai_query_api/">Ai query api</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../data_models/">Data models</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../environments/">Environments</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../mcp.index/">Mcp.index</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../mcp/">Mcp</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../mcp.types/">Mcp.types</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../nvm_backend/">Nvm backend</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Payments</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#class-payments">class Payments</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#method-__init__">method __init__</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-burn_credits">method burn_credits</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-register_agent">method register_agent</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-register_agent_and_plan">method register_agent_and_plan</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-register_credits_plan">method register_credits_plan</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-create_file">method create_file</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-create_service">method create_service</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-register_time_plan">method register_time_plan</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-register_credits_trial_plan">method register_credits_trial_plan</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-register_time_trial_plan">method register_time_trial_plan</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-download_file">method download_file</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_asset_ddo">method get_asset_ddo</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_checkout_plan">method get_checkout_plan</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_file_details_url">method get_file_details_url</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_plan_associated_files">method get_plan_associated_files</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_plan_associated_services">method get_plan_associated_services</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_plan_balance">method get_plan_balance</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_plan_details_url">method get_plan_details_url</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_service_access_config">method get_service_access_config</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_service_details_url">method get_service_details_url</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_service_token">method get_service_token</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-mint_credits">method mint_credits</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-order_plan">method order_plan</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-search_agents">method search_agents</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-search_plans">method search_plans</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../plans/">Plans</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../utils/">Utils</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">payments-py</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Payments</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!-- markdownlint-disable -->
+
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h1 id="module-payments"><kbd>module</kbd> <code>payments</code></h1>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L14"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-payments"><kbd>class</kbd> <code>Payments</code></h2>
+<p>A class representing a payment system.</p>
+<p><strong>Attributes:</strong></p>
+<ul>
+<li><b><code>nvm_api_key</code></b> (str): The nvm api key for authentication.</li>
+<li><b><code>environment</code></b> (Environment): The environment for the payment system.</li>
+<li><b><code>app_id</code></b> (str, optional): The application ID.</li>
+<li><b><code>version</code></b> (str, optional): The version of the payment system.</li>
+<li><b><code>headers</code></b> (dict, optional): The headers for the payment system. Methods:</li>
+<li><b><code>register_credits_plan</code></b>: Registers a new credits plan.</li>
+<li><b><code>register_time_plan</code></b>: Registers a new time plan.</li>
+<li><b><code>register_credits_trial_plan</code></b>: Registers a new credits trial plan.</li>
+<li><b><code>register_time_trial_plan</code></b>: Registers a new time trial plan.</li>
+<li><b><code>register_agent</code></b>: Registers a new agent</li>
+<li><b><code>register_agent_and_plan</code></b>: Registers a new agent associated to a plan in one step</li>
+<li><b><code>order_plan</code></b>: Orders the plan.</li>
+<li><b><code>get_asset_ddo</code></b>: Gets the asset DDO.</li>
+<li><b><code>get_plan_balance</code></b>: Gets the plan balance.</li>
+<li><b><code>get_service_token</code></b>: Gets the service token.</li>
+<li><b><code>get_plan_associated_services</code></b>: Gets the plan associated services.</li>
+<li><b><code>get_plan_associated_files</code></b>: Gets the plan associated files.</li>
+<li><b><code>get_plan_details_url</code></b>: Gets the plan details.</li>
+<li><b><code>get_service_details_url</code></b>: Gets the service details.</li>
+<li><b><code>get_file_details_url</code></b>: Gets the file details.</li>
+<li><b><code>get_checkout_plan</code></b>: Gets the checkout plan.</li>
+<li><b><code>download_file</code></b>: Downloads the file.</li>
+<li><b><code>mint_credits</code></b>: Mints the credits associated to a plan and send to the receiver.</li>
+<li><b><code>burn_credits</code></b>: Burns credits associated to a plan that you own.</li>
+<li><b><code>search_plans</code></b>: Query for plans base on an input query options.</li>
+<li><b><code>search_agents</code></b>: Query for agents base on an input query options.</li>
+<li><b><code>query</code></b>: The AI Query API.</li>
+</ul>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L50"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
+<pre><code class="language-python">__init__(
+    nvm_api_key: str,
+    environment: Environment,
+    app_id: Optional[str] = None,
+    version: Optional[str] = None,
+    headers: Optional[dict] = None
+)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L736"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-burn_credits"><kbd>method</kbd> <code>burn_credits</code></h3>
+<pre><code class="language-python">burn_credits(plan_did: str, amount: str) → BurnResultDto
+</code></pre>
+<p>Burn credits for a given Payment Plan DID.</p>
+<p>This method is only can be called by the owner of the Payment Plan.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_did</code></b> (str): The DID of the plan.</li>
+<li><b><code>amount</code></b> (str): The amount of credits to burn.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>BurnResultDto</code></b>: The result of the burning operation.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>HTTPError</code></b>: If the API call fails.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.burn_credits(plan_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12") print(response)</p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L379"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-register_agent"><kbd>method</kbd> <code>register_agent</code></h3>
+<pre><code class="language-python">register_agent(
+    agent_metadata: AgentMetadata,
+    agent_api: AgentAPIAttributes,
+    payment_plans: List[str]
+) → Dict[str, str]
+</code></pre>
+<p>Registers a new AI Agent on Nevermined. The agent must be associated to one or multiple Payment Plans. Users that are subscribers of a payment plan can access the agent. Depending on the Payment Plan and the configuration of the agent, the usage of the agent will consume credits. When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent.</p>
+<p>This method is oriented to AI Builders</p>
+<p>https://docs.nevermined.app/docs/tutorials/builders/register-agent</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>agent_metadata</code></b> (AgentMetadata): Metadata for the agent.</li>
+<li><b><code>agent_api</code></b> (AgentAPIAttributes): API attributes for the agent.</li>
+<li><b><code>payment_plans</code></b> (List[str]): List of payment plan IDs that give access to the agent.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Dict[str, str]</code></b>: Dictionary containing the <code>agentId</code> of the newly created agent.</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="language-python">from payments_py.common.types import AgentMetadata, AgentAPIAttributes
+
+agent_metadata = AgentMetadata(
+    name=&quot;My AI Agent&quot;,
+    description=&quot;A helpful AI agent&quot;,
+    tags=[&quot;ai&quot;, &quot;assistant&quot;]
+)
+agent_api = AgentAPIAttributes(
+    endpoints=[{&quot;POST&quot;: &quot;https://example.com/api/v1/agents/:agentId/tasks&quot;}]
+)
+payment_plans = [plan_id_1, plan_id_2]
+
+result = payments.agents.register_agent(agent_metadata, agent_api, payment_plans)
+print(f&quot;Agent ID: {result['agentId']}&quot;)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L428"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-register_agent_and_plan"><kbd>method</kbd> <code>register_agent_and_plan</code></h3>
+<pre><code class="language-python">register_agent_and_plan(
+    agent_metadata: AgentMetadata,
+    agent_api: AgentAPIAttributes,
+    plan_metadata: PlanMetadata,
+    price_config: PlanPriceConfig,
+    credits_config: PlanCreditsConfig,
+    access_limit: Optional[Literal[&quot;credits&quot;, &quot;time&quot;]] = None
+) → Dict[str, str]
+</code></pre>
+<p>Registers a new AI Agent and a Payment Plan on Nevermined in one step.</p>
+<p>The agent is automatically associated to the Payment Plan. Users that are subscribers of a payment plan can access the agent.</p>
+<p>Depending on the Payment Plan and the configuration of the agent, the usage of the agent will consume credits.</p>
+<p>When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent.</p>
+<p>This method is oriented to AI Builders</p>
+<p>https://docs.nevermined.app/docs/tutorials/builders/register-agent</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>agent_metadata</code></b> (AgentMetadata): Metadata for the agent.</li>
+<li><b><code>agent_api</code></b> (AgentAPIAttributes): API attributes for the agent.</li>
+<li><b><code>plan_metadata</code></b> (PlanMetadata): Metadata for the payment plan.</li>
+<li><b><code>price_config</code></b> (PlanPriceConfig): Price configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this.</li>
+<li><b><code>credits_config</code></b> (PlanCreditsConfig): Credits configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this.</li>
+<li><b><code>access_limit</code></b> (Optional[Literal["credits", "time"]]): Type of access limit. Can be <code>"credits"</code> or <code>"time"</code>. If not specified, it is automatically inferred based on <code>credits_config.duration_secs</code>.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Dict[str, str]</code></b>: Dictionary containing <code>agentId</code>, <code>planId</code>, and <code>txHash</code>.</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="language-python">from payments_py.common.types import AgentMetadata, AgentAPIAttributes, PlanMetadata
+from payments_py.plans import get_erc20_price_config, get_fixed_credits_config
+
+agent_metadata = AgentMetadata(name=&quot;My AI Agent&quot;, tags=[&quot;ai&quot;])
+agent_api = AgentAPIAttributes(
+    endpoints=[{&quot;POST&quot;: &quot;https://example.com/api/v1/agents/:agentId/tasks&quot;}]
+)
+plan_metadata = PlanMetadata(name=&quot;Basic Plan&quot;)
+price_config = get_erc20_price_config(20, ERC20_ADDRESS, builder_address)
+credits_config = get_fixed_credits_config(100)
+
+result = payments.agents.register_agent_and_plan(
+    agent_metadata, agent_api, plan_metadata, price_config, credits_config
+)
+print(f&quot;Agent ID: {result['agentId']}, Plan ID: {result['planId']}&quot;)
+</code></pre>
+<p><strong>Note:</strong> The <code>access_limit</code> parameter is optional. If not specified, it is automatically inferred based on <code>credits_config.duration_secs</code>:</p>
+<ul>
+<li><code>"credits"</code> if <code>duration_secs == 0</code> (non-expirable plans)</li>
+<li><code>"time"</code> if <code>duration_secs &gt; 0</code> (expirable plans)</li>
+</ul>
+<p>You can explicitly set it if needed:</p>
+<pre><code class="language-python"># Explicitly set access limit to 'time'
+result = payments.agents.register_agent_and_plan(
+    agent_metadata, agent_api, plan_metadata, price_config, credits_config,
+    access_limit=&quot;time&quot;
+)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L68"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-register_credits_plan"><kbd>method</kbd> <code>register_credits_plan</code></h3>
+<pre><code class="language-python">register_credits_plan(
+    plan_metadata: PlanMetadata,
+    price_config: PlanPriceConfig,
+    credits_config: PlanCreditsConfig
+) → Dict[str, str]
+</code></pre>
+<p>Allows an AI Builder to register a Payment Plan on Nevermined based on Credits. A Nevermined Credits Plan limits the access by the access/usage of the Plan. With them, AI Builders control the number of requests that can be made to an agent or service. Every time a user accesses any resource associated to the Payment Plan, the usage consumes from a capped amount of credits. When the user consumes all the credits, the plan automatically expires and the user needs to top up to continue using the service.</p>
+<p>This method is oriented to AI Builders.</p>
+<p>https://docs.nevermined.app/docs/tutorials/builders/create-plan</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_metadata</code></b> (PlanMetadata): Metadata for the payment plan.</li>
+<li><b><code>price_config</code></b> (PlanPriceConfig): Price configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this (e.g., <code>get_erc20_price_config</code>, <code>get_fiat_price_config</code>).</li>
+<li><b><code>credits_config</code></b> (PlanCreditsConfig): Credits configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this (e.g., <code>get_fixed_credits_config</code>, <code>get_dynamic_credits_config</code>).</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Dict[str, str]</code></b>: Dictionary containing the <code>planId</code> of the newly created plan.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>PaymentsError</code></b>: If the API call fails or if the credits configuration is invalid.</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="language-python">from payments_py.common.types import PlanMetadata
+from payments_py.plans import get_erc20_price_config, get_fixed_credits_config
+
+plan_metadata = PlanMetadata(name=&quot;Basic Plan&quot;, description=&quot;100 credits plan&quot;)
+price_config = get_erc20_price_config(20, ERC20_ADDRESS, builder_address)
+credits_config = get_fixed_credits_config(100)
+
+response = payments.plans.register_credits_plan(plan_metadata, price_config, credits_config)
+print(f&quot;Plan ID: {response['planId']}&quot;)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L304"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-create_file"><kbd>method</kbd> <code>create_file</code></h3>
+<pre><code class="language-python">create_file(createFileDto: CreateFileDto) → CreateAssetResultDto
+</code></pre>
+<p>It creates a new asset with file associated to it. The file asset must be associated to a Payment Plan. Users that are subscribers of a payment plan can download the files attached to it. Depending on the Payment Plan and the configuration of the file asset, the download will consume credits. When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue downloading the files.</p>
+<p>This method is oriented to AI Builders</p>
+<p>https://docs.nevermined.app/docs/tutorials/builders/register-file-asset</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>createFileDto</code></b>: (CreateFileDto): Options for the file creation.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>CreateAssetResultDto</code></b>: The result of the creation operation.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>HTTPError</code></b>: If the API call fails.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.create_file(plan_did="did:nv:xyz789", asset_type="dataset", name="Sample Dataset", description="A sample dataset", files=[{"name": "file1.csv", "url": "https://example.com/file1.csv"}]) print(response)</p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L206"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-create_service"><kbd>method</kbd> <code>create_service</code></h3>
+<pre><code class="language-python">create_service(createServiceDto: CreateServiceDto) → CreateAssetResultDto
+</code></pre>
+<p>It creates a new AI Agent or Service on Nevermined. The agent/service must be associated to a Payment Plan. Users that are subscribers of a payment plan can access the agent/service. Depending on the Payment Plan and the configuration of the agent/service, the usage of the agent/service will consume credits. When the plan expires (because the time is over or the credits are consumed), the user needs to renew the plan to continue using the agent/service.</p>
+<p>This method is oriented to AI Builders</p>
+<p>https://docs.nevermined.app/docs/tutorials/builders/register-agent</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>createServiceDto</code></b>: (CreateServiceDto): Options for the service creation</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>CreateAssetResultDto</code></b>: The result of the creation operation.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>HTTPError</code></b>: If the API call fails.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.create_service(plan_did="did:nv:abc123", service_type="service", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none") print(response)</p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L137"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-register_time_plan"><kbd>method</kbd> <code>register_time_plan</code></h3>
+<pre><code class="language-python">register_time_plan(
+    plan_metadata: PlanMetadata,
+    price_config: PlanPriceConfig,
+    credits_config: PlanCreditsConfig
+) → Dict[str, str]
+</code></pre>
+<p>Allows an AI Builder to register a Payment Plan on Nevermined limited by duration. A Nevermined Time Plan limits the access by a specific amount of time. With them, AI Builders can specify the duration of the Payment Plan (1 month, 1 year, etc.). When the time period is over, the plan automatically expires and the user needs to renew it.</p>
+<p>This method is oriented to AI Builders</p>
+<p>https://docs.nevermined.app/docs/tutorials/builders/create-plan</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_metadata</code></b> (PlanMetadata): Metadata for the payment plan.</li>
+<li><b><code>price_config</code></b> (PlanPriceConfig): Price configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this.</li>
+<li><b><code>credits_config</code></b> (PlanCreditsConfig): Credits configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this (e.g., <code>get_expirable_duration_config</code>).</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Dict[str, str]</code></b>: Dictionary containing the <code>planId</code> of the newly created plan.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>PaymentsError</code></b>: If the API call fails or if the credits configuration is invalid.</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="language-python">from payments_py.common.types import PlanMetadata
+from payments_py.plans import get_erc20_price_config, get_expirable_duration_config, ONE_DAY_DURATION
+
+plan_metadata = PlanMetadata(name=&quot;Daily Plan&quot;, description=&quot;1 day access&quot;)
+price_config = get_erc20_price_config(50, ERC20_ADDRESS, builder_address)
+credits_config = get_expirable_duration_config(ONE_DAY_DURATION)
+
+response = payments.plans.register_time_plan(plan_metadata, price_config, credits_config)
+print(f&quot;Plan ID: {response['planId']}&quot;)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/api/plans_api.py#L175"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-register_credits_trial_plan"><kbd>method</kbd> <code>register_credits_trial_plan</code></h3>
+<pre><code class="language-python">register_credits_trial_plan(
+    plan_metadata: PlanMetadata,
+    price_config: PlanPriceConfig,
+    credits_config: PlanCreditsConfig
+) → Dict[str, str]
+</code></pre>
+<p>Allows an AI Builder to register a Trial Payment Plan on Nevermined based on Credits. A Nevermined Trial Plan allows subscribers of that plan to test the Agents associated to it. A Trial plan is a plan that can only be purchased once by a user.</p>
+<p>This method is oriented to AI Builders</p>
+<p>https://docs.nevermined.app/docs/tutorials/builders/create-plan</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_metadata</code></b> (PlanMetadata): Metadata for the payment plan.</li>
+<li><b><code>price_config</code></b> (PlanPriceConfig): Price configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this (typically <code>get_free_price_config</code> for trial plans).</li>
+<li><b><code>credits_config</code></b> (PlanCreditsConfig): Credits configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this (e.g., <code>get_fixed_credits_config</code>).</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Dict[str, str]</code></b>: Dictionary containing the <code>planId</code> of the newly created trial plan.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>PaymentsError</code></b>: If the API call fails or if the credits configuration is invalid.</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="language-python">from payments_py.common.types import PlanMetadata
+from payments_py.plans import get_free_price_config, get_fixed_credits_config
+
+plan_metadata = PlanMetadata(name=&quot;Trial Plan&quot;, description=&quot;Free trial with 10 credits&quot;)
+price_config = get_free_price_config()
+credits_config = get_fixed_credits_config(10)
+
+response = payments.plans.register_credits_trial_plan(plan_metadata, price_config, credits_config)
+print(f&quot;Trial Plan ID: {response['planId']}&quot;)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/api/plans_api.py#L197"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-register_time_trial_plan"><kbd>method</kbd> <code>register_time_trial_plan</code></h3>
+<pre><code class="language-python">register_time_trial_plan(
+    plan_metadata: PlanMetadata,
+    price_config: PlanPriceConfig,
+    credits_config: PlanCreditsConfig
+) → Dict[str, str]
+</code></pre>
+<p>Allows an AI Builder to register a Trial Payment Plan on Nevermined limited by duration. A Nevermined Trial Plan allows subscribers of that plan to test the Agents associated to it. A Trial plan is a plan that can only be purchased once by a user.</p>
+<p>This method is oriented to AI Builders</p>
+<p>https://docs.nevermined.app/docs/tutorials/builders/create-plan</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_metadata</code></b> (PlanMetadata): Metadata for the payment plan.</li>
+<li><b><code>price_config</code></b> (PlanPriceConfig): Price configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this (typically <code>get_free_price_config</code> for trial plans).</li>
+<li><b><code>credits_config</code></b> (PlanCreditsConfig): Credits configuration for the plan. Use helper functions from <code>payments_py.plans</code> to create this (e.g., <code>get_expirable_duration_config</code>).</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Dict[str, str]</code></b>: Dictionary containing the <code>planId</code> of the newly created trial plan.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>PaymentsError</code></b>: If the API call fails or if the credits configuration is invalid.</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="language-python">from payments_py.common.types import PlanMetadata
+from payments_py.plans import get_free_price_config, get_expirable_duration_config, ONE_DAY_DURATION
+
+plan_metadata = PlanMetadata(name=&quot;Trial Plan&quot;, description=&quot;Free 1-day trial&quot;)
+price_config = get_free_price_config()
+credits_config = get_expirable_duration_config(ONE_DAY_DURATION)
+
+response = payments.plans.register_time_trial_plan(plan_metadata, price_config, credits_config)
+print(f&quot;Trial Plan ID: {response['planId']}&quot;)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L653"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-download_file"><kbd>method</kbd> <code>download_file</code></h3>
+<pre><code class="language-python">download_file(
+    file_did: str,
+    destination: str,
+    agreement_id: Optional[str] = None
+) → DownloadFileResultDto
+</code></pre>
+<p>Downloads the file.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>file_did</code></b> (str): The DID of the file.</li>
+<li><b><code>agreement_id</code></b> (str, optional): The agreement ID.</li>
+<li><b><code>destination str</code></b>: The destination of the file.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: The url of the file.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>DownloadFileResultDto</code></b>: The result of the download operation.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>HTTPError</code></b>: If the API call fails.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.download_file(file_did="did:nv:7e38d39405445ab3e5435d8c1c6653a00ddc425ba629789f58fbefccaa5e5a5d", destination="/tmp") print(response)</p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L481"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_asset_ddo"><kbd>method</kbd> <code>get_asset_ddo</code></h3>
+<pre><code class="language-python">get_asset_ddo(did: str)
+</code></pre>
+<p>Get the Metadata (aka Decentralized Document or DDO) for a given asset identifier (DID).</p>
+<p>https://docs.nevermined.io/docs/architecture/specs/Spec-DID https://docs.nevermined.io/docs/architecture/specs/Spec-METADATA</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str): The unique identifier (aka DID) of the asset (payment plan, agent, file, etc).</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: The response from the API call.</li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L640"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_checkout_plan"><kbd>method</kbd> <code>get_checkout_plan</code></h3>
+<pre><code class="language-python">get_checkout_plan(plan_did: str)
+</code></pre>
+<p>Gets the checkout plan.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_did</code></b> (str): The DID of the plan.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: The url of the checkout plan.</li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L627"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_file_details_url"><kbd>method</kbd> <code>get_file_details_url</code></h3>
+<pre><code class="language-python">get_file_details_url(file_did: str)
+</code></pre>
+<p>Gets the file details.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>file_did</code></b> (str): The DID of the file.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: The url of the file details.</li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L587"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_plan_associated_files"><kbd>method</kbd> <code>get_plan_associated_files</code></h3>
+<pre><code class="language-python">get_plan_associated_files(plan_did: str)
+</code></pre>
+<p>Get array of files DIDs associated with a payment plan.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_did</code></b> (str): The DID of the plan.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: List of DIDs of the associated files.</li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L573"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_plan_associated_services"><kbd>method</kbd> <code>get_plan_associated_services</code></h3>
+<pre><code class="language-python">get_plan_associated_services(plan_did: str)
+</code></pre>
+<p>Get array of services/agent DIDs associated with a payment plan.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_did</code></b> (str): The DID of the plan.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: List of DIDs of the associated services.</li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L497"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_plan_balance"><kbd>method</kbd> <code>get_plan_balance</code></h3>
+<pre><code class="language-python">get_plan_balance(
+    plan_did: str,
+    account_address: Optional[str] = None
+) → BalanceResultDto
+</code></pre>
+<p>Get the balance of an account for a Payment Plan.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_did</code></b> (str): The DID of the plan.</li>
+<li><b><code>account_address</code></b> (Optional[str]): The account address. Defaults to <code>self.account_address</code> if not provided.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>BalanceResultDto</code></b>: The response from the API call formatted as a BalanceResultDto.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>HTTPError</code></b>: If the API call fails.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.get_plan_balance(plan_did="did:example:123456", account_address="0xABC123") response.raise_for_status() balance = BalanceResultDto.model_validate(response.json()) print(balance)</p>
+<p>Expected Response: { "planType": "credits", "isOwner": True, "isSubscriptor": True, "balance": 10000000 }</p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L601"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_plan_details_url"><kbd>method</kbd> <code>get_plan_details_url</code></h3>
+<pre><code class="language-python">get_plan_details_url(plan_did: str)
+</code></pre>
+<p>Gets the plan details.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_did</code></b> (str): The DID of the plan.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: The url of the plan details.</li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L545"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_service_access_config"><kbd>method</kbd> <code>get_service_access_config</code></h3>
+<pre><code class="language-python">get_service_access_config(service_did: str) → ServiceTokenResultDto
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L614"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_service_details_url"><kbd>method</kbd> <code>get_service_details_url</code></h3>
+<pre><code class="language-python">get_service_details_url(service_did: str)
+</code></pre>
+<p>Gets the service details.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>service_did</code></b> (str): The DID of the service.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: The url of the service details.</li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L548"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_service_token"><kbd>method</kbd> <code>get_service_token</code></h3>
+<pre><code class="language-python">get_service_token(service_did: str) → ServiceTokenResultDto
+</code></pre>
+<p>Get the required configuration for accessing a remote service agent. This configuration includes: - The JWT access token - The Proxy url that can be used to query the agent/service.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>service_did</code></b> (str): The DID of the service.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>ServiceTokenResultDto</code></b>: The result of the creation operation.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>HTTPError</code></b>: If the API call fails.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.get_service_token(service_did="did:nv:xyz789") print(response)</p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L707"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-mint_credits"><kbd>method</kbd> <code>mint_credits</code></h3>
+<pre><code class="language-python">mint_credits(plan_did: str, amount: str, receiver: str) → MintResultDto
+</code></pre>
+<p>Mints the credits associated with a plan and sends them to the receiver.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_did</code></b> (str): The DID of the plan.</li>
+<li><b><code>amount</code></b> (str): The amount of credits to mint.</li>
+<li><b><code>receiver</code></b> (str): The receiver address of the credits.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>MintResultDto</code></b>: The result of the minting operation.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>HTTPError</code></b>: If the API call fails.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.mint_credits(plan_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12", receiver="0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6") print(response)</p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L452"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-order_plan"><kbd>method</kbd> <code>order_plan</code></h3>
+<pre><code class="language-python">order_plan(
+    plan_did: str,
+    agreementId: Optional[str] = None
+) → OrderPlanResultDto
+</code></pre>
+<p>Orders a Payment Plan. The user needs to have enough balance in the token selected by the owner of the Payment Plan.</p>
+<p>The payment is done using Crypto. Payments using Fiat can be done via the Nevermined App.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>plan_did</code></b> (str): The DID of the plan.</li>
+<li><b><code>agreementId</code></b> (str, optional): The agreement ID.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>OrderPlanResultDto</code></b>: The result of the order operation, containing the agreement ID and success status.</li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>HTTPError</code></b>: If the API call fails.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.order_plan(plan_did="did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116") print(response)</p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L790"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-search_agents"><kbd>method</kbd> <code>search_agents</code></h3>
+<pre><code class="language-python">search_agents(
+    text: Optional[str] = None,
+    page: Optional[int] = 1,
+    offset: Optional[int] = 10
+)
+</code></pre>
+<p>Search for agents. It will search for agents matching the text provided in their metadata.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>text</code></b> (str): The text to search for.</li>
+<li><b><code>page</code></b> (int): The page number.</li>
+<li><b><code>offset</code></b> (int): The offset.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: The response from the API call.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.search_agents(text="My Agent") print(response)</p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/payments.py#L765"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-search_plans"><kbd>method</kbd> <code>search_plans</code></h3>
+<pre><code class="language-python">search_plans(
+    text: Optional[str] = None,
+    page: Optional[int] = 1,
+    offset: Optional[int] = 10
+)
+</code></pre>
+<p>Search for plans. It will search for plans matching the text provided in their metadata.</p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>text</code></b> (str): The text to search for.</li>
+<li><b><code>page</code></b> (int): The page number.</li>
+<li><b><code>offset</code></b> (int): The offset.</li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>Response</code></b>: The response from the API call.</li>
+</ul>
+<p><strong>Example:</strong>
+response = your_instance.search_plans(text="Basic") print(response)</p>
+<hr />
+<p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../nvm_backend/" class="btn btn-neutral float-left" title="Nvm backend"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../plans/" class="btn btn-neutral float-right" title="Plans">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../nvm_backend/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../plans/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
