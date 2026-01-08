@@ -142,7 +142,7 @@ def get_expirable_duration_config(duration_of_plan: int) -> PlanCreditsConfig:
     """
     return PlanCreditsConfig(
         is_redemption_amount_fixed=False,
-        redemption_type=PlanRedemptionType.ONLY_OWNER,
+        redemption_type=PlanRedemptionType.ONLY_SUBSCRIBER,
         proof_required=False,
         duration_secs=duration_of_plan,
         amount="1",
@@ -176,7 +176,7 @@ def get_fixed_credits_config(
     """
     return PlanCreditsConfig(
         is_redemption_amount_fixed=True,
-        redemption_type=PlanRedemptionType.ONLY_OWNER,
+        redemption_type=PlanRedemptionType.ONLY_SUBSCRIBER,
         proof_required=False,
         duration_secs=0,
         amount=str(credits_granted),
@@ -203,7 +203,7 @@ def get_dynamic_credits_config(
     """
     return PlanCreditsConfig(
         is_redemption_amount_fixed=False,
-        redemption_type=PlanRedemptionType.ONLY_OWNER,
+        redemption_type=PlanRedemptionType.ONLY_SUBSCRIBER,
         proof_required=False,
         duration_secs=0,
         amount=str(credits_granted),
