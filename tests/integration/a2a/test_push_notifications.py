@@ -84,47 +84,50 @@ class DummyWebhookExecutor(AgentExecutor):
 
 
 class MockPaymentsService:
-    """Mock payments service for testing."""
+    """Mock payments service for testing (x402 flow)."""
 
     def __init__(self):
         self.validation_call_count = 0
-        self.redeem_call_count = 0
-        self.last_redeem_credits = 0
+        self.settle_call_count = 0
+        self.last_settle_credits = 0
         self.should_fail_validation = False
 
-        # Create the requests API once
-        self._requests_api = self._make_requests_api()
+        # Create the facilitator API once
+        self._facilitator_api = self._make_facilitator_api()
 
-    def _make_requests_api(self):
-        def start_processing_request(bearer_token: str) -> dict:
+    def _make_facilitator_api(self):
+        def verify_permissions(**kwargs) -> dict:
             self.validation_call_count += 1
             if self.should_fail_validation:
                 raise RuntimeError("Validation failed")
-            return {"result": "success", "agentRequestId": "req-123"}
+            return {"success": True}
 
-        def redeem_credits_from_request(
-            agent_request_id: str, bearer_token: str, credits: int
-        ) -> None:
-            self.redeem_call_count += 1
-            self.last_redeem_credits = credits
+        def settle_permissions(**kwargs) -> dict:
+            self.settle_call_count += 1
+            self.last_settle_credits = int(kwargs.get("max_amount", 0))
+            return {
+                "success": True,
+                "txHash": "0x123",
+                "data": {"creditsBurned": kwargs.get("max_amount", "0")},
+            }
 
         return SimpleNamespace(
-            start_processing_request=start_processing_request,
-            redeem_credits_from_request=redeem_credits_from_request,
+            verify_permissions=verify_permissions,
+            settle_permissions=settle_permissions,
             # Expose state for testing
             validation_call_count=lambda: self.validation_call_count,
-            redeem_call_count=lambda: self.redeem_call_count,
-            last_redeem_credits=lambda: self.last_redeem_credits,
+            settle_call_count=lambda: self.settle_call_count,
+            last_settle_credits=lambda: self.last_settle_credits,
         )
 
     @property
-    def requests(self):
+    def facilitator(self):
         # Return the same instance always, but update state properties
-        self._requests_api.validation_call_count = self.validation_call_count
-        self._requests_api.redeem_call_count = self.redeem_call_count
-        self._requests_api.last_redeem_credits = self.last_redeem_credits
-        self._requests_api.should_fail_validation = self.should_fail_validation
-        return self._requests_api
+        self._facilitator_api.validation_call_count = self.validation_call_count
+        self._facilitator_api.settle_call_count = self.settle_call_count
+        self._facilitator_api.last_settle_credits = self.last_settle_credits
+        self._facilitator_api.should_fail_validation = self.should_fail_validation
+        return self._facilitator_api
 
 
 pytestmark = pytest.mark.anyio
@@ -188,7 +191,11 @@ async def test_push_notifications_with_webhook():
         bearer_token="WEBHOOK_TOKEN",
         url_requested="/rpc",
         http_method_requested="POST",
-        validation={"result": "success", "agentRequestId": "webhook-req-123"},
+        validation={
+            "result": "success",
+            "plan_id": "webhook-plan",
+            "subscriber_address": "0xWebhookSub",
+        },
     )
 
     # Push notification config
@@ -237,8 +244,8 @@ async def test_push_notifications_with_webhook():
             task_id = result.id
 
             # Verify credits were burned
-            assert mock_payments.requests.redeem_call_count == 1
-            assert mock_payments.requests.last_redeem_credits == 5
+            assert mock_payments.facilitator.settle_call_count == 1
+            assert mock_payments.facilitator.last_settle_credits == 5
 
             # Wait a bit for async webhook call
             await asyncio.sleep(0.1)
@@ -358,7 +365,8 @@ async def test_push_notifications_different_auth_schemes():
             http_method_requested="POST",
             validation={
                 "result": "success",
-                "agentRequestId": f"req-{test_case['name']}",
+                "plan_id": f"plan-{test_case['name']}",
+                "subscriber_address": "0xTestSubscriber",
             },
         )
 
@@ -450,7 +458,11 @@ async def test_push_notifications_failure_handling():
         bearer_token="FAILURE_TOKEN",
         url_requested="/rpc",
         http_method_requested="POST",
-        validation={"result": "success", "agentRequestId": "failure-req-123"},
+        validation={
+            "result": "success",
+            "plan_id": "failure-plan",
+            "subscriber_address": "0xFailureSub",
+        },
     )
 
     push_config = {
@@ -490,8 +502,8 @@ async def test_push_notifications_failure_handling():
             assert result.status.message.parts[0].root.text == "Webhook test completed!"
 
             # Verify credits were still burned
-            assert mock_payments.requests.redeem_call_count == 1
-            assert mock_payments.requests.last_redeem_credits == 1
+            assert mock_payments.facilitator.settle_call_count == 1
+            assert mock_payments.facilitator.last_settle_credits == 1
 
             # Verify that despite webhook failure, the task execution completed successfully
             # (the webhook failure should be silent and not break the main flow)

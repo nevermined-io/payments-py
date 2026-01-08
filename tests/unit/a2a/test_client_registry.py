@@ -10,7 +10,7 @@ from payments_py.a2a.client_registry import ClientRegistry
 
 class DummyPayments:  # noqa: D101
     def __init__(self) -> None:
-        self.agents = SimpleNamespace(get_agent_access_token=AsyncMock())
+        self.x402 = SimpleNamespace(get_x402_access_token=AsyncMock())
 
 
 def _create_registry():  # noqa: D401

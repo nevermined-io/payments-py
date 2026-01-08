@@ -1,33 +1,51 @@
 import asyncio
+from unittest.mock import patch
 import pytest
 
 from payments_py.mcp import build_mcp_integration
 
 
+# Mock the decode_access_token to return subscriber_address (x402 tokens don't contain planId)
+def mock_decode_token(token):
+    return {"subscriberAddress": "0x123subscriber"}
+
+
 class PaymentsMock:
-    def __init__(self, redeem_result=None):
-        class Req:
-            def __init__(self, parent, redeem_result):
+    def __init__(self, settle_result=None):
+        class Facilitator:
+            def __init__(self, parent, settle_result):
                 self._parent = parent
-                self._redeem_result = redeem_result or {"success": True}
+                self._settle_result = settle_result or {
+                    "success": True,
+                    "data": {"creditsBurned": "1"},
+                }
 
-            def start_processing_request(self, agent_id, token, url, method):
-                self._parent.calls.append(("start", agent_id, token, url, method))
-                return {"agentRequestId": "req-1", "balance": {"isSubscriber": True}}
+            def verify_permissions(
+                self, plan_id, max_amount, x402_access_token, subscriber_address
+            ):
+                self._parent.calls.append(
+                    ("verify", plan_id, x402_access_token, subscriber_address)
+                )
+                return {"success": True}
 
-            def redeem_credits_from_request(self, request_id, token, credits):
-                self._parent.calls.append(("redeem", request_id, token, int(credits)))
-                return self._redeem_result
+            def settle_permissions(
+                self, plan_id, max_amount, x402_access_token, subscriber_address
+            ):
+                self._parent.calls.append(
+                    ("settle", plan_id, x402_access_token, int(max_amount))
+                )
+                return self._settle_result
 
         class Agents:
             def get_agent_plans(self, agent_id):
                 return {"plans": []}
 
-        self.requests = Req(self, redeem_result)
+        self.facilitator = Facilitator(self, settle_result)
         self.agents = Agents()
         self.calls = []
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_burns_fixed_credits_after_successful_call():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
@@ -36,24 +54,30 @@ def test_burns_fixed_credits_after_successful_call():
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 2})
+    wrapped = mcp.with_paywall(
+        base, {"kind": "tool", "name": "test", "credits": 2, "planId": "plan123"}
+    )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
     assert out
-    assert ("start", "did:nv:agent", "token") in [(c[0], c[1], c[2]) for c in pm.calls]
-    assert ("redeem", "req-1", "token", 2) in pm.calls
+    assert ("verify", "plan123", "token", "0x123subscriber") in pm.calls
+    assert ("settle", "plan123", "token", 2) in pm.calls
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_adds_metadata_to_result_after_successful_redemption():
     """Test that metadata is added to the result after successful credit redemption."""
-    pm = PaymentsMock()
+    settle_result = {"success": True, "data": {"creditsBurned": "3"}}
+    pm = PaymentsMock(settle_result=settle_result)
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
 
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 3})
+    wrapped = mcp.with_paywall(
+        base, {"kind": "tool", "name": "test", "credits": 3, "planId": "plan123"}
+    )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
@@ -64,23 +88,29 @@ def test_adds_metadata_to_result_after_successful_redemption():
 
     # Verify metadata contains expected fields
     assert out["metadata"].get("success") is True
-    assert out["metadata"].get("requestId") == "req-1"
     assert out["metadata"].get("creditsRedeemed") == "3"
     # txHash should be None since our mock doesn't return it
     assert out["metadata"].get("txHash") is None
 
 
-def test_adds_metadata_with_txhash_when_redeem_returns_it():
-    """Test that metadata includes txHash when redeem_credits_from_request returns it."""
-    redeem_result = {"success": True, "txHash": "0x1234567890abcdef"}
-    pm = PaymentsMock(redeem_result=redeem_result)
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_adds_metadata_with_txhash_when_settle_returns_it():
+    """Test that metadata includes txHash when settle_permissions returns it."""
+    settle_result = {
+        "success": True,
+        "txHash": "0x1234567890abcdef",
+        "data": {"creditsBurned": "5"},
+    }
+    pm = PaymentsMock(settle_result=settle_result)
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
 
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 5})
+    wrapped = mcp.with_paywall(
+        base, {"kind": "tool", "name": "test", "credits": 5, "planId": "plan123"}
+    )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
@@ -91,26 +121,28 @@ def test_adds_metadata_with_txhash_when_redeem_returns_it():
 
     # Verify metadata contains expected fields including txHash
     assert out["metadata"].get("success") is True
-    assert out["metadata"].get("requestId") == "req-1"
     assert out["metadata"].get("creditsRedeemed") == "5"
     assert out["metadata"].get("txHash") == "0x1234567890abcdef"
 
 
-def test_does_not_add_metadata_when_redemption_fails():
-    """Test that metadata is not added when credit redemption fails."""
-    redeem_result = {"success": False, "error": "Insufficient credits"}
-    pm = PaymentsMock(redeem_result=redeem_result)
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_does_not_add_metadata_when_settlement_fails():
+    """Test that metadata is not added when credit settlement fails."""
+    settle_result = {"success": False, "error": "Insufficient credits"}
+    pm = PaymentsMock(settle_result=settle_result)
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
 
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 2})
+    wrapped = mcp.with_paywall(
+        base, {"kind": "tool", "name": "test", "credits": 2, "planId": "plan123"}
+    )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
-    # Verify the result does not have metadata when redemption fails
+    # Verify the result does not have metadata when settlement fails
     assert "metadata" not in out or out["metadata"] is None or not out["metadata"]
 
 
@@ -122,7 +154,9 @@ def test_rejects_when_authorization_header_missing():
     async def base(_args, _extra=None):
         return {}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test", "credits": 1})
+    wrapped = mcp.with_paywall(
+        base, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan123"}
+    )
     with pytest.raises(Exception) as err:
         asyncio.get_event_loop().run_until_complete(
             wrapped({}, {"requestInfo": {"headers": {}}})
@@ -130,6 +164,7 @@ def test_rejects_when_authorization_header_missing():
     assert getattr(err.value, "code", 0) == -32003
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_burns_dynamic_credits_from_function():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
@@ -139,14 +174,21 @@ def test_burns_dynamic_credits_from_function():
         return {"content": [{"type": "text", "text": "ok"}]}
 
     wrapped = mcp.with_paywall(
-        base, {"kind": "tool", "name": "test", "credits": lambda _ctx: 7}
+        base,
+        {
+            "kind": "tool",
+            "name": "test",
+            "credits": lambda _ctx: 7,
+            "planId": "plan123",
+        },
     )
     asyncio.get_event_loop().run_until_complete(
         wrapped({}, {"requestInfo": {"headers": {"authorization": "Bearer TT"}}})
     )
-    assert ("redeem", "req-1", "TT", 7) in pm.calls
+    assert ("settle", "plan123", "TT", 7) in pm.calls
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_defaults_to_one_credit_when_undefined():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
@@ -155,14 +197,17 @@ def test_defaults_to_one_credit_when_undefined():
     async def base(_args, _extra=None):
         return {"res": True}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "test"})
+    wrapped = mcp.with_paywall(
+        base, {"kind": "tool", "name": "test", "planId": "plan123"}
+    )
     asyncio.get_event_loop().run_until_complete(
         wrapped({}, {"requestInfo": {"headers": {"Authorization": "Bearer tok"}}})
     )
-    assert ("redeem", "req-1", "tok", 1) in pm.calls
+    assert ("settle", "plan123", "tok", 1) in pm.calls
 
 
-def test_does_not_redeem_when_zero_credits():
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_does_not_settle_when_zero_credits():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:x", "serverName": "srv"})
@@ -171,30 +216,41 @@ def test_does_not_redeem_when_zero_credits():
         return {"res": True}
 
     wrapped = mcp.with_paywall(
-        base, {"kind": "tool", "name": "test", "credits": lambda _ctx: 0}
+        base,
+        {
+            "kind": "tool",
+            "name": "test",
+            "credits": lambda _ctx: 0,
+            "planId": "plan123",
+        },
     )
     asyncio.get_event_loop().run_until_complete(
         wrapped({}, {"requestInfo": {"headers": {"Authorization": "Bearer tok"}}})
     )
-    assert not any(c[0] == "redeem" for c in pm.calls)
+    assert not any(c[0] == "settle" for c in pm.calls)
 
 
-def test_propagates_error_on_redeem_when_configured():
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_propagates_error_on_settle_when_configured():
     class P(PaymentsMock):
         def __init__(self):
             super().__init__()
 
-            class R:
+            class F:
                 def __init__(self, parent):
                     self._parent = parent
 
-                def start_processing_request(self, agent_id, token, url, method):
-                    return {"agentRequestId": "r", "balance": {"isSubscriber": True}}
+                def verify_permissions(
+                    self, plan_id, max_amount, x402_access_token, subscriber_address
+                ):
+                    return {"success": True}
 
-                def redeem_credits_from_request(self, request_id, token, credits):
-                    raise RuntimeError("redeem failed")
+                def settle_permissions(
+                    self, plan_id, max_amount, x402_access_token, subscriber_address
+                ):
+                    raise RuntimeError("settle failed")
 
-            self.requests = R(self)
+            self.facilitator = F(self)
 
     pm = P()
     mcp = build_mcp_integration(pm)
@@ -205,7 +261,13 @@ def test_propagates_error_on_redeem_when_configured():
 
     wrapped = mcp.with_paywall(
         base,
-        {"kind": "tool", "name": "test", "credits": 1, "onRedeemError": "propagate"},
+        {
+            "kind": "tool",
+            "name": "test",
+            "credits": 1,
+            "onRedeemError": "propagate",
+            "planId": "plan123",
+        },
     )
     with pytest.raises(Exception) as err:
         asyncio.get_event_loop().run_until_complete(
@@ -214,6 +276,7 @@ def test_propagates_error_on_redeem_when_configured():
     assert getattr(err.value, "code", 0) == -32002
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_attach_register_resource_wraps_and_burns():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
@@ -241,14 +304,19 @@ def test_attach_register_resource_wraps_and_burns():
         }
 
     api.registerResource(
-        "res.test", {"tpl": True}, {"cfg": True}, handler, {"credits": 3}
+        "res.test",
+        {"tpl": True},
+        {"cfg": True},
+        handler,
+        {"credits": 3, "planId": "plan123"},
     )
     wrapped = captured["wrapped"]
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     asyncio.get_event_loop().run_until_complete(wrapped(object(), {"a": "1"}, extra))
-    assert ("redeem", "req-1", "token", 3) in pm.calls
+    assert ("settle", "plan123", "token", 3) in pm.calls
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_accepts_authorization_from_multiple_header_containers():
     tokens = ["A", "B", "C", "D", "E"]
     variants = [
@@ -270,14 +338,17 @@ def test_accepts_authorization_from_multiple_header_containers():
     async def base(_args, _extra=None):
         return {"ok": True}
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "hdr", "credits": 1})
+    wrapped = mcp.with_paywall(
+        base, {"kind": "tool", "name": "hdr", "credits": 1, "planId": "plan123"}
+    )
     for i, variant in enumerate(variants):
         pm.calls.clear()
         asyncio.get_event_loop().run_until_complete(wrapped({}, variant))
-        assert ("redeem", "req-1", tokens[i], 1) in pm.calls
+        assert ("settle", "plan123", tokens[i], 1) in pm.calls
 
 
-def test_redeems_after_async_iterable_completes():
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_settles_after_async_iterable_completes():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:agent", "serverName": "mcp"})
@@ -293,11 +364,13 @@ def test_redeems_after_async_iterable_completes():
     async def base(_args, _extra=None):
         return await make_iterable(["one", "two", "three"])
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "stream", "credits": 5})
+    wrapped = mcp.with_paywall(
+        base, {"kind": "tool", "name": "stream", "credits": 5, "planId": "plan123"}
+    )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer tok"}}}
     iterable = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
-    # Not redeemed yet
-    assert not any(c[0] == "redeem" for c in pm.calls)
+    # Not settled yet
+    assert not any(c[0] == "settle" for c in pm.calls)
     collected = []
 
     async def consume():
@@ -306,10 +379,11 @@ def test_redeems_after_async_iterable_completes():
 
     asyncio.get_event_loop().run_until_complete(consume())
     assert collected == ["one", "two", "three"]
-    assert ("redeem", "req-1", "tok", 5) in pm.calls
+    assert ("settle", "plan123", "tok", 5) in pm.calls
 
 
-def test_redeems_when_consumer_stops_stream_early():
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_settles_when_consumer_stops_stream_early():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:agent", "serverName": "mcp"})
@@ -325,7 +399,9 @@ def test_redeems_when_consumer_stops_stream_early():
     async def base(_args, _extra=None):
         return await make_iterable(["one", "two", "three"])
 
-    wrapped = mcp.with_paywall(base, {"kind": "tool", "name": "stream", "credits": 2})
+    wrapped = mcp.with_paywall(
+        base, {"kind": "tool", "name": "stream", "credits": 2, "planId": "plan123"}
+    )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer tok"}}}
     iterable = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
@@ -345,51 +421,50 @@ def test_redeems_when_consumer_stops_stream_early():
 
     count = asyncio.get_event_loop().run_until_complete(consume_first_and_close())
     assert count == 1
-    assert ("redeem", "req-1", "tok", 2) in pm.calls
+    assert ("settle", "plan123", "tok", 2) in pm.calls
 
 
-class PaymentsMockWithAgentRequest:
-    """Mock that includes agentRequest in start_processing_request response."""
+class PaymentsMockWithX402Context:
+    """Mock that includes x402 context (plan_id, subscriber_address) in responses."""
 
-    def __init__(self, redeem_result=None):
-        class Req:
-            def __init__(self, parent, redeem_result):
+    def __init__(self, settle_result=None):
+        class Facilitator:
+            def __init__(self, parent, settle_result):
                 self._parent = parent
-                self._redeem_result = redeem_result or {"success": True}
-
-            def start_processing_request(self, agent_id, token, url, method):
-                self._parent.calls.append(("start", agent_id, token, url, method))
-                return {
-                    "agentRequestId": "req-123",
-                    "agentName": "Test Agent",
-                    "agentId": agent_id,
-                    "balance": {
-                        "balance": 1000,
-                        "creditsContract": "0x123",
-                        "isSubscriber": True,
-                        "pricePerCredit": 0.01,
-                    },
-                    "urlMatching": url,
-                    "verbMatching": method,
-                    "batch": False,
+                self._settle_result = settle_result or {
+                    "success": True,
+                    "data": {"creditsBurned": "1"},
                 }
 
-            def redeem_credits_from_request(self, request_id, token, credits):
-                self._parent.calls.append(("redeem", request_id, token, int(credits)))
-                return self._redeem_result
+            def verify_permissions(
+                self, plan_id, max_amount, x402_access_token, subscriber_address
+            ):
+                self._parent.calls.append(
+                    ("verify", plan_id, x402_access_token, subscriber_address)
+                )
+                return {"success": True}
+
+            def settle_permissions(
+                self, plan_id, max_amount, x402_access_token, subscriber_address
+            ):
+                self._parent.calls.append(
+                    ("settle", plan_id, x402_access_token, int(max_amount))
+                )
+                return self._settle_result
 
         class Agents:
             def get_agent_plans(self, agent_id):
                 return {"plans": []}
 
-        self.requests = Req(self, redeem_result)
+        self.facilitator = Facilitator(self, settle_result)
         self.agents = Agents()
         self.calls = []
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_backward_compatibility_handlers_without_context():
     """Test that handlers without context parameter still work."""
-    pm = PaymentsMockWithAgentRequest()
+    pm = PaymentsMockWithX402Context()
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
 
@@ -399,19 +474,20 @@ def test_backward_compatibility_handlers_without_context():
         }
 
     wrapped = mcp.with_paywall(
-        old_handler, {"kind": "tool", "name": "test", "credits": 2}
+        old_handler, {"kind": "tool", "name": "test", "credits": 2, "planId": "plan123"}
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({"name": "Alice"}, extra))
 
     assert out["content"][0]["text"] == "Hello Alice"
-    assert ("start", "did:nv:agent", "token") in [(c[0], c[1], c[2]) for c in pm.calls]
-    assert ("redeem", "req-123", "token", 2) in pm.calls
+    assert ("verify", "plan123", "token", "0x123subscriber") in pm.calls
+    assert ("settle", "plan123", "token", 2) in pm.calls
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_handlers_with_context_receive_paywall_context():
     """Test that handlers with context parameter receive PaywallContext."""
-    pm = PaymentsMockWithAgentRequest()
+    pm = PaymentsMockWithX402Context()
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
 
@@ -425,7 +501,7 @@ def test_handlers_with_context_receive_paywall_context():
         }
 
     wrapped = mcp.with_paywall(
-        new_handler, {"kind": "tool", "name": "test", "credits": 3}
+        new_handler, {"kind": "tool", "name": "test", "credits": 3, "planId": "plan123"}
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({"name": "Bob"}, extra))
@@ -435,9 +511,10 @@ def test_handlers_with_context_receive_paywall_context():
     assert isinstance(captured_context, dict)
 
 
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
 def test_paywall_context_structure():
-    """Test that PaywallContext contains all expected fields."""
-    pm = PaymentsMockWithAgentRequest()
+    """Test that PaywallContext contains all expected fields for x402."""
+    pm = PaymentsMockWithX402Context()
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
 
@@ -449,43 +526,39 @@ def test_paywall_context_structure():
         return {"content": [{"type": "text", "text": "ok"}]}
 
     wrapped = mcp.with_paywall(
-        context_handler, {"kind": "tool", "name": "test", "credits": 5}
+        context_handler,
+        {"kind": "tool", "name": "test", "credits": 5, "planId": "plan123"},
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
-    # Verify PaywallContext structure
+    # Verify PaywallContext structure for x402
     assert captured_context is not None
     assert "auth_result" in captured_context
     assert "credits" in captured_context
-    assert "agent_request" in captured_context
+    assert "plan_id" in captured_context
+    assert "subscriber_address" in captured_context
 
-    # Verify auth_result structure
+    # Verify auth_result structure for x402
     auth_result = captured_context["auth_result"]
-    assert auth_result["requestId"] == "req-123"
     assert auth_result["token"] == "token"
     assert auth_result["agentId"] == "did:nv:agent"
     assert auth_result["logicalUrl"].startswith("mcp://test-mcp/tools/test")
-    assert "agentRequest" in auth_result
+    assert auth_result["plan_id"] == "plan123"
+    assert auth_result["subscriber_address"] == "0x123subscriber"
 
-    # Verify agent_request structure
-    agent_request = captured_context["agent_request"]
-    assert agent_request["agentRequestId"] == "req-123"
-    assert agent_request["agentName"] == "Test Agent"
-    assert agent_request["agentId"] == "did:nv:agent"
-    assert agent_request["balance"]["isSubscriber"] is True
-    assert agent_request["balance"]["balance"] == 1000
-    assert agent_request["urlMatching"].startswith("mcp://test-mcp/tools/test")
-    assert agent_request["verbMatching"] == "POST"
-    assert agent_request["batch"] is False
+    # Verify x402 specific fields in context
+    assert captured_context["plan_id"] == "plan123"
+    assert captured_context["subscriber_address"] == "0x123subscriber"
 
     # Verify credits
     assert captured_context["credits"] == 5
 
 
-def test_context_handlers_can_use_agent_request_data():
-    """Test that handlers can access and use agent request data from context."""
-    pm = PaymentsMockWithAgentRequest()
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_context_handlers_can_use_x402_context_data():
+    """Test that handlers can access and use x402 context data."""
+    pm = PaymentsMockWithX402Context()
     mcp = build_mcp_integration(pm)
     mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
 
@@ -493,29 +566,24 @@ def test_context_handlers_can_use_agent_request_data():
         if not context:
             return {"error": "No context provided"}
 
-        agent_request = context["agent_request"]
         auth_result = context["auth_result"]
         credits = context["credits"]
-
-        # Use agent request data for business logic
-        if not agent_request["balance"]["isSubscriber"]:
-            return {"error": "Not a subscriber"}
-
-        if agent_request["balance"]["balance"] < credits:
-            return {"error": "Insufficient balance"}
+        plan_id = context.get("plan_id")
+        subscriber_address = context.get("subscriber_address")
 
         return {
             "content": [{"type": "text", "text": "Success"}],
             "metadata": {
-                "agentName": agent_request["agentName"],
-                "requestId": auth_result["requestId"],
+                "plan_id": plan_id,
+                "subscriber_address": subscriber_address,
                 "creditsUsed": credits,
-                "balanceRemaining": agent_request["balance"]["balance"] - credits,
+                "agentId": auth_result["agentId"],
             },
         }
 
     wrapped = mcp.with_paywall(
-        business_logic_handler, {"kind": "tool", "name": "business", "credits": 3}
+        business_logic_handler,
+        {"kind": "tool", "name": "business", "credits": 3, "planId": "plan123"},
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(
@@ -525,7 +593,7 @@ def test_context_handlers_can_use_agent_request_data():
     # Verify handler used context data correctly
     assert "error" not in out
     assert out["content"][0]["text"] == "Success"
-    assert out["metadata"]["agentName"] == "Test Agent"
-    assert out["metadata"]["requestId"] == "req-123"
+    assert out["metadata"]["plan_id"] == "plan123"
+    assert out["metadata"]["subscriber_address"] == "0x123subscriber"
     assert out["metadata"]["creditsUsed"] == 3
-    assert out["metadata"]["balanceRemaining"] == 997  # 1000 - 3
+    assert out["metadata"]["agentId"] == "did:nv:agent"

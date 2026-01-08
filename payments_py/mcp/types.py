@@ -5,14 +5,14 @@ Types for MCP paywall functionality.
 from typing import Any, Callable, Dict, TypedDict, Union
 
 
-class AuthResult(TypedDict):
-    """Result returned by authentication routines."""
+class AuthResult(TypedDict, total=False):
+    """Result returned by authentication routines using x402 tokens."""
 
-    requestId: str
     token: str
     agentId: str
     logicalUrl: str
-    agentRequest: Dict[str, Any]  # StartAgentRequest as dict
+    plan_id: str
+    subscriber_address: str
 
 
 CreditsOption = Union[int, Callable[[Dict[str, Any]], int]]
@@ -47,9 +47,10 @@ class PromptOptions(BasePaywallOptions):
 PaywallOptions = Union[ToolOptions, ResourceOptions, PromptOptions]
 
 
-class PaywallContext(TypedDict):
-    """Context provided to paywall-protected handlers."""
+class PaywallContext(TypedDict, total=False):
+    """Context provided to paywall-protected handlers using x402 tokens."""
 
     auth_result: AuthResult
     credits: int
-    agent_request: Dict[str, Any]  # StartAgentRequest as dict
+    plan_id: str
+    subscriber_address: str

@@ -28,7 +28,10 @@ Example Usage:
     )
 
     # Generate X402 token for subscriber
-    token_response = payments.x402.get_x402_access_token(plan_id, agent_id)
+    token_response = payments.x402.get_x402_access_token(
+        plan_id=plan_id,
+        agent_id=agent_id  # optional
+    )
     token = token_response["accessToken"]
 
     # Verify and settle payments
@@ -51,7 +54,7 @@ from .schemes import SupportedSchemes
 from .facilitator import NeverminedFacilitator
 from .facilitator_api import FacilitatorAPI
 from .a2a import X402A2AUtils, X402Metadata, PaymentStatus as X402PaymentStatus
-from .token import X402TokenAPI
+from .token import X402TokenAPI, decode_access_token
 
 # V2 extended types
 from .types_v2 import (
@@ -82,6 +85,7 @@ __all__ = [
     # APIs
     "FacilitatorAPI",
     "X402TokenAPI",
+    "decode_access_token",
     # High-level facilitator
     "NeverminedFacilitator",
     # A2A Integration

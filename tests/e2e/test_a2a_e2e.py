@@ -770,12 +770,10 @@ class TestA2AE2EFlow:
             # Don't raise, continue with tests
             print("⚠️ Continuing with tests despite balance check error")
 
-        # Get access token after ordering the plan (if ordered)
+        # Get x402 access token after ordering the plan (if ordered)
         try:
-            agent_access_params = (
-                self.payments_subscriber.agents.get_agent_access_token(
-                    self.PLAN_ID, self.AGENT_ID
-                )
+            agent_access_params = self.payments_subscriber.x402.get_x402_access_token(
+                self.PLAN_ID, self.AGENT_ID
             )
             self.__class__.access_token = agent_access_params.get("accessToken")
             print(f"✅ Got access token: {self.__class__.access_token[:20]}...")

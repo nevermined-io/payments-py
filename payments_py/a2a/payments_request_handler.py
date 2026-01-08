@@ -21,6 +21,7 @@ from a2a.types import (
 )
 from payments_py.common.payments_error import PaymentsError
 from payments_py.payments import Payments
+from payments_py.x402.token import decode_access_token
 
 from .types import HttpRequestContext
 
@@ -116,32 +117,92 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         http_method_requested: str,
     ) -> Any:
         """
-        Validates a request using the payments service.
+        Validates a request using the x402 payments service.
         This method is used by the middleware to validate credits before processing requests.
 
         Args:
             agent_id: The agent ID to validate
-            bearer_token: The bearer token for authentication
+            bearer_token: The bearer token for authentication (x402 access token)
             url_requested: The URL being requested
             http_method_requested: The HTTP method being used
 
         Returns:
-            The validation result containing agentRequestId and other validation data
+            The validation result containing plan_id, subscriber_address, and verification status
 
         Raises:
             PaymentsError: If validation fails
         """
-        # Use run_in_executor since start_processing_request is synchronous
+        # Try to get plan_id from agent card's payment extension first
+        plan_id = None
+        capabilities = (
+            self._agent_card.get("capabilities", {})
+            if isinstance(self._agent_card, dict)
+            else getattr(self._agent_card, "capabilities", {})
+        )
+        extensions = (
+            capabilities.get("extensions", [])
+            if isinstance(capabilities, dict)
+            else getattr(capabilities, "extensions", [])
+        )
+        for ext in extensions:
+            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
+            if ext_dict.get("uri") == "urn:nevermined:payment":
+                params = ext_dict.get("params", {})
+                plan_id = params.get("planId") or params.get("plan_id")
+                break
+
+        # Decode x402 token to extract subscriber_address (and fallback plan_id if not in agent card)
+        decoded = decode_access_token(bearer_token)
+        logging.getLogger(__name__).debug(
+            f"[validate_request] plan_id from agent card: {plan_id}"
+        )
+        logging.getLogger(__name__).debug(
+            f"[validate_request] decoded token keys: {list(decoded.keys()) if decoded else 'None'}"
+        )
+        if not decoded:
+            raise PaymentsError.unauthorized("Invalid access token")
+
+        # If plan_id not found in agent card, try token
+        if not plan_id:
+            plan_id = decoded.get("planId") or decoded.get("plan_id")
+
+        # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
+        subscriber_address = decoded.get("subscriberAddress") or decoded.get(
+            "subscriber_address"
+        )
+
+        if not plan_id or not subscriber_address:
+            logging.getLogger(__name__).error(
+                f"[validate_request] FAILED - plan_id: {plan_id}, subscriber_address: {subscriber_address}"
+            )
+            raise PaymentsError.unauthorized(
+                "Cannot determine plan_id or subscriber_address from token or agent card"
+            )
+
+        # Use run_in_executor since verify_permissions is synchronous
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
+        result = await loop.run_in_executor(
             None,
-            lambda: self._payments.requests.start_processing_request(  # type: ignore[attr-defined]
-                agent_id,
-                bearer_token,
-                url_requested,
-                http_method_requested,
+            lambda: self._payments.facilitator.verify_permissions(
+                plan_id=plan_id,
+                max_amount="1",  # Verify at least 1 credit
+                x402_access_token=bearer_token,
+                subscriber_address=subscriber_address,
             ),
         )
+
+        if not result.get("success"):
+            raise PaymentsError.payment_required(
+                result.get("message", "Permission verification failed")
+            )
+
+        # Return validation data with plan_id and subscriber_address for later use
+        return {
+            "success": True,
+            "plan_id": plan_id,
+            "subscriber_address": subscriber_address,
+            "balance": {"isSubscriber": True},  # Compatibility with existing checks
+        }
 
     # ------------------------------------------------------------------
     # Overrides --------------------------------------------------------
@@ -474,25 +535,32 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
     async def _handle_task_finalization_from_event(
         self, event: TaskStatusUpdateEvent, http_ctx: HttpRequestContext
     ) -> None:
-        """Handle credit burning from TaskStatusUpdateEvent (like TypeScript handleTaskFinalization)."""
+        """Handle credit burning from TaskStatusUpdateEvent using x402 settle_permissions."""
         if not event.metadata or not event.metadata.get("creditsUsed"):
             return
 
         print(f"[DEBUG] Handling task finalization from event: {event}")
 
         credits_used = event.metadata["creditsUsed"]
+        plan_id = http_ctx.validation.get("plan_id")
+        subscriber_address = http_ctx.validation.get("subscriber_address")
+
+        if not plan_id or not subscriber_address:
+            return  # Cannot settle without required fields
+
         try:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,
-                lambda: self._payments.requests.redeem_credits_from_request(  # type: ignore[attr-defined]
-                    http_ctx.validation["agentRequestId"],
-                    http_ctx.bearer_token,
-                    int(credits_used),
+                lambda: self._payments.facilitator.settle_permissions(
+                    plan_id=plan_id,
+                    max_amount=str(int(credits_used)),
+                    x402_access_token=http_ctx.bearer_token,
+                    subscriber_address=subscriber_address,
                 ),
             )
         except Exception:  # noqa: BLE001
-            # Swallow redeem errors (non-blocking)
+            # Swallow settle errors (non-blocking)
             pass
 
     # ------------------------------------------------------------------
@@ -517,7 +585,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         # Call parent streaming method and process events
         # type: ignore[arg-type]
         async for event in super().on_message_send_stream(params, context):
-            # Handle credit burning on final status updates
+            # Handle credit burning on final status updates using x402 settle_permissions
             if (
                 isinstance(event, dict)
                 and event.get("kind") == "status-update"
@@ -526,19 +594,24 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 and http_ctx.bearer_token
             ):
                 credits_used = event["metadata"]["creditsUsed"]
-                try:
-                    loop = asyncio.get_running_loop()
-                    await loop.run_in_executor(
-                        None,
-                        lambda: self._payments.requests.redeem_credits_from_request(  # type: ignore[attr-defined]
-                            http_ctx.validation["agentRequestId"],
-                            http_ctx.bearer_token,
-                            int(credits_used),
-                        ),
-                    )
-                except Exception:  # noqa: BLE001
-                    # Swallow redeem errors (non-blocking)
-                    pass
+                plan_id = http_ctx.validation.get("plan_id")
+                subscriber_address = http_ctx.validation.get("subscriber_address")
+
+                if plan_id and subscriber_address:
+                    try:
+                        loop = asyncio.get_running_loop()
+                        await loop.run_in_executor(
+                            None,
+                            lambda: self._payments.facilitator.settle_permissions(
+                                plan_id=plan_id,
+                                max_amount=str(int(credits_used)),
+                                x402_access_token=http_ctx.bearer_token,
+                                subscriber_address=subscriber_address,
+                            ),
+                        )
+                    except Exception:  # noqa: BLE001
+                        # Swallow settle errors (non-blocking)
+                        pass
 
             # Handle push notifications on final status updates
             if (

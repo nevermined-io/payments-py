@@ -20,7 +20,6 @@ from payments_py.api.nvm_api import (
     API_URL_GET_AGENT,
     API_URL_ADD_PLAN_AGENT,
     API_URL_REMOVE_PLAN_AGENT,
-    API_URL_GET_AGENT_ACCESS_TOKEN,
     API_URL_REGISTER_AGENTS_AND_PLAN,
     API_URL_GET_AGENT_PLANS,
     API_URL_UPDATE_AGENT,
@@ -259,32 +258,6 @@ class AgentsAPI(BasePaymentsAPI):
             except Exception:
                 error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to remove plan from agent", error)
-        return response.json()
-
-    def get_agent_access_token(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
-        """
-        Get an access token for an agent.
-
-        Args:
-            plan_id: The unique identifier of the plan
-            agent_id: The unique identifier of the agent
-
-        Returns:
-            The access token information
-
-        Raises:
-            PaymentsError: If unable to get access token
-        """
-        url = f"{self.environment.backend}{API_URL_GET_AGENT_ACCESS_TOKEN.format(plan_id=plan_id, agent_id=agent_id)}"
-        options = self.get_backend_http_options("GET")
-
-        response = requests.get(url, **options)
-        if not response.ok:
-            try:
-                error = response.json()
-            except Exception:
-                error = {"message": response.text, "code": response.status_code}
-            raise PaymentsError.from_backend("Unable to get agent access token", error)
         return response.json()
 
     def update_agent_metadata(

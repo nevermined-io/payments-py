@@ -195,13 +195,13 @@ agent_res = payments.agents.register_agent(
 )
 agent_id = agent_res["agentId"]
 
-# Order plan
+# Order plan (optional - only needed for traditional credit-based access)
 payments.plans.order_plan(plan_id)
 
 # Get plan balance
 balance = payments.plans.get_plan_balance(plan_id)
 
-# Get agent access token
-access = payments.agents.get_agent_access_token(plan_id, agent_id)
-token = access["accessToken"] if isinstance(access, dict) else access.access_token
+# Get x402 access token (for agent-to-agent authentication)
+access = payments.x402.get_x402_access_token(plan_id, agent_id)
+token = access["accessToken"]
 ```
