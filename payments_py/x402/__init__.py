@@ -28,7 +28,10 @@ Example Usage:
     )
 
     # Generate X402 token for subscriber
-    token_response = payments.x402.get_x402_access_token(plan_id, agent_id)
+    token_response = payments.x402.get_x402_access_token(
+        plan_id=plan_id,
+        agent_id=agent_id  # optional
+    )
     token = token_response["accessToken"]
 
     # Verify and settle payments

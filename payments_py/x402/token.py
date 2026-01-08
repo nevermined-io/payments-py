@@ -12,7 +12,7 @@ from typing import Dict, Any, Optional
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
-from payments_py.api.nvm_api import API_URL_GET_AGENT_X402_ACCESS_TOKEN
+from payments_py.api.nvm_api import API_URL_CREATE_PERMISSION
 
 
 def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
@@ -71,9 +71,16 @@ class X402TokenAPI(BasePaymentsAPI):
         """
         return cls(options)
 
-    def get_x402_access_token(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
+    def get_x402_access_token(
+        self,
+        plan_id: str,
+        agent_id: Optional[str] = None,
+        redemption_limit: Optional[int] = None,
+        order_limit: Optional[str] = None,
+        expiration: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
-        Get an X402 access token for the given plan and agent.
+        Create a permission and get an X402 access token for the given plan.
 
         This token allows the agent to verify and settle permissions on behalf
         of the subscriber. The token contains cryptographically signed session keys
@@ -81,12 +88,14 @@ class X402TokenAPI(BasePaymentsAPI):
 
         Args:
             plan_id: The unique identifier of the payment plan
-            agent_id: The unique identifier of the AI agent
+            agent_id: The unique identifier of the AI agent (optional)
+            redemption_limit: Maximum number of interactions/redemptions allowed (optional)
+            order_limit: Maximum spend limit in token units (wei) for ordering (optional)
+            expiration: Expiration date in ISO 8601 format, e.g. "2025-02-01T10:00:00Z" (optional)
 
         Returns:
             A dictionary containing:
                 - accessToken: The X402 access token string
-                - Additional metadata about the token
 
         Raises:
             PaymentsError: If the request fails
@@ -101,34 +110,44 @@ class X402TokenAPI(BasePaymentsAPI):
             )
 
             token_api = X402TokenAPI.get_instance(payments.options)
-            result = token_api.get_x402_access_token(plan_id, agent_id)
+            result = token_api.get_x402_access_token(plan_id="123", agent_id="456")
             token = result["accessToken"]
             ```
         """
-        url_path = API_URL_GET_AGENT_X402_ACCESS_TOKEN.format(
-            plan_id=plan_id, agent_id=agent_id
-        )
-        url = f"{self.environment.backend}{url_path}"
+        url = f"{self.environment.backend}{API_URL_CREATE_PERMISSION}"
 
-        options = self.get_backend_http_options("GET")
+        body: Dict[str, Any] = {
+            "plan_id": plan_id,
+        }
+
+        if agent_id is not None:
+            body["agent_id"] = agent_id
+        if redemption_limit is not None:
+            body["redemption_limit"] = redemption_limit
+        if order_limit is not None:
+            body["order_limit"] = order_limit
+        if expiration is not None:
+            body["expiration"] = expiration
+
+        options = self.get_backend_http_options("POST", body)
 
         try:
-            response = requests.get(url, **options)
+            response = requests.post(url, **options)
             response.raise_for_status()
             return response.json()
         except requests.HTTPError as err:
             try:
                 error_message = response.json().get(
-                    "message", "Failed to get X402 access token"
+                    "message", "Failed to create X402 permission"
                 )
             except Exception:
-                error_message = "Failed to get X402 access token"
+                error_message = "Failed to create X402 permission"
             raise PaymentsError.internal(
                 f"{error_message} (HTTP {response.status_code})"
             ) from err
         except Exception as err:
             raise PaymentsError.internal(
-                f"Network error while getting X402 access token: {str(err)}"
+                f"Network error while creating X402 permission: {str(err)}"
             ) from err
 
 

@@ -16,31 +16,31 @@ Example usage:
     # Get X402 access token from X402 API
     token_result = payments.x402.get_x402_access_token(
         plan_id="123",
-        agent_id="456"
+        agent_id="456"  # optional
     )
     x402_token = token_result["accessToken"]
 
     # Verify if subscriber has sufficient permissions/credits
     verification = payments.facilitator.verify_permissions(
         plan_id="123",
-        max_amount="2",
         x402_access_token=x402_token,
-        subscriber_address="0x1234..."
+        subscriber_address="0x1234...",
+        max_amount="2"  # optional
     )
 
     if verification["success"]:
         # Settle (burn) the credits
         settlement = payments.facilitator.settle_permissions(
             plan_id="123",
-            max_amount="2",
             x402_access_token=x402_token,
-            subscriber_address="0x1234..."
+            subscriber_address="0x1234...",
+            max_amount="2"  # optional
         )
         print(f"Credits burned: {settlement['data']['creditsBurned']}")
 """
 
 import requests
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
@@ -73,9 +73,12 @@ class FacilitatorAPI(BasePaymentsAPI):
     def verify_permissions(
         self,
         plan_id: str,
-        max_amount: str,
         x402_access_token: str,
         subscriber_address: str,
+        max_amount: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        http_verb: Optional[str] = None,
+        agent_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Verify if a subscriber has permission to use credits from a payment plan.
@@ -84,9 +87,12 @@ class FacilitatorAPI(BasePaymentsAPI):
 
         Args:
             plan_id: The unique identifier of the payment plan
-            max_amount: The maximum number of credits to verify (as string)
             x402_access_token: The X402 access token for permission verification
             subscriber_address: The Ethereum address of the subscriber
+            max_amount: The maximum number of credits to verify (as string, optional)
+            endpoint: The endpoint to verify permissions for (optional - enables endpoint validation)
+            http_verb: The HTTP verb to verify permissions for (optional - enables endpoint validation)
+            agent_id: The unique identifier of the agent (required when endpoint and http_verb are provided)
 
         Returns:
             A dictionary containing verification result with 'success' boolean
@@ -96,14 +102,22 @@ class FacilitatorAPI(BasePaymentsAPI):
         """
         url = f"{self.environment.backend}{API_URL_VERIFY_PERMISSIONS}"
 
-        body = {
+        body: Dict[str, Any] = {
             "plan_id": plan_id,
-            "max_amount": max_amount,
             "x402_access_token": x402_access_token,
             "subscriber_address": subscriber_address,
         }
 
-        options = self.get_backend_http_options("POST", body)
+        if max_amount is not None:
+            body["max_amount"] = max_amount
+        if endpoint is not None:
+            body["endpoint"] = endpoint
+        if http_verb is not None:
+            body["http_verb"] = http_verb
+        if agent_id is not None:
+            body["agent_id"] = agent_id
+
+        options = self.get_public_http_options("POST", body)
 
         try:
             response = requests.post(url, **options)
@@ -138,9 +152,9 @@ class FacilitatorAPI(BasePaymentsAPI):
     def settle_permissions(
         self,
         plan_id: str,
-        max_amount: str,
         x402_access_token: str,
         subscriber_address: str,
+        max_amount: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Settle (burn) credits from a subscriber's payment plan.
@@ -150,9 +164,9 @@ class FacilitatorAPI(BasePaymentsAPI):
 
         Args:
             plan_id: The unique identifier of the payment plan
-            max_amount: The number of credits to burn (as string)
             x402_access_token: The X402 access token for permission settlement
             subscriber_address: The Ethereum address of the subscriber
+            max_amount: The number of credits to burn (as string, optional)
 
         Returns:
             A dictionary containing settlement result with transaction details
@@ -162,14 +176,16 @@ class FacilitatorAPI(BasePaymentsAPI):
         """
         url = f"{self.environment.backend}{API_URL_SETTLE_PERMISSIONS}"
 
-        body = {
+        body: Dict[str, Any] = {
             "plan_id": plan_id,
-            "max_amount": max_amount,
             "x402_access_token": x402_access_token,
             "subscriber_address": subscriber_address,
         }
 
-        options = self.get_backend_http_options("POST", body)
+        if max_amount is not None:
+            body["max_amount"] = max_amount
+
+        options = self.get_public_http_options("POST", body)
 
         try:
             response = requests.post(url, **options)

@@ -120,3 +120,31 @@ class BasePaymentsAPI:
             camel_body = dict_keys_to_camel(body)
             options["data"] = json.dumps(camel_body)
         return options
+
+    def get_public_http_options(
+        self, method: str, body: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Get HTTP options for public backend requests (no authorization header).
+
+        Args:
+            method: HTTP method
+            body: Optional request body
+
+        Returns:
+            HTTP options object
+        """
+        verify_ssl = False
+
+        options = {
+            "headers": {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            "verify": verify_ssl,
+        }
+        if body:
+            # Convert to camelCase for consistency with TypeScript
+            camel_body = dict_keys_to_camel(body)
+            options["data"] = json.dumps(camel_body)
+        return options
