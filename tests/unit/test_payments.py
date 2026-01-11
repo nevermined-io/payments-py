@@ -71,10 +71,10 @@ def test_snake_to_camel():
 def test_get_service_host_from_endpoints():
     """Test getting service host from endpoints."""
     endpoints = [
-        {"POST": "https://one-backend.testing.nevermined.app/api/v1/agents/(.*)/tasks"},
+        {"POST": "https://api.sandbox.nevermined.app/api/v1/agents/(.*)/tasks"},
         {
-            "GET": "https://one-backend.testing.nevermined.app/api/v1/agents/(.*)/tasks/(.*)"
+            "GET": "https://api.sandbox.nevermined.app/api/v1/agents/(.*)/tasks/(.*)"
         },
     ]
     service_host = get_service_host_from_endpoints(endpoints)
-    assert service_host == "https://one-backend.testing.nevermined.app"
+    assert service_host == "https://api.sandbox.nevermined.app"

@@ -32,7 +32,7 @@ def declare_nevermined_extension(
         max_amount: Maximum credits to burn per request (as string)
         network: Blockchain network (default: "base-sepolia")
         scheme: Payment scheme (default: "contract")
-        environment: Nevermined environment ("staging", "sandbox", "production")
+        environment: Nevermined environment ("sandbox", "live")
         subscriber_address: Optional subscriber blockchain address
 
     Returns:
