@@ -687,7 +687,7 @@ from payments_py.x402 import NeverminedFacilitator
 
 facilitator = NeverminedFacilitator(
     nvm_api_key="nvm:your-key",
-    environment="sandbox"  # or "staging", "production"
+    environment="sandbox"  # or "live"
 )
 ```
 
@@ -1023,7 +1023,7 @@ export NVM_API_KEY_SERVER="nvm:your-merchant-key"
 export NVM_API_KEY_CLIENT="nvm:your-subscriber-key"
 
 # Environment
-export NVM_ENVIRONMENT="sandbox"  # or "staging", "production"
+export NVM_ENVIRONMENT="sandbox"  # or "live"
 ```
 
 ---

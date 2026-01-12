@@ -43,7 +43,7 @@ class NeverminedInfo(TypedDict, total=False):
         scheme: Payment scheme (e.g., "contract")
 
     Optional fields:
-        environment: Nevermined environment ("staging", "sandbox", "production")
+        environment: Nevermined environment ("sandbox", "live")
         subscriber_address: Subscriber's blockchain address
     """
 

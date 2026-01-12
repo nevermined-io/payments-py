@@ -9,7 +9,7 @@ Example usage:
     payments = Payments.get_instance(
         PaymentOptions(
             nvm_api_key="your-nvm-api-key",
-            environment="testing"
+            environment="sandbox"
         )
     )
 

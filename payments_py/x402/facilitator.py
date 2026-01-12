@@ -59,7 +59,7 @@ class NeverminedFacilitator:
 
         Args:
             nvm_api_key: The Nevermined API key for authentication (format: "nvm:...")
-            environment: The environment to use ('sandbox', 'staging', or 'production')
+            environment: The environment to use ('sandbox' or 'live')
         """
         # Lazy import to avoid circular dependency
         from payments_py.payments import Payments
