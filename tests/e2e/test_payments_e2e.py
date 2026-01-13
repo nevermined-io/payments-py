@@ -82,21 +82,37 @@ class MockAgentHandler(BaseHTTPRequestHandler):
                     else auth_header
                 )
 
-                # Decode token to get subscriber_address (x402 token format)
+                # Decode token to get subscriber_address (x402-compliant format)
                 decoded = decode_access_token(bearer_token)
-                # x402 token uses subscriberAddress field
-                subscriber_address = decoded.get("subscriberAddress")
+                # x402 token uses payload.authorization.from for subscriber address
+                payload = decoded.get("payload", {})
+                authorization = (
+                    payload.get("authorization", {})
+                    if isinstance(payload, dict)
+                    else {}
+                )
+                subscriber_address = (
+                    authorization.get("from")
+                    if isinstance(authorization, dict)
+                    else None
+                )
 
                 # Validate the request using the x402 verify_permissions
-                # Note: plan_id is not in the x402 token, use global credits_plan_id
-                result = mock_payments_builder.facilitator.verify_permissions(
+                from payments_py.x402.helpers import build_payment_required
+
+                payment_required = build_payment_required(
                     plan_id=credits_plan_id,
+                    endpoint=requested_url,
+                    agent_id=mock_agent_id,
+                    http_verb=http_verb,
+                )
+                result = mock_payments_builder.facilitator.verify_permissions(
+                    payment_required=payment_required,
                     max_amount="1",
                     x402_access_token=bearer_token,
-                    subscriber_address=subscriber_address,
                 )
-                # If the request is valid
-                if result and result.get("success"):
+                # If the request is valid (check is_valid attribute)
+                if result and result.is_valid:
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
