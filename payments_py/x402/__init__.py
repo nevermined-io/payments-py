@@ -55,6 +55,7 @@ from .types import (
     VerifyResponse,
     SettleResponse,
 )
+from .helpers import build_payment_required
 from .networks import SupportedNetworks
 from .schemes import SupportedSchemes
 from .facilitator import NeverminedFacilitator
@@ -84,6 +85,8 @@ __all__ = [
     "SessionKeyPayload",
     "VerifyResponse",
     "SettleResponse",
+    # Helper functions
+    "build_payment_required",
     # Types (V2)
     "Extension",
     "ResourceInfo",

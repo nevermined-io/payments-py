@@ -72,6 +72,14 @@ poetry run pytest --cov=payments_py --cov-report=term-missing
 - No marker: Unit and integration tests (fast)
 - `@pytest.mark.slow`: E2E tests (require API keys)
 
+### E2E Tests and Staging
+
+E2E tests run directly against the **staging environment**. When making changes:
+
+1. Ensure E2E tests pass after code changes: `poetry run pytest -m "slow" -v -s`
+2. If E2E tests fail after backend API changes (in `nvm-monorepo`), the staging environment may need to be redeployed with those changes before the SDK E2E tests will pass
+3. E2E test failures due to pending backend deployments are expected - coordinate with the team to deploy backend changes to staging first
+
 ## CI Workflow
 
 The CI pipeline runs:

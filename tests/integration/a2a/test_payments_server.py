@@ -12,9 +12,26 @@ from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.a2a.types import AgentCard
 
 
-# Mock decode_access_token for tests
+# Mock decode_access_token to return x402-compliant token structure
 def mock_decode_token(token):
-    return {"planId": "test-plan", "subscriberAddress": "0xTestSubscriber"}
+    return {
+        "x402Version": 2,
+        "accepted": {
+            "scheme": "nvm:erc4337",
+            "network": "eip155:84532",
+            "planId": "test-plan",
+            "extra": {"version": "1"},
+        },
+        "payload": {
+            "signature": "0x123",
+            "authorization": {
+                "from": "0xTestSubscriber",
+                "sessionKeysProvider": "zerodev",
+                "sessionKeys": [],
+            },
+        },
+        "extensions": {},
+    }
 
 
 class DummyExecutor:  # noqa: D101
@@ -34,6 +51,7 @@ def agent_card() -> AgentCard:  # noqa: D401
                         "agentId": "agent-1",
                         "paymentType": "fixed",
                         "credits": 1,
+                        "planId": "test-plan",
                     },
                 }
             ]
@@ -41,17 +59,34 @@ def agent_card() -> AgentCard:  # noqa: D401
     }
 
 
+class VerifyResult:
+    """Mock verify permissions result."""
+
+    def __init__(self, is_valid=True, payer=None):
+        self.is_valid = is_valid
+        self.payer = payer
+
+
+class SettleResult:
+    """Mock settle permissions result."""
+
+    def __init__(self, success=True, transaction="0x123", credits_redeemed="1"):
+        self.success = success
+        self.transaction = transaction
+        self.credits_redeemed = credits_redeemed
+
+
 @pytest.fixture()  # noqa: D401
 def dummy_payments(monkeypatch):  # noqa: D401
     # Stub verify_permissions & settle_permissions to avoid HTTP (x402 flow)
     payments = SimpleNamespace(
         facilitator=SimpleNamespace(
-            verify_permissions=lambda **k: {"success": True},
-            settle_permissions=lambda **k: {
-                "success": True,
-                "txHash": "0x123",
-                "data": {"creditsBurned": "1"},
-            },
+            verify_permissions=lambda **k: VerifyResult(is_valid=True),
+            settle_permissions=lambda **k: SettleResult(
+                success=True,
+                transaction="0x123",
+                credits_redeemed="1",
+            ),
         )
     )
     return payments  # type: ignore[return-value]

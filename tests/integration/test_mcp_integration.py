@@ -3,10 +3,41 @@ from unittest.mock import patch
 
 from payments_py.mcp import build_mcp_integration
 
-# Mock decode_access_token for tests (x402 tokens only contain subscriberAddress, not planId)
+# Mock decode_access_token to return x402-compliant token structure
 mock_decode_token = lambda token: {
-    "subscriberAddress": "0xSubscriber123",
+    "x402Version": 2,
+    "accepted": {
+        "scheme": "nvm:erc4337",
+        "network": "eip155:84532",
+        "planId": "plan-123",
+        "extra": {"version": "1"},
+    },
+    "payload": {
+        "signature": "0x123",
+        "authorization": {
+            "from": "0xSubscriber123",
+            "sessionKeysProvider": "zerodev",
+            "sessionKeys": [],
+        },
+    },
+    "extensions": {},
 }
+
+
+class VerifyResult:
+    """Mock verify permissions result."""
+
+    def __init__(self, is_valid=True):
+        self.is_valid = is_valid
+
+
+class SettleResult:
+    """Mock settle permissions result."""
+
+    def __init__(self, success=True, transaction="0x123", credits_redeemed="1"):
+        self.success = success
+        self.transaction = transaction
+        self.credits_redeemed = credits_redeemed
 
 
 class PaymentsMinimal:
@@ -17,20 +48,18 @@ class PaymentsMinimal:
                 self._subscriber = subscriber
 
             def verify_permissions(
-                self, plan_id, max_amount, x402_access_token, subscriber_address
+                self, payment_required=None, max_amount=None, x402_access_token=None
             ):
                 if not self._subscriber:
                     raise Exception("Not a subscriber")
-                return {"success": True}
+                return VerifyResult(is_valid=True)
 
             def settle_permissions(
-                self, plan_id, max_amount, x402_access_token, subscriber_address
+                self, payment_required=None, max_amount=None, x402_access_token=None
             ):
-                return {
-                    "success": True,
-                    "txHash": "0x123",
-                    "data": {"creditsBurned": max_amount},
-                }
+                return SettleResult(
+                    success=True, transaction="0x123", credits_redeemed=str(max_amount)
+                )
 
         class Agents:
             def get_agent_plans(self, agent_id):
@@ -95,20 +124,20 @@ def test_context_integration_with_real_like_data():
                     self._subscriber = subscriber
 
                 def verify_permissions(
-                    self, plan_id, max_amount, x402_access_token, subscriber_address
+                    self, payment_required=None, max_amount=None, x402_access_token=None
                 ):
                     if not self._subscriber:
                         raise Exception("Not a subscriber")
-                    return {"success": True}
+                    return VerifyResult(is_valid=True)
 
                 def settle_permissions(
-                    self, plan_id, max_amount, x402_access_token, subscriber_address
+                    self, payment_required=None, max_amount=None, x402_access_token=None
                 ):
-                    return {
-                        "success": True,
-                        "txHash": f"0x{hash(f'{plan_id}-{max_amount}') % 1000000000:x}",
-                        "data": {"creditsBurned": max_amount},
-                    }
+                    return SettleResult(
+                        success=True,
+                        transaction=f"0x{hash(f'{max_amount}') % 1000000000:x}",
+                        credits_redeemed=str(max_amount),
+                    )
 
             class Agents:
                 def get_agent_plans(self, agent_id):

@@ -201,6 +201,8 @@ class TestPayAsYouGoFlow:
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_verify_pay_as_you_go_permissions(self, payments_agent):
         """Test verifying permissions for Pay As You Go using X402 access token."""
+        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
+
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
             self.x402_access_token is not None
@@ -209,8 +211,21 @@ class TestPayAsYouGoFlow:
         print(f"Verifying Pay As You Go permissions for plan: {self.plan_id}")
 
         # Note: planId and subscriberAddress are extracted from the token
+        payment_required = X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url="/test/endpoint"),
+            accepts=[
+                X402Scheme(
+                    scheme="nvm:erc4337",
+                    network="eip155:84532",
+                    plan_id=self.plan_id,
+                )
+            ],
+            extensions={},
+        )
         response = retry_with_backoff(
             lambda: payments_agent.facilitator.verify_permissions(
+                payment_required=payment_required,
                 x402_access_token=self.x402_access_token,
                 max_amount="1",
             ),
@@ -225,6 +240,8 @@ class TestPayAsYouGoFlow:
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_settle_pay_as_you_go(self, payments_agent, payments_subscriber):
         """Test settling (ordering) Pay As You Go plan using X402 access token."""
+        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
+
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
             self.x402_access_token is not None
@@ -233,8 +250,21 @@ class TestPayAsYouGoFlow:
         print(f"Settling Pay As You Go for plan: {self.plan_id}")
 
         # Note: planId and subscriberAddress are extracted from the token
+        payment_required = X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url="/test/endpoint"),
+            accepts=[
+                X402Scheme(
+                    scheme="nvm:erc4337",
+                    network="eip155:84532",
+                    plan_id=self.plan_id,
+                )
+            ],
+            extensions={},
+        )
         response = retry_with_backoff(
             lambda: payments_agent.facilitator.settle_permissions(
+                payment_required=payment_required,
                 x402_access_token=self.x402_access_token,
                 max_amount="1",
             ),

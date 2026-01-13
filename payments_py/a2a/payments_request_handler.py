@@ -22,6 +22,7 @@ from a2a.types import (
 from payments_py.common.payments_error import PaymentsError
 from payments_py.payments import Payments
 from payments_py.x402.token import decode_access_token
+from payments_py.x402.helpers import build_payment_required
 
 from .types import HttpRequestContext
 
@@ -166,9 +167,13 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         if not plan_id:
             plan_id = decoded.get("planId") or decoded.get("plan_id")
 
-        # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
-        subscriber_address = decoded.get("subscriberAddress") or decoded.get(
-            "subscriber_address"
+        # Extract subscriber_address from x402 token (payload.authorization.from per x402 spec)
+        payload = decoded.get("payload", {})
+        authorization = (
+            payload.get("authorization", {}) if isinstance(payload, dict) else {}
+        )
+        subscriber_address = (
+            authorization.get("from") if isinstance(authorization, dict) else None
         )
 
         if not plan_id or not subscriber_address:
@@ -176,24 +181,31 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 f"[validate_request] FAILED - plan_id: {plan_id}, subscriber_address: {subscriber_address}"
             )
             raise PaymentsError.unauthorized(
-                "Cannot determine plan_id or subscriber_address from token or agent card"
+                "Cannot determine plan_id or subscriber_address from token (expected payload.authorization.from)"
             )
+
+        # Build paymentRequired using the helper
+        payment_required = build_payment_required(
+            plan_id=plan_id,
+            endpoint=url_requested,
+            agent_id=agent_id,
+            http_verb=http_method_requested,
+        )
 
         # Use run_in_executor since verify_permissions is synchronous
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
             None,
             lambda: self._payments.facilitator.verify_permissions(
-                plan_id=plan_id,
-                max_amount="1",  # Verify at least 1 credit
+                payment_required=payment_required,
                 x402_access_token=bearer_token,
-                subscriber_address=subscriber_address,
+                max_amount="1",  # Verify at least 1 credit
             ),
         )
 
-        if not result.get("success"):
+        if not result.is_valid:
             raise PaymentsError.payment_required(
-                result.get("message", "Permission verification failed")
+                result.invalid_reason or "Permission verification failed"
             )
 
         # Return validation data with plan_id and subscriber_address for later use
@@ -543,20 +555,45 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         credits_used = event.metadata["creditsUsed"]
         plan_id = http_ctx.validation.get("plan_id")
-        subscriber_address = http_ctx.validation.get("subscriber_address")
 
-        if not plan_id or not subscriber_address:
-            return  # Cannot settle without required fields
+        if not plan_id:
+            return  # Cannot settle without plan_id
+
+        # Get agentId from agent card
+        agent_id = None
+        capabilities = (
+            self._agent_card.get("capabilities", {})
+            if isinstance(self._agent_card, dict)
+            else getattr(self._agent_card, "capabilities", {})
+        )
+        extensions = (
+            capabilities.get("extensions", [])
+            if isinstance(capabilities, dict)
+            else getattr(capabilities, "extensions", [])
+        )
+        for ext in extensions:
+            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
+            if ext_dict.get("uri") == "urn:nevermined:payment":
+                params = ext_dict.get("params", {})
+                agent_id = params.get("agentId") or params.get("agent_id")
+                break
+
+        # Build paymentRequired using the helper
+        payment_required = build_payment_required(
+            plan_id=plan_id,
+            endpoint=http_ctx.url_requested,
+            agent_id=agent_id,
+            http_verb=http_ctx.http_method_requested,
+        )
 
         try:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,
                 lambda: self._payments.facilitator.settle_permissions(
-                    plan_id=plan_id,
-                    max_amount=str(int(credits_used)),
+                    payment_required=payment_required,
                     x402_access_token=http_ctx.bearer_token,
-                    subscriber_address=subscriber_address,
+                    max_amount=str(int(credits_used)),
                 ),
             )
         except Exception:  # noqa: BLE001
@@ -582,6 +619,25 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 "HTTP context missing for request; bearer token not found."
             )
 
+        # Get agentId from agent card for settle operations
+        agent_id = None
+        capabilities = (
+            self._agent_card.get("capabilities", {})
+            if isinstance(self._agent_card, dict)
+            else getattr(self._agent_card, "capabilities", {})
+        )
+        extensions = (
+            capabilities.get("extensions", [])
+            if isinstance(capabilities, dict)
+            else getattr(capabilities, "extensions", [])
+        )
+        for ext in extensions:
+            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
+            if ext_dict.get("uri") == "urn:nevermined:payment":
+                params_dict = ext_dict.get("params", {})
+                agent_id = params_dict.get("agentId") or params_dict.get("agent_id")
+                break
+
         # Call parent streaming method and process events
         # type: ignore[arg-type]
         async for event in super().on_message_send_stream(params, context):
@@ -595,18 +651,24 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             ):
                 credits_used = event["metadata"]["creditsUsed"]
                 plan_id = http_ctx.validation.get("plan_id")
-                subscriber_address = http_ctx.validation.get("subscriber_address")
 
-                if plan_id and subscriber_address:
+                if plan_id:
+                    # Build paymentRequired using the helper
+                    payment_required = build_payment_required(
+                        plan_id=plan_id,
+                        endpoint=http_ctx.url_requested,
+                        agent_id=agent_id,
+                        http_verb=http_ctx.http_method_requested,
+                    )
+
                     try:
                         loop = asyncio.get_running_loop()
                         await loop.run_in_executor(
                             None,
                             lambda: self._payments.facilitator.settle_permissions(
-                                plan_id=plan_id,
-                                max_amount=str(int(credits_used)),
+                                payment_required=payment_required,
                                 x402_access_token=http_ctx.bearer_token,
-                                subscriber_address=subscriber_address,
+                                max_amount=str(int(credits_used)),
                             ),
                         )
                     except Exception:  # noqa: BLE001
