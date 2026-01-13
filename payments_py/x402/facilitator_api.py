@@ -4,6 +4,7 @@ This allows AI agents to act as facilitators, verifying and settling credits on 
 
 Example usage:
     from payments_py import Payments, PaymentOptions
+    from payments_py.x402 import X402PaymentRequired, X402Scheme
 
     # Initialize the Payments instance
     payments = Payments.get_instance(
@@ -13,34 +14,41 @@ Example usage:
         )
     )
 
-    # Get X402 access token from X402 API
-    token_result = payments.x402.get_x402_access_token(
-        plan_id="123",
-        agent_id="456"  # optional
+    # The server's 402 PaymentRequired response
+    payment_required = X402PaymentRequired(
+        x402_version=2,
+        accepts=[
+            X402Scheme(
+                scheme="nvm:erc4337",
+                network="eip155:84532",
+                plan_id="123",
+            )
+        ],
+        extensions={}
     )
-    x402_token = token_result["accessToken"]
+
+    # Get X402 access token from subscriber request
+    x402_token = request.headers.get("X-Payment")
 
     # Verify if subscriber has sufficient permissions/credits
     verification = payments.facilitator.verify_permissions(
-        plan_id="123",
+        payment_required=payment_required,
         x402_access_token=x402_token,
-        subscriber_address="0x1234...",
         max_amount="2"  # optional
     )
 
-    if verification["success"]:
+    if verification.is_valid:
         # Settle (burn) the credits
         settlement = payments.facilitator.settle_permissions(
-            plan_id="123",
+            payment_required=payment_required,
             x402_access_token=x402_token,
-            subscriber_address="0x1234...",
             max_amount="2"  # optional
         )
-        print(f"Credits burned: {settlement['data']['creditsBurned']}")
+        print(f"Credits redeemed: {settlement.credits_redeemed}")
 """
 
 import requests
-from typing import Dict, Any, Optional
+from typing import Optional
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
@@ -48,6 +56,7 @@ from payments_py.api.nvm_api import (
     API_URL_VERIFY_PERMISSIONS,
     API_URL_SETTLE_PERMISSIONS,
 )
+from payments_py.x402.types import VerifyResponse, SettleResponse, X402PaymentRequired
 
 
 class FacilitatorAPI(BasePaymentsAPI):
@@ -72,57 +81,44 @@ class FacilitatorAPI(BasePaymentsAPI):
 
     def verify_permissions(
         self,
-        plan_id: str,
+        payment_required: X402PaymentRequired,
         x402_access_token: str,
-        subscriber_address: str,
         max_amount: Optional[str] = None,
-        endpoint: Optional[str] = None,
-        http_verb: Optional[str] = None,
-        agent_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> VerifyResponse:
         """
         Verify if a subscriber has permission to use credits from a payment plan.
         This method simulates the credit usage without actually burning credits,
         checking if the subscriber has sufficient balance and permissions.
 
+        The planId and subscriberAddress are extracted from the x402AccessToken.
+
         Args:
-            plan_id: The unique identifier of the payment plan
-            x402_access_token: The X402 access token for permission verification
-            subscriber_address: The Ethereum address of the subscriber
+            payment_required: x402 PaymentRequired from 402 response (required, for validation)
+            x402_access_token: The X402 access token (contains planId, subscriberAddress, agentId)
             max_amount: The maximum number of credits to verify (as string, optional)
-            endpoint: The endpoint to verify permissions for (optional - enables endpoint validation)
-            http_verb: The HTTP verb to verify permissions for (optional - enables endpoint validation)
-            agent_id: The unique identifier of the agent (required when endpoint and http_verb are provided)
 
         Returns:
-            A dictionary containing verification result with 'success' boolean
+            VerifyResponse with is_valid boolean and optional error details
 
         Raises:
             PaymentsError: If verification fails
         """
         url = f"{self.environment.backend}{API_URL_VERIFY_PERMISSIONS}"
 
-        body: Dict[str, Any] = {
-            "plan_id": plan_id,
-            "x402_access_token": x402_access_token,
-            "subscriber_address": subscriber_address,
+        body: dict = {
+            "paymentRequired": payment_required.model_dump(by_alias=True),
+            "x402AccessToken": x402_access_token,
         }
 
         if max_amount is not None:
-            body["max_amount"] = max_amount
-        if endpoint is not None:
-            body["endpoint"] = endpoint
-        if http_verb is not None:
-            body["http_verb"] = http_verb
-        if agent_id is not None:
-            body["agent_id"] = agent_id
+            body["maxAmount"] = max_amount
 
         options = self.get_public_http_options("POST", body)
 
         try:
             response = requests.post(url, **options)
             response.raise_for_status()
-            return response.json()
+            return VerifyResponse.model_validate(response.json())
         except requests.HTTPError as err:
             try:
                 error_message = response.json().get(
@@ -133,64 +129,58 @@ class FacilitatorAPI(BasePaymentsAPI):
             raise PaymentsError.backend_error(
                 error_message,
                 f"HTTP {response.status_code}",
-                {
-                    "plan_id": plan_id,
-                    "subscriber_address": subscriber_address,
-                    "max_amount": max_amount,
-                },
+                {},
             ) from err
         except Exception as err:
+            if isinstance(err, PaymentsError):
+                raise
             raise PaymentsError.backend_error(
                 "Network error during permission verification",
                 str(err),
-                {
-                    "plan_id": plan_id,
-                    "subscriber_address": subscriber_address,
-                },
+                {},
             ) from err
 
     def settle_permissions(
         self,
-        plan_id: str,
+        payment_required: X402PaymentRequired,
         x402_access_token: str,
-        subscriber_address: str,
         max_amount: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> SettleResponse:
         """
         Settle (burn) credits from a subscriber's payment plan.
         This method executes the actual credit consumption, burning the specified
         number of credits from the subscriber's balance. If the subscriber doesn't
         have enough credits, it will attempt to order more before settling.
 
+        The planId and subscriberAddress are extracted from the x402AccessToken.
+
         Args:
-            plan_id: The unique identifier of the payment plan
-            x402_access_token: The X402 access token for permission settlement
-            subscriber_address: The Ethereum address of the subscriber
+            payment_required: x402 PaymentRequired from 402 response (required, for validation)
+            x402_access_token: The X402 access token (contains planId, subscriberAddress, agentId)
             max_amount: The number of credits to burn (as string, optional)
 
         Returns:
-            A dictionary containing settlement result with transaction details
+            SettleResponse with success boolean and transaction details
 
         Raises:
             PaymentsError: If settlement fails
         """
         url = f"{self.environment.backend}{API_URL_SETTLE_PERMISSIONS}"
 
-        body: Dict[str, Any] = {
-            "plan_id": plan_id,
-            "x402_access_token": x402_access_token,
-            "subscriber_address": subscriber_address,
+        body: dict = {
+            "paymentRequired": payment_required.model_dump(by_alias=True),
+            "x402AccessToken": x402_access_token,
         }
 
         if max_amount is not None:
-            body["max_amount"] = max_amount
+            body["maxAmount"] = max_amount
 
         options = self.get_public_http_options("POST", body)
 
         try:
             response = requests.post(url, **options)
             response.raise_for_status()
-            return response.json()
+            return SettleResponse.model_validate(response.json())
         except requests.HTTPError as err:
             try:
                 error_message = response.json().get(
@@ -201,18 +191,13 @@ class FacilitatorAPI(BasePaymentsAPI):
             raise PaymentsError.backend_error(
                 error_message,
                 f"HTTP {response.status_code}",
-                {
-                    "plan_id": plan_id,
-                    "subscriber_address": subscriber_address,
-                    "max_amount": max_amount,
-                },
+                {},
             ) from err
         except Exception as err:
+            if isinstance(err, PaymentsError):
+                raise
             raise PaymentsError.backend_error(
                 "Network error during permission settlement",
                 str(err),
-                {
-                    "plan_id": plan_id,
-                    "subscriber_address": subscriber_address,
-                },
+                {},
             ) from err

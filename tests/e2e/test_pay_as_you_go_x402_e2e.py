@@ -205,27 +205,21 @@ class TestPayAsYouGoFlow:
         assert (
             self.x402_access_token is not None
         ), "x402_access_token must be set by previous test"
-        assert (
-            self.subscriber_address is not None
-        ), "subscriber_address must be set by previous test"
 
-        print(
-            f"Verifying Pay As You Go permissions for plan: {self.plan_id}, subscriber: {self.subscriber_address}"
-        )
+        print(f"Verifying Pay As You Go permissions for plan: {self.plan_id}")
 
+        # Note: planId and subscriberAddress are extracted from the token
         response = retry_with_backoff(
             lambda: payments_agent.facilitator.verify_permissions(
-                plan_id=self.plan_id,
-                max_amount="1",
                 x402_access_token=self.x402_access_token,
-                subscriber_address=self.subscriber_address,
+                max_amount="1",
             ),
             label="Pay As You Go Verify Permissions",
             attempts=3,
         )
 
         assert response is not None
-        assert response.get("success") is True
+        assert response.is_valid is True
         print(f"Pay As You Go verify permissions response: {response}")
 
     @pytest.mark.timeout(TEST_TIMEOUT)
@@ -235,26 +229,20 @@ class TestPayAsYouGoFlow:
         assert (
             self.x402_access_token is not None
         ), "x402_access_token must be set by previous test"
-        assert (
-            self.subscriber_address is not None
-        ), "subscriber_address must be set by previous test"
 
-        print(
-            f"Settling Pay As You Go for plan: {self.plan_id}, subscriber: {self.subscriber_address}"
-        )
+        print(f"Settling Pay As You Go for plan: {self.plan_id}")
 
+        # Note: planId and subscriberAddress are extracted from the token
         response = retry_with_backoff(
             lambda: payments_agent.facilitator.settle_permissions(
-                plan_id=self.plan_id,
-                max_amount="1",
                 x402_access_token=self.x402_access_token,
-                subscriber_address=self.subscriber_address,
+                max_amount="1",
             ),
             label="Pay As You Go Settle",
             attempts=3,
         )
 
         assert response is not None
-        assert response.get("success") is True
+        assert response.success is True
         print(f"Pay As You Go settle response: {response}")
         print("Pay As You Go E2E test suite completed successfully!")

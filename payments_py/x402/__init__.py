@@ -42,6 +42,12 @@ Example Usage:
 """
 
 from .types import (
+    # x402 types
+    X402Resource,
+    X402SchemeExtra,
+    X402Scheme,
+    X402PaymentRequired,
+    # Legacy types
     PaymentRequirements,
     NvmPaymentRequiredResponse,
     PaymentPayload,
@@ -66,7 +72,12 @@ from .types_v2 import (
 )
 
 __all__ = [
-    # Types (V1)
+    # x402 types
+    "X402Resource",
+    "X402SchemeExtra",
+    "X402Scheme",
+    "X402PaymentRequired",
+    # Types (V1 - legacy)
     "PaymentRequirements",
     "NvmPaymentRequiredResponse",
     "PaymentPayload",
