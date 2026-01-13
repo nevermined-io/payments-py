@@ -163,65 +163,82 @@ class TestX402AccessTokenFlow:
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_verify_permissions(self, payments_agent):
         """Test verifying permissions using X402 access token."""
+        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
+
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
             self.x402_access_token is not None
         ), "x402_access_token must be set by previous test"
-        assert (
-            self.subscriber_address is not None
-        ), "subscriber_address must be set by previous test"
 
-        print(
-            f"Verifying permissions for plan: {self.plan_id}, max_amount: 2, subscriber: {self.subscriber_address}"
+        print(f"Verifying permissions for plan: {self.plan_id}, max_amount: 2")
+
+        # Note: planId and subscriberAddress are extracted from the token
+        payment_required = X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url="/test/endpoint"),
+            accepts=[
+                X402Scheme(
+                    scheme="nvm:erc4337",
+                    network="eip155:84532",
+                    plan_id=self.plan_id,
+                )
+            ],
+            extensions={},
         )
-
         response = retry_with_backoff(
             lambda: payments_agent.facilitator.verify_permissions(
-                plan_id=self.plan_id,
-                max_amount="2",
+                payment_required=payment_required,
                 x402_access_token=self.x402_access_token,
-                subscriber_address=self.subscriber_address,
+                max_amount="2",
             ),
             label="X402 Verify Permissions",
             attempts=3,
         )
 
         assert response is not None
-        assert response.get("success") is True
+        assert response.is_valid is True
         print(f"Verify permissions response: {response}")
 
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_settle_permissions(self, payments_agent, payments_subscriber):
         """Test settling (burning) credits using X402 access token."""
+        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
+
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
             self.x402_access_token is not None
         ), "x402_access_token must be set by previous test"
-        assert (
-            self.subscriber_address is not None
-        ), "subscriber_address must be set by previous test"
 
-        print(
-            f"Settling permissions for plan: {self.plan_id}, max_amount: 2, subscriber: {self.subscriber_address}"
+        print(f"Settling permissions for plan: {self.plan_id}, max_amount: 2")
+
+        # Note: planId and subscriberAddress are extracted from the token
+        payment_required = X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url="/test/endpoint"),
+            accepts=[
+                X402Scheme(
+                    scheme="nvm:erc4337",
+                    network="eip155:84532",
+                    plan_id=self.plan_id,
+                )
+            ],
+            extensions={},
         )
-
         response = retry_with_backoff(
             lambda: payments_agent.facilitator.settle_permissions(
-                plan_id=self.plan_id,
-                max_amount="2",
+                payment_required=payment_required,
                 x402_access_token=self.x402_access_token,
-                subscriber_address=self.subscriber_address,
+                max_amount="2",
             ),
             label="X402 Settle Permissions",
             attempts=3,
         )
 
         assert response is not None
-        assert response.get("success") is True
-        assert response.get("data") is not None
-        assert response["data"].get("creditsBurned") == "2"
+        assert response.success is True
+        assert response.credits_redeemed == "2"
         print(f"Settle permissions response: {response}")
-        print(f"Credits burned: {response['data']['creditsBurned']}")
+        print(f"Credits redeemed: {response.credits_redeemed}")
 
         # Wait for balance to be updated (should now be 8)
         def _check_updated_balance():
@@ -247,31 +264,42 @@ class TestX402AccessTokenFlow:
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_settle_remaining_credits(self, payments_agent, payments_subscriber):
         """Test settling the remaining credits in smaller amounts."""
+        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
+
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
             self.x402_access_token is not None
         ), "x402_access_token must be set by previous test"
-        assert (
-            self.subscriber_address is not None
-        ), "subscriber_address must be set by previous test"
 
         # Settle 2 more credits (should have 6 remaining after previous settlement)
         print("Settling 2 more credits...")
+        # Note: planId and subscriberAddress are extracted from the token
+        payment_required = X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url="/test/endpoint"),
+            accepts=[
+                X402Scheme(
+                    scheme="nvm:erc4337",
+                    network="eip155:84532",
+                    plan_id=self.plan_id,
+                )
+            ],
+            extensions={},
+        )
         response = retry_with_backoff(
             lambda: payments_agent.facilitator.settle_permissions(
-                plan_id=self.plan_id,
-                max_amount="2",
+                payment_required=payment_required,
                 x402_access_token=self.x402_access_token,
-                subscriber_address=self.subscriber_address,
+                max_amount="2",
             ),
             label="X402 Settle Additional Credits",
             attempts=3,
         )
 
         assert response is not None
-        assert response.get("success") is True
-        assert response["data"].get("creditsBurned") == "2"
-        print(f"Successfully burned 2 more credits")
+        assert response.success is True
+        assert response.credits_redeemed == "2"
+        print("Successfully redeemed 2 more credits")
 
         # Wait for balance to be updated (should now be 6)
         def _check_final_balance():

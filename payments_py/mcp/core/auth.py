@@ -75,26 +75,39 @@ class PaywallAuthenticator:
             # plan_id must come from options (x402 tokens don't contain planId)
             plan_id = options.get("planId")
 
-            # Extract subscriber_address from x402 token
-            subscriber_address = decoded.get("subscriberAddress")
+            # Extract subscriber_address from x402 token (payload.authorization.from per x402 spec)
+            payload = decoded.get("payload", {})
+            authorization = (
+                payload.get("authorization", {}) if isinstance(payload, dict) else {}
+            )
+            subscriber_address = (
+                authorization.get("from") if isinstance(authorization, dict) else None
+            )
 
             if not plan_id or not subscriber_address:
                 raise ValueError(
-                    "Cannot determine plan_id or subscriber_address from token"
+                    "Cannot determine plan_id or subscriber_address from token (expected payload.authorization.from)"
                 )
 
-            # Use x402 verify_permissions instead of start_processing_request
-            result = self._payments.facilitator.verify_permissions(
+            # Import build_payment_required here to avoid circular imports
+            from payments_py.x402.helpers import build_payment_required
+
+            # Use x402 verify_permissions with paymentRequired
+            payment_required = build_payment_required(
                 plan_id=plan_id,
+                endpoint=logical_url,
+                agent_id=agent_id,
+            )
+            result = self._payments.facilitator.verify_permissions(
+                payment_required=payment_required,
                 max_amount="1",  # Verify at least 1 credit
                 x402_access_token=token,
-                subscriber_address=subscriber_address,
             )
             # support sync or async clients
             if hasattr(result, "__await__"):
                 result = await result
 
-            if not result or not result.get("success"):
+            if not result or not result.is_valid:
                 raise ValueError("Permission verification failed")
 
             return {
@@ -162,29 +175,41 @@ class PaywallAuthenticator:
             if not decoded:
                 raise ValueError("Invalid access token")
 
-            # Try to get plan_id from token
-            plan_id = decoded.get("planId") or decoded.get("plan_id")
+            # Try to get plan_id from token (accepted.planId per x402 spec)
+            accepted = decoded.get("accepted", {})
+            plan_id = accepted.get("planId") if isinstance(accepted, dict) else None
 
-            # Extract subscriber_address from x402 token (backend adds subscriberAddress to the token)
-            subscriber_address = decoded.get("subscriberAddress") or decoded.get(
-                "subscriber_address"
+            # Extract subscriber_address from x402 token (payload.authorization.from per x402 spec)
+            payload = decoded.get("payload", {})
+            authorization = (
+                payload.get("authorization", {}) if isinstance(payload, dict) else {}
+            )
+            subscriber_address = (
+                authorization.get("from") if isinstance(authorization, dict) else None
             )
 
             if not plan_id or not subscriber_address:
                 raise ValueError(
-                    "Cannot determine plan_id or subscriber_address from token"
+                    "Cannot determine plan_id or subscriber_address from token (expected accepted.planId and payload.authorization.from)"
                 )
 
-            # Use x402 verify_permissions instead of start_processing_request
-            result = self._payments.facilitator.verify_permissions(
+            # Import build_payment_required here to avoid circular imports
+            from payments_py.x402.helpers import build_payment_required
+
+            # Use x402 verify_permissions with paymentRequired
+            payment_required = build_payment_required(
                 plan_id=plan_id,
+                endpoint=logical_url,
+                agent_id=agent_id,
+            )
+            result = self._payments.facilitator.verify_permissions(
+                payment_required=payment_required,
                 max_amount="1",  # Verify at least 1 credit
                 x402_access_token=token,
-                subscriber_address=subscriber_address,
             )
             if hasattr(result, "__await__"):
                 result = await result
-            if not result or not result.get("success"):
+            if not result or not result.is_valid:
                 raise ValueError("Permission verification failed")
             return {
                 "token": token,

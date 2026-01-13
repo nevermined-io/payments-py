@@ -116,18 +116,30 @@ class X402TokenAPI(BasePaymentsAPI):
         """
         url = f"{self.environment.backend}{API_URL_CREATE_PERMISSION}"
 
+        # Build x402-aligned request body
+        extra: Dict[str, Any] = {}
+        if agent_id is not None:
+            extra["agentId"] = agent_id
+
         body: Dict[str, Any] = {
-            "plan_id": plan_id,
+            "accepted": {
+                "scheme": "nvm:erc4337",
+                "network": "eip155:84532",
+                "planId": plan_id,
+                "extra": extra,
+            },
         }
 
-        if agent_id is not None:
-            body["agent_id"] = agent_id
+        # Add session key config if any options are provided
+        session_key_config: Dict[str, Any] = {}
         if redemption_limit is not None:
-            body["redemption_limit"] = redemption_limit
+            session_key_config["redemptionLimit"] = redemption_limit
         if order_limit is not None:
-            body["order_limit"] = order_limit
+            session_key_config["orderLimit"] = order_limit
         if expiration is not None:
-            body["expiration"] = expiration
+            session_key_config["expiration"] = expiration
+        if session_key_config:
+            body["sessionKeyConfig"] = session_key_config
 
         options = self.get_backend_http_options("POST", body)
 

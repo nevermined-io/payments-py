@@ -151,19 +151,26 @@ async def test_on_message_send_burns_credits_from_events():  # noqa: D401
     async def mock_consume_credits(
         result_aggregator, consumer, http_ctx, blocking=True
     ):
-        # Simulate credit burning by calling settle_permissions directly
+        from payments_py.x402.helpers import build_payment_required
+
+        # Simulate credit burning by calling settle_permissions with new x402 API
         credits_used = 3
         try:
             import asyncio
+
+            payment_required = build_payment_required(
+                plan_id=http_ctx.validation["plan_id"],
+                endpoint=http_ctx.url_requested,
+                http_verb=http_ctx.http_method_requested,
+            )
 
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,
                 lambda: dummy_payments.facilitator.settle_permissions(
-                    plan_id=http_ctx.validation["plan_id"],
-                    max_amount=str(credits_used),
+                    payment_required=payment_required,
                     x402_access_token=http_ctx.bearer_token,
-                    subscriber_address=http_ctx.validation["subscriber_address"],
+                    max_amount=str(credits_used),
                 ),
             )
         except Exception:
@@ -222,13 +229,12 @@ async def test_on_message_send_burns_credits_from_events():  # noqa: D401
         )
 
     assert result is completed_task
-    # Should have called settle_permissions
-    settle_mock.assert_called_once_with(
-        plan_id="plan123",
-        max_amount="3",
-        x402_access_token="BEARER",
-        subscriber_address="0x123",
-    )
+    # Should have called settle_permissions with x402 API
+    settle_mock.assert_called_once()
+    call_kwargs = settle_mock.call_args.kwargs
+    assert call_kwargs["x402_access_token"] == "BEARER"
+    assert call_kwargs["max_amount"] == "3"
+    assert call_kwargs["payment_required"] is not None
 
 
 @pytest.mark.asyncio()  # noqa: D401
@@ -435,13 +441,12 @@ async def test_handle_task_finalization_from_event_burns_credits():  # noqa: D40
     # Call under test
     await handler._handle_task_finalization_from_event(event, ctx)
 
-    # Should have called settle_permissions
-    settle_mock.assert_called_once_with(
-        plan_id="plan123",
-        max_amount="5",
-        x402_access_token="BEARER_TOKEN",
-        subscriber_address="0x123",
-    )
+    # Should have called settle_permissions with x402 API
+    settle_mock.assert_called_once()
+    call_kwargs = settle_mock.call_args.kwargs
+    assert call_kwargs["x402_access_token"] == "BEARER_TOKEN"
+    assert call_kwargs["max_amount"] == "5"
+    assert call_kwargs["payment_required"] is not None
 
 
 @pytest.mark.asyncio()  # noqa: D401
@@ -560,10 +565,9 @@ async def test_handle_task_finalization_swallows_errors():  # noqa: D401
     # Call under test - should not raise exception
     await handler._handle_task_finalization_from_event(event, ctx)
 
-    # Should have attempted to call settle_permissions
-    settle_mock.assert_called_once_with(
-        plan_id="plan123",
-        max_amount="5",
-        x402_access_token="BEARER_TOKEN",
-        subscriber_address="0x123",
-    )
+    # Should have attempted to call settle_permissions with x402 API
+    settle_mock.assert_called_once()
+    call_kwargs = settle_mock.call_args.kwargs
+    assert call_kwargs["x402_access_token"] == "BEARER_TOKEN"
+    assert call_kwargs["max_amount"] == "5"
+    assert call_kwargs["payment_required"] is not None

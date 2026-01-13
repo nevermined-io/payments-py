@@ -7,6 +7,7 @@ from typing import Any, Awaitable, Callable, Dict
 from ..utils.errors import ERROR_CODES, create_rpc_error
 from ..utils.extra import build_extra_from_fastmcp_context
 from ..types import PaywallOptions, PaywallContext
+from payments_py.x402.helpers import build_payment_required
 
 
 class PaywallDecorator:
@@ -196,9 +197,11 @@ class PaywallDecorator:
                     lambda: self._redeem(
                         auth_result.get("plan_id"),
                         auth_result["token"],
-                        auth_result.get("subscriber_address"),
                         credits,
                         options,
+                        agent_id=auth_result.get("agent_id"),
+                        endpoint=auth_result.get("logical_url"),
+                        http_verb="POST",
                     ),
                 )
 
@@ -206,9 +209,11 @@ class PaywallDecorator:
             credits_result = await self._redeem(
                 auth_result.get("plan_id"),
                 auth_result["token"],
-                auth_result.get("subscriber_address"),
                 credits,
                 options,
+                agent_id=auth_result.get("agent_id"),
+                endpoint=auth_result.get("logical_url"),
+                http_verb="POST",
             )
 
             # Add metadata to result if redemption was successful
@@ -235,42 +240,53 @@ class PaywallDecorator:
         self,
         plan_id: str,
         token: str,
-        subscriber_address: str,
         credits: int,
         options: PaywallOptions,
+        agent_id: str = None,
+        endpoint: str = None,
+        http_verb: str = None,
     ) -> Dict[str, Any]:
         """Settle credits for a processed request using x402 settle_permissions.
 
         Args:
             plan_id: The plan identifier from the token.
             token: X402 access token used for the request.
-            subscriber_address: The subscriber's wallet address.
             credits: Number of credits to settle.
             options: Paywall options to control error propagation.
+            agent_id: Optional agent identifier.
+            endpoint: Optional endpoint URL.
+            http_verb: Optional HTTP method.
 
         Returns:
             Dictionary containing success status and transaction hash if successful.
         """
         try:
-            if credits and int(credits) > 0 and plan_id and subscriber_address:
+            if credits and int(credits) > 0 and plan_id:
+                # Build paymentRequired using the helper
+                payment_required = build_payment_required(
+                    plan_id=plan_id,
+                    endpoint=endpoint,
+                    agent_id=agent_id,
+                    http_verb=http_verb,
+                )
+
                 settle_result = await self._maybe_await(
                     self._payments.facilitator.settle_permissions(
-                        plan_id=plan_id,
-                        max_amount=str(int(credits)),
+                        payment_required=payment_required,
                         x402_access_token=token,
-                        subscriber_address=subscriber_address,
+                        max_amount=str(int(credits)),
                     )
                 )
                 # Check if the settle operation was successful
-                settle_success = settle_result.get("success", False)
+                settle_success = settle_result.success
                 credits_burned = (
-                    settle_result.get("data", {}).get("creditsBurned", str(credits))
+                    settle_result.credits_redeemed or str(credits)
                     if settle_success
                     else "0"
                 )
                 return {
                     "success": settle_success,
-                    "txHash": settle_result.get("txHash") if settle_success else None,
+                    "txHash": settle_result.transaction if settle_success else None,
                     "creditsRedeemed": credits_burned,
                 }
             else:

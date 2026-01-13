@@ -201,60 +201,78 @@ class TestPayAsYouGoFlow:
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_verify_pay_as_you_go_permissions(self, payments_agent):
         """Test verifying permissions for Pay As You Go using X402 access token."""
+        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
+
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
             self.x402_access_token is not None
         ), "x402_access_token must be set by previous test"
-        assert (
-            self.subscriber_address is not None
-        ), "subscriber_address must be set by previous test"
 
-        print(
-            f"Verifying Pay As You Go permissions for plan: {self.plan_id}, subscriber: {self.subscriber_address}"
+        print(f"Verifying Pay As You Go permissions for plan: {self.plan_id}")
+
+        # Note: planId and subscriberAddress are extracted from the token
+        payment_required = X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url="/test/endpoint"),
+            accepts=[
+                X402Scheme(
+                    scheme="nvm:erc4337",
+                    network="eip155:84532",
+                    plan_id=self.plan_id,
+                )
+            ],
+            extensions={},
         )
-
         response = retry_with_backoff(
             lambda: payments_agent.facilitator.verify_permissions(
-                plan_id=self.plan_id,
-                max_amount="1",
+                payment_required=payment_required,
                 x402_access_token=self.x402_access_token,
-                subscriber_address=self.subscriber_address,
+                max_amount="1",
             ),
             label="Pay As You Go Verify Permissions",
             attempts=3,
         )
 
         assert response is not None
-        assert response.get("success") is True
+        assert response.is_valid is True
         print(f"Pay As You Go verify permissions response: {response}")
 
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_settle_pay_as_you_go(self, payments_agent, payments_subscriber):
         """Test settling (ordering) Pay As You Go plan using X402 access token."""
+        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
+
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
             self.x402_access_token is not None
         ), "x402_access_token must be set by previous test"
-        assert (
-            self.subscriber_address is not None
-        ), "subscriber_address must be set by previous test"
 
-        print(
-            f"Settling Pay As You Go for plan: {self.plan_id}, subscriber: {self.subscriber_address}"
+        print(f"Settling Pay As You Go for plan: {self.plan_id}")
+
+        # Note: planId and subscriberAddress are extracted from the token
+        payment_required = X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url="/test/endpoint"),
+            accepts=[
+                X402Scheme(
+                    scheme="nvm:erc4337",
+                    network="eip155:84532",
+                    plan_id=self.plan_id,
+                )
+            ],
+            extensions={},
         )
-
         response = retry_with_backoff(
             lambda: payments_agent.facilitator.settle_permissions(
-                plan_id=self.plan_id,
-                max_amount="1",
+                payment_required=payment_required,
                 x402_access_token=self.x402_access_token,
-                subscriber_address=self.subscriber_address,
+                max_amount="1",
             ),
             label="Pay As You Go Settle",
             attempts=3,
         )
 
         assert response is not None
-        assert response.get("success") is True
+        assert response.success is True
         print(f"Pay As You Go settle response: {response}")
         print("Pay As You Go E2E test suite completed successfully!")

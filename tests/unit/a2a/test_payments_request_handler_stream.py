@@ -81,9 +81,9 @@ async def test_streaming_burns_credits():  # noqa: D401
             events.append(ev)
 
     assert len(events) == 1
-    settle_mock.assert_called_once_with(
-        plan_id="plan-123",
-        max_amount="7",
-        x402_access_token="TOK",
-        subscriber_address="0xSub123",
-    )
+    # Should have called settle_permissions with x402 API
+    settle_mock.assert_called_once()
+    call_kwargs = settle_mock.call_args.kwargs
+    assert call_kwargs["x402_access_token"] == "TOK"
+    assert call_kwargs["max_amount"] == "7"
+    assert call_kwargs["payment_required"] is not None

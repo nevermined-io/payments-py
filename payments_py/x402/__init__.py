@@ -42,6 +42,12 @@ Example Usage:
 """
 
 from .types import (
+    # x402 types
+    X402Resource,
+    X402SchemeExtra,
+    X402Scheme,
+    X402PaymentRequired,
+    # Legacy types
     PaymentRequirements,
     NvmPaymentRequiredResponse,
     PaymentPayload,
@@ -49,6 +55,7 @@ from .types import (
     VerifyResponse,
     SettleResponse,
 )
+from .helpers import build_payment_required
 from .networks import SupportedNetworks
 from .schemes import SupportedSchemes
 from .facilitator import NeverminedFacilitator
@@ -66,13 +73,20 @@ from .types_v2 import (
 )
 
 __all__ = [
-    # Types (V1)
+    # x402 types
+    "X402Resource",
+    "X402SchemeExtra",
+    "X402Scheme",
+    "X402PaymentRequired",
+    # Types (V1 - legacy)
     "PaymentRequirements",
     "NvmPaymentRequiredResponse",
     "PaymentPayload",
     "SessionKeyPayload",
     "VerifyResponse",
     "SettleResponse",
+    # Helper functions
+    "build_payment_required",
     # Types (V2)
     "Extension",
     "ResourceInfo",

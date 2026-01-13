@@ -12,9 +12,26 @@ from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.common.payments_error import PaymentsError
 
 
-# Mock decode_access_token for tests
+# Mock decode_access_token to return x402-compliant token structure
 def mock_decode_token(token):
-    return {"planId": "test-plan", "subscriberAddress": "0xTestSubscriber"}
+    return {
+        "x402Version": 2,
+        "accepted": {
+            "scheme": "nvm:erc4337",
+            "network": "eip155:84532",
+            "planId": "test-plan",
+            "extra": {"version": "1"},
+        },
+        "payload": {
+            "signature": "0x123",
+            "authorization": {
+                "from": "0xTestSubscriber",
+                "sessionKeysProvider": "zerodev",
+                "sessionKeys": [],
+            },
+        },
+        "extensions": {},
+    }
 
 
 class MockPaymentsService:
@@ -36,36 +53,39 @@ class MockFacilitatorAPI:
 
     def verify_permissions(
         self,
-        plan_id: str,
-        max_amount: str,
-        x402_access_token: str,
-        subscriber_address: str,
-    ) -> dict:
-        """Mock verify_permissions."""
+        payment_required=None,
+        max_amount: str = None,
+        x402_access_token: str = None,
+    ):
+        """Mock verify_permissions with x402 API."""
+        from payments_py.x402.types import VerifyResponse
+
         self.validation_call_count += 1
         if self.should_fail_validation:
             raise PaymentsError.payment_required("Insufficient credits")
 
-        return {"success": True}
+        return VerifyResponse(is_valid=True, payer="0xTestSubscriber")
 
     def settle_permissions(
         self,
-        plan_id: str,
-        max_amount: str,
-        x402_access_token: str,
-        subscriber_address: str,
-    ) -> dict:
-        """Mock settle_permissions."""
+        payment_required=None,
+        max_amount: str = None,
+        x402_access_token: str = None,
+    ):
+        """Mock settle_permissions with x402 API."""
+        from payments_py.x402.types import SettleResponse
+
         self.settle_call_count += 1
-        self.last_settle_credits = int(max_amount)
+        self.last_settle_credits = int(max_amount) if max_amount else 0
         if self.should_fail_settle:
             raise PaymentsError.payment_required("Failed to settle permissions")
 
-        return {
-            "success": True,
-            "txHash": f"0x{plan_id[-8:]}",
-            "data": {"creditsBurned": max_amount},
-        }
+        return SettleResponse(
+            success=True,
+            transaction=f"0xtest{self.settle_call_count:08x}",
+            network="eip155:84532",
+            credits_redeemed=str(max_amount) if max_amount else "0",
+        )
 
 
 class DummyExecutor:

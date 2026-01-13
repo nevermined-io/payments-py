@@ -5,9 +5,56 @@ import pytest
 from payments_py.mcp import build_mcp_integration
 
 
-# Mock the decode_access_token to return subscriber_address (x402 tokens don't contain planId)
+# Mock the decode_access_token to return x402-compliant token structure
 def mock_decode_token(token):
-    return {"subscriberAddress": "0x123subscriber"}
+    return {
+        "x402Version": 2,
+        "accepted": {
+            "scheme": "nvm:erc4337",
+            "network": "eip155:84532",
+            "planId": "plan123",
+            "extra": {"version": "1"},
+        },
+        "payload": {
+            "signature": "0x123",
+            "authorization": {
+                "from": "0x123subscriber",
+                "sessionKeysProvider": "zerodev",
+                "sessionKeys": [],
+            },
+        },
+        "extensions": {},
+    }
+
+
+class VerifyResult:
+    """Mock verify permissions result with is_valid attribute."""
+
+    def __init__(self, is_valid=True):
+        self.is_valid = is_valid
+
+
+class SettleResult:
+    """Mock settle permissions result."""
+
+    def __init__(self, success=True, transaction=None, credits_redeemed="1"):
+        self.success = success
+        self.transaction = transaction
+        self.credits_redeemed = credits_redeemed
+
+
+def make_settle_result(settle_result):
+    """Convert dict to SettleResult if needed."""
+    if settle_result is None:
+        return SettleResult()
+    if isinstance(settle_result, SettleResult):
+        return settle_result
+    # Handle dict input
+    return SettleResult(
+        success=settle_result.get("success", True),
+        transaction=settle_result.get("txHash"),
+        credits_redeemed=settle_result.get("data", {}).get("creditsBurned", "1"),
+    )
 
 
 class PaymentsMock:
@@ -15,22 +62,37 @@ class PaymentsMock:
         class Facilitator:
             def __init__(self, parent, settle_result):
                 self._parent = parent
-                self._settle_result = settle_result or {
-                    "success": True,
-                    "data": {"creditsBurned": "1"},
-                }
+                self._settle_result = make_settle_result(settle_result)
 
             def verify_permissions(
-                self, plan_id, max_amount, x402_access_token, subscriber_address
+                self, payment_required=None, max_amount=None, x402_access_token=None
             ):
-                self._parent.calls.append(
-                    ("verify", plan_id, x402_access_token, subscriber_address)
-                )
-                return {"success": True}
+                # Extract plan_id from Pydantic model or dict
+                plan_id = None
+                if payment_required:
+                    if hasattr(payment_required, "accepts"):
+                        # Pydantic model
+                        accepts = payment_required.accepts
+                        if accepts and len(accepts) > 0:
+                            plan_id = accepts[0].plan_id
+                    elif isinstance(payment_required, dict):
+                        plan_id = payment_required.get("accepts", [{}])[0].get("planId")
+                self._parent.calls.append(("verify", plan_id, x402_access_token))
+                return VerifyResult(is_valid=True)
 
             def settle_permissions(
-                self, plan_id, max_amount, x402_access_token, subscriber_address
+                self, payment_required=None, max_amount=None, x402_access_token=None
             ):
+                # Extract plan_id from Pydantic model or dict
+                plan_id = None
+                if payment_required:
+                    if hasattr(payment_required, "accepts"):
+                        # Pydantic model
+                        accepts = payment_required.accepts
+                        if accepts and len(accepts) > 0:
+                            plan_id = accepts[0].plan_id
+                    elif isinstance(payment_required, dict):
+                        plan_id = payment_required.get("accepts", [{}])[0].get("planId")
                 self._parent.calls.append(
                     ("settle", plan_id, x402_access_token, int(max_amount))
                 )
@@ -60,7 +122,7 @@ def test_burns_fixed_credits_after_successful_call():
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
     assert out
-    assert ("verify", "plan123", "token", "0x123subscriber") in pm.calls
+    assert ("verify", "plan123", "token") in pm.calls
     assert ("settle", "plan123", "token", 2) in pm.calls
 
 
@@ -241,12 +303,12 @@ def test_propagates_error_on_settle_when_configured():
                     self._parent = parent
 
                 def verify_permissions(
-                    self, plan_id, max_amount, x402_access_token, subscriber_address
+                    self, payment_required=None, max_amount=None, x402_access_token=None
                 ):
-                    return {"success": True}
+                    return VerifyResult(is_valid=True)
 
                 def settle_permissions(
-                    self, plan_id, max_amount, x402_access_token, subscriber_address
+                    self, payment_required=None, max_amount=None, x402_access_token=None
                 ):
                     raise RuntimeError("settle failed")
 
@@ -431,22 +493,33 @@ class PaymentsMockWithX402Context:
         class Facilitator:
             def __init__(self, parent, settle_result):
                 self._parent = parent
-                self._settle_result = settle_result or {
-                    "success": True,
-                    "data": {"creditsBurned": "1"},
-                }
+                self._settle_result = make_settle_result(settle_result)
 
             def verify_permissions(
-                self, plan_id, max_amount, x402_access_token, subscriber_address
+                self, payment_required=None, max_amount=None, x402_access_token=None
             ):
-                self._parent.calls.append(
-                    ("verify", plan_id, x402_access_token, subscriber_address)
-                )
-                return {"success": True}
+                plan_id = None
+                if payment_required:
+                    if hasattr(payment_required, "accepts"):
+                        accepts = payment_required.accepts
+                        if accepts and len(accepts) > 0:
+                            plan_id = accepts[0].plan_id
+                    elif isinstance(payment_required, dict):
+                        plan_id = payment_required.get("accepts", [{}])[0].get("planId")
+                self._parent.calls.append(("verify", plan_id, x402_access_token))
+                return VerifyResult(is_valid=True)
 
             def settle_permissions(
-                self, plan_id, max_amount, x402_access_token, subscriber_address
+                self, payment_required=None, max_amount=None, x402_access_token=None
             ):
+                plan_id = None
+                if payment_required:
+                    if hasattr(payment_required, "accepts"):
+                        accepts = payment_required.accepts
+                        if accepts and len(accepts) > 0:
+                            plan_id = accepts[0].plan_id
+                    elif isinstance(payment_required, dict):
+                        plan_id = payment_required.get("accepts", [{}])[0].get("planId")
                 self._parent.calls.append(
                     ("settle", plan_id, x402_access_token, int(max_amount))
                 )
@@ -480,7 +553,7 @@ def test_backward_compatibility_handlers_without_context():
     out = asyncio.get_event_loop().run_until_complete(wrapped({"name": "Alice"}, extra))
 
     assert out["content"][0]["text"] == "Hello Alice"
-    assert ("verify", "plan123", "token", "0x123subscriber") in pm.calls
+    assert ("verify", "plan123", "token") in pm.calls
     assert ("settle", "plan123", "token", 2) in pm.calls
 
 
