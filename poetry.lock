@@ -2428,21 +2428,20 @@ uvicorn = ["uvicorn (>=0.34.0)"]
 
 [[package]]
 name = "starlette"
-version = "0.49.1"
+version = "0.40.0"
 description = "The little ASGI library that shines."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.8"
 files = [
-    {file = "starlette-0.49.1-py3-none-any.whl", hash = "sha256:d92ce9f07e4a3caa3ac13a79523bd18e3bc0042bb8ff2d759a8e7dd0e1859875"},
-    {file = "starlette-0.49.1.tar.gz", hash = "sha256:481a43b71e24ed8c43b11ea02f5353d77840e01480881b8cb5a26b8cae64a8cb"},
+    {file = "starlette-0.40.0-py3-none-any.whl", hash = "sha256:c494a22fae73805376ea6bf88439783ecfba9aac88a43911b48c653437e784c4"},
+    {file = "starlette-0.40.0.tar.gz", hash = "sha256:1a3139688fb298ce5e2d661d37046a66ad996ce94be4d4983be019a23a04ea35"},
 ]
 
 [package.dependencies]
-anyio = ">=3.6.2,<5"
-typing-extensions = {version = ">=4.10.0", markers = "python_version < \"3.13\""}
+anyio = ">=3.4.0,<5"
 
 [package.extras]
-full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.18)", "pyyaml"]
+full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.7)", "pyyaml"]
 
 [[package]]
 name = "tomli"
@@ -2803,7 +2802,10 @@ idna = ">=2.0"
 multidict = ">=4.0"
 propcache = ">=0.2.1"
 
+[extras]
+fastapi = ["fastapi", "starlette"]
+
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "295d7fb895c0b6c1bd001557b10276fbf9fbbec1d9d354b89593823825341e96"
+content-hash = "ec1a7803166b5336402032348622e1e3750a6ebfa2ebf469c62e995df06fce04"
