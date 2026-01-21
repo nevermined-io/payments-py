@@ -4,7 +4,6 @@ Error utilities and common JSON-RPC error codes used by the MCP paywall.
 
 from typing import Any, Dict
 
-
 ERROR_CODES: Dict[str, int] = {
     "Misconfiguration": -32002,
     "PaymentRequired": -32003,
