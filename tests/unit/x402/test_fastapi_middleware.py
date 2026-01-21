@@ -470,7 +470,9 @@ class TestDynamicCredits:
         @app.post("/chat")
         async def chat(request: Request):
             body = await request.json()
-            return JSONResponse({"result": "response", "tokens": body.get("max_tokens")})
+            return JSONResponse(
+                {"result": "response", "tokens": body.get("max_tokens")}
+            )
 
         client = TestClient(app)
 
