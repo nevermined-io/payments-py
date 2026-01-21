@@ -71,7 +71,6 @@ from starlette.responses import JSONResponse, Response
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.types import VerifyResponse, X402PaymentRequired
 
-
 # x402 HTTP Transport header names (v2 spec)
 # @see https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md
 X402_HEADERS = {

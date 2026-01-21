@@ -2,8 +2,7 @@
 Error utilities and common JSON-RPC error codes used by the MCP paywall.
 """
 
-from typing import Any, Dict, Optional
-
+from typing import Any, Dict
 
 ERROR_CODES: Dict[str, int] = {
     "Misconfiguration": -32002,
@@ -11,7 +10,7 @@ ERROR_CODES: Dict[str, int] = {
 }
 
 
-def create_rpc_error(code: int, message: str, data: Optional[Any] = None) -> Exception:
+def create_rpc_error(code: int, message: str, data: Any | None = None) -> Exception:
     """
     Create an Exception that mimics JSON-RPC error objects with code and optional data.
 
