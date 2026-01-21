@@ -59,7 +59,9 @@ Example client usage:
     ```
 """
 
+import asyncio
 import base64
+import inspect
 import json
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Optional, Union
@@ -70,6 +72,10 @@ from starlette.responses import JSONResponse, Response
 
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.types import VerifyResponse, X402PaymentRequired
+
+# Type alias for dynamic credits function
+# Can be sync or async, takes Request and returns int
+CreditsCallable = Callable[[Request], Union[int, Awaitable[int]]]
 
 # x402 HTTP Transport header names (v2 spec)
 # @see https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md
@@ -85,12 +91,31 @@ X402_HEADERS = {
 
 @dataclass
 class RouteConfig:
-    """Configuration for a protected route."""
+    """
+    Configuration for a protected route.
+
+    Example with fixed credits:
+        RouteConfig(plan_id="123", credits=5)
+
+    Example with dynamic credits:
+        RouteConfig(
+            plan_id="123",
+            credits=lambda req: calculate_credits(req)
+        )
+
+    Example with async dynamic credits:
+        async def calc_credits(request: Request) -> int:
+            body = await request.json()
+            return len(body.get("messages", [])) * 2
+
+        RouteConfig(plan_id="123", credits=calc_credits)
+    """
 
     # The Nevermined plan ID that protects this route
     plan_id: str
     # Number of credits to charge for this route (default: 1)
-    credits: int = 1
+    # Can be a static int or a callable (sync/async) that takes Request and returns int
+    credits: Union[int, CreditsCallable] = 1
     # Optional agent ID
     agent_id: Optional[str] = None
     # Network identifier (default: "eip155:84532" for Base Sepolia)
@@ -199,6 +224,22 @@ def _match_route(
     return None
 
 
+async def _resolve_credits(
+    credits: Union[int, CreditsCallable], request: Request
+) -> int:
+    """
+    Resolve credits value - handles both static int and callable (sync/async).
+    """
+    if isinstance(credits, int):
+        return credits
+
+    # It's a callable - check if it's async or sync
+    result = credits(request)
+    if inspect.isawaitable(result):
+        return await result
+    return result
+
+
 def _send_payment_required(
     payment_required: X402PaymentRequired, message: str
 ) -> JSONResponse:
@@ -280,6 +321,9 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             )
 
         try:
+            # Calculate credits (supports both static and dynamic)
+            credits_to_charge = await _resolve_credits(route_config.credits, request)
+
             # Hook: before verification
             if self.options.on_before_verify:
                 await self.options.on_before_verify(request, payment_required)
@@ -288,7 +332,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             verification = self.payments.facilitator.verify_permissions(
                 payment_required=payment_required,
                 x402_access_token=token,
-                max_amount=str(route_config.credits),
+                max_amount=str(credits_to_charge),
             )
 
             if not verification.is_valid:
@@ -315,7 +359,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             payment_context = PaymentContext(
                 token=token,
                 payment_required=payment_required,
-                credits_to_settle=route_config.credits,
+                credits_to_settle=credits_to_charge,
                 verified=True,
                 agent_request_id=verification.agent_request_id,
                 agent_request=verification.agent_request,
@@ -332,7 +376,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     settlement = self.payments.facilitator.settle_permissions(
                         payment_required=payment_required,
                         x402_access_token=token,
-                        max_amount=str(route_config.credits),
+                        max_amount=str(credits_to_charge),
                         agent_request_id=payment_context.agent_request_id,
                     )
 
@@ -361,7 +405,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     # Hook: after settlement
                     if self.options.on_after_settle:
                         await self.options.on_after_settle(
-                            request, route_config.credits, settlement
+                            request, credits_to_charge, settlement
                         )
 
                     return new_response

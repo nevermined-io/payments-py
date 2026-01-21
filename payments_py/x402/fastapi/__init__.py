@@ -4,7 +4,7 @@ FastAPI middleware for Nevermined payment protection using the x402 protocol.
 This module provides FastAPI middleware for protecting routes with Nevermined
 payment verification and settlement following the x402 HTTP transport spec.
 
-Example usage:
+Example usage with fixed credits:
     ```python
     from fastapi import FastAPI, Request
     from payments_py import Payments, PaymentOptions
@@ -31,6 +31,23 @@ Example usage:
         return {"answer": "...", "request_id": context.agent_request_id}
     ```
 
+Example with dynamic credits:
+    ```python
+    async def calculate_credits(request: Request) -> int:
+        body = await request.json()
+        # Charge 1 credit per 100 tokens requested
+        tokens = body.get("max_tokens", 100)
+        return max(1, tokens // 100)
+
+    app.add_middleware(
+        PaymentMiddleware,
+        payments=payments,
+        routes={
+            "POST /generate": {"plan_id": "123", "credits": calculate_credits},
+        }
+    )
+    ```
+
 For full documentation, see the middleware module.
 """
 
@@ -41,6 +58,7 @@ from .middleware import (
     PaymentMiddlewareOptions,
     PaymentMiddleware,
     payment_middleware,
+    CreditsCallable,
 )
 
 __all__ = [
@@ -50,4 +68,5 @@ __all__ = [
     "PaymentMiddlewareOptions",
     "PaymentMiddleware",
     "payment_middleware",
+    "CreditsCallable",
 ]

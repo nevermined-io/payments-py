@@ -368,3 +368,165 @@ class TestPaymentMiddlewareFactory:
         # Test without token
         response = client.post("/test")
         assert response.status_code == 402
+
+
+class TestDynamicCredits:
+    """Tests for dynamic credits calculation."""
+
+    def test_sync_callable_credits(self, mock_payments, valid_token):
+        """Test that sync callable credits function works."""
+
+        def calculate_credits(request: Request) -> int:
+            # Simple sync function that returns 3 credits
+            return 3
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "POST /generate": {"plan_id": "test-plan", "credits": calculate_credits}
+            },
+        )
+
+        @app.post("/generate")
+        async def generate():
+            return JSONResponse({"result": "generated"})
+
+        client = TestClient(app)
+        response = client.post(
+            "/generate",
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
+        )
+
+        assert response.status_code == 200
+
+        # Verify that verify_permissions was called with max_amount="3"
+        call_args = mock_payments.facilitator.verify_permissions.call_args
+        assert call_args.kwargs["max_amount"] == "3"
+
+        # Verify that settle_permissions was called with max_amount="3"
+        call_args = mock_payments.facilitator.settle_permissions.call_args
+        assert call_args.kwargs["max_amount"] == "3"
+
+    def test_async_callable_credits(self, mock_payments, valid_token):
+        """Test that async callable credits function works."""
+
+        async def calculate_credits(request: Request) -> int:
+            # Async function that returns 5 credits
+            return 5
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "POST /analyze": {"plan_id": "test-plan", "credits": calculate_credits}
+            },
+        )
+
+        @app.post("/analyze")
+        async def analyze():
+            return JSONResponse({"result": "analyzed"})
+
+        client = TestClient(app)
+        response = client.post(
+            "/analyze",
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
+        )
+
+        assert response.status_code == 200
+
+        # Verify that verify_permissions was called with max_amount="5"
+        call_args = mock_payments.facilitator.verify_permissions.call_args
+        assert call_args.kwargs["max_amount"] == "5"
+
+        # Verify that settle_permissions was called with max_amount="5"
+        call_args = mock_payments.facilitator.settle_permissions.call_args
+        assert call_args.kwargs["max_amount"] == "5"
+
+    def test_credits_based_on_request_body(self, mock_payments, valid_token):
+        """Test calculating credits based on request body content."""
+
+        credits_calculated = {"value": None}
+
+        async def calculate_credits(request: Request) -> int:
+            # Calculate credits based on request body
+            body = await request.json()
+            tokens = body.get("max_tokens", 100)
+            credits = max(1, tokens // 100)
+            credits_calculated["value"] = credits
+            return credits
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "POST /chat": {"plan_id": "test-plan", "credits": calculate_credits}
+            },
+        )
+
+        @app.post("/chat")
+        async def chat(request: Request):
+            body = await request.json()
+            return JSONResponse({"result": "response", "tokens": body.get("max_tokens")})
+
+        client = TestClient(app)
+
+        # Request with 500 tokens should result in 5 credits
+        response = client.post(
+            "/chat",
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
+            json={"message": "Hello", "max_tokens": 500},
+        )
+
+        assert response.status_code == 200
+        assert credits_calculated["value"] == 5
+
+        # Verify settle was called with correct credits
+        call_args = mock_payments.facilitator.settle_permissions.call_args
+        assert call_args.kwargs["max_amount"] == "5"
+
+    def test_payment_context_has_calculated_credits(self, mock_payments, valid_token):
+        """Test that PaymentContext has the calculated credits value."""
+
+        captured_context = {"credits": None}
+
+        async def calculate_credits(request: Request) -> int:
+            return 7
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "POST /test": {"plan_id": "test-plan", "credits": calculate_credits}
+            },
+        )
+
+        @app.post("/test")
+        async def test_endpoint(request: Request):
+            context = request.state.payment_context
+            captured_context["credits"] = context.credits_to_settle
+            return JSONResponse({"result": "ok"})
+
+        client = TestClient(app)
+        response = client.post(
+            "/test",
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
+        )
+
+        assert response.status_code == 200
+        assert captured_context["credits"] == 7
+
+    def test_route_config_with_callable_credits(self):
+        """Test RouteConfig accepts callable credits."""
+
+        def calc(req: Request) -> int:
+            return 10
+
+        config = RouteConfig(plan_id="test-plan", credits=calc)
+        assert config.plan_id == "test-plan"
+        assert callable(config.credits)
+        # We can't easily test the callable without a request, but we verify it's stored
