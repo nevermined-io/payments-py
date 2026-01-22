@@ -26,7 +26,6 @@ from payments_py.x402.helpers import build_payment_required
 
 from .types import HttpRequestContext
 
-
 _TERMINAL_STATES = {
     "completed",
     "failed",
@@ -307,10 +306,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         try:
             # Both blocking and non-blocking use the same method, but with different
             # early return behavior
-            (result, interrupted_or_non_blocking) = (
-                await self._consume_and_burn_credits(
-                    result_aggregator, consumer, http_ctx, blocking
-                )
+            result, interrupted_or_non_blocking = await self._consume_and_burn_credits(
+                result_aggregator, consumer, http_ctx, blocking
             )
 
             if not result:

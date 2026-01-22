@@ -18,7 +18,6 @@ from .types import (
 from .extensions.nevermined import extract_nevermined_info
 from payments_py.common.types import PaymentOptions
 
-
 logger = logging.getLogger(__name__)
 
 

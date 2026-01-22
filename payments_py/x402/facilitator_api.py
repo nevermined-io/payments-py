@@ -145,6 +145,7 @@ class FacilitatorAPI(BasePaymentsAPI):
         payment_required: X402PaymentRequired,
         x402_access_token: str,
         max_amount: Optional[str] = None,
+        agent_request_id: Optional[str] = None,
     ) -> SettleResponse:
         """
         Settle (burn) credits from a subscriber's payment plan.
@@ -158,6 +159,7 @@ class FacilitatorAPI(BasePaymentsAPI):
             payment_required: x402 PaymentRequired from 402 response (required, for validation)
             x402_access_token: The X402 access token (contains planId, subscriberAddress, agentId)
             max_amount: The number of credits to burn (as string, optional)
+            agent_request_id: Agent request ID for observability tracking (optional)
 
         Returns:
             SettleResponse with success boolean and transaction details
@@ -174,6 +176,9 @@ class FacilitatorAPI(BasePaymentsAPI):
 
         if max_amount is not None:
             body["maxAmount"] = max_amount
+
+        if agent_request_id is not None:
+            body["agentRequestId"] = agent_request_id
 
         options = self.get_public_http_options("POST", body)
 

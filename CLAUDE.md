@@ -16,16 +16,22 @@ poetry run black .          # Format code
 
 ## Development Workflow
 
-### Always Verify Build and Lint After Changes
+### Always Format and Build After Changes
 
-After making any code changes, always run:
+**IMPORTANT:** After making ANY code changes (including new files and test files), always run:
 
 ```bash
+poetry run black .              # Format all code (REQUIRED)
 poetry build                    # Build must succeed
-poetry run black --check .      # Code must be formatted
 ```
 
 Both commands must succeed before considering the changes complete.
+
+To verify formatting without making changes (CI check):
+
+```bash
+poetry run black --check .      # Check formatting only
+```
 
 ### Code Changes Require Test Updates
 
@@ -40,13 +46,13 @@ When modifying code in `payments_py/`, always update the corresponding tests:
 This project uses **Black** for code formatting with the following settings (from `pyproject.toml`):
 
 - Line length: 88
-- Target Python version: 3.8+
+- Target Python version: 3.10+
 
-To format code:
+**CRITICAL:** Always run `poetry run black .` after writing or modifying any Python files (including tests). The CI will fail if code is not formatted.
 
 ```bash
-poetry run black .           # Format all files
-poetry run black --check .   # Check formatting without changes
+poetry run black .           # Format all files (run after every change)
+poetry run black --check .   # Check formatting without changes (CI uses this)
 ```
 
 ## Testing

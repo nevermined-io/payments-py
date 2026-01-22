@@ -60,28 +60,33 @@ async def test_on_message_send_validates_and_calls_parent(monkeypatch):  # noqa:
     async def mock_consume_credits(*args, **kwargs):
         return (completed_task, False)  # (result, interrupted_or_non_blocking)
 
-    with patch.object(
-        PaymentsRequestHandler, "_setup_message_execution", side_effect=mock_setup
-    ), patch.object(
-        PaymentsRequestHandler,
-        "_consume_and_burn_credits",
-        side_effect=mock_consume_credits,
-    ), patch.object(
-        PaymentsRequestHandler, "_send_push_notification_if_needed", new=AsyncMock()
-    ), patch.object(
-        PaymentsRequestHandler,
-        "get_agent_card",
-        new=AsyncMock(
-            return_value=SimpleNamespace(
-                capabilities=SimpleNamespace(
-                    extensions=[
-                        SimpleNamespace(
-                            uri="urn:nevermined:payment",
-                            params=SimpleNamespace(agentId="test-agent"),
-                        )
-                    ]
+    with (
+        patch.object(
+            PaymentsRequestHandler, "_setup_message_execution", side_effect=mock_setup
+        ),
+        patch.object(
+            PaymentsRequestHandler,
+            "_consume_and_burn_credits",
+            side_effect=mock_consume_credits,
+        ),
+        patch.object(
+            PaymentsRequestHandler, "_send_push_notification_if_needed", new=AsyncMock()
+        ),
+        patch.object(
+            PaymentsRequestHandler,
+            "get_agent_card",
+            new=AsyncMock(
+                return_value=SimpleNamespace(
+                    capabilities=SimpleNamespace(
+                        extensions=[
+                            SimpleNamespace(
+                                uri="urn:nevermined:payment",
+                                params=SimpleNamespace(agentId="test-agent"),
+                            )
+                        ]
+                    )
                 )
-            )
+            ),
         ),
     ):
         handler = PaymentsRequestHandler(
@@ -178,28 +183,33 @@ async def test_on_message_send_burns_credits_from_events():  # noqa: D401
 
         return (completed_task, False)  # (result, interrupted_or_non_blocking)
 
-    with patch.object(
-        PaymentsRequestHandler, "_setup_message_execution", side_effect=mock_setup
-    ), patch.object(
-        PaymentsRequestHandler,
-        "_consume_and_burn_credits",
-        side_effect=mock_consume_credits,
-    ), patch.object(
-        PaymentsRequestHandler, "_send_push_notification_if_needed", new=AsyncMock()
-    ), patch.object(
-        PaymentsRequestHandler,
-        "get_agent_card",
-        new=AsyncMock(
-            return_value=SimpleNamespace(
-                capabilities=SimpleNamespace(
-                    extensions=[
-                        SimpleNamespace(
-                            uri="urn:nevermined:payment",
-                            params=SimpleNamespace(agentId="test-agent"),
-                        )
-                    ]
+    with (
+        patch.object(
+            PaymentsRequestHandler, "_setup_message_execution", side_effect=mock_setup
+        ),
+        patch.object(
+            PaymentsRequestHandler,
+            "_consume_and_burn_credits",
+            side_effect=mock_consume_credits,
+        ),
+        patch.object(
+            PaymentsRequestHandler, "_send_push_notification_if_needed", new=AsyncMock()
+        ),
+        patch.object(
+            PaymentsRequestHandler,
+            "get_agent_card",
+            new=AsyncMock(
+                return_value=SimpleNamespace(
+                    capabilities=SimpleNamespace(
+                        extensions=[
+                            SimpleNamespace(
+                                uri="urn:nevermined:payment",
+                                params=SimpleNamespace(agentId="test-agent"),
+                            )
+                        ]
+                    )
                 )
-            )
+            ),
         ),
     ):
         handler = PaymentsRequestHandler(
@@ -348,31 +358,35 @@ async def test_on_message_send_generates_task_id_when_missing():  # noqa: D401
     async def mock_consume_credits(*args, **kwargs):
         return (completed_task, False)
 
-    with patch.object(
-        PaymentsRequestHandler, "_setup_message_execution", side_effect=mock_setup
-    ), patch.object(
-        PaymentsRequestHandler,
-        "_consume_and_burn_credits",
-        side_effect=mock_consume_credits,
-    ), patch.object(
-        PaymentsRequestHandler, "_send_push_notification_if_needed", new=AsyncMock()
-    ), patch.object(
-        PaymentsRequestHandler,
-        "get_agent_card",
-        new=AsyncMock(
-            return_value=SimpleNamespace(
-                capabilities=SimpleNamespace(
-                    extensions=[
-                        SimpleNamespace(
-                            uri="urn:nevermined:payment",
-                            params=SimpleNamespace(agentId="test-agent"),
-                        )
-                    ]
-                )
-            )
+    with (
+        patch.object(
+            PaymentsRequestHandler, "_setup_message_execution", side_effect=mock_setup
         ),
-    ), patch(
-        "uuid.uuid4", return_value="generated-task-id"
+        patch.object(
+            PaymentsRequestHandler,
+            "_consume_and_burn_credits",
+            side_effect=mock_consume_credits,
+        ),
+        patch.object(
+            PaymentsRequestHandler, "_send_push_notification_if_needed", new=AsyncMock()
+        ),
+        patch.object(
+            PaymentsRequestHandler,
+            "get_agent_card",
+            new=AsyncMock(
+                return_value=SimpleNamespace(
+                    capabilities=SimpleNamespace(
+                        extensions=[
+                            SimpleNamespace(
+                                uri="urn:nevermined:payment",
+                                params=SimpleNamespace(agentId="test-agent"),
+                            )
+                        ]
+                    )
+                )
+            ),
+        ),
+        patch("uuid.uuid4", return_value="generated-task-id"),
     ):
         handler = PaymentsRequestHandler(
             agent_card={},

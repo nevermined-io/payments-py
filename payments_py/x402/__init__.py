@@ -115,3 +115,13 @@ __all__ = [
 #       extract_nevermined_info,
 #       validate_nevermined_extension
 #   )
+
+# Note: For FastAPI middleware, install with extras and import from:
+#   pip install payments-py[fastapi]
+#   from payments_py.x402.fastapi import (
+#       PaymentMiddleware,
+#       payment_middleware,
+#       X402_HEADERS,
+#       RouteConfig,
+#       PaymentContext,
+#   )

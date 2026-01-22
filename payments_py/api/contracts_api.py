@@ -31,7 +31,6 @@ class Contracts(BaseModel):
     agreements_store: str = Field(alias="AgreementsStore")
     assets_registry: str = Field(alias="AssetsRegistry")
     distribute_payments_condition: str = Field(alias="DistributePaymentsCondition")
-    erc2771_forwarder: str = Field(alias="ERC2771Forwarder")
     fiat_payment_template: str = Field(alias="FiatPaymentTemplate")
     fiat_settlement_condition: str = Field(alias="FiatSettlementCondition")
     fixed_payment_template: str = Field(alias="FixedPaymentTemplate")
