@@ -199,12 +199,16 @@ class VerifyResponse(BaseModel):
         invalid_reason: Reason for invalidity (only present if is_valid is false)
         payer: Address of the payer's wallet
         agent_request_id: Agent request ID for observability tracking (Nevermined extension)
+        url_matching: URL pattern that matched the endpoint (Nevermined extension)
+        agent_request: Full agent request context for observability (Nevermined extension)
     """
 
     is_valid: bool = Field(alias="isValid")
     invalid_reason: Optional[str] = Field(None, alias="invalidReason")
     payer: Optional[str] = None
     agent_request_id: Optional[str] = Field(None, alias="agentRequestId")
+    url_matching: Optional[str] = Field(None, alias="urlMatching")
+    agent_request: Optional[Any] = Field(None, alias="agentRequest")
 
     model_config = ConfigDict(
         populate_by_name=True,
