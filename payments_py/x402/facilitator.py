@@ -6,7 +6,6 @@ network via the payments-py FacilitatorAPI.
 """
 
 import logging
-from typing import Optional
 
 from .types import (
     SessionKeyPayload,
@@ -15,7 +14,7 @@ from .types import (
     SettleResponse,
     VerifyResponse,
 )
-from .extensions.nevermined import extract_nevermined_info
+from .helpers import build_payment_required
 from payments_py.common.types import PaymentOptions
 
 logger = logging.getLogger(__name__)
@@ -109,75 +108,40 @@ class NeverminedFacilitator:
                     invalid_reason="Unsupported payload type - expected session_key in payload",
                 )
 
-            # Extract Nevermined info using v2 extension helper (supports v1 fallback)
-
-            # Convert payload and requirements to dict for extraction helper
-            payload_dict = (
-                payload.model_dump(by_alias=True)
-                if hasattr(payload, "model_dump")
-                else payload
-            )
-            requirements_dict = (
-                requirements.model_dump(by_alias=True)
-                if hasattr(requirements, "model_dump")
-                else requirements
+            # Build X402PaymentRequired from requirements for the new API
+            # Get endpoint from requirements.extra if available (set by server)
+            endpoint = (
+                requirements.extra.get("endpoint", "/") if requirements.extra else "/"
             )
 
-            nvm_info = extract_nevermined_info(
-                payment_payload=payload_dict,
-                payment_requirements=requirements_dict,
-                validate=True,  # Validate v2 extensions if present
+            payment_required = build_payment_required(
+                plan_id=requirements.plan_id,
+                agent_id=requirements.agent_id,
+                network=payload.network,  # Use CAIP-2 format from payload
+                endpoint=endpoint,
             )
-
-            if not nvm_info:
-                # Fallback: Extract from v1 requirements directly
-                nvm_info = {
-                    "plan_id": requirements.plan_id,
-                    "agent_id": requirements.agent_id,
-                    "max_amount": requirements.max_amount,
-                    "subscriber_address": (
-                        requirements.extra.get("subscriber_address")
-                        if requirements.extra
-                        else None
-                    ),
-                }
-
-            # Extract required fields
-            plan_id = nvm_info.get("plan_id")
-            max_amount = nvm_info.get("max_amount")
-            subscriber_address = nvm_info.get("subscriber_address")
-
-            # If subscriber_address not in extension info, check requirements.extra
-            if not subscriber_address and requirements.extra:
-                subscriber_address = requirements.extra.get("subscriber_address")
-
-            if not subscriber_address:
-                return VerifyResponse(
-                    is_valid=False,
-                    invalid_reason="Missing subscriber_address in payment requirements",
-                )
 
             logger.info(
-                f"Verifying permissions for plan: {plan_id}, "
-                f"max_amount: {max_amount}, "
-                f"subscriber: {subscriber_address}"
+                f"Verifying permissions for plan: {requirements.plan_id}, "
+                f"max_amount: {requirements.max_amount}, "
+                f"network: {payload.network}"
             )
 
-            # Call Nevermined API to verify permissions
+            # Call new FacilitatorAPI with X402PaymentRequired
             verification = self.payments.facilitator.verify_permissions(
-                plan_id=plan_id,
-                max_amount=max_amount,
+                payment_required=payment_required,
                 x402_access_token=x402_access_token,
-                subscriber_address=subscriber_address,
+                max_amount=requirements.max_amount,
             )
 
-            if verification.get("success"):
+            if verification.is_valid:
                 logger.info("✅ Payment verification successful")
-                return VerifyResponse(is_valid=True, session_key=x402_access_token)
+                return verification
             else:
-                error_msg = verification.get("message", "Verification failed")
-                logger.warning(f"⛔ Payment verification failed: {error_msg}")
-                return VerifyResponse(is_valid=False, invalid_reason=error_msg)
+                logger.warning(
+                    f"⛔ Payment verification failed: {verification.invalid_reason}"
+                )
+                return verification
 
         except Exception as e:
             logger.error(f"Error during payment verification: {e}", exc_info=True)
@@ -225,86 +189,43 @@ class NeverminedFacilitator:
                     error_reason="Unsupported payload type - expected session_key in payload",
                 )
 
-            # Extract Nevermined info using v2 extension helper (supports v1 fallback)
-
-            # Convert payload and requirements to dict for extraction helper
-            payload_dict = (
-                payload.model_dump(by_alias=True)
-                if hasattr(payload, "model_dump")
-                else payload
-            )
-            requirements_dict = (
-                requirements.model_dump(by_alias=True)
-                if hasattr(requirements, "model_dump")
-                else requirements
+            # Build X402PaymentRequired from requirements for the new API
+            # Get endpoint from requirements.extra if available (set by server)
+            endpoint = (
+                requirements.extra.get("endpoint", "/") if requirements.extra else "/"
             )
 
-            nvm_info = extract_nevermined_info(
-                payment_payload=payload_dict,
-                payment_requirements=requirements_dict,
-                validate=True,  # Validate v2 extensions if present
+            payment_required = build_payment_required(
+                plan_id=requirements.plan_id,
+                agent_id=requirements.agent_id,
+                network=payload.network,  # Use CAIP-2 format from payload
+                endpoint=endpoint,
             )
-
-            if not nvm_info:
-                # Fallback: Extract from v1 requirements directly
-                nvm_info = {
-                    "plan_id": requirements.plan_id,
-                    "agent_id": requirements.agent_id,
-                    "max_amount": requirements.max_amount,
-                    "subscriber_address": (
-                        requirements.extra.get("subscriber_address")
-                        if requirements.extra
-                        else None
-                    ),
-                }
-
-            # Extract required fields
-            plan_id = nvm_info.get("plan_id")
-            max_amount = nvm_info.get("max_amount")
-            subscriber_address = nvm_info.get("subscriber_address")
-
-            # If subscriber_address not in extension info, check requirements.extra
-            if not subscriber_address and requirements.extra:
-                subscriber_address = requirements.extra.get("subscriber_address")
-
-            if not subscriber_address:
-                return SettleResponse(
-                    success=False,
-                    error_reason="Missing subscriber_address in payment requirements",
-                )
 
             logger.info(
-                f"Settling permissions for plan: {plan_id}, "
-                f"max_amount: {max_amount}, "
-                f"subscriber: {subscriber_address}"
+                f"Settling permissions for plan: {requirements.plan_id}, "
+                f"max_amount: {requirements.max_amount}, "
+                f"network: {payload.network}"
             )
 
-            # Call Nevermined API to settle permissions (burn credits)
+            # Call new FacilitatorAPI with X402PaymentRequired
             settlement = self.payments.facilitator.settle_permissions(
-                plan_id=plan_id,
-                max_amount=max_amount,
+                payment_required=payment_required,
                 x402_access_token=x402_access_token,
-                subscriber_address=subscriber_address,
+                max_amount=requirements.max_amount,
             )
 
-            if settlement.get("success"):
-                tx_hash = settlement.get("txHash")
-                credits_burned = settlement.get("data", {}).get(
-                    "creditsBurned", requirements.max_amount
-                )
-
+            if settlement.success:
                 logger.info(
-                    f"✅ Payment settled successfully! Credits burned: {credits_burned}"
+                    f"✅ Payment settled successfully! Credits redeemed: {settlement.credits_redeemed}"
                 )
-                logger.info(f"Transaction hash: {tx_hash}")
-
-                return SettleResponse(
-                    success=True, transaction=tx_hash, network=requirements.network
-                )
+                logger.info(f"Transaction hash: {settlement.transaction}")
+                return settlement
             else:
-                error_msg = settlement.get("message", "Settlement failed")
-                logger.warning(f"⛔ Payment settlement failed: {error_msg}")
-                return SettleResponse(success=False, error_reason=error_msg)
+                logger.warning(
+                    f"⛔ Payment settlement failed: {settlement.error_reason}"
+                )
+                return settlement
 
         except Exception as e:
             logger.error(f"Error during payment settlement: {e}", exc_info=True)
