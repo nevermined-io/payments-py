@@ -99,7 +99,7 @@ class TestMcpHandlerAuthHeaderPropagation:
 
         assert result is not None
         assert result["token"] == "integration-token-456"
-        assert result["agentId"] == "integration_agent_id_hex"
+        assert result["agent_id"] == "integration_agent_id_hex"
 
         # Verify the token was used in verify_permissions
         verify_calls = [c for c in mock_instance.calls if c[0] == "verify_permissions"]
