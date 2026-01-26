@@ -84,7 +84,7 @@ This method is only can be called by the owner of the Payment Plan.
 - <b>`HTTPError`</b>: If the API call fails.
 
 **Example:**
-response = your_instance.burn_credits(plan_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12") print(response)
+response = your_instance.burn_credits(plan_did="e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12") print(response)
 
 ---
 
@@ -289,7 +289,7 @@ https://docs.nevermined.app/docs/tutorials/builders/register-file-asset
 - <b>`HTTPError`</b>: If the API call fails.
 
 **Example:**
-response = your_instance.create_file(plan_did="did:nv:xyz789", asset_type="dataset", name="Sample Dataset", description="A sample dataset", files=[{"name": "file1.csv", "url": "https://example.com/file1.csv"}]) print(response)
+response = your_instance.create_file(plan_did="xyz789", asset_type="dataset", name="Sample Dataset", description="A sample dataset", files=[{"name": "file1.csv", "url": "https://example.com/file1.csv"}]) print(response)
 
 ---
 
@@ -320,7 +320,7 @@ https://docs.nevermined.app/docs/tutorials/builders/register-agent
 - <b>`HTTPError`</b>: If the API call fails.
 
 **Example:**
-response = your_instance.create_service(plan_did="did:nv:abc123", service_type="service", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none") print(response)
+response = your_instance.create_service(plan_did="abc123", service_type="service", name="My Service", description="A sample service", service_charge_type="fixed", auth_type="none") print(response)
 
 ---
 
@@ -501,7 +501,7 @@ Downloads the file.
 - <b>`HTTPError`</b>: If the API call fails.
 
 **Example:**
-response = your_instance.download_file(file_did="did:nv:7e38d39405445ab3e5435d8c1c6653a00ddc425ba629789f58fbefccaa5e5a5d", destination="/tmp") print(response)
+response = your_instance.download_file(file_did="7e38d39405445ab3e5435d8c1c6653a00ddc425ba629789f58fbefccaa5e5a5d", destination="/tmp") print(response)
 
 ---
 
@@ -713,7 +713,7 @@ Get the required configuration for accessing a remote service agent. This config
 - <b>`HTTPError`</b>: If the API call fails.
 
 **Example:**
-response = your_instance.get_service_token(service_did="did:nv:xyz789") print(response)
+response = your_instance.get_service_token(service_did="xyz789") print(response)
 
 ---
 
@@ -742,7 +742,7 @@ Mints the credits associated with a plan and sends them to the receiver.
 - <b>`HTTPError`</b>: If the API call fails.
 
 **Example:**
-response = your_instance.mint_credits(plan_did="did:nv:e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12", receiver="0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6") print(response)
+response = your_instance.mint_credits(plan_did="e405a91e3152be1430c5d0607ebdf9236c19f34bfba0320798d81ba5f5e3e3a5", amount="12", receiver="0x4fe3e7d42fA83be4E8cF03451Ac3F25980a73fF6") print(response)
 
 ---
 
@@ -775,7 +775,7 @@ The payment is done using Crypto. Payments using Fiat can be done via the Neverm
 - <b>`HTTPError`</b>: If the API call fails.
 
 **Example:**
-response = your_instance.order_plan(plan_did="did:nv:a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116") print(response)
+response = your_instance.order_plan(plan_did="a0079b517e580d430916924f1940b764e17c31e368c509483426f8c2ac2e7116") print(response)
 
 ---
 

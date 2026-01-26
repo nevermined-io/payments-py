@@ -72,8 +72,11 @@ class PaywallAuthenticator:
             if not decoded:
                 raise ValueError("Invalid access token")
 
-            # plan_id must come from options (x402 tokens don't contain planId)
+            # Try to get plan_id from options first, then from token (accepted.planId per x402 spec)
             plan_id = options.get("planId")
+            if not plan_id:
+                accepted = decoded.get("accepted", {})
+                plan_id = accepted.get("planId") if isinstance(accepted, dict) else None
 
             # Extract subscriber_address from x402 token (payload.authorization.from per x402 spec)
             payload = decoded.get("payload", {})
@@ -86,7 +89,7 @@ class PaywallAuthenticator:
 
             if not plan_id or not subscriber_address:
                 raise ValueError(
-                    "Cannot determine plan_id or subscriber_address from token (expected payload.authorization.from)"
+                    "Cannot determine plan_id or subscriber_address from token (expected accepted.planId and payload.authorization.from)"
                 )
 
             # Import build_payment_required here to avoid circular imports
@@ -112,8 +115,8 @@ class PaywallAuthenticator:
 
             return {
                 "token": token,
-                "agentId": agent_id,
-                "logicalUrl": logical_url,
+                "agent_id": agent_id,
+                "logical_url": logical_url,
                 "plan_id": plan_id,
                 "subscriber_address": subscriber_address,
             }
@@ -213,8 +216,8 @@ class PaywallAuthenticator:
                 raise ValueError("Permission verification failed")
             return {
                 "token": token,
-                "agentId": agent_id,
-                "logicalUrl": logical_url,
+                "agent_id": agent_id,
+                "logical_url": logical_url,
                 "plan_id": plan_id,
                 "subscriber_address": subscriber_address,
             }
