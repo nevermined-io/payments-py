@@ -77,7 +77,8 @@ def extract_nevermined_info(
         # V2: Check extensions field in PaymentPayload
         # Look for qualified Nevermined extensions (e.g., "nevermined:credits")
         # or legacy single "nevermined" extension
-        extensions = payment_payload.get("extensions", {})
+        # Note: For nvm:erc4337 scheme, extensions may be empty/None - fall through to v1 fallback
+        extensions = payment_payload.get("extensions") or {}
 
         # First, try to find any qualified Nevermined extension
         for ext_key, ext_data in extensions.items():

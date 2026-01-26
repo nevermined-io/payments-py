@@ -41,7 +41,15 @@ When modifying code in `payments_py/`, always update the corresponding tests:
 - `tests/integration/` - Integration tests
 - `tests/e2e/` - End-to-end tests (marked with `@pytest.mark.slow`)
 
-## Code Formatting
+## Code Style
+
+### Imports
+
+- **All imports must be at the top of the file** - Do not use inline imports inside functions unless absolutely necessary (e.g., to avoid circular dependencies)
+- **Remove unused imports** - Do not leave imports that are not used in the file
+- **Order imports**: standard library, third-party, local imports (Black will help organize these)
+
+### Formatting
 
 This project uses **Black** for code formatting with the following settings (from `pyproject.toml`):
 

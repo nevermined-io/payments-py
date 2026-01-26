@@ -1,9 +1,8 @@
 """X402 Protocol Supported Payment Schemes.
 
-Nevermined's credit-based payment system uses smart contracts,
-so we only support the "contract" scheme.
+Nevermined uses ERC-4337 account abstraction for credit-based payments.
 """
 
 from typing import Literal
 
-SupportedSchemes = Literal["contract"]
+SupportedSchemes = Literal["nvm:erc4337"]

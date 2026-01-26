@@ -126,18 +126,16 @@ class FacilitatorAPI(BasePaymentsAPI):
                 )
             except Exception:
                 error_message = "Permission verification failed"
-            raise PaymentsError.backend_error(
+            raise PaymentsError.from_backend(
                 error_message,
-                f"HTTP {response.status_code}",
-                {},
+                {"code": f"HTTP {response.status_code}"},
             ) from err
         except Exception as err:
             if isinstance(err, PaymentsError):
                 raise
-            raise PaymentsError.backend_error(
+            raise PaymentsError.from_backend(
                 "Network error during permission verification",
-                str(err),
-                {},
+                {"code": "network_error", "message": str(err)},
             ) from err
 
     def settle_permissions(
@@ -193,16 +191,14 @@ class FacilitatorAPI(BasePaymentsAPI):
                 )
             except Exception:
                 error_message = "Permission settlement failed"
-            raise PaymentsError.backend_error(
+            raise PaymentsError.from_backend(
                 error_message,
-                f"HTTP {response.status_code}",
-                {},
+                {"code": f"HTTP {response.status_code}"},
             ) from err
         except Exception as err:
             if isinstance(err, PaymentsError):
                 raise
-            raise PaymentsError.backend_error(
+            raise PaymentsError.from_backend(
                 "Network error during permission settlement",
-                str(err),
-                {},
+                {"code": "network_error", "message": str(err)},
             ) from err
