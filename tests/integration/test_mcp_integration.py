@@ -73,7 +73,7 @@ class PaymentsMinimal:
 def test_validates_and_burns_with_minimal_mocks():
     payments = PaymentsMinimal()
     mcp = build_mcp_integration(payments)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "mcp-int"})
+    mcp.configure({"agentId": "agent_id_hex", "serverName": "mcp-int"})
 
     async def handler(_args):
         return {"content": [{"type": "text", "text": "hello"}]}
@@ -91,7 +91,7 @@ def test_validates_and_burns_with_minimal_mocks():
 def test_integration_edge_not_subscriber_triggers_payment_required():
     payments = PaymentsMinimal(subscriber=False)
     mcp = build_mcp_integration(payments)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "mcp-int"})
+    mcp.configure({"agentId": "agent_id_hex", "serverName": "mcp-int"})
 
     async def handler(_args):
         return {"content": [{"type": "text", "text": "hello"}]}
@@ -153,7 +153,7 @@ def test_context_integration_with_real_like_data():
 
     payments = PaymentsWithX402(subscriber=True)
     mcp = build_mcp_integration(payments)
-    mcp.configure({"agentId": "did:nv:agent:abc123", "serverName": "weather-service"})
+    mcp.configure({"agentId": "agent_id_hex:abc123", "serverName": "weather-service"})
 
     captured_contexts = []
 
@@ -185,7 +185,7 @@ def test_context_integration_with_real_like_data():
                 }
             ],
             "metadata": {
-                "agentId": auth_result["agentId"],
+                "agent_id": auth_result["agent_id"],
                 "planId": context.get("plan_id"),
                 "subscriberAddress": context.get("subscriber_address"),
                 "creditsUsed": credits,
@@ -212,10 +212,10 @@ def test_context_integration_with_real_like_data():
 
     # Verify x402 PaywallContext structure
     assert context["auth_result"]["token"] == "weather-token-123"
-    assert context["auth_result"]["agentId"] == "did:nv:agent:abc123"
+    assert context["auth_result"]["agent_id"] == "agent_id_hex:abc123"
     assert (
         "mcp://weather-service/tools/get-weather"
-        in context["auth_result"]["logicalUrl"]
+        in context["auth_result"]["logical_url"]
     )
 
     # Verify x402 specific data
@@ -226,7 +226,7 @@ def test_context_integration_with_real_like_data():
     assert context["credits"] == 5
 
     # Verify metadata in result
-    assert result["metadata"]["agentId"] == "did:nv:agent:abc123"
+    assert result["metadata"]["agent_id"] == "agent_id_hex:abc123"
     assert result["metadata"]["planId"] == "plan-123"
     assert result["metadata"]["subscriberAddress"] == "0xSubscriber123"
     assert result["metadata"]["creditsUsed"] == 5

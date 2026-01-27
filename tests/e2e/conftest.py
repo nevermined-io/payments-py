@@ -59,13 +59,9 @@ def anyio_backend():
     return "asyncio"
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an event loop for the entire test session."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
+# Note: event_loop fixture is now managed by pytest-asyncio via
+# asyncio_default_fixture_loop_scope = "session" in pyproject.toml
+# Do not define a custom event_loop fixture as it's deprecated
 
 
 @pytest.fixture(autouse=True)

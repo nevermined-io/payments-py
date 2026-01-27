@@ -111,7 +111,7 @@ class PaymentsMock:
 def test_burns_fixed_credits_after_successful_call():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
 
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
@@ -132,7 +132,7 @@ def test_adds_metadata_to_result_after_successful_redemption():
     settle_result = {"success": True, "data": {"creditsBurned": "3"}}
     pm = PaymentsMock(settle_result=settle_result)
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
 
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
@@ -165,7 +165,7 @@ def test_adds_metadata_with_txhash_when_settle_returns_it():
     }
     pm = PaymentsMock(settle_result=settle_result)
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
 
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
@@ -193,7 +193,7 @@ def test_does_not_add_metadata_when_settlement_fails():
     settle_result = {"success": False, "error": "Insufficient credits"}
     pm = PaymentsMock(settle_result=settle_result)
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
 
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
@@ -211,7 +211,7 @@ def test_does_not_add_metadata_when_settlement_fails():
 def test_rejects_when_authorization_header_missing():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent"})
+    mcp.configure({"agentId": "unit_agent_id_hex"})
 
     async def base(_args, _extra=None):
         return {}
@@ -230,7 +230,7 @@ def test_rejects_when_authorization_header_missing():
 def test_burns_dynamic_credits_from_function():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "srv"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "srv"})
 
     async def base(_args, _extra=None):
         return {"content": [{"type": "text", "text": "ok"}]}
@@ -254,7 +254,7 @@ def test_burns_dynamic_credits_from_function():
 def test_defaults_to_one_credit_when_undefined():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:x", "serverName": "srv"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "srv"})
 
     async def base(_args, _extra=None):
         return {"res": True}
@@ -272,7 +272,7 @@ def test_defaults_to_one_credit_when_undefined():
 def test_does_not_settle_when_zero_credits():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:x", "serverName": "srv"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "srv"})
 
     async def base(_args, _extra=None):
         return {"res": True}
@@ -316,7 +316,7 @@ def test_propagates_error_on_settle_when_configured():
 
     pm = P()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:x", "serverName": "srv"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "srv"})
 
     async def base(_args, _extra=None):
         return {"ok": True}
@@ -342,18 +342,18 @@ def test_propagates_error_on_settle_when_configured():
 def test_attach_register_resource_wraps_and_burns():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "srv"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "srv"})
 
     captured = {}
 
     class Server:
-        def registerResource(self, name, template, config, handler):
+        def register_resource(self, name, template, config, handler):
             captured["wrapped"] = handler
 
-        def registerTool(self, name, config, handler):
+        def register_tool(self, name, config, handler):
             captured["tool"] = handler
 
-        def registerPrompt(self, name, config, handler):
+        def register_prompt(self, name, config, handler):
             captured["prompt"] = handler
 
     api = mcp.attach(Server())
@@ -365,7 +365,7 @@ def test_attach_register_resource_wraps_and_burns():
             ]
         }
 
-    api.registerResource(
+    api.register_resource(
         "res.test",
         {"tpl": True},
         {"cfg": True},
@@ -395,7 +395,7 @@ def test_accepts_authorization_from_multiple_header_containers():
 
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "mcp"})
 
     async def base(_args, _extra=None):
         return {"ok": True}
@@ -413,7 +413,7 @@ def test_accepts_authorization_from_multiple_header_containers():
 def test_settles_after_async_iterable_completes():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "mcp"})
 
     async def make_iterable(chunks):
         async def gen():
@@ -448,7 +448,7 @@ def test_settles_after_async_iterable_completes():
 def test_settles_when_consumer_stops_stream_early():
     pm = PaymentsMock()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "mcp"})
 
     async def make_iterable(chunks):
         async def gen():
@@ -539,7 +539,7 @@ def test_backward_compatibility_handlers_without_context():
     """Test that handlers without context parameter still work."""
     pm = PaymentsMockWithX402Context()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
 
     async def old_handler(args, extra=None):
         return {
@@ -562,7 +562,7 @@ def test_handlers_with_context_receive_paywall_context():
     """Test that handlers with context parameter receive PaywallContext."""
     pm = PaymentsMockWithX402Context()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
 
     captured_context = None
 
@@ -589,7 +589,7 @@ def test_paywall_context_structure():
     """Test that PaywallContext contains all expected fields for x402."""
     pm = PaymentsMockWithX402Context()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
 
     captured_context = None
 
@@ -615,8 +615,8 @@ def test_paywall_context_structure():
     # Verify auth_result structure for x402
     auth_result = captured_context["auth_result"]
     assert auth_result["token"] == "token"
-    assert auth_result["agentId"] == "did:nv:agent"
-    assert auth_result["logicalUrl"].startswith("mcp://test-mcp/tools/test")
+    assert auth_result["agent_id"] == "unit_agent_id_hex"
+    assert auth_result["logical_url"].startswith("mcp://test-mcp/tools/test")
     assert auth_result["plan_id"] == "plan123"
     assert auth_result["subscriber_address"] == "0x123subscriber"
 
@@ -633,7 +633,7 @@ def test_context_handlers_can_use_x402_context_data():
     """Test that handlers can access and use x402 context data."""
     pm = PaymentsMockWithX402Context()
     mcp = build_mcp_integration(pm)
-    mcp.configure({"agentId": "did:nv:agent", "serverName": "test-mcp"})
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
 
     async def business_logic_handler(args, extra=None, context=None):
         if not context:
@@ -650,7 +650,7 @@ def test_context_handlers_can_use_x402_context_data():
                 "plan_id": plan_id,
                 "subscriber_address": subscriber_address,
                 "creditsUsed": credits,
-                "agentId": auth_result["agentId"],
+                "agent_id": auth_result["agent_id"],
             },
         }
 
@@ -669,4 +669,4 @@ def test_context_handlers_can_use_x402_context_data():
     assert out["metadata"]["plan_id"] == "plan123"
     assert out["metadata"]["subscriber_address"] == "0x123subscriber"
     assert out["metadata"]["creditsUsed"] == 3
-    assert out["metadata"]["agentId"] == "did:nv:agent"
+    assert out["metadata"]["agent_id"] == "unit_agent_id_hex"

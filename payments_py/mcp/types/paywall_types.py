@@ -24,6 +24,7 @@ class BasePaywallOptions(TypedDict, total=False):
     name: str
     credits: CreditsOption
     onRedeemError: str  # 'ignore' | 'propagate'
+    planId: str  # Optional override for the plan ID (x402)
 
 
 class ToolOptions(BasePaywallOptions):
