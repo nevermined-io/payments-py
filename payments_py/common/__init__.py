@@ -20,7 +20,7 @@ from payments_py.common.types import (
     NvmAPIResult,
 )
 from payments_py.common.payments_error import PaymentsError
-from payments_py.common.helper import (
+from payments_py.utils import (
     get_ai_hub_open_api_url,
     get_service_host_from_endpoints,
 )
