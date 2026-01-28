@@ -10,8 +10,9 @@ packages = [{include = "payments_py"}]
 python = "^3.10"
 requests = "^2.31.0"
 mkdocs = "^1.5.3"
-mkdocs-awesome-pages-plugin = "^2.9.2"
-lazydocs = "^0.4.8"
+mkdocs-material = "^9.5.0"
+mkdocstrings = {version = "^0.29.0", extras = ["python"]}
+mike = "^2.1.0"
 pydantic = "^2.8.2"
 pyjwt = "^2.9.0"
 python-socketio = "5.14.3"
