@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import AsyncGenerator, Any
 
+import httpx
 from a2a.client.client import ClientConfig
 from a2a.client.client_factory import ClientFactory, minimal_agent_card
 from a2a.client.middleware import ClientCallContext
@@ -81,8 +82,12 @@ class PaymentsClient:  # noqa: D101
 
     def _get_client(self):  # noqa: D401
         if self._client is None:
-            # Ensure streaming enabled in config
-            factory = ClientFactory(config=ClientConfig(streaming=True))
+            # Use a generous timeout: server-side payment validation involves
+            # blockchain calls that can take 10+ seconds.
+            http_client = httpx.AsyncClient(timeout=httpx.Timeout(60.0))
+            factory = ClientFactory(
+                config=ClientConfig(streaming=True, httpx_client=http_client)
+            )
             client = factory.create(minimal_agent_card(self._agent_base_url))
             # Hint streaming support on the minimal card to allow resubscribe without fetching extended card
             try:
