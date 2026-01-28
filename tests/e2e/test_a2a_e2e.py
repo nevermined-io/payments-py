@@ -760,6 +760,29 @@ class TestA2AE2EFlow:
             raise RuntimeError("Failed to obtain access token")
 
     @classmethod
+    def _refresh_access_token(cls):
+        """Get a fresh access token to avoid exhausting redemption limits."""
+        agent_access_params = cls.payments_subscriber.x402.get_x402_access_token(
+            cls.PLAN_ID, cls.AGENT_ID
+        )
+        cls.access_token = agent_access_params.get("accessToken")
+        if not cls.access_token:
+            raise RuntimeError("Failed to refresh access token")
+        return cls.access_token
+
+    def setup_method(self, method):
+        """Refresh access token before each test to avoid redemption limit exhaustion."""
+        if self.setup_error is None and method.__name__ not in (
+            "test_check_balance_and_order_if_needed",
+            "test_get_agent_access_token",
+            "test_invalid_bearer_token_flow",
+        ):
+            try:
+                self._refresh_access_token()
+            except Exception as e:
+                print(f"Warning: could not refresh token before {method.__name__}: {e}")
+
+    @classmethod
     def teardown_class(cls):
         """Cleanup after all test methods in the class."""
 
