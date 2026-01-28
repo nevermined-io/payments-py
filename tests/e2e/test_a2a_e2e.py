@@ -679,6 +679,7 @@ class WebhookTestServer:
         self.received_webhooks.clear()
 
 
+@pytest.mark.timeout(120)
 class TestA2AE2EFlow:
     """E2E tests for A2A payment flows using Nevermined backend."""
 
