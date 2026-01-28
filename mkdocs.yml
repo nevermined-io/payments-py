@@ -1,17 +1,96 @@
-site_name: payments-py
-site_url: https://github.com/nevermined-io/payments-py
+site_name: Nevermined Payments Python SDK
+site_url: https://nevermined-io.github.io/payments-py
 site_author: Nevermined
+site_description: Python SDK for Nevermined Payments - AI Agent monetization and access control
 
-
-# Repository
-# repo_name: payments-py
-# repo_url: https://github.com/nevermined-io/payments-py
-# edit_uri: edit/master/docs
-# docs_dir: docs
-
-plugins:
-    - awesome-pages
-    - search
+repo_name: nevermined-io/payments-py
+repo_url: https://github.com/nevermined-io/payments-py
 
 theme:
-  name: readthedocs
+  name: material
+  custom_dir: docs/overrides
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+extra:
+  version:
+    provider: mike
+
+extra_css:
+  - overrides/extra.css
+
+plugins:
+  - search
+  - mkdocstrings:
+      enabled: true
+      default_handler: python
+      handlers:
+        python:
+          paths: ["."]
+          import:
+            - https://docs.python.org/3/objects.inv
+          options:
+            docstring_style: google
+            docstring_section_style: spacy
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            heading_level: 3
+            merge_init_into_class: true
+            show_signature_annotations: true
+            separate_signature: true
+            filters:
+              - "!^_"
+              - "!^__"
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - API Reference:
+    - 01. Installation: api/01-installation.md
+    - 02. Initializing the Library: api/02-initializing-the-library.md
+    - 03. Payment Plans: api/03-payment-plans.md
+    - 04. Agents: api/04-agents.md
+    - 05. Publishing Static Resources: api/05-publishing-static-resources.md
+    - 06. Payments and Balance: api/06-payments-and-balance.md
+    - 07. Querying an Agent: api/07-querying-an-agent.md
+    - 08. Validation of Requests: api/08-validation-of-requests.md
+    - 09. MCP Integration: api/09-mcp-integration.md
+    - 10. A2A Integration: api/10-a2a-integration.md
+    - 11. x402 Protocol: api/11-x402.md
+  - Reference:
+    - Payments Class: reference/payments.md
+    - Data Models: reference/data_models.md
+    - Environments: reference/environments.md
