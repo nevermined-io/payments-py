@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Nevermined" /><link rel="canonical" href="https://github.com/nevermined-io/payments-py/ai_query_api/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Ai query api - payments-py</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Ai query api";
+        var mkdocs_page_input_path = "ai_query_api.md";
+        var mkdocs_page_url = "/nevermined-io/payments-py/ai_query_api/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> payments-py
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Overview</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Ai query api</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#global-variables">Global Variables</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#class-aiqueryapi">class AIQueryApi</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#method-__init__">method __init__</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-create_steps">method create_steps</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-create_task">method create_task</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_step">method get_step</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_steps">method get_steps</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_steps_from_task">method get_steps_from_task</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_task_with_steps">method get_task_with_steps</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-get_tasks_from_agents">method get_tasks_from_agents</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-log_task">method log_task</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-search_step">method search_step</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-search_tasks">method search_tasks</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-subscribe">method subscribe</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-subscribe_tasks_updated">method subscribe_tasks_updated</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#method-update_step">method update_step</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../data_models/">Data models</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../environments/">Environments</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../mcp.index/">Mcp.index</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../mcp/">Mcp</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../mcp.types/">Mcp.types</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../nvm_backend/">Nvm backend</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../payments/">Payments</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../plans/">Plans</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../utils/">Utils</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">payments-py</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Ai query api</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!-- markdownlint-disable -->
+
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h1 id="module-ai_query_api"><kbd>module</kbd> <code>ai_query_api</code></h1>
+<h2 id="global-variables"><strong>Global Variables</strong></h2>
+<ul>
+<li><strong>SEARCH_TASKS_ENDPOINT</strong></li>
+<li><strong>SEARCH_STEPS_ENDPOINT</strong></li>
+<li><strong>CREATE_STEPS_ENDPOINT</strong></li>
+<li><strong>UPDATE_STEP_ENDPOINT</strong></li>
+<li><strong>GET_AGENTS_ENDPOINT</strong></li>
+<li><strong>GET_BUILDER_STEPS_ENDPOINT</strong></li>
+<li><strong>GET_TASK_STEPS_ENDPOINT</strong></li>
+<li><strong>TASK_ENDPOINT</strong></li>
+<li><strong>GET_TASK_ENDPOINT</strong></li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L19"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-aiqueryapi"><kbd>class</kbd> <code>AIQueryApi</code></h2>
+<p>Represents the AI Query API. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>opts</code></b> (BackendApiOptions):  The backend API options </li>
+</ul>
+<p>Methods: 
+ - <b><code>create_task</code></b>:  Creates a task for an agent to execute 
+ - <b><code>create_steps</code></b>:  Creates steps for a task 
+ - <b><code>update_step</code></b>:  Updates a step 
+ - <b><code>search_tasks</code></b>:  Searches for tasks 
+ - <b><code>get_task_with_steps</code></b>:  Gets a task with its steps 
+ - <b><code>get_steps_from_task</code></b>:  Gets the steps from a task 
+ - <b><code>get_steps</code></b>:  Gets the steps 
+ - <b><code>get_tasks_from_agents</code></b>:  Gets the tasks from the agents 
+ - <b><code>search_step</code></b>:  Searches for steps 
+ - <b><code>get_step</code></b>:  Gets the details of a step </p>
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L38"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
+<pre><code class="language-python">__init__(opts: BackendApiOptions)
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L101"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-create_steps"><kbd>method</kbd> <code>create_steps</code></h3>
+<pre><code class="language-python">create_steps(did: str, task_id: str, steps: List[Step])
+</code></pre>
+<p>It creates the step/s required to complete an AI Task. This method is used by the AI Agent to create the steps required to complete the AI Task. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+<li><b><code>steps</code></b> (List[Step]):  The steps to create. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L70"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-create_task"><kbd>method</kbd> <code>create_task</code></h3>
+<pre><code class="language-python">create_task(did: str, task: Task, _callback: Optional[Any] = None)
+</code></pre>
+<p>Subscribers can create an AI Task for an Agent. The task must contain the input query that will be used by the AI Agent. This method is used by subscribers of a Payment Plan required to access a specific AI Agent or Service. Users who are not subscribers won't be able to create AI Tasks for that Agent. Because only subscribers can create AI Tasks, the method requires the access token to interact with the AI Agent/Service. This is given using the <code>queryOpts</code> object (accessToken attribute). </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task</code></b> (Task):  The task to create. </li>
+<li><b><code>_callback</code></b> (Any):  The callback to execute when a new task log event is received (optional) </li>
+</ul>
+<p><strong>Example:</strong>
+ task = {  "query": "https://www.youtube.com/watch?v=0tZFQs7qBfQ",  "name": "transcribe",  "additional_params": [],  "artifacts": [] } task = subscriber.query.create_task(agent.did, task) print('Task created:', task.json()) </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L182"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_step"><kbd>method</kbd> <code>get_step</code></h3>
+<pre><code class="language-python">get_step(step_id: str)
+</code></pre>
+<p>Get the details of a step. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+<li><b><code>step_id</code></b> (str):  The step ID. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L194"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_steps"><kbd>method</kbd> <code>get_steps</code></h3>
+<pre><code class="language-python">get_steps(
+    status: AgentExecutionStatus = &lt;AgentExecutionStatus.Pending: 'Pending'&gt;,
+    dids: List[str] = []
+)
+</code></pre>
+<p>It retrieves all the steps that the agent needs to execute to complete the different tasks assigned. This method is used by the AI Agent to retrieve information about the steps part of tasks created by users to the agents owned by the user. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>status</code></b> (AgentExecutionStatus):  The status of the steps. </li>
+<li><b><code>dids</code></b> (List[str]):  The list of DIDs. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L157"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_steps_from_task"><kbd>method</kbd> <code>get_steps_from_task</code></h3>
+<pre><code class="language-python">get_steps_from_task(did: str, task_id: str, status: Optional[str] = None)
+</code></pre>
+<p>It retrieves all the steps that the agent needs to execute to complete a specific task associated to the user. This method is used by the AI Agent to retrieve information about the tasks created by users to the agents owned by the user. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+<li><b><code>status</code></b> (Optional[str]):  The status of the steps. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L142"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_task_with_steps"><kbd>method</kbd> <code>get_task_with_steps</code></h3>
+<pre><code class="language-python">get_task_with_steps(did: str, task_id: str)
+</code></pre>
+<p>It returns the full task and the steps resulted of the execution of the task. </p>
+<p>This method is used by subscribers of a Payment Plan required to access a specific AI Agent or Service. Users who are not subscribers won't be able to create AI Tasks for that Agent. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L212"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_tasks_from_agents"><kbd>method</kbd> <code>get_tasks_from_agents</code></h3>
+<pre><code class="language-python">get_tasks_from_agents()
+</code></pre>
+<p>It retrieves all the tasks that the agent needs to execute to complete the different tasks assigned. This method is used by the AI Agent to retrieve information about the tasks created by users to the agents owned by the user </p>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L57"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-log_task"><kbd>method</kbd> <code>log_task</code></h3>
+<pre><code class="language-python">log_task(task_log: TaskLog)
+</code></pre>
+<p>It send a log message with the status of a task and a message with relevant information for the subscriber. This method is used by AI agents to log messages. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>task_log</code></b> (TaskLog):  An instance containing log details. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L172"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-search_step"><kbd>method</kbd> <code>search_step</code></h3>
+<pre><code class="language-python">search_step(search_params: Any)
+</code></pre>
+<p>It search steps based on the search parameters. The steps belongs to the tasks part of the AI Agents owned by the user. This method is used by the AI Agent to retrieve information about the steps part of tasks created by users to the agents owned by the user. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>search_params</code></b> (Any):  The search parameters. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L133"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-search_tasks"><kbd>method</kbd> <code>search_tasks</code></h3>
+<pre><code class="language-python">search_tasks(search_params: Any)
+</code></pre>
+<p>It searches tasks based on the search parameters associated to the user. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>search_params</code></b> (Any):  The search parameters. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L42"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-subscribe"><kbd>method</kbd> <code>subscribe</code></h3>
+<pre><code class="language-python">subscribe(
+    callback: Any,
+    join_account_room: bool = True,
+    join_agent_rooms: Optional[str, List[str]] = None,
+    subscribe_event_types: Optional[List[str]] = None,
+    get_pending_events_on_subscribe: bool = True
+)
+</code></pre>
+<p>It subscribes to the Nevermined network to retrieve new AI Tasks requested by other users. This method is used by AI agents to subscribe and receive new AI Tasks sent by other subscribers. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>callback</code></b> (Any):  The callback function to be called when a new event is received. </li>
+<li><b><code>join_account_room</code></b> (bool):  If True, it will join the account room. </li>
+<li><b><code>join_agent_rooms</code></b> (Optional[Union[str, List[str]]]):  The agent rooms to join. </li>
+<li><b><code>subscribe_event_types</code></b> (Optional[List[str]]):  The event types to subscribe to. </li>
+<li><b><code>get_pending_events_on_subscribe</code></b> (bool):  If True, it will get the pending events on subscribe. </li>
+</ul>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L220"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-subscribe_tasks_updated"><kbd>method</kbd> <code>subscribe_tasks_updated</code></h3>
+<pre><code class="language-python">subscribe_tasks_updated(callback: Any, tasks: List[str])
+</code></pre>
+<hr />
+<p><a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/ai_query_api.py#L115"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-update_step"><kbd>method</kbd> <code>update_step</code></h3>
+<pre><code class="language-python">update_step(did: str, task_id: str, step_id: str, step: Step)
+</code></pre>
+<p>It updates the step with the new information. This method is used by the AI Agent to update the status and output of an step. This method can not be called by a subscriber. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>did</code></b> (str):  The DID of the service. </li>
+<li><b><code>task_id</code></b> (str):  The task ID. </li>
+<li><b><code>step_id</code></b> (str):  The step ID. </li>
+<li><b><code>step</code></b> (Step):  The step object to update. https://docs.nevermined.io/docs/protocol/query-protocol#steps-attributes </li>
+</ul>
+<hr />
+<p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href=".." class="btn btn-neutral float-left" title="Overview"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../data_models/" class="btn btn-neutral float-right" title="Data models">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../data_models/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
