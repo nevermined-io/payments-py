@@ -209,13 +209,13 @@ def remove_first_heading(content: str) -> str:
 
 def add_frontmatter(content: str, title: str, description: str, icon: str) -> str:
     """Add Mintlify frontmatter to the content."""
-    frontmatter = f'''---
+    frontmatter = f"""---
 title: "{title}"
 description: "{description}"
 icon: "{icon}"
 ---
 
-'''
+"""
     return frontmatter + content
 
 
