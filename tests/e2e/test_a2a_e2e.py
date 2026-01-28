@@ -729,7 +729,7 @@ class TestA2AE2EFlow:
             print(f"Error getting balance: {balance_error}")
             current_balance = 0
 
-        if current_balance < min_balance:
+        while current_balance < min_balance:
             print(
                 f"Balance ({current_balance}) is below {min_balance}, ordering plan..."
             )
@@ -738,6 +738,15 @@ class TestA2AE2EFlow:
                 print(f"Order result: {order_result}")
             except Exception as order_error:
                 print(f"Error ordering plan: {order_error}")
+                break
+            try:
+                balance_result = cls.payments_subscriber.plans.get_plan_balance(
+                    cls.PLAN_ID
+                )
+                current_balance = int(balance_result.balance)
+                print(f"Balance after ordering: {current_balance}")
+            except Exception:
+                break
 
         # Get x402 access token
         agent_access_params = cls.payments_subscriber.x402.get_x402_access_token(
@@ -748,13 +757,6 @@ class TestA2AE2EFlow:
             print(f"Got access token: {cls.access_token[:20]}...")
         else:
             raise RuntimeError("Failed to obtain access token")
-
-    def setup_method(self, method):
-        """Ensure sufficient balance and valid token before each test."""
-        try:
-            self._ensure_balance_and_token(min_balance=5)
-        except Exception as e:
-            print(f"Warning: setup_method could not refresh token: {e}")
 
     @classmethod
     def teardown_class(cls):
