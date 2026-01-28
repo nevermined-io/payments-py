@@ -11,14 +11,14 @@ theme:
   custom_dir: docs/overrides
   palette:
     - scheme: default
-      primary: deep purple
-      accent: purple
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
-      primary: deep purple
-      accent: purple
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -34,6 +34,9 @@ theme:
 extra:
   version:
     provider: mike
+
+extra_css:
+  - overrides/extra.css
 
 plugins:
   - search
