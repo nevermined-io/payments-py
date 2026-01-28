@@ -575,15 +575,15 @@ class A2ATestServer:
                 self.server_thread.join(timeout=5.0)
         except Exception:
             pass
-        # Best-effort: ensure port is free before returning
+        # Ensure port is free before returning (without SO_REUSEADDR to detect
+        # TIME_WAIT sockets still holding the port)
         try:
-            import socket  # local import
+            import socket
 
-            for _ in range(100):
+            for _ in range(200):
                 sock = socket.socket()
                 try:
-                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    sock.bind(("127.0.0.1", 41243))
+                    sock.bind(("127.0.0.1", self.port))
                     sock.close()
                     break
                 except OSError:
@@ -706,7 +706,55 @@ class TestA2AE2EFlow:
 
         cls.AGENT_ID = setup_result["agentId"]
         cls.PLAN_ID = setup_result["planId"]
-        cls.access_token = None  # Will be set after plan is ordered in test_check_balance_and_order_if_needed
+        cls.access_token = None
+        cls.setup_error = None
+
+        # Check balance and order plan if needed
+        try:
+            cls._ensure_balance_and_token()
+        except Exception as e:
+            cls.setup_error = str(e)
+            print(f"Warning: setup_class could not acquire access token: {e}")
+
+    @classmethod
+    def _ensure_balance_and_token(cls, min_balance=20):
+        """Check subscriber balance, order plan if needed, and acquire access token."""
+        print(f"Checking balance for plan: {cls.PLAN_ID}")
+
+        try:
+            balance_result = cls.payments_subscriber.plans.get_plan_balance(cls.PLAN_ID)
+            current_balance = int(balance_result.balance)
+            print(f"Current balance: {current_balance}")
+        except Exception as balance_error:
+            print(f"Error getting balance: {balance_error}")
+            current_balance = 0
+
+        if current_balance < min_balance:
+            print(
+                f"Balance ({current_balance}) is below {min_balance}, ordering plan..."
+            )
+            try:
+                order_result = cls.payments_subscriber.plans.order_plan(cls.PLAN_ID)
+                print(f"Order result: {order_result}")
+            except Exception as order_error:
+                print(f"Error ordering plan: {order_error}")
+
+        # Get x402 access token
+        agent_access_params = cls.payments_subscriber.x402.get_x402_access_token(
+            cls.PLAN_ID, cls.AGENT_ID
+        )
+        cls.access_token = agent_access_params.get("accessToken")
+        if cls.access_token:
+            print(f"Got access token: {cls.access_token[:20]}...")
+        else:
+            raise RuntimeError("Failed to obtain access token")
+
+    def setup_method(self, method):
+        """Ensure sufficient balance and valid token before each test."""
+        try:
+            self._ensure_balance_and_token(min_balance=5)
+        except Exception as e:
+            print(f"Warning: setup_method could not refresh token: {e}")
 
     @classmethod
     def teardown_class(cls):
@@ -714,72 +762,14 @@ class TestA2AE2EFlow:
 
     @pytest.mark.asyncio
     async def test_check_balance_and_order_if_needed(self):
-        """Check subscriber balance and order plan if needed."""
-        print(f"Checking balance for plan: {self.PLAN_ID}")
-
-        try:
-            # Check current balance
-            print(f"Attempting to get balance for plan: {self.PLAN_ID}")
-            print(
-                f"Using subscriber with address: {self.payments_subscriber.account_address}"
-            )
-
-            try:
-                balance_result = self.payments_subscriber.plans.get_plan_balance(
-                    self.PLAN_ID
-                )
-                print(f"Raw balance result: {balance_result}")
-                current_balance = int(balance_result.balance)
-                print(f"Current balance: {current_balance}")
-            except Exception as balance_error:
-                print(f"❌ Error getting balance: {balance_error}")
-                # If we can't get balance, let's try to order anyway
-                print("Attempting to order plan without balance check...")
-                current_balance = 0
-
-            # If balance is 0 or low, order the plan
-            if current_balance < 10:  # Ensure we have at least 10 credits
-                print("Balance is low, ordering plan...")
-                try:
-                    order_result = self.payments_subscriber.plans.order_plan(
-                        self.PLAN_ID
-                    )
-                    print(f"Order result: {order_result}")
-                    if order_result and order_result.get("success"):
-                        print("✅ Plan ordered successfully")
-                    else:
-                        print(f"⚠️ Order result: {order_result}")
-                except Exception as order_error:
-                    print(f"❌ Error ordering plan: {order_error}")
-                    # Continue anyway, maybe the user already has credits
-
-                # Try to check balance again after ordering
-                try:
-                    balance_result = self.payments_subscriber.plans.get_plan_balance(
-                        self.PLAN_ID
-                    )
-                    new_balance = int(balance_result.balance)
-                    print(f"New balance after ordering: {new_balance}")
-                except Exception as balance_error2:
-                    print(f"❌ Error getting balance after order: {balance_error2}")
-
-            print("✅ Balance check and order process completed")
-
-        except Exception as e:
-            print(f"❌ Error in balance check/order: {e}")
-            # Don't raise, continue with tests
-            print("⚠️ Continuing with tests despite balance check error")
-
-        # Get x402 access token after ordering the plan (if ordered)
-        try:
-            agent_access_params = self.payments_subscriber.x402.get_x402_access_token(
-                self.PLAN_ID, self.AGENT_ID
-            )
-            self.__class__.access_token = agent_access_params.get("accessToken")
-            print(f"✅ Got access token: {self.__class__.access_token[:20]}...")
-        except Exception as e:
-            print(f"⚠️ Warning: Could not get access token after ordering: {e}")
-            self.__class__.access_token = None
+        """Verify that setup_class successfully acquired balance and access token."""
+        assert (
+            self.setup_error is None
+        ), f"setup_class failed to acquire access token: {self.setup_error}"
+        assert (
+            self.access_token is not None
+        ), "Access token should be set in setup_class"
+        print(f"Access token verified: {self.access_token[:20]}...")
 
     @pytest.mark.asyncio
     async def test_get_agent_access_token(self):
@@ -1202,7 +1192,7 @@ class TestA2AE2EFlow:
 
         try:
             print(f"Sending cancellation test request to real server: {server_url}")
-            response = httpx.post(server_url, json=payload, headers=headers, timeout=10)
+            response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
             assert response.status_code == 200
 
             response_data = response.json()
@@ -1291,7 +1281,7 @@ class TestA2AE2EFlow:
             headers = {"Authorization": f"Bearer {self.access_token}"}
 
             print(f"Sending webhook test request to real server: {server_url}")
-            response = httpx.post(server_url, json=payload, headers=headers, timeout=10)
+            response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
 
             # Verify response
             assert (
@@ -1405,7 +1395,7 @@ class TestA2AE2EFlow:
 
         try:
             print(f"Sending resubscription test request to real server: {server_url}")
-            response = httpx.post(server_url, json=payload, headers=headers, timeout=10)
+            response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
             assert response.status_code == 200
 
             response_data = response.json()
