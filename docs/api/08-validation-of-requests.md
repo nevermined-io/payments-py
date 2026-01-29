@@ -1,4 +1,4 @@
-# Validation of Requests
+# Request Validation
 
 This guide explains how AI agents can validate incoming requests using the Nevermined Payments Python SDK.
 
@@ -14,7 +14,7 @@ The SDK provides the Facilitator API for these operations.
 
 ## Receiving Requests
 
-Agents receive requests with the access token in the `Authorization` or `X-Payment` header:
+Agents receive requests with the x402 access token in the `payment-signature` header (per [x402 v2 HTTP transport spec](https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md)):
 
 ```python
 from flask import Flask, request, jsonify
@@ -23,15 +23,11 @@ app = Flask(__name__)
 
 @app.route('/tasks', methods=['POST'])
 def handle_task():
-    # Extract token from header
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header.startswith('Bearer '):
-        access_token = auth_header[7:]  # Remove 'Bearer ' prefix
-    else:
-        access_token = request.headers.get('X-Payment', '')
+    # Extract x402 token from payment-signature header
+    x402_token = request.headers.get('payment-signature', '')
 
-    if not access_token:
-        return jsonify({'error': 'Missing access token'}), 401
+    if not x402_token:
+        return jsonify({'error': 'Missing payment-signature header'}), 402
 
     # Validate and process...
 ```
@@ -114,12 +110,10 @@ PLAN_ID = "your-plan-id"
 
 @app.route('/api/tasks', methods=['POST'])
 def create_task():
-    # 1. Extract access token
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        return jsonify({'error': 'Missing Bearer token'}), 401
-
-    access_token = auth_header[7:]
+    # 1. Extract x402 access token from payment-signature header
+    access_token = request.headers.get('payment-signature', '')
+    if not access_token:
+        return jsonify({'error': 'Missing payment-signature header'}), 402
 
     # 2. Build payment required object
     payment_required = build_payment_required(
@@ -170,7 +164,7 @@ if __name__ == '__main__':
     app.run(port=8080)
 ```
 
-## FastAPI Example with Middleware
+## FastAPI Example with Manual Validation
 
 ```python
 from fastapi import FastAPI, Request, HTTPException
@@ -188,11 +182,10 @@ PLAN_ID = "your-plan-id"
 
 async def validate_payment(request: Request) -> dict:
     """Validate payment and return verification result."""
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        raise HTTPException(status_code=401, detail="Missing Bearer token")
-
-    access_token = auth_header[7:]
+    # Extract x402 token from payment-signature header
+    access_token = request.headers.get('payment-signature', '')
+    if not access_token:
+        raise HTTPException(status_code=402, detail="Missing payment-signature header")
 
     payment_required = build_payment_required(
         plan_id=PLAN_ID,

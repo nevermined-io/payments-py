@@ -86,7 +86,7 @@ nav:
     - 05. Publishing Static Resources: api/05-publishing-static-resources.md
     - 06. Payments and Balance: api/06-payments-and-balance.md
     - 07. Querying an Agent: api/07-querying-an-agent.md
-    - 08. Validation of Requests: api/08-validation-of-requests.md
+    - 08. Request Validation: api/08-validation-of-requests.md
     - 09. MCP Integration: api/09-mcp-integration.md
     - 10. A2A Integration: api/10-a2a-integration.md
     - 11. x402 Protocol: api/11-x402.md

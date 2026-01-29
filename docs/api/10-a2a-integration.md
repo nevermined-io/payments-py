@@ -298,4 +298,4 @@ result = payments.a2a["start"](
 ## Next Steps
 
 - [x402 Protocol](11-x402.md) - Deep dive into x402 payment protocol
-- [Validation of Requests](08-validation-of-requests.md) - Manual validation patterns
+- [Request Validation](08-validation-of-requests.md) - Manual validation patterns

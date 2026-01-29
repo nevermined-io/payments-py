@@ -218,4 +218,4 @@ if final_balance.is_subscriber:
 ## Next Steps
 
 - [Querying an Agent](07-querying-an-agent.md) - Get access tokens and make requests
-- [Validation of Requests](08-validation-of-requests.md) - How agents validate requests
+- [Request Validation](08-validation-of-requests.md) - How agents validate requests

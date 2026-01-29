@@ -192,9 +192,9 @@ facilitator = NeverminedFacilitator(
 
 @app.route("/api/data")
 def get_data():
-    x_payment = request.headers.get("X-Payment")
+    payment_token = request.headers.get("payment-signature")
 
-    if not x_payment:
+    if not payment_token:
         # Return 402 Payment Required
         return jsonify({
             "x402Version": 2,
@@ -351,7 +351,7 @@ sequenceDiagram
     BC-->>F: Balance OK
     F-->>C: Access token
 
-    C->>S: GET /api/data<br/>(with X-Payment header)
+    C->>S: GET /api/data<br/>(with payment-signature header)
 
     S->>F: Verify payment
     F->>BC: Check token validity

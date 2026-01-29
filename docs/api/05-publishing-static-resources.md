@@ -176,29 +176,7 @@ software_result = payments.agents.register_agent(
 
 ## Accessing Static Resources
 
-Subscribers can access static resources using the x402 access token:
-
-```python
-# As a subscriber, get access token
-access_result = payments.x402.get_x402_access_token(
-    plan_id=plan_id,
-    agent_id=resource_id
-)
-access_token = access_result['accessToken']
-
-# Download a file
-import requests
-
-response = requests.get(
-    "https://storage.example.com/datasets/training-data.csv",
-    headers={"Authorization": f"Bearer {access_token}"}
-)
-
-if response.status_code == 200:
-    with open("training-data.csv", "wb") as f:
-        f.write(response.content)
-    print("File downloaded successfully")
-```
+For details on how subscribers access static resources using x402 access tokens, see [Request Validation](08-validation-of-requests.md).
 
 ## Best Practices
 

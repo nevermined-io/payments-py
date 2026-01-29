@@ -48,7 +48,7 @@ Step-by-step guides for using the SDK:
 5. [Publishing Static Resources](api/05-publishing-static-resources.md) - Publish files and datasets
 6. [Payments and Balance](api/06-payments-and-balance.md) - Order plans and check balances
 7. [Querying an Agent](api/07-querying-an-agent.md) - Get access tokens and make requests
-8. [Validation of Requests](api/08-validation-of-requests.md) - Validate incoming requests
+8. [Request Validation](api/08-validation-of-requests.md) - Validate incoming requests
 9. [MCP Integration](api/09-mcp-integration.md) - Build MCP servers with payments
 10. [A2A Integration](api/10-a2a-integration.md) - Agent-to-Agent protocol integration
 11. [x402 Protocol](api/11-x402.md) - Payment permissions and settlement
