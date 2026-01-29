@@ -29,7 +29,7 @@
     
     
       
-        <title>08. Validation of Requests - Nevermined Payments Python SDK</title>
+        <title>08. Request Validation - Nevermined Payments Python SDK</title>
       
     
     
@@ -84,7 +84,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#validation-of-requests" class="md-skip">
+        <a href="#request-validation" class="md-skip">
           Skip to content
         </a>
       
@@ -122,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              08. Validation of Requests
+              08. Request Validation
             
           </span>
         </div>
@@ -638,7 +638,7 @@
   <span class="md-ellipsis">
     
   
-    08. Validation of Requests
+    08. Request Validation
   
 
     
@@ -656,7 +656,7 @@
   <span class="md-ellipsis">
     
   
-    08. Validation of Requests
+    08. Request Validation
   
 
     
@@ -765,10 +765,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#fastapi-example-with-middleware" class="md-nav__link">
+  <a href="#fastapi-example-with-manual-validation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        FastAPI Example with Middleware
+        FastAPI Example with Manual Validation
       
     </span>
   </a>
@@ -1185,10 +1185,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#fastapi-example-with-middleware" class="md-nav__link">
+  <a href="#fastapi-example-with-manual-validation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        FastAPI Example with Middleware
+        FastAPI Example with Manual Validation
       
     </span>
   </a>
@@ -1270,7 +1270,7 @@
   
 
 
-<h1 id="validation-of-requests">Validation of Requests<a class="headerlink" href="#validation-of-requests" title="Permanent link">&para;</a></h1>
+<h1 id="request-validation">Request Validation<a class="headerlink" href="#request-validation" title="Permanent link">&para;</a></h1>
 <p>This guide explains how AI agents can validate incoming requests using the Nevermined Payments Python SDK.</p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>When an agent receives a request, it needs to:</p>
@@ -1281,24 +1281,20 @@
 </ol>
 <p>The SDK provides the Facilitator API for these operations.</p>
 <h2 id="receiving-requests">Receiving Requests<a class="headerlink" href="#receiving-requests" title="Permanent link">&para;</a></h2>
-<p>Agents receive requests with the access token in the <code>Authorization</code> or <code>X-Payment</code> header:</p>
+<p>Agents receive requests with the x402 access token in the <code>payment-signature</code> header (per <a href="https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md">x402 v2 HTTP transport spec</a>):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">flask</span><span class="w"> </span><span class="kn">import</span> <span class="n">Flask</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">jsonify</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/tasks&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;POST&#39;</span><span class="p">])</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">handle_task</span><span class="p">():</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="c1"># Extract token from header</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">auth_header</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Authorization&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="k">if</span> <span class="n">auth_header</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;Bearer &#39;</span><span class="p">):</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="n">access_token</span> <span class="o">=</span> <span class="n">auth_header</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>  <span class="c1"># Remove &#39;Bearer &#39; prefix</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="n">access_token</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;X-Payment&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Missing access token&#39;</span><span class="p">}),</span> <span class="mi">401</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="c1"># Validate and process...</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="c1"># Extract x402 token from payment-signature header</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">x402_token</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;payment-signature&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">x402_token</span><span class="p">:</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Missing payment-signature header&#39;</span><span class="p">}),</span> <span class="mi">402</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="c1"># Validate and process...</span>
 </code></pre></div>
 <h2 id="validating-requests-with-facilitator">Validating Requests with Facilitator<a class="headerlink" href="#validating-requests-with-facilitator" title="Permanent link">&para;</a></h2>
 <h3 id="build-payment-required-object">Build Payment Required Object<a class="headerlink" href="#build-payment-required-object" title="Permanent link">&para;</a></h3>
@@ -1363,62 +1359,60 @@
 <a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
 <a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/api/tasks&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;POST&#39;</span><span class="p">])</span>
 <a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_task</span><span class="p">():</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    <span class="c1"># 1. Extract access token</span>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="n">auth_header</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Authorization&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">auth_header</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;Bearer &#39;</span><span class="p">):</span>
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Missing Bearer token&#39;</span><span class="p">}),</span> <span class="mi">401</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    <span class="c1"># 1. Extract x402 access token from payment-signature header</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="n">access_token</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;payment-signature&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Missing payment-signature header&#39;</span><span class="p">}),</span> <span class="mi">402</span>
 <a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    <span class="n">access_token</span> <span class="o">=</span> <span class="n">auth_header</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    <span class="c1"># 2. Build payment required object</span>
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    <span class="n">payment_required</span> <span class="o">=</span> <span class="n">build_payment_required</span><span class="p">(</span>
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>        <span class="n">plan_id</span><span class="o">=</span><span class="n">PLAN_ID</span><span class="p">,</span>
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>        <span class="n">endpoint</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>        <span class="n">agent_id</span><span class="o">=</span><span class="n">AGENT_ID</span><span class="p">,</span>
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>        <span class="n">http_verb</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">method</span>
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    <span class="p">)</span>
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>    <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>        <span class="c1"># 3. Verify permissions</span>
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>        <span class="n">verification</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">verify_permissions</span><span class="p">(</span>
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>            <span class="n">payment_required</span><span class="o">=</span><span class="n">payment_required</span><span class="p">,</span>
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>            <span class="n">x402_access_token</span><span class="o">=</span><span class="n">access_token</span><span class="p">,</span>
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>            <span class="n">max_amount</span><span class="o">=</span><span class="s2">&quot;1&quot;</span>
-<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>        <span class="p">)</span>
-<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>
-<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">verification</span><span class="o">.</span><span class="n">is_valid</span><span class="p">:</span>
-<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>            <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span>
-<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>                <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Payment verification failed&#39;</span><span class="p">,</span>
-<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>                <span class="s1">&#39;details&#39;</span><span class="p">:</span> <span class="n">verification</span><span class="o">.</span><span class="n">error</span>
-<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>            <span class="p">}),</span> <span class="mi">402</span>
-<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>
-<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>        <span class="c1"># 4. Process the request</span>
-<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>        <span class="n">task_data</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">json</span>
-<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">process_task</span><span class="p">(</span><span class="n">task_data</span><span class="p">)</span>
-<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>
-<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>        <span class="c1"># 5. Settle (burn credits) after successful processing</span>
-<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>        <span class="n">settlement</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">settle_permissions</span><span class="p">(</span>
-<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>            <span class="n">payment_required</span><span class="o">=</span><span class="n">payment_required</span><span class="p">,</span>
-<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>            <span class="n">x402_access_token</span><span class="o">=</span><span class="n">access_token</span><span class="p">,</span>
-<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>            <span class="n">max_amount</span><span class="o">=</span><span class="s2">&quot;1&quot;</span>
-<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>        <span class="p">)</span>
-<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>
-<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span>
-<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>            <span class="s1">&#39;result&#39;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
-<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a>            <span class="s1">&#39;credits_used&#39;</span><span class="p">:</span> <span class="n">settlement</span><span class="o">.</span><span class="n">credits_redeemed</span>
-<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a>        <span class="p">})</span>
-<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a>
-<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a>    <span class="k">except</span> <span class="n">PaymentsError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-<a id="__codelineno-4-64" name="__codelineno-4-64" href="#__codelineno-4-64"></a>        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}),</span> <span class="mi">402</span>
-<a id="__codelineno-4-65" name="__codelineno-4-65" href="#__codelineno-4-65"></a>
-<a id="__codelineno-4-66" name="__codelineno-4-66" href="#__codelineno-4-66"></a><span class="k">def</span><span class="w"> </span><span class="nf">process_task</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
-<a id="__codelineno-4-67" name="__codelineno-4-67" href="#__codelineno-4-67"></a>    <span class="c1"># Your AI logic here</span>
-<a id="__codelineno-4-68" name="__codelineno-4-68" href="#__codelineno-4-68"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="s2">&quot;Task result&quot;</span><span class="p">}</span>
-<a id="__codelineno-4-69" name="__codelineno-4-69" href="#__codelineno-4-69"></a>
-<a id="__codelineno-4-70" name="__codelineno-4-70" href="#__codelineno-4-70"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
-<a id="__codelineno-4-71" name="__codelineno-4-71" href="#__codelineno-4-71"></a>    <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">)</span>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    <span class="c1"># 2. Build payment required object</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    <span class="n">payment_required</span> <span class="o">=</span> <span class="n">build_payment_required</span><span class="p">(</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>        <span class="n">plan_id</span><span class="o">=</span><span class="n">PLAN_ID</span><span class="p">,</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>        <span class="n">endpoint</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">,</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>        <span class="n">agent_id</span><span class="o">=</span><span class="n">AGENT_ID</span><span class="p">,</span>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>        <span class="n">http_verb</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">method</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    <span class="p">)</span>
+<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>
+<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a>        <span class="c1"># 3. Verify permissions</span>
+<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a>        <span class="n">verification</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">verify_permissions</span><span class="p">(</span>
+<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a>            <span class="n">payment_required</span><span class="o">=</span><span class="n">payment_required</span><span class="p">,</span>
+<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a>            <span class="n">x402_access_token</span><span class="o">=</span><span class="n">access_token</span><span class="p">,</span>
+<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a>            <span class="n">max_amount</span><span class="o">=</span><span class="s2">&quot;1&quot;</span>
+<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a>        <span class="p">)</span>
+<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a>
+<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">verification</span><span class="o">.</span><span class="n">is_valid</span><span class="p">:</span>
+<a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a>            <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span>
+<a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a>                <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Payment verification failed&#39;</span><span class="p">,</span>
+<a id="__codelineno-4-42" name="__codelineno-4-42" href="#__codelineno-4-42"></a>                <span class="s1">&#39;details&#39;</span><span class="p">:</span> <span class="n">verification</span><span class="o">.</span><span class="n">error</span>
+<a id="__codelineno-4-43" name="__codelineno-4-43" href="#__codelineno-4-43"></a>            <span class="p">}),</span> <span class="mi">402</span>
+<a id="__codelineno-4-44" name="__codelineno-4-44" href="#__codelineno-4-44"></a>
+<a id="__codelineno-4-45" name="__codelineno-4-45" href="#__codelineno-4-45"></a>        <span class="c1"># 4. Process the request</span>
+<a id="__codelineno-4-46" name="__codelineno-4-46" href="#__codelineno-4-46"></a>        <span class="n">task_data</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">json</span>
+<a id="__codelineno-4-47" name="__codelineno-4-47" href="#__codelineno-4-47"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">process_task</span><span class="p">(</span><span class="n">task_data</span><span class="p">)</span>
+<a id="__codelineno-4-48" name="__codelineno-4-48" href="#__codelineno-4-48"></a>
+<a id="__codelineno-4-49" name="__codelineno-4-49" href="#__codelineno-4-49"></a>        <span class="c1"># 5. Settle (burn credits) after successful processing</span>
+<a id="__codelineno-4-50" name="__codelineno-4-50" href="#__codelineno-4-50"></a>        <span class="n">settlement</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">settle_permissions</span><span class="p">(</span>
+<a id="__codelineno-4-51" name="__codelineno-4-51" href="#__codelineno-4-51"></a>            <span class="n">payment_required</span><span class="o">=</span><span class="n">payment_required</span><span class="p">,</span>
+<a id="__codelineno-4-52" name="__codelineno-4-52" href="#__codelineno-4-52"></a>            <span class="n">x402_access_token</span><span class="o">=</span><span class="n">access_token</span><span class="p">,</span>
+<a id="__codelineno-4-53" name="__codelineno-4-53" href="#__codelineno-4-53"></a>            <span class="n">max_amount</span><span class="o">=</span><span class="s2">&quot;1&quot;</span>
+<a id="__codelineno-4-54" name="__codelineno-4-54" href="#__codelineno-4-54"></a>        <span class="p">)</span>
+<a id="__codelineno-4-55" name="__codelineno-4-55" href="#__codelineno-4-55"></a>
+<a id="__codelineno-4-56" name="__codelineno-4-56" href="#__codelineno-4-56"></a>        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span>
+<a id="__codelineno-4-57" name="__codelineno-4-57" href="#__codelineno-4-57"></a>            <span class="s1">&#39;result&#39;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
+<a id="__codelineno-4-58" name="__codelineno-4-58" href="#__codelineno-4-58"></a>            <span class="s1">&#39;credits_used&#39;</span><span class="p">:</span> <span class="n">settlement</span><span class="o">.</span><span class="n">credits_redeemed</span>
+<a id="__codelineno-4-59" name="__codelineno-4-59" href="#__codelineno-4-59"></a>        <span class="p">})</span>
+<a id="__codelineno-4-60" name="__codelineno-4-60" href="#__codelineno-4-60"></a>
+<a id="__codelineno-4-61" name="__codelineno-4-61" href="#__codelineno-4-61"></a>    <span class="k">except</span> <span class="n">PaymentsError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-4-62" name="__codelineno-4-62" href="#__codelineno-4-62"></a>        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span><span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}),</span> <span class="mi">402</span>
+<a id="__codelineno-4-63" name="__codelineno-4-63" href="#__codelineno-4-63"></a>
+<a id="__codelineno-4-64" name="__codelineno-4-64" href="#__codelineno-4-64"></a><span class="k">def</span><span class="w"> </span><span class="nf">process_task</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+<a id="__codelineno-4-65" name="__codelineno-4-65" href="#__codelineno-4-65"></a>    <span class="c1"># Your AI logic here</span>
+<a id="__codelineno-4-66" name="__codelineno-4-66" href="#__codelineno-4-66"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="s2">&quot;Task result&quot;</span><span class="p">}</span>
+<a id="__codelineno-4-67" name="__codelineno-4-67" href="#__codelineno-4-67"></a>
+<a id="__codelineno-4-68" name="__codelineno-4-68" href="#__codelineno-4-68"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<a id="__codelineno-4-69" name="__codelineno-4-69" href="#__codelineno-4-69"></a>    <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="fastapi-example-with-middleware">FastAPI Example with Middleware<a class="headerlink" href="#fastapi-example-with-middleware" title="Permanent link">&para;</a></h2>
+<h2 id="fastapi-example-with-manual-validation">FastAPI Example with Manual Validation<a class="headerlink" href="#fastapi-example-with-manual-validation" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Request</span><span class="p">,</span> <span class="n">HTTPException</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py</span><span class="w"> </span><span class="kn">import</span> <span class="n">Payments</span><span class="p">,</span> <span class="n">PaymentOptions</span>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_payment_required</span>
@@ -1434,53 +1428,52 @@
 <a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
 <a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">validate_payment</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate payment and return verification result.&quot;&quot;&quot;</span>
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    <span class="n">auth_header</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Authorization&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">auth_header</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;Bearer &#39;</span><span class="p">):</span>
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Missing Bearer token&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    <span class="n">access_token</span> <span class="o">=</span> <span class="n">auth_header</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    <span class="n">payment_required</span> <span class="o">=</span> <span class="n">build_payment_required</span><span class="p">(</span>
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        <span class="n">plan_id</span><span class="o">=</span><span class="n">PLAN_ID</span><span class="p">,</span>
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>        <span class="n">endpoint</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">),</span>
-<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>        <span class="n">agent_id</span><span class="o">=</span><span class="n">AGENT_ID</span><span class="p">,</span>
-<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>        <span class="n">http_verb</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">method</span>
-<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>    <span class="p">)</span>
-<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>
-<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>    <span class="n">verification</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">verify_permissions</span><span class="p">(</span>
-<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>        <span class="n">payment_required</span><span class="o">=</span><span class="n">payment_required</span><span class="p">,</span>
-<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>        <span class="n">x402_access_token</span><span class="o">=</span><span class="n">access_token</span><span class="p">,</span>
-<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>        <span class="n">max_amount</span><span class="o">=</span><span class="s2">&quot;1&quot;</span>
-<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>    <span class="p">)</span>
-<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>
-<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">verification</span><span class="o">.</span><span class="n">is_valid</span><span class="p">:</span>
-<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">402</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Payment verification failed&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>
-<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>    <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>        <span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">,</span>
-<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>        <span class="s2">&quot;payment_required&quot;</span><span class="p">:</span> <span class="n">payment_required</span><span class="p">,</span>
-<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>        <span class="s2">&quot;verification&quot;</span><span class="p">:</span> <span class="n">verification</span>
-<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>    <span class="p">}</span>
-<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>
-<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/tasks&quot;</span><span class="p">)</span>
-<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_task</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
-<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>    <span class="c1"># Validate payment</span>
-<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>    <span class="n">payment_info</span> <span class="o">=</span> <span class="k">await</span> <span class="n">validate_payment</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>
-<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>    <span class="c1"># Process task</span>
-<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>    <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Processed: </span><span class="si">{</span><span class="n">body</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
-<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>
-<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>    <span class="c1"># Settle credits</span>
-<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>    <span class="n">settlement</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">settle_permissions</span><span class="p">(</span>
-<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a>        <span class="n">payment_required</span><span class="o">=</span><span class="n">payment_info</span><span class="p">[</span><span class="s2">&quot;payment_required&quot;</span><span class="p">],</span>
-<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>        <span class="n">x402_access_token</span><span class="o">=</span><span class="n">payment_info</span><span class="p">[</span><span class="s2">&quot;access_token&quot;</span><span class="p">],</span>
-<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>        <span class="n">max_amount</span><span class="o">=</span><span class="s2">&quot;1&quot;</span>
-<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a>    <span class="p">)</span>
-<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a>
-<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a>    <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a>        <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
-<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a>        <span class="s2">&quot;credits_used&quot;</span><span class="p">:</span> <span class="n">settlement</span><span class="o">.</span><span class="n">credits_redeemed</span>
-<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a>    <span class="p">}</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>    <span class="c1"># Extract x402 token from payment-signature header</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>    <span class="n">access_token</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;payment-signature&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">402</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Missing payment-signature header&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>    <span class="n">payment_required</span> <span class="o">=</span> <span class="n">build_payment_required</span><span class="p">(</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>        <span class="n">plan_id</span><span class="o">=</span><span class="n">PLAN_ID</span><span class="p">,</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        <span class="n">endpoint</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="p">),</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>        <span class="n">agent_id</span><span class="o">=</span><span class="n">AGENT_ID</span><span class="p">,</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>        <span class="n">http_verb</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">method</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    <span class="p">)</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>    <span class="n">verification</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">verify_permissions</span><span class="p">(</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>        <span class="n">payment_required</span><span class="o">=</span><span class="n">payment_required</span><span class="p">,</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>        <span class="n">x402_access_token</span><span class="o">=</span><span class="n">access_token</span><span class="p">,</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>        <span class="n">max_amount</span><span class="o">=</span><span class="s2">&quot;1&quot;</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>    <span class="p">)</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">verification</span><span class="o">.</span><span class="n">is_valid</span><span class="p">:</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a>        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">402</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Payment verification failed&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>        <span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">,</span>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a>        <span class="s2">&quot;payment_required&quot;</span><span class="p">:</span> <span class="n">payment_required</span><span class="p">,</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a>        <span class="s2">&quot;verification&quot;</span><span class="p">:</span> <span class="n">verification</span>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>    <span class="p">}</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a><span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/tasks&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_task</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a>    <span class="c1"># Validate payment</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a>    <span class="n">payment_info</span> <span class="o">=</span> <span class="k">await</span> <span class="n">validate_payment</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a>
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a>    <span class="c1"># Process task</span>
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a>    <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;output&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Processed: </span><span class="si">{</span><span class="n">body</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a>
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a>    <span class="c1"># Settle credits</span>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a>    <span class="n">settlement</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">settle_permissions</span><span class="p">(</span>
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a>        <span class="n">payment_required</span><span class="o">=</span><span class="n">payment_info</span><span class="p">[</span><span class="s2">&quot;payment_required&quot;</span><span class="p">],</span>
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a>        <span class="n">x402_access_token</span><span class="o">=</span><span class="n">payment_info</span><span class="p">[</span><span class="s2">&quot;access_token&quot;</span><span class="p">],</span>
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a>        <span class="n">max_amount</span><span class="o">=</span><span class="s2">&quot;1&quot;</span>
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>    <span class="p">)</span>
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a>
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a>        <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a>        <span class="s2">&quot;credits_used&quot;</span><span class="p">:</span> <span class="n">settlement</span><span class="o">.</span><span class="n">credits_redeemed</span>
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a>    <span class="p">}</span>
 </code></pre></div>
 <h2 id="using-x402-fastapi-middleware">Using x402 FastAPI Middleware<a class="headerlink" href="#using-x402-fastapi-middleware" title="Permanent link">&para;</a></h2>
 <p>For FastAPI applications, use the built-in x402 middleware:</p>
