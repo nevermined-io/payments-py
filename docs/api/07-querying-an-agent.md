@@ -58,9 +58,9 @@ result = payments.x402.get_x402_access_token(
 
 ## Make Requests to Agents
 
-### Using the Access Token
+### Using the x402 Payment Header
 
-Include the access token in the `Authorization` header:
+Include the access token in the `payment-signature` header (per [x402 v2 HTTP transport spec](https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md)):
 
 ```python
 import requests
@@ -76,7 +76,7 @@ access_token = token_result['accessToken']
 response = requests.post(
     f"https://agent-api.example.com/agents/{agent_id}/tasks",
     headers={
-        "Authorization": f"Bearer {access_token}",
+        "payment-signature": access_token,
         "Content-Type": "application/json"
     },
     json={
@@ -92,21 +92,6 @@ elif response.status_code == 402:
     print("Payment required - check plan balance")
 else:
     print(f"Error: {response.status_code}")
-```
-
-### Using the X-Payment Header
-
-Alternative header format used by some agents:
-
-```python
-response = requests.post(
-    agent_endpoint,
-    headers={
-        "X-Payment": access_token,
-        "Content-Type": "application/json"
-    },
-    json=payload
-)
 ```
 
 ## Decode Access Token
@@ -177,7 +162,7 @@ access_token = token_result['accessToken']
 response = requests.post(
     "https://api.example.com/tasks",
     headers={
-        "Authorization": f"Bearer {access_token}",
+        "payment-signature": access_token,
         "Content-Type": "application/json"
     },
     json={"prompt": "Hello, agent!"}
@@ -236,7 +221,7 @@ except requests.HTTPError as e:
        │ ◄───────────────── │                    │
        │   accessToken      │                    │
        │                    │                    │
-       │ POST /tasks (Bearer token)              │
+       │ POST /tasks (payment-signature header)  │
        │ ────────────────────────────────────────►
        │                    │                    │
        │                    │  verify_permissions│
@@ -254,5 +239,5 @@ except requests.HTTPError as e:
 
 ## Next Steps
 
-- [Validation of Requests](08-validation-of-requests.md) - How agents validate incoming requests
+- [Request Validation](08-validation-of-requests.md) - How agents validate incoming requests
 - [x402 Protocol](11-x402.md) - Deep dive into x402 verification and settlement

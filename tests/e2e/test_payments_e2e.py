@@ -65,25 +65,19 @@ class MockAgentHandler(BaseHTTPRequestHandler):
 
     def _handle_request(self):
         global mock_payments_builder, mock_agent_id, credits_plan_id
-        auth_header = self.headers.get("Authorization")
+        # Use payment-signature header per x402 v2 spec
+        x402_token = self.headers.get("payment-signature")
         requested_url = f"http://localhost:8889{self.path}"
         http_verb = self.command
 
         print(
-            f"Received request: endpoint={requested_url}, httpVerb={http_verb}, authHeader={auth_header}"
+            f"Received request: endpoint={requested_url}, httpVerb={http_verb}, x402Token={x402_token[:20] if x402_token else None}..."
         )
 
         try:
-            if mock_payments_builder and mock_agent_id and auth_header:
-                # Extract token from Bearer header
-                bearer_token = (
-                    auth_header.replace("Bearer ", "")
-                    if auth_header.startswith("Bearer ")
-                    else auth_header
-                )
-
+            if mock_payments_builder and mock_agent_id and x402_token:
                 # Decode token to get subscriber_address (x402-compliant format)
-                decoded = decode_access_token(bearer_token)
+                decoded = decode_access_token(x402_token)
                 # x402 token uses payload.authorization.from for subscriber address
                 payload = decoded.get("payload", {})
                 authorization = (
@@ -109,7 +103,7 @@ class MockAgentHandler(BaseHTTPRequestHandler):
                 result = mock_payments_builder.facilitator.verify_permissions(
                     payment_required=payment_required,
                     max_amount="1",
-                    x402_access_token=bearer_token,
+                    x402_access_token=x402_token,
                 )
                 # If the request is valid (check is_valid attribute)
                 if result and result.is_valid:
@@ -120,7 +114,9 @@ class MockAgentHandler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps(response).encode())
                     return
         except Exception as e:
-            print(f"Unauthorized access attempt: {auth_header}, error: {e}")
+            print(
+                f"Unauthorized access attempt: {x402_token[:20] if x402_token else None}..., error: {e}"
+            )
 
         # If the request is not valid or there is an exception, respond with 402
         self.send_response(402)
@@ -475,7 +471,7 @@ class TestE2ESubscriberAgentFlow:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {agent_access_params.get('accessToken')}",
+            "payment-signature": agent_access_params.get("accessToken"),
         }
 
         response = requests.post(agent_url, headers=headers)
@@ -490,7 +486,7 @@ class TestE2ESubscriberAgentFlow:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Authorization": "Bearer INVALID_TOKEN",
+            "payment-signature": "INVALID_TOKEN",
         }
 
         response = requests.post(agent_url, headers=headers)
@@ -511,7 +507,7 @@ class TestE2ESubscriberAgentFlow:
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {agent_access_params.get('accessToken')}",
+            "payment-signature": agent_access_params.get("accessToken"),
         }
 
         response = requests.post(wrong_agent_url, headers=headers)
