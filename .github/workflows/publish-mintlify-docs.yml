@@ -80,26 +80,15 @@ jobs:
 
           echo "✓ Conversion successful"
 
-      - name: Prepare target directory
-        run: |
-          TARGET_DIR="docs_mintlify/docs/api-reference/python"
-
-          # Create target directory if it doesn't exist
-          mkdir -p "$TARGET_DIR"
-
-          # Backup existing docs if they exist
-          if [ -d "$TARGET_DIR" ] && [ "$(ls -A $TARGET_DIR 2>/dev/null)" ]; then
-            BACKUP_DIR="docs_mintlify/docs/api-reference/python-backup-$(date +%Y%m%d-%H%M%S)"
-            echo "Creating backup at $BACKUP_DIR"
-            cp -r "$TARGET_DIR" "$BACKUP_DIR"
-          fi
-
       - name: Copy documentation files
         run: |
           SOURCE_DIR="mintlify-output"
           TARGET_DIR="docs_mintlify/docs/api-reference/python"
 
           echo "Copying documentation from $SOURCE_DIR to $TARGET_DIR"
+
+          # Create target directory if it doesn't exist
+          mkdir -p "$TARGET_DIR"
 
           # Remove old mdx files (keep any other files that might exist)
           rm -f "$TARGET_DIR"/*.mdx
