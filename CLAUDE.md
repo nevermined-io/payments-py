@@ -33,6 +33,18 @@ To verify formatting without making changes (CI check):
 poetry run black --check .      # Check formatting only
 ```
 
+### Update Documentation When Changing Public APIs
+
+When modifying public interfaces (function signatures, options, types, response fields) in `payments_py/`, update the corresponding documentation in `docs/api/` to reflect the changes. These are manually maintained guides — not auto-generated.
+
+After updating, rebuild the documentation site to verify:
+
+```bash
+poetry run mkdocs build          # Must succeed without errors
+```
+
+The `docs/reference/` files are auto-generated from docstrings via mkdocstrings, so keep docstrings up to date in the source code.
+
 ### Code Changes Require Test Updates
 
 When modifying code in `payments_py/`, always update the corresponding tests:
