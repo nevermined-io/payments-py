@@ -865,6 +865,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#response-metadata-_meta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response Metadata (_meta)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#endpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1285,6 +1296,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#response-metadata-_meta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response Metadata (_meta)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#endpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1661,13 +1683,90 @@
 <tbody>
 <tr>
 <td><code>credits</code></td>
-<td><code>int</code></td>
+<td><code>int</code> or <code>callable</code></td>
 <td>Credits to consume per call</td>
 </tr>
 <tr>
+<td><code>planId</code></td>
+<td><code>str</code></td>
+<td>Optional override for the plan ID (otherwise inferred from token)</td>
+</tr>
+<tr>
+<td><code>maxAmount</code></td>
+<td><code>int</code></td>
+<td>Max credits to verify during authentication (default: <code>1</code>)</td>
+</tr>
+<tr>
 <td><code>onRedeemError</code></td>
-<td><code>callable</code></td>
-<td>Error handler for redemption failures</td>
+<td><code>str</code></td>
+<td><code>"ignore"</code> (default) or <code>"propagate"</code> to raise on redemption failure</td>
+</tr>
+</tbody>
+</table>
+<h2 id="response-metadata-_meta">Response Metadata (<code>_meta</code>)<a class="headerlink" href="#response-metadata-_meta" title="Permanent link">&para;</a></h2>
+<p>After each paywall-protected call, the SDK injects a <code>_meta</code> field into the response following the <a href="https://modelcontextprotocol.io/specification/2025-06-18/basic">MCP specification</a>. This field is always present regardless of whether credit redemption succeeded or failed:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Successful redemption</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="p">{</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;result&quot;</span><span class="p">}],</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="s2">&quot;_meta&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        <span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        <span class="s2">&quot;txHash&quot;</span><span class="p">:</span> <span class="s2">&quot;0xabc...&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>        <span class="s2">&quot;creditsRedeemed&quot;</span><span class="p">:</span> <span class="s2">&quot;5&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>        <span class="s2">&quot;planId&quot;</span><span class="p">:</span> <span class="s2">&quot;plan-123&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        <span class="s2">&quot;subscriberAddress&quot;</span><span class="p">:</span> <span class="s2">&quot;0x123...&quot;</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    <span class="p">}</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="p">}</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="c1"># Failed redemption</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="p">{</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;result&quot;</span><span class="p">}],</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    <span class="s2">&quot;_meta&quot;</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        <span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>        <span class="s2">&quot;creditsRedeemed&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>        <span class="s2">&quot;planId&quot;</span><span class="p">:</span> <span class="s2">&quot;plan-123&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>        <span class="s2">&quot;subscriberAddress&quot;</span><span class="p">:</span> <span class="s2">&quot;0x123...&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>        <span class="s2">&quot;errorReason&quot;</span><span class="p">:</span> <span class="s2">&quot;Insufficient credits&quot;</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>    <span class="p">}</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>success</code></td>
+<td><code>bool</code></td>
+<td>Whether credit redemption succeeded</td>
+</tr>
+<tr>
+<td><code>txHash</code></td>
+<td><code>str</code> or <code>None</code></td>
+<td>Blockchain transaction hash (only on success)</td>
+</tr>
+<tr>
+<td><code>creditsRedeemed</code></td>
+<td><code>str</code></td>
+<td>Number of credits burned (<code>"0"</code> on failure)</td>
+</tr>
+<tr>
+<td><code>planId</code></td>
+<td><code>str</code></td>
+<td>Plan used for the operation</td>
+</tr>
+<tr>
+<td><code>subscriberAddress</code></td>
+<td><code>str</code></td>
+<td>Subscriber's wallet address</td>
+</tr>
+<tr>
+<td><code>errorReason</code></td>
+<td><code>str</code></td>
+<td>Error message (only on failure)</td>
 </tr>
 </tbody>
 </table>
