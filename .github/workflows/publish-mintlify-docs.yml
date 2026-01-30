@@ -192,8 +192,6 @@ jobs:
             documentation
             python-sdk
             automated
-          reviewers: |
-            aitor
 
       - name: Enable auto-merge in docs_mintlify
         if: steps.create_pr.outputs.pull-request-number != ''
