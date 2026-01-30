@@ -2,7 +2,7 @@
 Paywall decorator for MCP handlers (tools, resources, prompts).
 """
 
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any, Awaitable, Callable, Dict, Optional
 
 from ..utils.errors import ERROR_CODES, create_rpc_error
 from ..utils.extra import build_extra_from_fastmcp_context
@@ -201,11 +201,12 @@ class PaywallDecorator:
                         options,
                         agent_id=auth_result.get("agent_id"),
                         endpoint=auth_result.get("logical_url"),
+                        fallback_endpoint=auth_result.get("http_url"),
                         http_verb="POST",
                     ),
                 )
 
-            # Non-streaming: redeem immediately and add metadata
+            # Non-streaming: redeem immediately and always add metadata
             credits_result = await self._redeem(
                 auth_result.get("plan_id"),
                 auth_result["token"],
@@ -213,24 +214,27 @@ class PaywallDecorator:
                 options,
                 agent_id=auth_result.get("agent_id"),
                 endpoint=auth_result.get("logical_url"),
+                fallback_endpoint=auth_result.get("http_url"),
                 http_verb="POST",
             )
 
-            # Add metadata to result if redemption was successful
-            if credits_result["success"]:
-                # Add metadata as a key
-                if "metadata" not in result or result["metadata"] is None:
-                    result["metadata"] = {}
-                if not isinstance(result["metadata"], dict):
-                    result["metadata"] = {}
+            # Always add _meta to result
+            if "_meta" not in result or result["_meta"] is None:
+                result["_meta"] = {}
+            if not isinstance(result["_meta"], dict):
+                result["_meta"] = {}
 
-                result["metadata"].update(
-                    {
-                        "txHash": credits_result["txHash"],
-                        "creditsRedeemed": credits_result["creditsRedeemed"],
-                        "success": True,
-                    }
-                )
+            result["_meta"].update(
+                {
+                    "txHash": credits_result.get("txHash"),
+                    "creditsRedeemed": credits_result.get("creditsRedeemed", "0"),
+                    "planId": auth_result.get("plan_id"),
+                    "subscriberAddress": auth_result.get("subscriber_address"),
+                    "success": credits_result.get("success", False),
+                }
+            )
+            if credits_result.get("errorReason"):
+                result["_meta"]["errorReason"] = credits_result["errorReason"]
 
             return result
 
@@ -242,11 +246,15 @@ class PaywallDecorator:
         token: str,
         credits: int,
         options: PaywallOptions,
-        agent_id: str = None,
-        endpoint: str = None,
-        http_verb: str = None,
+        agent_id: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        fallback_endpoint: Optional[str] = None,
+        http_verb: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Settle credits for a processed request using x402 settle_permissions.
+
+        Tries the primary endpoint first. If it fails and a fallback_endpoint
+        is available, retries with the fallback.
 
         Args:
             plan_id: The plan identifier from the token.
@@ -254,15 +262,16 @@ class PaywallDecorator:
             credits: Number of credits to settle.
             options: Paywall options to control error propagation.
             agent_id: Optional agent identifier.
-            endpoint: Optional endpoint URL.
+            endpoint: Optional primary endpoint URL (logical URL).
+            fallback_endpoint: Optional fallback endpoint URL (HTTP URL).
             http_verb: Optional HTTP method.
 
         Returns:
-            Dictionary containing success status and transaction hash if successful.
+            Dictionary containing success status, transaction hash, credits redeemed,
+            and errorReason if applicable.
         """
         try:
             if credits and int(credits) > 0 and plan_id:
-                # Build paymentRequired using the helper
                 payment_required = build_payment_required(
                     plan_id=plan_id,
                     endpoint=endpoint,
@@ -277,7 +286,6 @@ class PaywallDecorator:
                         max_amount=str(int(credits)),
                     )
                 )
-                # Check if the settle operation was successful
                 settle_success = settle_result.success
                 credits_burned = (
                     settle_result.credits_redeemed or str(credits)
@@ -295,15 +303,49 @@ class PaywallDecorator:
                     "txHash": None,
                     "creditsRedeemed": "0",
                 }
-        except Exception:
+        except Exception as primary_error:
+            # If primary endpoint fails and we have a fallback, retry with it
+            if fallback_endpoint:
+                try:
+                    payment_required = build_payment_required(
+                        plan_id=plan_id,
+                        endpoint=fallback_endpoint,
+                        agent_id=agent_id,
+                        http_verb=http_verb,
+                    )
+
+                    settle_result = await self._maybe_await(
+                        self._payments.facilitator.settle_permissions(
+                            payment_required=payment_required,
+                            x402_access_token=token,
+                            max_amount=str(int(credits)),
+                        )
+                    )
+                    settle_success = settle_result.success
+                    credits_burned = (
+                        settle_result.credits_redeemed or str(credits)
+                        if settle_success
+                        else "0"
+                    )
+                    return {
+                        "success": settle_success,
+                        "txHash": settle_result.transaction if settle_success else None,
+                        "creditsRedeemed": credits_burned,
+                    }
+                except Exception as fallback_error:
+                    primary_error = fallback_error
+
             if options.get("onRedeemError") == "propagate":
+                error_msg = str(primary_error)
                 raise create_rpc_error(
-                    ERROR_CODES["Misconfiguration"], "Failed to settle credits"
+                    ERROR_CODES["Misconfiguration"],
+                    f"Failed to settle credits: {error_msg}",
                 )
             return {
                 "success": False,
                 "txHash": None,
                 "creditsRedeemed": "0",
+                "errorReason": str(primary_error),
             }
 
     async def _maybe_await(self, maybe_awaitable: Any) -> Any:

@@ -161,7 +161,7 @@ class MCPIntegration:
         agent_id = cfg.get("agentId", "")
         server_name = cfg.get("serverName", "mcp-server")
         return await self._authenticator.authenticate_meta(
-            extra, agent_id, server_name, method
+            extra, {}, agent_id, server_name, method
         )
 
     def attach(self, server: _AttachableServer):

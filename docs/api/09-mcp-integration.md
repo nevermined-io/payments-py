@@ -319,8 +319,49 @@ asyncio.run(main())
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `credits` | `int` | Credits to consume per call |
-| `onRedeemError` | `callable` | Error handler for redemption failures |
+| `credits` | `int` or `callable` | Credits to consume per call |
+| `planId` | `str` | Optional override for the plan ID (otherwise inferred from token) |
+| `maxAmount` | `int` | Max credits to verify during authentication (default: `1`) |
+| `onRedeemError` | `str` | `"ignore"` (default) or `"propagate"` to raise on redemption failure |
+
+## Response Metadata (`_meta`)
+
+After each paywall-protected call, the SDK injects a `_meta` field into the response following the [MCP specification](https://modelcontextprotocol.io/specification/2025-06-18/basic). This field is always present regardless of whether credit redemption succeeded or failed:
+
+```python
+# Successful redemption
+{
+    "content": [{"type": "text", "text": "result"}],
+    "_meta": {
+        "success": True,
+        "txHash": "0xabc...",
+        "creditsRedeemed": "5",
+        "planId": "plan-123",
+        "subscriberAddress": "0x123..."
+    }
+}
+
+# Failed redemption
+{
+    "content": [{"type": "text", "text": "result"}],
+    "_meta": {
+        "success": False,
+        "creditsRedeemed": "0",
+        "planId": "plan-123",
+        "subscriberAddress": "0x123...",
+        "errorReason": "Insufficient credits"
+    }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | `bool` | Whether credit redemption succeeded |
+| `txHash` | `str` or `None` | Blockchain transaction hash (only on success) |
+| `creditsRedeemed` | `str` | Number of credits burned (`"0"` on failure) |
+| `planId` | `str` | Plan used for the operation |
+| `subscriberAddress` | `str` | Subscriber's wallet address |
+| `errorReason` | `str` | Error message (only on failure) |
 
 ## Endpoints
 
