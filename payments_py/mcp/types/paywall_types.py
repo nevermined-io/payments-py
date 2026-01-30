@@ -2,7 +2,7 @@
 Types for MCP paywall functionality.
 """
 
-from typing import Any, Callable, Dict, TypedDict, Union
+from typing import Any, Callable, Dict, Optional, TypedDict, Union
 
 
 class AuthResult(TypedDict, total=False):
@@ -11,6 +11,7 @@ class AuthResult(TypedDict, total=False):
     token: str
     agentId: str
     logicalUrl: str
+    httpUrl: Optional[str]
     plan_id: str
     subscriber_address: str
 
@@ -25,6 +26,7 @@ class BasePaywallOptions(TypedDict, total=False):
     credits: CreditsOption
     onRedeemError: str  # 'ignore' | 'propagate'
     planId: str  # Optional override for the plan ID (x402)
+    maxAmount: int  # Max credits to verify during authentication (default 1)
 
 
 class ToolOptions(BasePaywallOptions):

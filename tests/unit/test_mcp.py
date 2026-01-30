@@ -143,16 +143,16 @@ def test_adds_metadata_to_result_after_successful_redemption():
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
-    # Verify the result has metadata
-    assert "metadata" in out
-    assert out["metadata"] is not None
-    assert isinstance(out["metadata"], dict)
+    # Verify the result has _meta
+    assert "_meta" in out
+    assert out["_meta"] is not None
+    assert isinstance(out["_meta"], dict)
 
-    # Verify metadata contains expected fields
-    assert out["metadata"].get("success") is True
-    assert out["metadata"].get("creditsRedeemed") == "3"
+    # Verify _meta contains expected fields
+    assert out["_meta"].get("success") is True
+    assert out["_meta"].get("creditsRedeemed") == "3"
     # txHash should be None since our mock doesn't return it
-    assert out["metadata"].get("txHash") is None
+    assert out["_meta"].get("txHash") is None
 
 
 @patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
@@ -176,20 +176,20 @@ def test_adds_metadata_with_txhash_when_settle_returns_it():
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
-    # Verify the result has metadata
-    assert "metadata" in out
-    assert out["metadata"] is not None
-    assert isinstance(out["metadata"], dict)
+    # Verify the result has _meta
+    assert "_meta" in out
+    assert out["_meta"] is not None
+    assert isinstance(out["_meta"], dict)
 
-    # Verify metadata contains expected fields including txHash
-    assert out["metadata"].get("success") is True
-    assert out["metadata"].get("creditsRedeemed") == "5"
-    assert out["metadata"].get("txHash") == "0x1234567890abcdef"
+    # Verify _meta contains expected fields including txHash
+    assert out["_meta"].get("success") is True
+    assert out["_meta"].get("creditsRedeemed") == "5"
+    assert out["_meta"].get("txHash") == "0x1234567890abcdef"
 
 
 @patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
-def test_does_not_add_metadata_when_settlement_fails():
-    """Test that metadata is not added when credit settlement fails."""
+def test_adds_metadata_with_failure_info_when_settlement_fails():
+    """Test that metadata reports failure when credit settlement fails."""
     settle_result = {"success": False, "error": "Insufficient credits"}
     pm = PaymentsMock(settle_result=settle_result)
     mcp = build_mcp_integration(pm)
@@ -204,8 +204,12 @@ def test_does_not_add_metadata_when_settlement_fails():
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
     out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
-    # Verify the result does not have metadata when settlement fails
-    assert "metadata" not in out or out["metadata"] is None or not out["metadata"]
+    # Verify _meta is present with failure info
+    assert "_meta" in out
+    assert out["_meta"] is not None
+    assert out["_meta"]["success"] is False
+    assert out["_meta"]["creditsRedeemed"] == "0"
+    assert out["_meta"]["planId"] == "plan123"
 
 
 def test_rejects_when_authorization_header_missing():
