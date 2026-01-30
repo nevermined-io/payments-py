@@ -29,11 +29,18 @@ jobs:
   prepare-release:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate token from GitHub App
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.API_TOKEN_GITHUB }}
+          token: ${{ steps.generate_token.outputs.token }}
 
       - name: Setup Node.js (for changelog generation)
         uses: actions/setup-node@v4
@@ -157,7 +164,7 @@ jobs:
       - name: Create Pull Request
         id: create_pr
         env:
-          GH_TOKEN: ${{ secrets.API_TOKEN_GITHUB }}
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
           BRANCH_NAME="${{ steps.version_info.outputs.branch_name }}"
           VERSION="${{ steps.version_info.outputs.version }}"
