@@ -27,8 +27,8 @@ Example usage:
         extensions={}
     )
 
-    # Get X402 access token from subscriber request
-    x402_token = request.headers.get("X-Payment")
+    # Get X402 access token from payment-signature header (x402 v2 spec)
+    x402_token = request.headers.get("payment-signature")
 
     # Verify if subscriber has sufficient permissions/credits
     verification = payments.facilitator.verify_permissions(
