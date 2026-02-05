@@ -37,11 +37,13 @@ For full documentation, see the decorator module.
 from payments_py.x402.types import PaymentContext
 from .decorator import (
     requires_payment,
+    extract_payment_required,
     CreditsCallable,
 )
 
 __all__ = [
     "requires_payment",
+    "extract_payment_required",
     "PaymentContext",
     "CreditsCallable",
 ]

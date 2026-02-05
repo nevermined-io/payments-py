@@ -1,17 +1,24 @@
 """
 Strands agent tool decorator for Nevermined payment protection using the x402 protocol.
 
-This decorator provides a simple way to protect Strands agent tools with
-Nevermined payment verification and settlement.
+Wraps a Strands ``@tool`` function to:
 
-The decorator wraps a Strands @tool function to:
-1. Extract the x402 payment token from tool_context.invocation_state or kwargs
+1. Extract the x402 payment token from ``tool_context.invocation_state`` or kwargs
 2. Verify the subscriber has sufficient credits
 3. Execute the wrapped tool function
 4. Settle (burn) credits after successful execution
 
-Example usage:
-    ```python
+Payment errors follow the x402 MCP transport spec: errors are returned as tool
+results with ``status: "error"`` (not raised as exceptions). Each error includes
+a human-readable text block and a structured JSON block with the full
+``X402PaymentRequired`` object so clients can programmatically acquire a token.
+
+In Strands, tool errors flow through the LLM as results. Clients that need
+the structured ``PaymentRequired`` should use
+``extract_payment_required(agent.messages)`` to search the conversation history.
+
+Server-side example::
+
     from strands import tool, Agent
     from payments_py import Payments, PaymentOptions
     from payments_py.x402.strands import requires_payment
@@ -27,7 +34,16 @@ Example usage:
 
     agent = Agent(tools=[analyze_data])
     result = agent("Analyze sales data", payment_token="x402-token-here")
-    ```
+
+Client-side extraction::
+
+    from payments_py.x402.strands import extract_payment_required
+
+    result = agent("Analyze data")
+    payment_required = extract_payment_required(agent.messages)
+    if payment_required:
+        plan_id = payment_required["accepts"][0]["planId"]
+        # Acquire token for plan_id, then call again with payment_token=...
 """
 
 import functools
@@ -163,40 +179,101 @@ def _handle_payment_error(
     on_payment_error: Optional[PaymentErrorHook],
     payment_required: Optional[X402PaymentRequired] = None,
 ) -> dict:
-    """Invoke the error hook if provided, otherwise return an x402 error result.
+    """Invoke the error hook if provided, otherwise return a default error result.
 
-    When payment_required is provided, the error includes the full
-    PaymentRequired object per the x402 spec so clients can acquire payment.
+    Hook precedence: if the hook returns a dict, that dict is used as-is.
+    If the hook returns None (or is not set), falls back to an x402-compliant
+    error containing payment_required when available, or a plain error otherwise.
     """
     if on_payment_error:
         custom = on_payment_error(error)
         if custom is not None:
             return custom
+
     if payment_required is not None:
         return _payment_required_result(str(error), payment_required)
     return _error_result(str(error))
 
 
-def _extract_payment_token(kwargs: dict) -> Optional[str]:
-    """Extract payment token from tool_context.invocation_state or kwargs."""
-    tool_context = kwargs.get("tool_context")
-    if tool_context is not None:
-        invocation_state = getattr(tool_context, "invocation_state", None)
-        if invocation_state and isinstance(invocation_state, dict):
-            token = invocation_state.get("payment_token")
-            if token:
-                return token
+def _find_x402_json_in_tool_result(block: dict) -> Optional[dict]:
+    """Search a toolResult block for a nested x402 PaymentRequired JSON payload."""
+    if block.get("type") != "toolResult":
+        return None
 
-    return kwargs.get("payment_token")
+    inner_content = block.get("content")
+    if not isinstance(inner_content, list):
+        return None
+
+    for inner_block in inner_content:
+        if not isinstance(inner_block, dict):
+            continue
+        json_payload = inner_block.get("json")
+        if isinstance(json_payload, dict) and "x402Version" in json_payload:
+            return json_payload
+
+    return None
+
+
+def extract_payment_required(messages: list) -> Optional[dict]:
+    """Extract the first x402 PaymentRequired dict from Strands agent messages.
+
+    Searches ``agent.messages`` for ``toolResult`` content blocks that contain
+    a ``json`` entry with an ``x402Version`` key (the x402 PaymentRequired
+    signature). Returns the first match, or ``None`` if no PaymentRequired
+    is found.
+
+    Args:
+        messages: The ``agent.messages`` list (Strands conversation history).
+
+    Returns:
+        The PaymentRequired dict (with keys like ``x402Version``, ``accepts``,
+        ``resource``) or ``None``.
+
+    Example:
+        ```python
+        from payments_py.x402.strands import extract_payment_required
+
+        result = agent("Do something")
+        pr = extract_payment_required(agent.messages)
+        if pr:
+            plan_id = pr["accepts"][0]["planId"]
+        ```
+    """
+    for message in messages:
+        content = message.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            payload = _find_x402_json_in_tool_result(block)
+            if payload is not None:
+                return payload
+    return None
+
+
+def _extract_payment_token(kwargs: dict) -> Optional[str]:
+    """Extract payment token from tool_context.invocation_state or kwargs fallback."""
+    tool_context = kwargs.get("tool_context")
+    if tool_context is None:
+        return kwargs.get("payment_token")
+
+    invocation_state = getattr(tool_context, "invocation_state", None)
+    if not isinstance(invocation_state, dict):
+        return kwargs.get("payment_token")
+
+    return invocation_state.get("payment_token") or kwargs.get("payment_token")
 
 
 def _store_payment_context(kwargs: dict, context: PaymentContext) -> None:
     """Store PaymentContext in tool_context.invocation_state if available."""
     tool_context = kwargs.get("tool_context")
-    if tool_context is not None:
-        invocation_state = getattr(tool_context, "invocation_state", None)
-        if invocation_state and isinstance(invocation_state, dict):
-            invocation_state["payment_context"] = context
+    if tool_context is None:
+        return
+
+    invocation_state = getattr(tool_context, "invocation_state", None)
+    if isinstance(invocation_state, dict):
+        invocation_state["payment_context"] = context
 
 
 def _clean_kwargs(kwargs: dict) -> dict:

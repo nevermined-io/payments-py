@@ -8,8 +8,8 @@ import pytest
 
 from payments_py.x402.strands import (
     requires_payment,
+    extract_payment_required,
     PaymentContext,
-    CreditsCallable,
 )
 from payments_py.x402.strands.decorator import (
     _error_result,
@@ -591,3 +591,153 @@ class TestSinglePlanIdDelegation:
 
         result = my_tool("test", tool_context=mock_tool_context)
         assert result["status"] == "success"
+
+
+class TestExtractPaymentRequired:
+    """Tests for extract_payment_required()."""
+
+    def test_extracts_payment_required_from_tool_result(self):
+        """Test extraction from messages containing a toolResult with PaymentRequired."""
+        messages = [
+            {"role": "user", "content": [{"text": "Analyze data"}]},
+            {
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "toolUse",
+                        "toolUseId": "tool-1",
+                        "name": "analyze_data",
+                        "input": {"query": "test"},
+                    }
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "toolResult",
+                        "toolUseId": "tool-1",
+                        "status": "error",
+                        "content": [
+                            {"text": "Payment required: missing payment_token"},
+                            {
+                                "json": {
+                                    "x402Version": 2,
+                                    "resource": {"url": "analyze_data"},
+                                    "accepts": [
+                                        {
+                                            "scheme": "nvm:erc4337",
+                                            "network": "eip155:84532",
+                                            "planId": "plan-123",
+                                        }
+                                    ],
+                                    "extensions": {},
+                                }
+                            },
+                        ],
+                    }
+                ],
+            },
+        ]
+        result = extract_payment_required(messages)
+        assert result is not None
+        assert result["x402Version"] == 2
+        assert result["accepts"][0]["planId"] == "plan-123"
+
+    def test_returns_none_for_empty_messages(self):
+        """Test that empty messages returns None."""
+        assert extract_payment_required([]) is None
+
+    def test_returns_none_for_non_payment_tool_results(self):
+        """Test that non-payment toolResults are ignored."""
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "toolResult",
+                        "toolUseId": "tool-1",
+                        "status": "error",
+                        "content": [
+                            {"text": "Some other error"},
+                            {"json": {"error": "not a payment error"}},
+                        ],
+                    }
+                ],
+            },
+        ]
+        assert extract_payment_required(messages) is None
+
+    def test_returns_none_for_success_tool_results(self):
+        """Test that success toolResults without x402Version are ignored."""
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "toolResult",
+                        "toolUseId": "tool-1",
+                        "status": "success",
+                        "content": [
+                            {"text": "Analysis complete"},
+                        ],
+                    }
+                ],
+            },
+        ]
+        assert extract_payment_required(messages) is None
+
+    def test_returns_first_payment_required_when_multiple_exist(self):
+        """Test that the first PaymentRequired is returned when multiple exist."""
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "toolResult",
+                        "toolUseId": "tool-1",
+                        "status": "error",
+                        "content": [
+                            {"text": "Payment required"},
+                            {
+                                "json": {
+                                    "x402Version": 2,
+                                    "accepts": [{"planId": "plan-first"}],
+                                }
+                            },
+                        ],
+                    }
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "toolResult",
+                        "toolUseId": "tool-2",
+                        "status": "error",
+                        "content": [
+                            {"text": "Payment required"},
+                            {
+                                "json": {
+                                    "x402Version": 2,
+                                    "accepts": [{"planId": "plan-second"}],
+                                }
+                            },
+                        ],
+                    }
+                ],
+            },
+        ]
+        result = extract_payment_required(messages)
+        assert result is not None
+        assert result["accepts"][0]["planId"] == "plan-first"
+
+    def test_handles_messages_without_content_list(self):
+        """Test graceful handling of messages with non-list content."""
+        messages = [
+            {"role": "user", "content": "plain string content"},
+            {"role": "assistant", "content": None},
+            {"role": "user"},
+        ]
+        assert extract_payment_required(messages) is None
