@@ -636,9 +636,7 @@ class TestExtractPaymentRequired:
                         "toolResult": {
                             "status": "error",
                             "content": [
-                                {
-                                    "text": "Payment required: missing payment_token"
-                                },
+                                {"text": "Payment required: missing payment_token"},
                                 {
                                     "json": {
                                         "x402Version": 2,
