@@ -27,13 +27,14 @@ Server-side example::
         PaymentOptions(nvm_api_key="...", environment="sandbox")
     )
 
-    @tool
+    @tool(context=True)
     @requires_payment(payments=payments, plan_id="plan-123", credits=1)
     def analyze_data(query: str, tool_context=None) -> dict:
         return {"status": "success", "content": [{"text": f"Analysis: {query}"}]}
 
     agent = Agent(tools=[analyze_data])
-    result = agent("Analyze sales data", payment_token="x402-token-here")
+    state = {"payment_token": "x402-token-here"}
+    result = agent("Analyze sales data", invocation_state=state)
 
 Client-side extraction::
 
@@ -196,11 +197,22 @@ def _handle_payment_error(
 
 
 def _find_x402_json_in_tool_result(block: dict) -> Optional[dict]:
-    """Search a toolResult block for a nested x402 PaymentRequired JSON payload."""
-    if block.get("type") != "toolResult":
+    """Search a toolResult block for a nested x402 PaymentRequired JSON payload.
+
+    Supports two Strands message layouts:
+    - Wrapped:  ``{"toolResult": {"content": [...], ...}}``
+    - Flat:     ``{"type": "toolResult", "content": [...], ...}``
+    """
+    if "toolResult" in block:
+        tool_result = block["toolResult"]
+        if not isinstance(tool_result, dict):
+            return None
+        inner_content = tool_result.get("content")
+    elif block.get("type") == "toolResult":
+        inner_content = block.get("content")
+    else:
         return None
 
-    inner_content = block.get("content")
     if not isinstance(inner_content, list):
         return None
 
@@ -253,27 +265,31 @@ def extract_payment_required(messages: list) -> Optional[dict]:
 
 
 def _extract_payment_token(kwargs: dict) -> Optional[str]:
-    """Extract payment token from tool_context.invocation_state or kwargs fallback."""
+    """Extract payment token from tool_context.invocation_state.
+
+    Falls back to kwargs["payment_token"] for backward compatibility,
+    but the primary path is via invocation_state (requires @tool(context=True)).
+    """
     tool_context = kwargs.get("tool_context")
-    if tool_context is None:
-        return kwargs.get("payment_token")
+    if tool_context is not None:
+        invocation_state = getattr(tool_context, "invocation_state", None)
+        if isinstance(invocation_state, dict):
+            token = invocation_state.get("payment_token")
+            if token:
+                return token
 
-    invocation_state = getattr(tool_context, "invocation_state", None)
-    if not isinstance(invocation_state, dict):
-        return kwargs.get("payment_token")
-
-    return invocation_state.get("payment_token") or kwargs.get("payment_token")
+    return kwargs.get("payment_token")
 
 
-def _store_payment_context(kwargs: dict, context: PaymentContext) -> None:
-    """Store PaymentContext in tool_context.invocation_state if available."""
+def _set_invocation_state(kwargs: dict, key: str, value: Any) -> None:
+    """Store a value in tool_context.invocation_state if available."""
     tool_context = kwargs.get("tool_context")
     if tool_context is None:
         return
 
     invocation_state = getattr(tool_context, "invocation_state", None)
     if isinstance(invocation_state, dict):
-        invocation_state["payment_context"] = context
+        invocation_state[key] = value
 
 
 def _clean_kwargs(kwargs: dict) -> dict:
@@ -345,7 +361,7 @@ def _verify_payment(
         agent_request_id=verification.agent_request_id,
         agent_request=verification.agent_request,
     )
-    _store_payment_context(kwargs, payment_context)
+    _set_invocation_state(kwargs, "payment_context", payment_context)
 
     return None, _VerifiedPayment(
         token=token,
@@ -358,10 +374,16 @@ def _verify_payment(
 def _settle_payment(
     verified: _VerifiedPayment,
     result: Any,
+    kwargs: dict,
     payments: Any,
     on_after_settle: Optional[AfterSettleHook],
 ) -> None:
-    """Settle credits after successful tool execution (skips on error results)."""
+    """Settle credits after successful tool execution (skips on error results).
+
+    On success, stores the settlement response in
+    ``tool_context.invocation_state["payment_settlement"]`` so clients can
+    inspect credits redeemed, remaining balance, and transaction details.
+    """
     if _is_error_result(result):
         return
 
@@ -372,6 +394,8 @@ def _settle_payment(
             max_amount=str(verified.credits_to_charge),
             agent_request_id=verified.payment_context.agent_request_id,
         )
+
+        _set_invocation_state(kwargs, "payment_settlement", settlement)
 
         if on_after_settle:
             on_after_settle(verified.credits_to_charge, settlement)
@@ -395,12 +419,16 @@ def requires_payment(
     """
     Decorator that protects a Strands agent tool with x402 payment verification.
 
-    The payment token is extracted from:
-    1. tool_context.invocation_state["payment_token"] (primary)
-    2. kwargs["payment_token"] (fallback)
+    Requires ``@tool(context=True)`` so Strands injects ``tool_context``.
 
-    After verification, a PaymentContext is stored in
-    tool_context.invocation_state["payment_context"].
+    The payment token is extracted from
+    ``tool_context.invocation_state["payment_token"]``, set by calling
+    ``agent(prompt, invocation_state={"payment_token": token})``.
+
+    After verification, a ``PaymentContext`` is stored in
+    ``tool_context.invocation_state["payment_context"]``.
+    After settlement, the result is stored in
+    ``tool_context.invocation_state["payment_settlement"]``.
 
     Args:
         payments: The Payments instance (with payments.facilitator)
@@ -419,7 +447,7 @@ def requires_payment(
 
     Example:
         ```python
-        @tool
+        @tool(context=True)
         @requires_payment(
             payments=payments,
             plan_ids=["plan-basic", "plan-premium"],
@@ -474,7 +502,9 @@ def _execute_with_payment(
             return error
 
         result = func(*args, **_clean_kwargs(kwargs))
-        _settle_payment(verified, result, config.payments, config.on_after_settle)
+        _settle_payment(
+            verified, result, kwargs, config.payments, config.on_after_settle
+        )
         return result
 
     except Exception as exc:
@@ -494,7 +524,9 @@ async def _execute_with_payment_async(
             return error
 
         result = await func(*args, **_clean_kwargs(kwargs))
-        _settle_payment(verified, result, config.payments, config.on_after_settle)
+        _settle_payment(
+            verified, result, kwargs, config.payments, config.on_after_settle
+        )
         return result
 
     except Exception as exc:

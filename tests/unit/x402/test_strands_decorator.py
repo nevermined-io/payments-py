@@ -299,6 +299,23 @@ class TestRequiresPaymentSync:
         assert result["status"] == "success"
         assert "Tool succeeded" in result["content"][0]["text"]
 
+    def test_settlement_stored_in_invocation_state(
+        self, mock_payments, mock_tool_context
+    ):
+        """Test that settlement response is stored in invocation_state."""
+
+        @requires_payment(payments=mock_payments, plan_id="plan-123", credits=2)
+        def my_tool(query: str, tool_context=None):
+            return {"status": "success", "content": [{"text": "ok"}]}
+
+        result = my_tool("test", tool_context=mock_tool_context)
+        assert result["status"] == "success"
+
+        settlement = mock_tool_context.invocation_state.get("payment_settlement")
+        assert settlement is not None
+        assert settlement.success is True
+        assert settlement.credits_redeemed == "1"
+
     def test_payment_context_stored_in_invocation_state(
         self, mock_payments, mock_tool_context
     ):
@@ -596,21 +613,61 @@ class TestSinglePlanIdDelegation:
 class TestExtractPaymentRequired:
     """Tests for extract_payment_required()."""
 
-    def test_extracts_payment_required_from_tool_result(self):
-        """Test extraction from messages containing a toolResult with PaymentRequired."""
+    def test_extracts_from_wrapped_format(self):
+        """Test extraction from Strands wrapped toolResult format."""
         messages = [
             {"role": "user", "content": [{"text": "Analyze data"}]},
             {
                 "role": "assistant",
                 "content": [
                     {
-                        "type": "toolUse",
-                        "toolUseId": "tool-1",
-                        "name": "analyze_data",
-                        "input": {"query": "test"},
+                        "toolUse": {
+                            "toolUseId": "call_abc123",
+                            "name": "analyze_data",
+                            "input": {"query": "test"},
+                        }
                     }
                 ],
             },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "toolResult": {
+                            "status": "error",
+                            "content": [
+                                {
+                                    "text": "Payment required: missing payment_token"
+                                },
+                                {
+                                    "json": {
+                                        "x402Version": 2,
+                                        "resource": {"url": "analyze_data"},
+                                        "accepts": [
+                                            {
+                                                "scheme": "nvm:erc4337",
+                                                "network": "eip155:84532",
+                                                "planId": "plan-123",
+                                            }
+                                        ],
+                                        "extensions": {},
+                                    }
+                                },
+                            ],
+                            "toolUseId": "call_abc123",
+                        }
+                    }
+                ],
+            },
+        ]
+        result = extract_payment_required(messages)
+        assert result is not None
+        assert result["x402Version"] == 2
+        assert result["accepts"][0]["planId"] == "plan-123"
+
+    def test_extracts_from_flat_format(self):
+        """Test extraction from flat toolResult format (type field)."""
+        messages = [
             {
                 "role": "user",
                 "content": [
@@ -623,15 +680,7 @@ class TestExtractPaymentRequired:
                             {
                                 "json": {
                                     "x402Version": 2,
-                                    "resource": {"url": "analyze_data"},
-                                    "accepts": [
-                                        {
-                                            "scheme": "nvm:erc4337",
-                                            "network": "eip155:84532",
-                                            "planId": "plan-123",
-                                        }
-                                    ],
-                                    "extensions": {},
+                                    "accepts": [{"planId": "plan-456"}],
                                 }
                             },
                         ],
@@ -641,8 +690,7 @@ class TestExtractPaymentRequired:
         ]
         result = extract_payment_required(messages)
         assert result is not None
-        assert result["x402Version"] == 2
-        assert result["accepts"][0]["planId"] == "plan-123"
+        assert result["accepts"][0]["planId"] == "plan-456"
 
     def test_returns_none_for_empty_messages(self):
         """Test that empty messages returns None."""
@@ -655,13 +703,14 @@ class TestExtractPaymentRequired:
                 "role": "user",
                 "content": [
                     {
-                        "type": "toolResult",
-                        "toolUseId": "tool-1",
-                        "status": "error",
-                        "content": [
-                            {"text": "Some other error"},
-                            {"json": {"error": "not a payment error"}},
-                        ],
+                        "toolResult": {
+                            "status": "error",
+                            "content": [
+                                {"text": "Some other error"},
+                                {"json": {"error": "not a payment error"}},
+                            ],
+                            "toolUseId": "tool-1",
+                        }
                     }
                 ],
             },
@@ -675,12 +724,13 @@ class TestExtractPaymentRequired:
                 "role": "user",
                 "content": [
                     {
-                        "type": "toolResult",
-                        "toolUseId": "tool-1",
-                        "status": "success",
-                        "content": [
-                            {"text": "Analysis complete"},
-                        ],
+                        "toolResult": {
+                            "status": "success",
+                            "content": [
+                                {"text": "Analysis complete"},
+                            ],
+                            "toolUseId": "tool-1",
+                        }
                     }
                 ],
             },
@@ -694,18 +744,19 @@ class TestExtractPaymentRequired:
                 "role": "user",
                 "content": [
                     {
-                        "type": "toolResult",
-                        "toolUseId": "tool-1",
-                        "status": "error",
-                        "content": [
-                            {"text": "Payment required"},
-                            {
-                                "json": {
-                                    "x402Version": 2,
-                                    "accepts": [{"planId": "plan-first"}],
-                                }
-                            },
-                        ],
+                        "toolResult": {
+                            "status": "error",
+                            "content": [
+                                {"text": "Payment required"},
+                                {
+                                    "json": {
+                                        "x402Version": 2,
+                                        "accepts": [{"planId": "plan-first"}],
+                                    }
+                                },
+                            ],
+                            "toolUseId": "tool-1",
+                        }
                     }
                 ],
             },
@@ -713,18 +764,19 @@ class TestExtractPaymentRequired:
                 "role": "user",
                 "content": [
                     {
-                        "type": "toolResult",
-                        "toolUseId": "tool-2",
-                        "status": "error",
-                        "content": [
-                            {"text": "Payment required"},
-                            {
-                                "json": {
-                                    "x402Version": 2,
-                                    "accepts": [{"planId": "plan-second"}],
-                                }
-                            },
-                        ],
+                        "toolResult": {
+                            "status": "error",
+                            "content": [
+                                {"text": "Payment required"},
+                                {
+                                    "json": {
+                                        "x402Version": 2,
+                                        "accepts": [{"planId": "plan-second"}],
+                                    }
+                                },
+                            ],
+                            "toolUseId": "tool-2",
+                        }
                     }
                 ],
             },
