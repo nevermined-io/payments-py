@@ -54,6 +54,8 @@ from .types import (
     SessionKeyPayload,
     VerifyResponse,
     SettleResponse,
+    # Shared context
+    PaymentContext,
 )
 from .helpers import build_payment_required
 from .networks import SupportedNetworks
@@ -85,6 +87,8 @@ __all__ = [
     "SessionKeyPayload",
     "VerifyResponse",
     "SettleResponse",
+    # Shared context
+    "PaymentContext",
     # Helper functions
     "build_payment_required",
     # Types (V2)
@@ -125,3 +129,7 @@ __all__ = [
 #       RouteConfig,
 #       PaymentContext,
 #   )
+
+# Note: For Strands agent tools decorator, install with extras and import from:
+#   pip install payments-py[strands]
+#   from payments_py.x402.strands import requires_payment, PaymentContext
