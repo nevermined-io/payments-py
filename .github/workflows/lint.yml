@@ -7,19 +7,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: psf/black@stable
-        with:
-          options: "--check --verbose"
-          src: "."
-
-  check-lock:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Install Poetry
         run: pip install poetry
-      - name: Check poetry.lock is up to date
+      - name: Check poetry.lock is in sync with pyproject.toml
         run: poetry check --lock
+      - uses: psf/black@stable
+        with:
+          options: "--check --verbose"
+          src: "."
