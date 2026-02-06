@@ -119,10 +119,13 @@ The CI pipeline runs:
 ```
 payments_py/       # Source code
   x402/            # X402 payment protocol types and APIs
+    strands/       # Strands agent decorator (@requires_payment)
+    fastapi/       # FastAPI middleware (PaymentMiddleware)
   api/             # API client implementations
   common/          # Shared types and utilities
 tests/
   unit/            # Unit tests
+    x402/          # x402-specific tests (strands, fastapi)
   integration/     # Integration tests
   e2e/             # End-to-end tests (@pytest.mark.slow)
   conftest.py      # Shared fixtures
@@ -135,3 +138,11 @@ tests/
 - `payments.x402` - X402 access token generation
 - `payments.plans` - Plan management
 - `payments.agents` - Agent management
+
+## Framework Integrations
+
+- **FastAPI**: `payments_py.x402.fastapi` — `PaymentMiddleware` (install with `pip install payments-py[fastapi]`)
+- **Strands Agent**: `payments_py.x402.strands` — `@requires_payment` decorator (install with `pip install payments-py[strands]`)
+  - Must use `@tool(context=True)` for Strands to inject `tool_context`
+  - Token via `agent(prompt, invocation_state={"payment_token": token})`
+  - Client extraction: `extract_payment_required(agent.messages)`
