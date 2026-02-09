@@ -133,3 +133,7 @@ __all__ = [
 # Note: For Strands agent tools decorator, install with extras and import from:
 #   pip install payments-py[strands]
 #   from payments_py.x402.strands import requires_payment, PaymentContext
+
+# Note: For AWS Bedrock AgentCore Gateway interceptor, import from:
+#   from payments_py.x402.agentcore import create_interceptor, create_lambda_handler
+#   Or use via payments.agentcore.create_interceptor(...)

@@ -98,6 +98,9 @@ class Payments(BasePaymentsAPI):
         # Cached MCP integration
         self._mcp_integration = None
 
+        # Cached AgentCore integration
+        self._agentcore_api = None
+
     @property
     def contracts(self):
         """
@@ -123,6 +126,27 @@ class Payments(BasePaymentsAPI):
 
             self._mcp_integration = build_mcp_integration(self)
         return self._mcp_integration
+
+    @property
+    def agentcore(self):
+        """
+        Returns the AgentCore integration API for AWS Bedrock.
+
+        Provides methods to create x402 payment interceptors for
+        AgentCore Gateway Lambda functions.
+
+        Example:
+            ```python
+            interceptor = payments.agentcore.create_interceptor(plan_id="123")
+            handler = payments.agentcore.create_lambda_handler(plan_id="123")
+            ```
+        """
+        if self._agentcore_api is None:
+            # Local import to avoid import cycles
+            from payments_py.x402.agentcore import _AgentCoreAPI  # noqa: WPS433
+
+            self._agentcore_api = _AgentCoreAPI(self)
+        return self._agentcore_api
 
     @property
     def is_logged_in(self) -> bool:
