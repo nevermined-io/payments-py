@@ -49,6 +49,9 @@ from payments_py.x402.types import (
     SettleResponse,
     VerifyResponse,
     X402PaymentRequired,
+    X402Resource,
+    X402Scheme,
+    X402SchemeExtra,
 )
 
 from .constants import INTERCEPTOR_OUTPUT_VERSION, X402_HEADERS
@@ -277,13 +280,35 @@ def _inject_meta(body: dict, settlement: SettleResponse) -> None:
 
 
 def _build_payment_required_for_config(config: _PaymentConfig) -> X402PaymentRequired:
-    """Build X402PaymentRequired from decorator config."""
-    # Use first plan_id with shared helper; multi-plan support mirrors Strands
-    return build_payment_required(
-        plan_id=config.plan_ids[0],
-        endpoint=config.endpoint,
-        agent_id=config.agent_id,
-        network=config.network,
+    """Build X402PaymentRequired from decorator config.
+
+    For a single plan, delegates to the shared ``build_payment_required`` helper.
+    For multiple plans, constructs the accepts array with one X402Scheme per plan.
+    """
+    if len(config.plan_ids) == 1:
+        return build_payment_required(
+            plan_id=config.plan_ids[0],
+            endpoint=config.endpoint,
+            agent_id=config.agent_id,
+            network=config.network,
+        )
+
+    extra = X402SchemeExtra(agent_id=config.agent_id) if config.agent_id else None
+    schemes = [
+        X402Scheme(
+            scheme="nvm:erc4337",
+            network=config.network,
+            plan_id=pid,
+            extra=extra,
+        )
+        for pid in config.plan_ids
+    ]
+
+    return X402PaymentRequired(
+        x402_version=2,
+        resource=X402Resource(url=config.endpoint or ""),
+        accepts=schemes,
+        extensions={},
     )
 
 

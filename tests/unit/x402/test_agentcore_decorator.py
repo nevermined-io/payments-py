@@ -283,6 +283,50 @@ class TestRequiresPaymentValidation:
 
         assert callable(handler)
 
+    def test_multi_plan_402_includes_all_plans(self, mock_payments):
+        """402 response with plan_ids should include all plans in accepts."""
+
+        @requires_payment(
+            payments=mock_payments,
+            plan_ids=["plan-a", "plan-b", "plan-c"],
+            agent_id="agent-1",
+        )
+        def handler(event, context=None):
+            return {"content": []}
+
+        result = handler(_make_event())
+        response = _get_transformed_response(result)
+        decoded = decode_header(response["headers"]["payment-required"])
+
+        assert decoded["x402Version"] == 2
+        assert len(decoded["accepts"]) == 3
+        assert decoded["accepts"][0]["planId"] == "plan-a"
+        assert decoded["accepts"][1]["planId"] == "plan-b"
+        assert decoded["accepts"][2]["planId"] == "plan-c"
+        for scheme in decoded["accepts"]:
+            assert scheme["scheme"] == "nvm:erc4337"
+            assert scheme["extra"]["agentId"] == "agent-1"
+
+    def test_multi_plan_verify_uses_first_plan(self, mock_payments):
+        """Verify call should use the first plan_id from the list."""
+
+        @requires_payment(
+            payments=mock_payments,
+            plan_ids=["plan-a", "plan-b"],
+            credits=1,
+        )
+        def handler(event, context=None):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+        handler(_make_event(token="test-token"))
+
+        # Verify was called — check the payment_required passed
+        call_args = mock_payments.facilitator.verify_permissions.call_args
+        pr = call_args.kwargs["payment_required"]
+        plan_ids = [s.plan_id for s in pr.accepts]
+        assert "plan-a" in plan_ids
+        assert "plan-b" in plan_ids
+
 
 # ---------------------------------------------------------------------------
 # Decorator: full flow
