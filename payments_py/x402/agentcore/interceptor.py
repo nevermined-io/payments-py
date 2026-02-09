@@ -529,7 +529,7 @@ class AgentCoreInterceptor:
 
 
 # =============================================================================
-# Module-level Factory Functions (like Strands pattern)
+# Module-level Factory Functions
 # =============================================================================
 
 
@@ -548,7 +548,7 @@ def create_interceptor(
     """
     Create an AgentCore Gateway interceptor for x402 payment protection.
 
-    This is the primary factory function (similar to Strands' requires_payment).
+    This is the primary factory function for creating an AgentCore interceptor.
 
     Args:
         payments: The Payments instance (with payments.facilitator)

@@ -17,7 +17,7 @@ Example usage (Pattern A - via payments.agentcore):
     )
     ```
 
-Example usage (Pattern B - direct import, like Strands):
+Example usage (Pattern B - direct import):
     ```python
     from payments_py import Payments, PaymentOptions
     from payments_py.x402.agentcore import create_interceptor
