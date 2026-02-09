@@ -11,7 +11,7 @@ class TestPaymentsAgentCoreIntegration:
     def test_agentcore_property_lazy_loads(self):
         """Test that agentcore property is lazy loaded."""
         # Create a mock Payments instance manually to avoid initialization
-        from payments_py.x402.agentcore import _AgentCoreAPI
+        from payments_py.x402.agentcore import AgentCoreAPI
 
         mock_payments = MagicMock()
         mock_payments._agentcore_api = None
@@ -19,25 +19,25 @@ class TestPaymentsAgentCoreIntegration:
         # Simulate the property behavior
         def get_agentcore():
             if mock_payments._agentcore_api is None:
-                mock_payments._agentcore_api = _AgentCoreAPI(mock_payments)
+                mock_payments._agentcore_api = AgentCoreAPI(mock_payments)
             return mock_payments._agentcore_api
 
         mock_payments.agentcore = property(lambda self: get_agentcore())
 
         # First access creates the API
         api1 = get_agentcore()
-        assert isinstance(api1, _AgentCoreAPI)
+        assert isinstance(api1, AgentCoreAPI)
 
         # Second access returns same instance
         api2 = get_agentcore()
         assert api1 is api2
 
     def test_agentcore_api_creates_interceptor(self):
-        """Test that _AgentCoreAPI creates valid interceptors."""
-        from payments_py.x402.agentcore import _AgentCoreAPI, AgentCoreInterceptor
+        """Test that AgentCoreAPI creates valid interceptors."""
+        from payments_py.x402.agentcore import AgentCoreAPI, AgentCoreInterceptor
 
         mock_payments = MagicMock()
-        api = _AgentCoreAPI(mock_payments)
+        api = AgentCoreAPI(mock_payments)
 
         interceptor = api.create_interceptor(plan_id="test-plan")
 
@@ -45,11 +45,11 @@ class TestPaymentsAgentCoreIntegration:
         assert interceptor.default_config.plan_id == "test-plan"
 
     def test_agentcore_api_creates_lambda_handler(self):
-        """Test that _AgentCoreAPI creates callable lambda handlers."""
-        from payments_py.x402.agentcore import _AgentCoreAPI
+        """Test that AgentCoreAPI creates callable lambda handlers."""
+        from payments_py.x402.agentcore import AgentCoreAPI
 
         mock_payments = MagicMock()
-        api = _AgentCoreAPI(mock_payments)
+        api = AgentCoreAPI(mock_payments)
 
         handler = api.create_lambda_handler(plan_id="test-plan")
 
@@ -57,12 +57,12 @@ class TestPaymentsAgentCoreIntegration:
 
     def test_agentcore_api_passes_payments_to_interceptor(self):
         """Test that the Payments instance is correctly passed to interceptor."""
-        from payments_py.x402.agentcore import _AgentCoreAPI
+        from payments_py.x402.agentcore import AgentCoreAPI
 
         mock_payments = MagicMock()
         mock_payments.facilitator = MagicMock()
 
-        api = _AgentCoreAPI(mock_payments)
+        api = AgentCoreAPI(mock_payments)
         interceptor = api.create_interceptor(plan_id="test-plan")
 
         # The interceptor should have access to payments
@@ -71,10 +71,10 @@ class TestPaymentsAgentCoreIntegration:
 
     def test_agentcore_api_forwards_all_kwargs(self):
         """Test that all kwargs are forwarded to interceptor."""
-        from payments_py.x402.agentcore import _AgentCoreAPI, InterceptorOptions
+        from payments_py.x402.agentcore import AgentCoreAPI, InterceptorOptions
 
         mock_payments = MagicMock()
-        api = _AgentCoreAPI(mock_payments)
+        api = AgentCoreAPI(mock_payments)
 
         options = InterceptorOptions(mock_mode=True)
         interceptor = api.create_interceptor(
@@ -132,9 +132,9 @@ class TestAgentCorePropertyInPaymentsClass:
         api = payments.agentcore
 
         # Check it's the right type
-        from payments_py.x402.agentcore import _AgentCoreAPI
+        from payments_py.x402.agentcore import AgentCoreAPI
 
-        assert isinstance(api, _AgentCoreAPI)
+        assert isinstance(api, AgentCoreAPI)
 
     @patch("payments_py.payments.PlansAPI")
     @patch("payments_py.payments.AgentsAPI")

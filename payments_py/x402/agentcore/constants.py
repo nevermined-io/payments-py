@@ -11,6 +11,8 @@ X402_HEADERS = {
     "PAYMENT_REQUIRED": "payment-required",
     # Server sends settlement receipt in this header (base64-encoded)
     "PAYMENT_RESPONSE": "payment-response",
+    # Internal: passes agent_request_id from REQUEST to RESPONSE phase
+    "AGENT_REQUEST_ID": "x-nvm-agent-request-id",
 }
 
 # MCP JSON-RPC 2.0 methods

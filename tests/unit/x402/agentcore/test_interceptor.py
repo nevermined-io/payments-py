@@ -462,18 +462,18 @@ class TestPaymentsAgentCoreProperty:
     def test_agentcore_property_creates_interceptor(self, mock_payments):
         """Test that payments.agentcore.create_interceptor works."""
         # Create a minimal Payments mock with the agentcore property
-        from payments_py.x402.agentcore import _AgentCoreAPI
+        from payments_py.x402.agentcore import AgentCoreAPI
 
-        api = _AgentCoreAPI(mock_payments)
+        api = AgentCoreAPI(mock_payments)
         interceptor = api.create_interceptor(plan_id="test-plan")
 
         assert isinstance(interceptor, AgentCoreInterceptor)
 
     def test_agentcore_property_creates_handler(self, mock_payments):
         """Test that payments.agentcore.create_lambda_handler works."""
-        from payments_py.x402.agentcore import _AgentCoreAPI
+        from payments_py.x402.agentcore import AgentCoreAPI
 
-        api = _AgentCoreAPI(mock_payments)
+        api = AgentCoreAPI(mock_payments)
         handler = api.create_lambda_handler(plan_id="test-plan")
 
         assert callable(handler)

@@ -5,7 +5,7 @@ Pydantic models for MCP JSON-RPC 2.0 request/response structures
 as used by Amazon Bedrock AgentCore Gateway.
 """
 
-from typing import Any, Optional, Union, Callable, Awaitable
+from typing import Any, Optional, Union, Callable
 from pydantic import BaseModel, Field, ConfigDict
 from dataclasses import dataclass, field
 
@@ -156,14 +156,12 @@ class InterceptorOutput(BaseModel):
 # Configuration Types
 # =============================================================================
 
-# Type aliases for hook callbacks
-CreditsCallable = Callable[[MCPRequestBody], Union[int, Awaitable[int]]]
-BeforeVerifyHook = Callable[[GatewayRequest, X402PaymentRequired], Awaitable[None]]
-AfterVerifyHook = Callable[[GatewayRequest, VerifyResponse], Awaitable[None]]
-AfterSettleHook = Callable[[GatewayRequest, int, SettleResponse], Awaitable[None]]
-PaymentErrorHook = Callable[
-    [Exception, GatewayRequest], Awaitable[Optional[InterceptorOutput]]
-]
+# Type aliases for hook callbacks (all sync — Lambda handlers are synchronous)
+CreditsCallable = Callable[[MCPRequestBody], int]
+BeforeVerifyHook = Callable[[GatewayRequest, X402PaymentRequired], None]
+AfterVerifyHook = Callable[[GatewayRequest, VerifyResponse], None]
+AfterSettleHook = Callable[[GatewayRequest, int, SettleResponse], None]
+PaymentErrorHook = Callable[[Exception, GatewayRequest], Optional[InterceptorOutput]]
 
 
 @dataclass

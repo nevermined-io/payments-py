@@ -6,8 +6,6 @@ Nevermined payments using the x402 protocol.
 """
 
 import logging
-import asyncio
-import inspect
 from typing import Any, Dict, Optional, Union, TYPE_CHECKING, Callable
 
 from payments_py.x402.helpers import build_payment_required
@@ -28,6 +26,7 @@ from .helpers import (
     forward_request,
     forward_response,
 )
+from .constants import X402_HEADERS
 
 if TYPE_CHECKING:
     from payments_py import Payments
@@ -91,7 +90,7 @@ class AgentCoreInterceptor:
 
     Example - With hooks:
         ```python
-        async def on_settle(request, credits, result):
+        def on_settle(request, credits, result):
             print(f"Settled {credits} credits")
 
         interceptor = payments.agentcore.create_interceptor(
@@ -297,12 +296,11 @@ class AgentCoreInterceptor:
         # Verify payment
         try:
             # Resolve credits
-            credits = self._resolve_credits_sync(config.credits, body)
+            credits = self._resolve_credits(config.credits, body)
 
             # Call before_verify hook
             if self.options.on_before_verify:
-                self._run_hook(
-                    self.options.on_before_verify,
+                self.options.on_before_verify(
                     GatewayRequest.model_validate(gateway_request),
                     payment_required,
                 )
@@ -324,21 +322,26 @@ class AgentCoreInterceptor:
 
             # Call after_verify hook
             if self.options.on_after_verify:
-                self._run_hook(
-                    self.options.on_after_verify,
+                self.options.on_after_verify(
                     GatewayRequest.model_validate(gateway_request),
                     verification,
                 )
 
+            # Inject agent_request_id into forwarded headers for RESPONSE phase
+            forwarded_headers = dict(headers)
+            if verification.agent_request_id:
+                forwarded_headers[X402_HEADERS["AGENT_REQUEST_ID"]] = (
+                    verification.agent_request_id
+                )
+
             logger.info("Payment verified, forwarding request")
-            return forward_request(headers, body).model_dump(by_alias=True)
+            return forward_request(forwarded_headers, body).model_dump(by_alias=True)
 
         except Exception as e:
             logger.error(f"Verification error: {e}", exc_info=True)
 
             if self.options.on_payment_error:
-                custom = self._run_hook(
-                    self.options.on_payment_error,
+                custom = self.options.on_payment_error(
                     e,
                     GatewayRequest.model_validate(gateway_request),
                 )
@@ -401,7 +404,7 @@ class AgentCoreInterceptor:
 
         # Extract credits from response (agent-reported) or use config default
         default_credits = (
-            self._resolve_credits_sync(config.credits, request_body)
+            self._resolve_credits(config.credits, request_body)
             if callable(config.credits)
             else config.credits
         )
@@ -442,12 +445,16 @@ class AgentCoreInterceptor:
                 response_headers, response_body, mock_settlement, response_status
             ).model_dump(by_alias=True)
 
+        # Extract agent_request_id injected during REQUEST phase
+        agent_request_id = request_headers.get(X402_HEADERS["AGENT_REQUEST_ID"])
+
         try:
             # Settle with Nevermined
             settlement = self.payments.facilitator.settle_permissions(
                 payment_required=payment_required,
                 x402_access_token=token,
                 max_amount=str(credits_to_charge),
+                agent_request_id=agent_request_id,
             )
 
             if not settlement.success:
@@ -461,8 +468,7 @@ class AgentCoreInterceptor:
 
                 # Call after_settle hook
                 if self.options.on_after_settle:
-                    self._run_hook(
-                        self.options.on_after_settle,
+                    self.options.on_after_settle(
                         GatewayRequest.model_validate(gateway_request),
                         credits_to_charge,
                         settlement,
@@ -479,53 +485,11 @@ class AgentCoreInterceptor:
                 response_headers, response_body, response_status
             ).model_dump(by_alias=True)
 
-    def _resolve_credits_sync(
-        self, credits: Union[int, CreditsCallable], body: dict
-    ) -> int:
-        """Resolve credits value synchronously."""
+    def _resolve_credits(self, credits: Union[int, CreditsCallable], body: dict) -> int:
+        """Resolve credits value. Callable must be synchronous."""
         if isinstance(credits, int):
             return credits
-
-        # Call the function
-        result = credits(MCPRequestBody.model_validate(body))
-
-        # Handle async
-        if inspect.isawaitable(result):
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
-
-            if loop and loop.is_running():
-                # Create a new event loop in a thread
-                import concurrent.futures
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(asyncio.run, result)
-                    return future.result()
-            else:
-                return asyncio.run(result)
-
-        return result
-
-    def _run_hook(self, hook: Callable, *args: Any) -> Any:
-        """Run a hook, handling async if needed."""
-        result = hook(*args)
-        if inspect.isawaitable(result):
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
-
-            if loop and loop.is_running():
-                import concurrent.futures
-
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(asyncio.run, result)
-                    return future.result()
-            else:
-                return asyncio.run(result)
-        return result
+        return credits(MCPRequestBody.model_validate(body))
 
 
 # =============================================================================
@@ -536,7 +500,6 @@ class AgentCoreInterceptor:
 def create_interceptor(
     payments: "Payments",
     plan_id: Optional[str] = None,
-    plan_ids: Optional[list[str]] = None,
     agent_id: Optional[str] = None,
     credits: Union[int, CreditsCallable] = 1,
     endpoint: Optional[str] = None,
@@ -552,8 +515,7 @@ def create_interceptor(
 
     Args:
         payments: The Payments instance (with payments.facilitator)
-        plan_id: Single plan ID to accept (convenience alias for plan_ids)
-        plan_ids: List of plan IDs to accept
+        plan_id: Plan ID for all tools (required if tools not specified)
         agent_id: Optional agent identifier
         credits: Static int or callable that returns credits to charge
         endpoint: Protected resource endpoint URL
@@ -584,11 +546,9 @@ def create_interceptor(
             return interceptor.handle(event, context)
         ```
     """
-    resolved_plan_id = plan_id or (plan_ids[0] if plan_ids else None)
-
     return AgentCoreInterceptor(
         payments=payments,
-        plan_id=resolved_plan_id,
+        plan_id=plan_id,
         agent_id=agent_id,
         credits=credits,
         endpoint=endpoint,
@@ -649,13 +609,13 @@ def create_lambda_handler(
 
 
 # =============================================================================
-# Internal API class for payments.agentcore access
+# API class for payments.agentcore access
 # =============================================================================
 
 
-class _AgentCoreAPI:
+class AgentCoreAPI:
     """
-    Internal API class attached to Payments.agentcore.
+    API class attached to Payments.agentcore.
 
     Provides convenience methods that delegate to the module-level
     factory functions, automatically injecting the payments instance.

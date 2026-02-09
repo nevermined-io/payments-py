@@ -39,7 +39,7 @@ Example usage (Pattern B - direct import):
 For full documentation, see the interceptor module.
 
 Installation:
-    pip install payments-py[agentcore]
+    pip install payments-py
 """
 
 from payments_py.x402.types import PaymentContext
@@ -47,7 +47,7 @@ from .interceptor import (
     AgentCoreInterceptor,
     create_interceptor,
     create_lambda_handler,
-    _AgentCoreAPI,
+    AgentCoreAPI,
 )
 from .decorator import requires_payment
 from .types import (
@@ -80,8 +80,7 @@ __all__ = [
     "AgentCoreInterceptor",
     "PaymentContext",
     "CreditsCallable",
-    # Internal API
-    "_AgentCoreAPI",
+    "AgentCoreAPI",
     # Configuration
     "InterceptorConfig",
     "InterceptorOptions",

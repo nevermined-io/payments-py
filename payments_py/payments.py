@@ -143,9 +143,9 @@ class Payments(BasePaymentsAPI):
         """
         if self._agentcore_api is None:
             # Local import to avoid import cycles
-            from payments_py.x402.agentcore import _AgentCoreAPI  # noqa: WPS433
+            from payments_py.x402.agentcore import AgentCoreAPI  # noqa: WPS433
 
-            self._agentcore_api = _AgentCoreAPI(self)
+            self._agentcore_api = AgentCoreAPI(self)
         return self._agentcore_api
 
     @property
