@@ -145,6 +145,7 @@ def build_402_response(
                     ),
                 }
             ],
+            "_meta": {"x402": True},
         },
     }
 

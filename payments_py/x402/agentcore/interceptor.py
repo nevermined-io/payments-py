@@ -289,6 +289,11 @@ class AgentCoreInterceptor:
                 payment_required, rpc_id, f"Payment required for tool: {tool_name}"
             ).model_dump(by_alias=True)
 
+        # Mock mode: skip verification
+        if self.options.mock_mode:
+            logger.info("Mock mode: skipping verification, forwarding request")
+            return forward_request(headers, body).model_dump(by_alias=True)
+
         # Verify payment
         try:
             # Resolve credits
@@ -418,6 +423,24 @@ class AgentCoreInterceptor:
             http_verb="POST",
             network=config.network,
         )
+
+        # Mock mode: skip real settlement, return mock receipt
+        if self.options.mock_mode:
+            logger.info("Mock mode: skipping settlement, returning mock receipt")
+            from payments_py.x402.types import SettleResponse as _SR
+
+            mock_settlement = _SR(
+                success=True,
+                error_reason=None,
+                payer="mock-payer",
+                transaction=f"mock-tx-{request_body.get('id', '1')}",
+                network=config.network if config else "eip155:84532",
+                credits_redeemed=str(credits_to_charge),
+                remaining_balance="mock",
+            )
+            return build_success_response(
+                response_headers, response_body, mock_settlement, response_status
+            ).model_dump(by_alias=True)
 
         try:
             # Settle with Nevermined
