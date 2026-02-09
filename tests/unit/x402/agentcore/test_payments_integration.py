@@ -3,7 +3,6 @@ Tests for Payments.agentcore property integration.
 """
 
 from unittest.mock import MagicMock, patch
-import pytest
 
 
 class TestPaymentsAgentCoreIntegration:
@@ -12,7 +11,7 @@ class TestPaymentsAgentCoreIntegration:
     def test_agentcore_property_lazy_loads(self):
         """Test that agentcore property is lazy loaded."""
         # Create a mock Payments instance manually to avoid initialization
-        from payments_py.x402.agentcore import _AgentCoreAPI, AgentCoreInterceptor
+        from payments_py.x402.agentcore import _AgentCoreAPI
 
         mock_payments = MagicMock()
         mock_payments._agentcore_api = None

@@ -56,9 +56,7 @@ from .helpers import (
     encode_header,
     extract_credits_to_charge,
     extract_token,
-    extract_tool_name,
 )
-from .types import MCPRequestBody
 
 logger = logging.getLogger(__name__)
 

@@ -248,7 +248,7 @@ class TestResponsePhase:
             plan_id="test-plan",
         )
 
-        result = interceptor.handle(response_event)
+        interceptor.handle(response_event)
 
         # The response has _meta.creditsToCharge = 2
         call_args = mock_payments.facilitator.settle_permissions.call_args
@@ -263,7 +263,7 @@ class TestResponsePhase:
             plan_id="test-plan",
         )
 
-        result = interceptor.handle(response_event)
+        interceptor.handle(response_event)
 
         # Verify settle was NOT called
         mock_payments.facilitator.settle_permissions.assert_not_called()
@@ -294,7 +294,7 @@ class TestResponsePhase:
             plan_id="test-plan",
         )
 
-        result = interceptor.handle(event)
+        interceptor.handle(event)
 
         # Verify settle was NOT called
         mock_payments.facilitator.settle_permissions.assert_not_called()

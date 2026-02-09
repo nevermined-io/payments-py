@@ -2,9 +2,6 @@
 Unit tests for AgentCore x402 types.
 """
 
-import pytest
-from pydantic import ValidationError
-
 from payments_py.x402.agentcore.types import (
     MCPParams,
     MCPRequestBody,

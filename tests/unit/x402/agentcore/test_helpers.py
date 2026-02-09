@@ -3,7 +3,6 @@ Unit tests for AgentCore x402 helper functions.
 """
 
 import json
-import pytest
 
 from payments_py.x402.agentcore.helpers import (
     encode_header,
