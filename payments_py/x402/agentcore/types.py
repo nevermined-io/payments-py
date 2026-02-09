@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 
 from payments_py.x402.types import X402PaymentRequired, VerifyResponse, SettleResponse
 
-
 # =============================================================================
 # MCP JSON-RPC 2.0 Types
 # =============================================================================
@@ -146,7 +145,9 @@ class InterceptorOutput(BaseModel):
     """
 
     interceptor_output_version: str = Field("1.0", alias="interceptorOutputVersion")
-    mcp: dict[str, Any]  # Contains transformedGatewayRequest or transformedGatewayResponse
+    mcp: dict[
+        str, Any
+    ]  # Contains transformedGatewayRequest or transformedGatewayResponse
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -212,9 +213,7 @@ class InterceptorOptions:
     )
 
     # Methods that require payment (default: only tools/call)
-    billable_methods: list[str] = field(
-        default_factory=lambda: ["tools/call"]
-    )
+    billable_methods: list[str] = field(default_factory=lambda: ["tools/call"])
 
     # Default credits if not specified per-tool
     default_credits: int = 1

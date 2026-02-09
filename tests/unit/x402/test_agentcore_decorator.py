@@ -19,7 +19,6 @@ from payments_py.x402.agentcore.decorator import (
 from payments_py.x402.agentcore.helpers import decode_header
 from payments_py.x402.types import VerifyResponse, SettleResponse
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -115,7 +114,12 @@ class TestResolveCredits:
 
     def test_callable_credits(self):
         def calc(event):
-            params = event.get("mcp", {}).get("gatewayRequest", {}).get("body", {}).get("params", {})
+            params = (
+                event.get("mcp", {})
+                .get("gatewayRequest", {})
+                .get("body", {})
+                .get("params", {})
+            )
             return len(params.get("arguments", {})) * 2
 
         event = _make_event(arguments={"a": 1, "b": 2, "c": 3})

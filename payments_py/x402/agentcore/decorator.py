@@ -180,9 +180,7 @@ def _build_error_response(message: str, rpc_id: str = "1") -> dict:
                         "content": [
                             {
                                 "type": "text",
-                                "text": json.dumps(
-                                    {"error": message, "code": 500}
-                                ),
+                                "text": json.dumps({"error": message, "code": 500}),
                             }
                         ],
                     },
@@ -206,9 +204,7 @@ def _wrap_result_as_response(
     """
     # Case 1: already an InterceptorOutput — inject payment-response header
     if "interceptorOutputVersion" in result:
-        transformed = (
-            result.get("mcp", {}).get("transformedGatewayResponse", {})
-        )
+        transformed = result.get("mcp", {}).get("transformedGatewayResponse", {})
         if transformed:
             headers = transformed.get("headers", {})
             headers[X402_HEADERS["PAYMENT_RESPONSE"]] = encode_header(
@@ -331,7 +327,9 @@ def _verify_payment(
         reason = verification.invalid_reason or "Payment verification failed"
         logger.warning("Verification failed: %s", reason)
         if config.on_payment_error:
-            custom = config.on_payment_error(Exception(f"Verification failed: {reason}"))
+            custom = config.on_payment_error(
+                Exception(f"Verification failed: {reason}")
+            )
             if custom is not None:
                 return custom, None
         return (
@@ -559,9 +557,11 @@ def _execute_with_payment(
                 "transformedGatewayResponse": {
                     "statusCode": 200,
                     "headers": {"Content-Type": "application/json"},
-                    "body": result
-                    if "jsonrpc" in result
-                    else {"jsonrpc": "2.0", "id": rpc_id, "result": result},
+                    "body": (
+                        result
+                        if "jsonrpc" in result
+                        else {"jsonrpc": "2.0", "id": rpc_id, "result": result}
+                    ),
                 }
             },
         }

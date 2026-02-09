@@ -90,9 +90,9 @@ def extract_credits_to_charge(
             return int(meta["creditsToCharge"])
 
     # 2. Try HTTP header
-    header_value = response_headers.get(
-        "X-Credits-To-Charge"
-    ) or response_headers.get("x-credits-to-charge")
+    header_value = response_headers.get("X-Credits-To-Charge") or response_headers.get(
+        "x-credits-to-charge"
+    )
     if header_value:
         return int(header_value)
 
@@ -104,7 +104,10 @@ def extract_credits_to_charge(
                 if isinstance(item, dict) and item.get("type") == "text":
                     try:
                         text_content = json.loads(item.get("text", "{}"))
-                        if isinstance(text_content, dict) and "creditsToCharge" in text_content:
+                        if (
+                            isinstance(text_content, dict)
+                            and "creditsToCharge" in text_content
+                        ):
                             return int(text_content["creditsToCharge"])
                     except (json.JSONDecodeError, TypeError):
                         pass
@@ -217,9 +220,7 @@ def build_success_response(
     )
 
 
-def forward_request(
-    headers: dict[str, str], body: dict[str, Any]
-) -> InterceptorOutput:
+def forward_request(headers: dict[str, str], body: dict[str, Any]) -> InterceptorOutput:
     """Forward request without modification."""
     return InterceptorOutput(
         interceptor_output_version=INTERCEPTOR_OUTPUT_VERSION,

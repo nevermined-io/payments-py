@@ -150,7 +150,10 @@ class TestExtractCreditsToCharge:
         body = {
             "result": {
                 "content": [
-                    {"type": "text", "text": json.dumps({"data": "value", "creditsToCharge": 10})}
+                    {
+                        "type": "text",
+                        "text": json.dumps({"data": "value", "creditsToCharge": 10}),
+                    }
                 ]
             }
         }
@@ -171,7 +174,9 @@ class TestExtractCreditsToCharge:
         """Test that _meta takes priority over other sources."""
         body = {
             "result": {
-                "content": [{"type": "text", "text": json.dumps({"creditsToCharge": 20})}],
+                "content": [
+                    {"type": "text", "text": json.dumps({"creditsToCharge": 20})}
+                ],
                 "_meta": {"creditsToCharge": 5},
             },
             "creditsToCharge": 100,
@@ -182,11 +187,7 @@ class TestExtractCreditsToCharge:
 
     def test_invalid_json_in_content(self):
         """Test handling of invalid JSON in content."""
-        body = {
-            "result": {
-                "content": [{"type": "text", "text": "not valid json"}]
-            }
-        }
+        body = {"result": {"content": [{"type": "text", "text": "not valid json"}]}}
         assert extract_credits_to_charge(body) == 1
 
     def test_empty_result(self):

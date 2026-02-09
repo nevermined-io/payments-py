@@ -66,7 +66,10 @@ def request_event():
                     "jsonrpc": "2.0",
                     "id": "1",
                     "method": "tools/call",
-                    "params": {"name": "Target1___getPatient", "arguments": {"id": "123"}},
+                    "params": {
+                        "name": "Target1___getPatient",
+                        "arguments": {"id": "123"},
+                    },
                 },
             }
         }
@@ -303,7 +306,9 @@ class TestResponsePhase:
 class TestMockMode:
     """Tests for mock mode functionality."""
 
-    def test_mock_mode_skips_verification(self, mock_payments, request_event_with_token):
+    def test_mock_mode_skips_verification(
+        self, mock_payments, request_event_with_token
+    ):
         """Test that mock mode skips Nevermined verification."""
         interceptor = AgentCoreInterceptor(
             payments=mock_payments,
