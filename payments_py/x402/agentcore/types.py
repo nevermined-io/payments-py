@@ -172,6 +172,9 @@ class InterceptorConfig:
     Example with fixed credits:
         InterceptorConfig(plan_id="123", credits=5)
 
+    Example with multiple plans:
+        InterceptorConfig(plan_ids=["basic-plan", "premium-plan"], credits=5)
+
     Example with dynamic credits:
         InterceptorConfig(
             plan_id="123",
@@ -179,11 +182,12 @@ class InterceptorConfig:
         )
     """
 
-    # The Nevermined plan ID (required)
-    plan_id: str
+    # Nevermined plan ID(s) — use plan_id for single, plan_ids for multiple
+    plan_id: Optional[str] = None
+    plan_ids: Optional[list[str]] = None
 
     # Number of credits to charge (default: 1)
-    # Can be static int or callable (sync/async) that takes MCPRequestBody
+    # Can be static int or callable that takes MCPRequestBody
     credits: Union[int, CreditsCallable] = 1
 
     # Optional agent ID
@@ -197,6 +201,18 @@ class InterceptorConfig:
 
     # Human-readable description for 402 response
     description: Optional[str] = None
+
+    def __post_init__(self):
+        if not self.plan_id and not self.plan_ids:
+            raise ValueError("Either plan_id or plan_ids is required")
+        if self.plan_id and self.plan_ids:
+            raise ValueError("Use plan_id or plan_ids, not both")
+
+    def get_plan_ids(self) -> list[str]:
+        """Return plan IDs as a list."""
+        if self.plan_ids:
+            return self.plan_ids
+        return [self.plan_id] if self.plan_id else []
 
 
 @dataclass

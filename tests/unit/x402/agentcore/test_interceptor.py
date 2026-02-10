@@ -110,7 +110,7 @@ class TestAgentCoreInterceptor:
 
     def test_requires_plan_id_or_tools(self, mock_payments):
         """Test that either plan_id or tools must be provided."""
-        with pytest.raises(ValueError, match="Either plan_id or tools"):
+        with pytest.raises(ValueError, match="Either plan_id, plan_ids, or tools"):
             AgentCoreInterceptor(payments=mock_payments)
 
     def test_initialization_with_plan_id(self, mock_payments):
@@ -215,6 +215,71 @@ class TestRequestPhase:
         assert "transformedGatewayResponse" in result["mcp"]
         body = result["mcp"]["transformedGatewayResponse"]["body"]
         assert body["result"]["isError"] is True
+
+
+class TestMultiPlan:
+    """Tests for multi-plan support in the interceptor."""
+
+    def test_init_with_plan_ids(self, mock_payments):
+        """Test initialization with plan_ids."""
+        interceptor = AgentCoreInterceptor(
+            payments=mock_payments,
+            plan_ids=["plan-a", "plan-b"],
+        )
+        assert interceptor.default_config.get_plan_ids() == ["plan-a", "plan-b"]
+
+    def test_402_includes_all_plans(self, mock_payments, request_event):
+        """Test that 402 response includes all plans in accepts."""
+        interceptor = AgentCoreInterceptor(
+            payments=mock_payments,
+            plan_ids=["plan-a", "plan-b"],
+            agent_id="agent-1",
+        )
+
+        result = interceptor.handle(request_event)
+
+        response = result["mcp"]["transformedGatewayResponse"]
+        payment_required_b64 = response["headers"][X402_HEADERS["PAYMENT_REQUIRED"]]
+        payment_required = json.loads(base64.b64decode(payment_required_b64))
+
+        assert len(payment_required["accepts"]) == 2
+        plan_ids = [s["planId"] for s in payment_required["accepts"]]
+        assert "plan-a" in plan_ids
+        assert "plan-b" in plan_ids
+
+    def test_verify_with_plan_ids(self, mock_payments, request_event_with_token):
+        """Test that verify is called with multi-plan payment_required."""
+        interceptor = AgentCoreInterceptor(
+            payments=mock_payments,
+            plan_ids=["plan-a", "plan-b"],
+        )
+
+        interceptor.handle(request_event_with_token)
+
+        call_args = mock_payments.facilitator.verify_permissions.call_args
+        pr = call_args.kwargs["payment_required"]
+        assert len(pr.accepts) == 2
+
+    def test_settle_with_plan_ids(self, mock_payments, response_event):
+        """Test that settle is called with multi-plan payment_required."""
+        interceptor = AgentCoreInterceptor(
+            payments=mock_payments,
+            plan_ids=["plan-a", "plan-b"],
+        )
+
+        interceptor.handle(response_event)
+
+        call_args = mock_payments.facilitator.settle_permissions.call_args
+        pr = call_args.kwargs["payment_required"]
+        assert len(pr.accepts) == 2
+
+    def test_create_interceptor_with_plan_ids(self, mock_payments):
+        """Test factory function with plan_ids."""
+        interceptor = create_interceptor(
+            payments=mock_payments,
+            plan_ids=["plan-a", "plan-b"],
+        )
+        assert interceptor.default_config.get_plan_ids() == ["plan-a", "plan-b"]
 
 
 class TestResponsePhase:
@@ -430,6 +495,28 @@ class TestInterceptorConfig:
         assert config.agent_id == "agent-123"
         assert config.network == "eip155:1"
         assert config.description == "Test config"
+
+    def test_plan_ids(self):
+        """Test InterceptorConfig with plan_ids."""
+        config = InterceptorConfig(plan_ids=["plan-a", "plan-b"])
+        assert config.plan_ids == ["plan-a", "plan-b"]
+        assert config.plan_id is None
+        assert config.get_plan_ids() == ["plan-a", "plan-b"]
+
+    def test_plan_id_as_list(self):
+        """Test get_plan_ids returns single plan_id as list."""
+        config = InterceptorConfig(plan_id="plan-a")
+        assert config.get_plan_ids() == ["plan-a"]
+
+    def test_both_plan_id_and_plan_ids_raises(self):
+        """Test that providing both plan_id and plan_ids raises."""
+        with pytest.raises(ValueError, match="not both"):
+            InterceptorConfig(plan_id="plan-a", plan_ids=["plan-b"])
+
+    def test_neither_plan_id_nor_plan_ids_raises(self):
+        """Test that providing neither raises."""
+        with pytest.raises(ValueError, match="Either plan_id or plan_ids"):
+            InterceptorConfig()
 
 
 class TestInterceptorOptions:

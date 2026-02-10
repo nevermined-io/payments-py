@@ -9,6 +9,12 @@ import logging
 from typing import Any, Dict, Optional, Union, TYPE_CHECKING, Callable
 
 from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.types import (
+    X402PaymentRequired,
+    X402Resource,
+    X402Scheme,
+    X402SchemeExtra,
+)
 
 from .types import (
     InterceptorConfig,
@@ -104,6 +110,7 @@ class AgentCoreInterceptor:
         self,
         payments: "Payments",
         plan_id: Optional[str] = None,
+        plan_ids: Optional[list[str]] = None,
         agent_id: Optional[str] = None,
         credits: Union[int, CreditsCallable] = 1,
         endpoint: Optional[str] = None,
@@ -118,6 +125,7 @@ class AgentCoreInterceptor:
         Args:
             payments: Payments instance (provides API key and environment)
             plan_id: Default plan ID for all tools (required if tools not specified)
+            plan_ids: Multiple plan IDs (alternative to plan_id)
             agent_id: Optional agent ID
             credits: Default credits per request (int or callable)
             endpoint: Protected resource endpoint URL
@@ -133,22 +141,26 @@ class AgentCoreInterceptor:
         self.tools = tools or {}
 
         # Default config for tools not in self.tools
+        has_plan = plan_id or plan_ids
         self.default_config = (
             InterceptorConfig(
-                plan_id=plan_id or "",
+                plan_id=plan_id,
+                plan_ids=plan_ids,
                 agent_id=agent_id,
                 credits=credits,
                 endpoint=endpoint,
                 network=network,
                 description=description,
             )
-            if plan_id
+            if has_plan
             else None
         )
 
         # Validate configuration
-        if not plan_id and not tools:
-            raise ValueError("Either plan_id or tools configuration is required")
+        if not has_plan and not tools:
+            raise ValueError(
+                "Either plan_id, plan_ids, or tools configuration is required"
+            )
 
         logger.info(
             f"AgentCoreInterceptor initialized, "
@@ -265,14 +277,7 @@ class AgentCoreInterceptor:
         endpoint = self._resolve_endpoint(config, gateway_request, context)
 
         # Build payment required
-        payment_required = build_payment_required(
-            plan_id=config.plan_id,
-            agent_id=config.agent_id,
-            endpoint=endpoint,
-            http_verb="POST",
-            network=config.network,
-            description=config.description,
-        )
+        payment_required = self._build_payment_required(config, endpoint)
 
         # Extract token
         token_headers = (
@@ -419,13 +424,7 @@ class AgentCoreInterceptor:
         endpoint = self._resolve_endpoint(config, gateway_request, context)
 
         # Build payment required for settlement
-        payment_required = build_payment_required(
-            plan_id=config.plan_id,
-            agent_id=config.agent_id,
-            endpoint=endpoint,
-            http_verb="POST",
-            network=config.network,
-        )
+        payment_required = self._build_payment_required(config, endpoint)
 
         # Mock mode: skip real settlement, return mock receipt
         if self.options.mock_mode:
@@ -485,6 +484,41 @@ class AgentCoreInterceptor:
                 response_headers, response_body, response_status
             ).model_dump(by_alias=True)
 
+    def _build_payment_required(
+        self,
+        config: InterceptorConfig,
+        endpoint: Optional[str] = None,
+    ) -> X402PaymentRequired:
+        """Build payment required, supporting single or multiple plans."""
+        plan_ids = config.get_plan_ids()
+
+        if len(plan_ids) == 1:
+            return build_payment_required(
+                plan_id=plan_ids[0],
+                agent_id=config.agent_id,
+                endpoint=endpoint,
+                http_verb="POST",
+                network=config.network,
+                description=config.description,
+            )
+
+        extra = X402SchemeExtra(agent_id=config.agent_id) if config.agent_id else None
+        schemes = [
+            X402Scheme(
+                scheme="nvm:erc4337",
+                network=config.network,
+                plan_id=pid,
+                extra=extra,
+            )
+            for pid in plan_ids
+        ]
+        return X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url=endpoint or ""),
+            accepts=schemes,
+            extensions={},
+        )
+
     def _resolve_credits(self, credits: Union[int, CreditsCallable], body: dict) -> int:
         """Resolve credits value. Callable must be synchronous."""
         if isinstance(credits, int):
@@ -500,6 +534,7 @@ class AgentCoreInterceptor:
 def create_interceptor(
     payments: "Payments",
     plan_id: Optional[str] = None,
+    plan_ids: Optional[list[str]] = None,
     agent_id: Optional[str] = None,
     credits: Union[int, CreditsCallable] = 1,
     endpoint: Optional[str] = None,
@@ -516,6 +551,7 @@ def create_interceptor(
     Args:
         payments: The Payments instance (with payments.facilitator)
         plan_id: Plan ID for all tools (required if tools not specified)
+        plan_ids: Multiple plan IDs (alternative to plan_id)
         agent_id: Optional agent identifier
         credits: Static int or callable that returns credits to charge
         endpoint: Protected resource endpoint URL
@@ -549,6 +585,7 @@ def create_interceptor(
     return AgentCoreInterceptor(
         payments=payments,
         plan_id=plan_id,
+        plan_ids=plan_ids,
         agent_id=agent_id,
         credits=credits,
         endpoint=endpoint,
