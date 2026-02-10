@@ -71,19 +71,17 @@ class TestPaymentsAgentCoreIntegration:
 
     def test_agentcore_api_forwards_all_kwargs(self):
         """Test that all kwargs are forwarded to interceptor."""
-        from payments_py.x402.agentcore import AgentCoreAPI, InterceptorOptions
+        from payments_py.x402.agentcore import AgentCoreAPI
 
         mock_payments = MagicMock()
         api = AgentCoreAPI(mock_payments)
 
-        options = InterceptorOptions(mock_mode=True)
         interceptor = api.create_interceptor(
             plan_id="test-plan",
             credits=5,
             agent_id="agent-123",
             network="eip155:1",
             description="Test description",
-            options=options,
         )
 
         assert interceptor.default_config.plan_id == "test-plan"
@@ -91,7 +89,6 @@ class TestPaymentsAgentCoreIntegration:
         assert interceptor.default_config.agent_id == "agent-123"
         assert interceptor.default_config.network == "eip155:1"
         assert interceptor.default_config.description == "Test description"
-        assert interceptor.options.mock_mode is True
 
 
 class TestAgentCorePropertyInPaymentsClass:

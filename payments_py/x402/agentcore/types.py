@@ -232,9 +232,6 @@ class InterceptorOptions:
     # Default credits if not specified per-tool
     default_credits: int = 1
 
-    # Skip real Nevermined calls (useful for local testing)
-    mock_mode: bool = False
-
     # Hook called before verification
     on_before_verify: Optional[BeforeVerifyHook] = None
 

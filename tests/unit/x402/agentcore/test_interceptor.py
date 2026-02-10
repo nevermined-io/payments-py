@@ -368,49 +368,6 @@ class TestResponsePhase:
         mock_payments.facilitator.settle_permissions.assert_not_called()
 
 
-class TestMockMode:
-    """Tests for mock mode functionality."""
-
-    def test_mock_mode_skips_verification(
-        self, mock_payments, request_event_with_token
-    ):
-        """Test that mock mode skips Nevermined verification."""
-        interceptor = AgentCoreInterceptor(
-            payments=mock_payments,
-            plan_id="test-plan",
-            options=InterceptorOptions(mock_mode=True),
-        )
-
-        result = interceptor.handle(request_event_with_token)
-
-        assert "transformedGatewayRequest" in result["mcp"]
-        # Verify that verify_permissions was NOT called
-        mock_payments.facilitator.verify_permissions.assert_not_called()
-
-    def test_mock_mode_returns_mock_settlement(self, mock_payments, response_event):
-        """Test that mock mode returns mock settlement."""
-        interceptor = AgentCoreInterceptor(
-            payments=mock_payments,
-            plan_id="test-plan",
-            options=InterceptorOptions(mock_mode=True),
-        )
-
-        result = interceptor.handle(response_event)
-
-        # Verify settle was NOT called
-        mock_payments.facilitator.settle_permissions.assert_not_called()
-
-        # Verify payment-response header is present with mock data
-        response = result["mcp"]["transformedGatewayResponse"]
-        assert X402_HEADERS["PAYMENT_RESPONSE"] in response["headers"]
-
-        payment_response = json.loads(
-            base64.b64decode(response["headers"][X402_HEADERS["PAYMENT_RESPONSE"]])
-        )
-        assert payment_response["success"] is True
-        assert "mock" in payment_response["transactionHash"]
-
-
 class TestDynamicCredits:
     """Tests for dynamic credits calculation."""
 
@@ -528,7 +485,6 @@ class TestInterceptorOptions:
         assert options.token_header == ["payment-signature", "PAYMENT-SIGNATURE"]
         assert options.billable_methods == ["tools/call"]
         assert options.default_credits == 1
-        assert options.mock_mode is False
         assert options.on_before_verify is None
 
     def test_custom_values(self):
@@ -536,11 +492,9 @@ class TestInterceptorOptions:
         options = InterceptorOptions(
             token_header="X-Custom-Token",
             billable_methods=["tools/call", "resources/read"],
-            mock_mode=True,
         )
         assert options.token_header == "X-Custom-Token"
         assert "resources/read" in options.billable_methods
-        assert options.mock_mode is True
 
 
 class TestPaymentsAgentCoreProperty:
