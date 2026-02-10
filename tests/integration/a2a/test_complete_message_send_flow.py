@@ -539,6 +539,14 @@ async def test_non_blocking_execution_with_polling():
     # Verify validation occurred (initial + any polling validation)
     assert mock_payments.facilitator.validation_call_count >= initial_validation_count
 
+    # Wait for background settle to complete — in non-blocking mode, settlement
+    # happens in a background task after the final event is consumed, so it may
+    # not have executed yet when polling sees "completed".
+    for _ in range(20):
+        if mock_payments.facilitator.settle_call_count > 0:
+            break
+        await asyncio.sleep(0.1)
+
     # Most importantly: verify credit burning occurred after task completion
     assert (
         mock_payments.facilitator.settle_call_count == 1
