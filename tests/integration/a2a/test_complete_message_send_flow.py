@@ -2,6 +2,7 @@
 
 import asyncio
 import datetime
+import threading
 from uuid import uuid4
 from unittest.mock import patch
 
@@ -50,6 +51,7 @@ class MockFacilitatorAPI:
         self.last_settle_credits = None
         self.should_fail_validation = False
         self.should_fail_settle = False
+        self.settle_called = threading.Event()
 
     def verify_permissions(
         self,
@@ -80,6 +82,7 @@ class MockFacilitatorAPI:
         if self.should_fail_settle:
             raise PaymentsError.payment_required("Failed to settle permissions")
 
+        self.settle_called.set()
         return SettleResponse(
             success=True,
             transaction=f"0xtest{self.settle_call_count:08x}",
@@ -539,7 +542,10 @@ async def test_non_blocking_execution_with_polling():
     # Verify validation occurred (initial + any polling validation)
     assert mock_payments.facilitator.validation_call_count >= initial_validation_count
 
-    # Most importantly: verify credit burning occurred after task completion
-    assert (
-        mock_payments.facilitator.settle_call_count == 1
-    ), "Credits should be settled when task completes in non-blocking mode"
+    # Wait for background settle to complete — in non-blocking mode, settlement
+    # happens in a background task (via run_in_executor) after the final event
+    # is consumed, so it may not have executed yet when polling sees "completed".
+    # Use threading.Event for deterministic cross-thread synchronization.
+    settled = mock_payments.facilitator.settle_called.wait(timeout=5.0)
+    assert settled, "Credits should be settled when task completes in non-blocking mode"
+    assert mock_payments.facilitator.settle_call_count == 1
