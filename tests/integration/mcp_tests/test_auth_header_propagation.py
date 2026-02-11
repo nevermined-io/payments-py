@@ -191,6 +191,7 @@ class TestMcpHandlerAuthHeaderPropagation:
         # First call - initialize (meta)
         result1 = await authenticator.authenticate_meta(
             extra=extra,
+            options={},
             agent_id="integration_agent_id_hex",
             server_name="multi-server",
             method="initialize",
@@ -200,6 +201,7 @@ class TestMcpHandlerAuthHeaderPropagation:
         # Second call - tools/list (meta)
         result2 = await authenticator.authenticate_meta(
             extra=extra,
+            options={},
             agent_id="integration_agent_id_hex",
             server_name="multi-server",
             method="tools/list",

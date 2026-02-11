@@ -33,6 +33,18 @@ To verify formatting without making changes (CI check):
 poetry run black --check .      # Check formatting only
 ```
 
+### Update Documentation When Changing Public APIs
+
+When modifying public interfaces (function signatures, options, types, response fields) in `payments_py/`, update the corresponding documentation in `docs/api/` to reflect the changes. These are manually maintained guides — not auto-generated.
+
+After updating, rebuild the documentation site to verify:
+
+```bash
+poetry run mkdocs build          # Must succeed without errors
+```
+
+The `docs/reference/` files are auto-generated from docstrings via mkdocstrings, so keep docstrings up to date in the source code.
+
 ### Code Changes Require Test Updates
 
 When modifying code in `payments_py/`, always update the corresponding tests:
@@ -107,10 +119,13 @@ The CI pipeline runs:
 ```
 payments_py/       # Source code
   x402/            # X402 payment protocol types and APIs
+    strands/       # Strands agent decorator (@requires_payment)
+    fastapi/       # FastAPI middleware (PaymentMiddleware)
   api/             # API client implementations
   common/          # Shared types and utilities
 tests/
   unit/            # Unit tests
+    x402/          # x402-specific tests (strands, fastapi)
   integration/     # Integration tests
   e2e/             # End-to-end tests (@pytest.mark.slow)
   conftest.py      # Shared fixtures
@@ -123,3 +138,11 @@ tests/
 - `payments.x402` - X402 access token generation
 - `payments.plans` - Plan management
 - `payments.agents` - Agent management
+
+## Framework Integrations
+
+- **FastAPI**: `payments_py.x402.fastapi` — `PaymentMiddleware` (install with `pip install payments-py[fastapi]`)
+- **Strands Agent**: `payments_py.x402.strands` — `@requires_payment` decorator (install with `pip install payments-py[strands]`)
+  - Must use `@tool(context=True)` for Strands to inject `tool_context`
+  - Token via `agent(prompt, invocation_state={"payment_token": token})`
+  - Client extraction: `extract_payment_required(agent.messages)`

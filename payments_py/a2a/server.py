@@ -216,7 +216,16 @@ class PaymentsA2AServer:  # noqa: D101
                 )
 
             # Parse JSON body early to capture method / messageId / taskId
-            body = await request.body()
+            try:
+                body = await request.body()
+            except Exception:  # noqa: BLE001
+                # Client disconnected before body could be read
+                return JSONResponse(
+                    status_code=499,
+                    content={
+                        "error": {"code": -32000, "message": "Client disconnected"}
+                    },
+                )
             try:
                 body_json = json.loads(body)
             except Exception:  # noqa: BLE001

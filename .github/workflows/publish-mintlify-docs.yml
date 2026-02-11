@@ -1,0 +1,212 @@
+name: Publish Documentation to Mintlify
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to publish (e.g., v1.0.2)'
+        required: true
+        type: string
+      target_branch:
+        description: 'Target branch in docs_mintlify repository (e.g., main, preview, test)'
+        required: false
+        type: string
+        default: 'main'
+
+jobs:
+  publish-to-mintlify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout payments-py repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version || github.ref }}
+          path: payments-py
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify documentation exists
+        run: |
+          if [ ! -d "payments-py/docs/api" ]; then
+            echo "Error: docs/api directory not found"
+            exit 1
+          fi
+
+          # Count markdown files
+          FILE_COUNT=$(find payments-py/docs/api -name "*.md" | wc -l)
+          echo "Found $FILE_COUNT documentation files"
+
+          if [ "$FILE_COUNT" -lt 11 ]; then
+            echo "Error: Expected at least 11 documentation files, found $FILE_COUNT"
+            exit 1
+          fi
+
+          echo "✓ Documentation validation passed"
+
+      - name: Checkout docs_mintlify repository
+        uses: actions/checkout@v4
+        with:
+          repository: nevermined-io/docs_mintlify
+          token: ${{ secrets.DOCS_REPO_TOKEN }}
+          path: docs_mintlify
+          ref: ${{ github.event.inputs.target_branch || 'main' }}
+
+      - name: Convert documentation to Mintlify format
+        run: |
+          cd payments-py
+          python scripts/convert_to_mintlify.py \
+            --source docs/api \
+            --target ../mintlify-output \
+            --verbose
+
+          # Verify conversion
+          CONVERTED_COUNT=$(find ../mintlify-output -name "*.mdx" | wc -l)
+          echo "Converted $CONVERTED_COUNT files to MDX format"
+
+          if [ "$CONVERTED_COUNT" -lt 11 ]; then
+            echo "Error: Expected at least 11 converted files, found $CONVERTED_COUNT"
+            exit 1
+          fi
+
+          echo "✓ Conversion successful"
+
+      - name: Copy documentation files
+        run: |
+          SOURCE_DIR="mintlify-output"
+          TARGET_DIR="docs_mintlify/docs/api-reference/python"
+
+          echo "Copying documentation from $SOURCE_DIR to $TARGET_DIR"
+
+          # Create target directory if it doesn't exist
+          mkdir -p "$TARGET_DIR"
+
+          # Remove old mdx files (keep any other files that might exist)
+          rm -f "$TARGET_DIR"/*.mdx
+
+          # Copy new files
+          cp "$SOURCE_DIR"/*.mdx "$TARGET_DIR/"
+
+          # List copied files
+          echo "Copied files:"
+          ls -la "$TARGET_DIR"/*.mdx
+
+          # Count copied files
+          COPIED_COUNT=$(find "$TARGET_DIR" -name "*.mdx" | wc -l)
+          echo "✓ Copied $COPIED_COUNT documentation files"
+
+      - name: Get version and target info
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+          TARGET_BRANCH="${{ github.event.inputs.target_branch || 'main' }}"
+          echo "target_branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
+          echo "Target branch: $TARGET_BRANCH"
+
+      - name: Create Pull Request
+        id: create_pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.DOCS_REPO_TOKEN }}
+          path: docs_mintlify
+          branch: update-python-docs-${{ steps.version.outputs.version }}
+          base: ${{ steps.version.outputs.target_branch }}
+          delete-branch: true
+          commit-message: |
+            docs: update Python SDK documentation for ${{ steps.version.outputs.version }}
+
+            - Updated from nevermined-io/payments-py@${{ github.sha }}
+            - SDK version: ${{ steps.version.outputs.version }}
+            - Target branch: ${{ steps.version.outputs.target_branch }}
+            - Generated documentation from tagged release
+            - Converted to Mintlify MDX format
+          title: 'docs: Update Python SDK Documentation (${{ steps.version.outputs.version }})'
+          body: |
+            ## Python SDK Documentation Update
+
+            This PR updates the Python SDK documentation for version `${{ steps.version.outputs.version }}`.
+
+            ### Changes
+            - ✅ Updated all 11 documentation files
+            - 📦 Source: [nevermined-io/payments-py@${{ github.sha }}](https://github.com/nevermined-io/payments-py/commit/${{ github.sha }})
+            - 🏷️ Version: `${{ steps.version.outputs.version }}`
+            - 🎯 Target Branch: `${{ steps.version.outputs.target_branch }}`
+
+            ### Documentation Files
+            - `installation.mdx`
+            - `payments-class.mdx`
+            - `plans-module.mdx`
+            - `agents-module.mdx`
+            - `resources-module.mdx`
+            - `balance-module.mdx`
+            - `requests-module.mdx`
+            - `validation-module.mdx`
+            - `mcp-module.mdx`
+            - `a2a-module.mdx`
+            - `x402-module.mdx`
+
+            ### Conversion Details
+            - Converted from Markdown to Mintlify MDX format
+            - Added proper frontmatter (title, description, icon)
+            - Converted MkDocs admonitions to Mintlify components
+            - Updated internal links to Mintlify format
+            - Added CardGroup components for navigation
+
+            ### Review Checklist
+            - [ ] Documentation is complete and accurate
+            - [ ] All code examples are valid
+            - [ ] Internal links work correctly
+            - [ ] Mintlify components render properly
+            - [ ] Version metadata is correct
+
+            ---
+            🤖 This PR was automatically generated by the publish-mintlify-docs workflow
+          labels: |
+            documentation
+            python-sdk
+            automated
+
+      - name: Enable auto-merge in docs_mintlify
+        if: steps.create_pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_REPO_TOKEN }}
+        run: |
+          gh pr merge ${{ steps.create_pr.outputs.pull-request-number }} \
+            --repo nevermined-io/docs_mintlify \
+            --auto \
+            --squash
+
+      - name: Create summary
+        run: |
+          echo "### Documentation Publication Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Repository**: nevermined-io/docs_mintlify" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Branch**: ${{ steps.version.outputs.target_branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Path**: docs/api-reference/python/" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.create_pr.outputs.pull-request-number }}" != "" ]; then
+            echo "✅ Pull request created: #${{ steps.create_pr.outputs.pull-request-number }}" >> $GITHUB_STEP_SUMMARY
+            echo "🔗 URL: ${{ steps.create_pr.outputs.pull-request-url }}" >> $GITHUB_STEP_SUMMARY
+            echo "🤖 Auto-merge enabled - PR will merge automatically when checks pass" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ No changes to publish" >> $GITHUB_STEP_SUMMARY
+          fi

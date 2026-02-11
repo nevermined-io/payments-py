@@ -5,6 +5,7 @@ Defines Pydantic models for X402 payment requirements, payloads,
 and responses used in payment verification and settlement.
 """
 
+from dataclasses import dataclass
 from typing import Optional, Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
@@ -246,3 +247,21 @@ class SettleResponse(BaseModel):
         populate_by_name=True,
         from_attributes=True,
     )
+
+
+@dataclass
+class PaymentContext:
+    """
+    Payment context available after x402 verification.
+
+    Populated by middleware/decorators and made available to handlers:
+    - FastAPI: ``request.state.payment_context``
+    - Strands: ``tool_context.invocation_state["payment_context"]``
+    """
+
+    token: str
+    payment_required: X402PaymentRequired
+    credits_to_settle: int
+    verified: bool
+    agent_request_id: Optional[str] = None
+    agent_request: Optional[Any] = None

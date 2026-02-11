@@ -124,7 +124,7 @@ class PaymentPayloadV2(BaseModel):
     """
     x402 v2 Payment Payload with extensions support.
 
-    This is sent by the client in the X-PAYMENT header to pay for a resource.
+    This is sent by the client in the payment-signature header to pay for a resource.
 
     Extends the base x402 PaymentPayload to include the extensions field.
     The client copies extensions from the PaymentRequired response into

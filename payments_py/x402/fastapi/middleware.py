@@ -71,7 +71,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from payments_py.x402.helpers import build_payment_required
-from payments_py.x402.types import VerifyResponse, X402PaymentRequired
+from payments_py.x402.types import PaymentContext, VerifyResponse, X402PaymentRequired
 
 # Type alias for dynamic credits function
 # Can be sync or async, takes Request and returns int
@@ -120,27 +120,6 @@ class RouteConfig:
     agent_id: Optional[str] = None
     # Network identifier (default: "eip155:84532" for Base Sepolia)
     network: str = "eip155:84532"
-
-
-@dataclass
-class PaymentContext:
-    """
-    Payment context attached to the request after verification.
-    Available as `request.state.payment_context` in route handlers.
-    """
-
-    # The x402 access token
-    token: str
-    # The payment required object
-    payment_required: X402PaymentRequired
-    # Number of credits to settle
-    credits_to_settle: int
-    # Whether verification was successful
-    verified: bool
-    # Agent request ID for observability tracking
-    agent_request_id: Optional[str] = None
-    # Full agent request context for observability (StartAgentRequest)
-    agent_request: Optional[Any] = None
 
 
 # Type for hook callbacks
