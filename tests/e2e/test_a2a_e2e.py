@@ -876,7 +876,7 @@ class TestA2AE2EFlow:
                 },
             }
 
-            headers = {"Authorization": f"Bearer {self.access_token}"}
+            headers = {"payment-signature": self.access_token}
 
             print(f"Sending blocking request to real server: {server_url}")
             response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
@@ -983,7 +983,7 @@ class TestA2AE2EFlow:
             "params": {"message": message},
         }
 
-        headers = {"Authorization": "Bearer INVALID_TOKEN"}
+        headers = {"payment-signature": "INVALID_TOKEN"}
 
         try:
             print(f"Sending invalid token request to real server: {server_url}")
@@ -1057,7 +1057,7 @@ class TestA2AE2EFlow:
             },
         }
 
-        headers = {"Authorization": f"Bearer {self.access_token}"}
+        headers = {"payment-signature": self.access_token}
 
         try:
             print(f"Sending non-blocking request to real server: {server_url}")
@@ -1137,7 +1137,7 @@ class TestA2AE2EFlow:
             "params": {"message": message},
         }
 
-        headers = {"Authorization": f"Bearer {self.access_token}"}
+        headers = {"payment-signature": self.access_token}
 
         try:
             print(f"Sending streaming request to real server: {server_url}")
@@ -1214,7 +1214,7 @@ class TestA2AE2EFlow:
             },
         }
 
-        headers = {"Authorization": f"Bearer {self.access_token}"}
+        headers = {"payment-signature": self.access_token}
 
         try:
             print(f"Sending cancellation test request to real server: {server_url}")
@@ -1304,7 +1304,7 @@ class TestA2AE2EFlow:
                 },
             }
 
-            headers = {"Authorization": f"Bearer {self.access_token}"}
+            headers = {"payment-signature": self.access_token}
 
             print(f"Sending webhook test request to real server: {server_url}")
             response = httpx.post(server_url, json=payload, headers=headers, timeout=30)
@@ -1417,7 +1417,7 @@ class TestA2AE2EFlow:
             },
         }
 
-        headers = {"Authorization": f"Bearer {self.access_token}"}
+        headers = {"payment-signature": self.access_token}
 
         try:
             print(f"Sending resubscription test request to real server: {server_url}")
@@ -1519,7 +1519,7 @@ class TestA2AE2EFlow:
             },
         }
 
-        headers = {"Authorization": f"Bearer {self.access_token}"}
+        headers = {"payment-signature": self.access_token}
 
         try:
             print(

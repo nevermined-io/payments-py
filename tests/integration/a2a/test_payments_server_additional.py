@@ -122,7 +122,7 @@ def test_validation_failure_returns_402(base_server):  # noqa: D401
 
     client = base_server(start_processing=_fail)
     payload = {"jsonrpc": "2.0", "method": "ping", "id": 1}
-    headers = {"Authorization": "Bearer TOK"}
+    headers = {"payment-signature": "TOK"}
     resp = client.post("/rpc", json=payload, headers=headers)
     assert resp.status_code == 402
     assert "payment-required" in resp.headers

@@ -235,10 +235,11 @@ class PaymentsA2AServer:  # noqa: D101
                 http_verb="POST",
             )
 
-            auth_header = request.headers.get("Authorization")
-            if not auth_header or not auth_header.startswith("Bearer "):
-                return _send_payment_required(payment_required, "Missing bearer token.")
-            bearer_token = auth_header[len("Bearer ") :]
+            bearer_token = request.headers.get("payment-signature")
+            if not bearer_token:
+                return _send_payment_required(
+                    payment_required, "Missing payment-signature header."
+                )
 
             validation: Any
             try:

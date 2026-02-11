@@ -103,7 +103,7 @@ AGENT_CARD = build_payment_agent_card(
     },
 )
 
-HEADERS = {"Authorization": "Bearer TEST_TOKEN"}
+HEADERS = {"payment-signature": "TEST_TOKEN"}
 
 
 def _make_payload(text: str = "Hello!", message_id: str = None):
@@ -193,8 +193,8 @@ async def test_decorator_default_credits():
 
 
 @pytest.mark.asyncio
-async def test_decorator_missing_bearer_token_returns_402():
-    """Request without Authorization header should get 402 with payment-required."""
+async def test_decorator_missing_payment_signature_returns_402():
+    """Request without payment-signature header should get 402 with payment-required."""
     mock_payments = MockPaymentsService()
 
     @a2a_requires_payment(
@@ -210,7 +210,7 @@ async def test_decorator_missing_bearer_token_returns_402():
     response = client.post("/rpc", json=_make_payload())
 
     assert response.status_code == 402
-    assert "Missing bearer token" in response.json()["error"]["message"]
+    assert "Missing payment-signature header" in response.json()["error"]["message"]
     assert "payment-required" in response.headers
     # Verify the payment-required header contains planId and agentId
     pr_data = json.loads(base64.b64decode(response.headers["payment-required"]))
