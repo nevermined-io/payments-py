@@ -137,8 +137,6 @@ payments = Payments.get_instance(
 |-------------|-------------|
 | `sandbox` | Production sandbox (testing) |
 | `live` | Production mainnet |
-| `staging_sandbox` | Staging sandbox (internal) |
-| `staging_live` | Staging mainnet (internal) |
 | `custom` | Custom URLs via environment variables |
 
 ## Accessing Sub-APIs
