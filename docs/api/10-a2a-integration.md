@@ -10,83 +10,57 @@ A2A (Agent-to-Agent) is a protocol that enables AI agents to communicate with ea
 - Automatically verify x402 tokens on incoming requests
 - Handle credit redemption for agent tasks
 
-## A2A Integration API
-
-Access the A2A integration through `payments.a2a`:
-
-```python
-from payments_py import Payments, PaymentOptions
-
-payments = Payments.get_instance(
-    PaymentOptions(nvm_api_key="nvm:your-key", environment="sandbox")
-)
-
-# A2A integration is available as:
-a2a = payments.a2a
-```
-
-## Starting an A2A Server
-
-### Basic Server Setup
-
-```python
-from payments_py import Payments, PaymentOptions
-from payments_py.a2a.agent_card import build_payment_agent_card
-from a2a.server.agent_execution import AgentExecutor
-
-# Initialize payments
-payments = Payments.get_instance(
-    PaymentOptions(nvm_api_key="nvm:your-key", environment="sandbox")
-)
-
-# Build agent card with payment extension
-agent_card = build_payment_agent_card(
-    name="My AI Agent",
-    description="An AI agent with payment support",
-    agent_id="your-agent-id",
-    plan_id="your-plan-id",
-    url="https://your-agent.com"
-)
-
-# Create your agent executor (implements A2A AgentExecutor interface)
-class MyAgentExecutor(AgentExecutor):
-    async def execute(self, task, context):
-        # Your agent logic here
-        return {"result": "Task completed"}
-
-executor = MyAgentExecutor()
-
-# Start the A2A server
-result = payments.a2a["start"](
-    agent_card=agent_card,
-    executor=executor,
-    port=8080
-)
-
-# Run the server
-result.server.run()
-```
-
 ## Building Agent Cards
 
-### With Payment Extension
+### With a Single Plan
 
 ```python
 from payments_py.a2a.agent_card import build_payment_agent_card
 
 agent_card = build_payment_agent_card(
-    name="Code Review Agent",
-    description="Automated code review powered by AI",
-    agent_id="did:nvm:abc123",
-    plan_id="plan-456",
-    url="https://code-review.example.com",
-    version="1.0.0",
-    capabilities={
-        "streaming": True,
-        "pushNotifications": True
-    }
+    base_card={
+        "name": "Code Review Agent",
+        "description": "Automated code review powered by AI",
+        "url": "https://localhost:8080",
+        "version": "1.0.0",
+        "capabilities": {
+            "streaming": False,
+            "pushNotifications": False,
+        },
+    },
+    payment_metadata={
+        "paymentType": "fixed",
+        "credits": 1,
+        "agentId": "your-agent-id",
+        "planId": "your-plan-id",
+        "costDescription": "1 credit per review",
+    },
 )
 ```
+
+### With Multiple Plans
+
+When your agent supports multiple plans (e.g. a basic and a premium tier), use `planIds` instead of `planId`:
+
+```python
+agent_card = build_payment_agent_card(
+    base_card={
+        "name": "Code Review Agent",
+        "url": "https://localhost:8080",
+        "version": "1.0.0",
+        "capabilities": {},
+    },
+    payment_metadata={
+        "paymentType": "dynamic",
+        "credits": 5,
+        "agentId": "your-agent-id",
+        "planIds": ["plan-basic", "plan-premium"],
+        "costDescription": "1-5 credits depending on review depth",
+    },
+)
+```
+
+> **Note:** Provide either `planId` or `planIds`, not both. `planIds` must be a non-empty list.
 
 ### Agent Card Structure
 
@@ -95,23 +69,110 @@ The agent card includes a payment extension:
 ```json
 {
   "name": "Code Review Agent",
-  "description": "Automated code review powered by AI",
-  "url": "https://code-review.example.com",
+  "url": "https://localhost:8080",
   "version": "1.0.0",
   "capabilities": {
-    "streaming": true,
-    "pushNotifications": true,
     "extensions": [
       {
         "uri": "urn:nevermined:payment",
         "params": {
-          "agentId": "did:nvm:abc123",
-          "planId": "plan-456"
+          "paymentType": "dynamic",
+          "credits": 5,
+          "agentId": "your-agent-id",
+          "planIds": ["plan-basic", "plan-premium"],
+          "costDescription": "1-5 credits depending on review depth"
         }
       }
     ]
   }
 }
+```
+
+## Using the `@a2a_requires_payment` Decorator
+
+The simplest way to create a payment-protected A2A agent:
+
+```python
+from payments_py import Payments
+from payments_py.common.types import PaymentOptions
+from payments_py.a2a import AgentResponse, a2a_requires_payment, build_payment_agent_card
+
+payments = Payments.get_instance(
+    PaymentOptions(nvm_api_key="nvm:your-key", environment="sandbox")
+)
+
+agent_card = build_payment_agent_card(
+    base_card={
+        "name": "My Agent",
+        "url": "http://localhost:8080",
+        "version": "1.0.0",
+        "capabilities": {},
+    },
+    payment_metadata={
+        "paymentType": "dynamic",
+        "credits": 3,
+        "agentId": "your-agent-id",
+        "planIds": ["plan-1", "plan-2"],
+    },
+)
+
+@a2a_requires_payment(
+    payments=payments,
+    agent_card=agent_card,
+    default_credits=1,
+)
+async def my_agent(context) -> AgentResponse:
+    text = context.get_user_input()
+    return AgentResponse(text=f"Echo: {text}", credits_used=1)
+
+# Start serving (blocking)
+my_agent.serve(port=8080)
+```
+
+The decorator handles:
+
+- Payment middleware (verify/settle) automatically
+- Publishing task status events with `creditsUsed` metadata
+- Credit burning on task completion
+
+### `AgentResponse`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `text` | `str` | The agent's text response |
+| `credits_used` | `int \| None` | Credits consumed (falls back to `default_credits`) |
+| `metadata` | `dict \| None` | Extra metadata for the final event |
+
+## Starting an A2A Server (Advanced)
+
+For more control, use `PaymentsA2AServer.start()` directly:
+
+```python
+from payments_py.a2a.server import PaymentsA2AServer
+from a2a.server.agent_execution import AgentExecutor
+from a2a.server.events.event_queue import EventQueue
+
+class MyExecutor(AgentExecutor):
+    async def execute(self, context, event_queue: EventQueue):
+        # Your agent logic — publish events to event_queue
+        ...
+
+    async def cancel(self, context, event_queue: EventQueue):
+        ...
+
+result = PaymentsA2AServer.start(
+    agent_card=agent_card,
+    executor=MyExecutor(),
+    payments_service=payments,
+    port=8080,
+    base_path="/",
+    expose_agent_card=True,
+    async_execution=False,
+)
+
+# Run the server
+import asyncio
+asyncio.run(result.server.serve())
 ```
 
 ## Server Configuration Options
@@ -130,136 +191,79 @@ The agent card includes a payment extension:
 
 ## Request Validation
 
-The A2A server automatically validates payments:
+The A2A server automatically validates payments on every POST request:
 
 1. Extracts Bearer token from Authorization header
-2. Verifies permissions against the agent's plan
-3. Rejects requests with 402 if validation fails
+2. Reads `planId` or `planIds` from the agent card's payment extension
+3. Verifies permissions via `build_payment_required_for_plans()`
+4. Rejects requests with 402 if validation fails, including a base64-encoded `payment-required` header
 
-```python
-# Requests must include:
-# Authorization: Bearer <x402-access-token>
+When multiple plans are configured, the 402 response includes all plans in `accepts[]`, allowing the client to choose which plan to purchase.
 
-# Invalid requests receive:
-# HTTP 402 Payment Required
-# {"error": {"code": -32001, "message": "Validation error: ..."}}
 ```
+HTTP/1.1 402 Payment Required
+payment-required: eyJ4NDAy... (base64-encoded X402PaymentRequired)
 
-## Complete Example
-
-```python
-import asyncio
-from payments_py import Payments, PaymentOptions
-from payments_py.a2a.agent_card import build_payment_agent_card
-from a2a.server.agent_execution import AgentExecutor
-from a2a.types import Task, TaskResult, Message
-
-# Initialize payments
-payments = Payments.get_instance(
-    PaymentOptions(nvm_api_key="nvm:your-key", environment="sandbox")
-)
-
-# Define your agent executor
-class CodeReviewExecutor(AgentExecutor):
-    """Agent that performs code reviews."""
-
-    async def execute(self, task: Task, context: dict) -> TaskResult:
-        # Extract code from task
-        messages = task.get("messages", [])
-        code = ""
-        for msg in messages:
-            if msg.get("role") == "user":
-                parts = msg.get("parts", [])
-                for part in parts:
-                    if part.get("type") == "text":
-                        code = part.get("text", "")
-                        break
-
-        # Perform code review (your logic here)
-        review_result = await self.review_code(code)
-
-        return TaskResult(
-            status="completed",
-            messages=[
-                Message(
-                    role="assistant",
-                    parts=[{"type": "text", "text": review_result}]
-                )
-            ]
-        )
-
-    async def review_code(self, code: str) -> str:
-        # Your code review logic
-        return f"Code review completed. Found 3 suggestions for improvement."
-
-# Build agent card
-agent_card = build_payment_agent_card(
-    name="Code Review Agent",
-    description="AI-powered code review service",
-    agent_id="did:nvm:code-review-agent",
-    plan_id="code-review-plan-id",
-    url="https://localhost:8080",
-    version="1.0.0"
-)
-
-# Start server
-async def main():
-    executor = CodeReviewExecutor()
-
-    result = payments.a2a["start"](
-        agent_card=agent_card,
-        executor=executor,
-        port=8080,
-        expose_agent_card=True,
-        async_execution=True
-    )
-
-    print(f"A2A Server started on port 8080")
-    print(f"Agent card: http://localhost:8080/.well-known/agent.json")
-
-    # Run server
-    await result.server.serve()
-
-asyncio.run(main())
+{"error": {"code": -32001, "message": "Missing bearer token."}}
 ```
 
 ## Client Usage
 
-Clients interact with the A2A server using the standard A2A protocol:
+### Discovering Plans from the Agent Card
+
+Consumers can fetch the agent card to discover available plans:
+
+```python
+import httpx
+
+async with httpx.AsyncClient() as client:
+    resp = await client.get("http://agent-url/.well-known/agent.json")
+    card = resp.json()
+
+extensions = card["capabilities"]["extensions"]
+payment_ext = next(e for e in extensions if e["uri"] == "urn:nevermined:payment")
+plan_ids = payment_ext["params"].get("planIds") or [payment_ext["params"]["planId"]]
+agent_id = payment_ext["params"]["agentId"]
+```
+
+### Ordering a Plan and Sending Messages
 
 ```python
 from payments_py import Payments, PaymentOptions
 
-# Initialize as subscriber
 payments = Payments.get_instance(
     PaymentOptions(nvm_api_key="nvm:subscriber-key", environment="sandbox")
 )
 
-# Get access token
-token_result = payments.x402.get_x402_access_token(
-    plan_id="code-review-plan-id",
-    agent_id="did:nvm:code-review-agent"
+# Order (purchase) the plan
+payments.plans.order_plan(plan_ids[0])
+
+# Get x402 access token
+token_resp = payments.x402.get_x402_access_token(
+    plan_id=plan_ids[0],
+    agent_id=agent_id,
 )
-access_token = token_result['accessToken']
+access_token = token_resp["accessToken"]
 
-# Get A2A client
-client = payments.a2a["get_client"](
-    agent_url="https://localhost:8080",
-    access_token=access_token
-)
-
-# Send a task
-response = await client.send_task({
-    "messages": [{
-        "role": "user",
-        "parts": [{
-            "type": "text",
-            "text": "def add(a, b):\n    return a + b"
-        }]
-    }]
-})
-
-print(f"Review result: {response}")
+# Send A2A JSON-RPC message
+async with httpx.AsyncClient() as client:
+    resp = await client.post(
+        "http://agent-url/",
+        json={
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "message/send",
+            "params": {
+                "message": {
+                    "messageId": "msg-1",
+                    "role": "user",
+                    "parts": [{"kind": "text", "text": "Review this code"}],
+                }
+            },
+        },
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    result = resp.json()
 ```
 
 ## Hooks
@@ -276,14 +280,15 @@ async def after_request(method, response, request):
 async def on_error(method, error, request):
     print(f"Request failed: {method} - {error}")
 
-result = payments.a2a["start"](
+result = PaymentsA2AServer.start(
     agent_card=agent_card,
     executor=executor,
+    payments_service=payments,
     hooks={
         "beforeRequest": before_request,
         "afterRequest": after_request,
-        "onError": on_error
-    }
+        "onError": on_error,
+    },
 )
 ```
 
@@ -291,9 +296,10 @@ result = payments.a2a["start"](
 
 | Error Code | HTTP Status | Description |
 |------------|-------------|-------------|
-| -32001 | 401 | Missing Bearer token |
+| -32001 | 402 | Missing Bearer token |
 | -32001 | 402 | Payment validation failed |
 | -32001 | 402 | Agent ID missing from card |
+| -32001 | 402 | Plan ID missing from card |
 
 ## Next Steps
 

@@ -1,7 +1,9 @@
 """Integration tests for complete message/send flow with credit burning."""
 
 import asyncio
+import base64
 import datetime
+import json
 import threading
 from uuid import uuid4
 from unittest.mock import patch
@@ -399,11 +401,16 @@ async def test_message_send_with_missing_bearer_token():
     # No Authorization header
     response = client.post("/rpc", json=payload)
 
-    # Should return 401 (unauthorized)
-    assert response.status_code == 401
+    # Should return 402 (payment required) with payment-required header
+    assert response.status_code == 402
     response_data = response.json()
     assert "error" in response_data
     assert "Missing bearer token" in response_data["error"]["message"]
+    assert "payment-required" in response.headers
+    # Verify the payment-required header contains planId and agentId
+    pr_data = json.loads(base64.b64decode(response.headers["payment-required"]))
+    assert pr_data["accepts"][0]["planId"] == "test-plan"
+    assert pr_data["accepts"][0]["extra"]["agentId"] == "test-agent-789"
 
     # No validation or credit burning should occur
     assert (

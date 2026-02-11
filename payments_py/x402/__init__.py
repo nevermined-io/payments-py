@@ -57,7 +57,7 @@ from .types import (
     # Shared context
     PaymentContext,
 )
-from .helpers import build_payment_required
+from .helpers import build_payment_required, build_payment_required_for_plans
 from .networks import SupportedNetworks
 from .schemes import SupportedSchemes
 from .facilitator import NeverminedFacilitator
@@ -91,6 +91,7 @@ __all__ = [
     "PaymentContext",
     # Helper functions
     "build_payment_required",
+    "build_payment_required_for_plans",
     # Types (V2)
     "Extension",
     "ResourceInfo",

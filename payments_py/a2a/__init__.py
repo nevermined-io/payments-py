@@ -3,6 +3,7 @@
 from .client_registry import ClientRegistry
 from .payments_client import PaymentsClient
 from .agent_card import build_payment_agent_card
+from .decorator import AgentResponse, a2a_requires_payment
 
 # IMPORTANT: we avoid importing server & handler at package-import time to prevent
 # optional dependencies (FastAPI, uvicorn) or circular imports during unit tests.
@@ -12,4 +13,6 @@ __all__ = [
     "ClientRegistry",
     "PaymentsClient",
     "build_payment_agent_card",
+    "AgentResponse",
+    "a2a_requires_payment",
 ]
