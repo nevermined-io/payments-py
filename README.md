@@ -81,7 +81,7 @@ from payments_py.payments import Payments
 
 payments_builder = Payments({
     "nvm_api_key": "<BUILDER_API_KEY>",
-    "environment": "staging_sandbox",
+    "environment": "sandbox",
 })
 
 base_agent_card = {
@@ -141,7 +141,7 @@ server = PaymentsA2AServer.start(
 ```python
 payments_subscriber = Payments({
     "nvm_api_key": "<SUBSCRIBER_API_KEY>",
-    "environment": "staging_sandbox",
+    "environment": "sandbox",
 })
 
 client = payments_subscriber.a2a.get_client(
