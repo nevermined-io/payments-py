@@ -26,8 +26,12 @@ The Payments Library enables:
 
 ### Initialize the payments library
 
-```
-Payments({"nvm_api_key": nvm_api_key, "environment": "sandbox", "app_id": "your_app_id", "version": "1.0.0"})
+```python
+from payments_py import Payments, PaymentOptions
+
+payments = Payments.get_instance(
+    PaymentOptions(nvm_api_key=nvm_api_key, environment="sandbox", app_id="your_app_id", version="1.0.0")
+)
 ```
 
 ## A2A Integration (Agents-to-Agents)
@@ -77,12 +81,11 @@ Important:
 ### Build a payment-enabled Agent Card
 
 ```python
-from payments_py.payments import Payments
+from payments_py import Payments, PaymentOptions
 
-payments_builder = Payments({
-    "nvm_api_key": "<BUILDER_API_KEY>",
-    "environment": "staging_sandbox",
-})
+payments_builder = Payments.get_instance(
+    PaymentOptions(nvm_api_key="<BUILDER_API_KEY>", environment="sandbox")
+)
 
 base_agent_card = {
     "name": "Py A2A Agent",
@@ -139,10 +142,9 @@ server = PaymentsA2AServer.start(
 ### Use the A2A client
 
 ```python
-payments_subscriber = Payments({
-    "nvm_api_key": "<SUBSCRIBER_API_KEY>",
-    "environment": "staging_sandbox",
-})
+payments_subscriber = Payments.get_instance(
+    PaymentOptions(nvm_api_key="<SUBSCRIBER_API_KEY>", environment="sandbox")
+)
 
 client = payments_subscriber.a2a.get_client(
     agent_base_url="https://your-agent.example.com/a2a/",
@@ -175,10 +177,12 @@ cc = payments_builder.plans.get_fixed_credits_config(100)
 ### Typical API usage (Python)
 
 ```python
-from payments_py.payments import Payments
+from payments_py import Payments, PaymentOptions
 from payments_py.common.types import PlanMetadata
 
-payments = Payments({"nvm_api_key": "<KEY>", "environment": "sandbox"})
+payments = Payments.get_instance(
+    PaymentOptions(nvm_api_key="<KEY>", environment="sandbox")
+)
 
 # Create a plan
 plan_metadata = PlanMetadata(name="My Plan")
