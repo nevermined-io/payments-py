@@ -1460,10 +1460,9 @@
 <a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="p">)</span>
 <a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>
 <a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="k">if</span> <span class="n">verification</span><span class="o">.</span><span class="n">is_valid</span><span class="p">:</span>
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Valid! Subscriber: </span><span class="si">{</span><span class="n">verification</span><span class="o">.</span><span class="n">subscriber_address</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Balance: </span><span class="si">{</span><span class="n">verification</span><span class="o">.</span><span class="n">balance</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid: </span><span class="si">{</span><span class="n">verification</span><span class="o">.</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Valid! Payer: </span><span class="si">{</span><span class="n">verification</span><span class="o">.</span><span class="n">payer</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid: </span><span class="si">{</span><span class="n">verification</span><span class="o">.</span><span class="n">invalid_reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="verification-response">Verification Response<a class="headerlink" href="#verification-response" title="Permanent link">&para;</a></h3>
 <table>
@@ -1481,24 +1480,19 @@
 <td>Whether verification passed</td>
 </tr>
 <tr>
-<td><code>subscriber_address</code></td>
+<td><code>invalid_reason</code></td>
 <td><code>str</code></td>
-<td>Subscriber's wallet address</td>
+<td>Reason for invalidity (if <code>is_valid</code> is false)</td>
 </tr>
 <tr>
-<td><code>plan_id</code></td>
+<td><code>payer</code></td>
 <td><code>str</code></td>
-<td>Plan being used</td>
+<td>Payer's wallet address</td>
 </tr>
 <tr>
-<td><code>balance</code></td>
-<td><code>int</code></td>
-<td>Current credit balance</td>
-</tr>
-<tr>
-<td><code>error</code></td>
+<td><code>agent_request_id</code></td>
 <td><code>str</code></td>
-<td>Error message if invalid</td>
+<td>Agent request ID for observability tracking</td>
 </tr>
 </tbody>
 </table>
@@ -1514,10 +1508,10 @@
 <a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
 <a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="k">if</span> <span class="n">settlement</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
 <a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Settled! Credits burned: </span><span class="si">{</span><span class="n">settlement</span><span class="o">.</span><span class="n">credits_redeemed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transaction: </span><span class="si">{</span><span class="n">settlement</span><span class="o">.</span><span class="n">tx_hash</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transaction: </span><span class="si">{</span><span class="n">settlement</span><span class="o">.</span><span class="n">transaction</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Remaining: </span><span class="si">{</span><span class="n">settlement</span><span class="o">.</span><span class="n">remaining_balance</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Settlement failed: </span><span class="si">{</span><span class="n">settlement</span><span class="o">.</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Settlement failed: </span><span class="si">{</span><span class="n">settlement</span><span class="o">.</span><span class="n">error_reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="settlement-response">Settlement Response<a class="headerlink" href="#settlement-response" title="Permanent link">&para;</a></h3>
 <table>
@@ -1535,37 +1529,55 @@
 <td>Whether settlement succeeded</td>
 </tr>
 <tr>
-<td><code>credits_redeemed</code></td>
-<td><code>int</code></td>
-<td>Credits that were burned</td>
+<td><code>error_reason</code></td>
+<td><code>str</code></td>
+<td>Reason for failure (if <code>success</code> is false)</td>
 </tr>
 <tr>
-<td><code>tx_hash</code></td>
+<td><code>payer</code></td>
+<td><code>str</code></td>
+<td>Payer's wallet address</td>
+</tr>
+<tr>
+<td><code>transaction</code></td>
 <td><code>str</code></td>
 <td>Blockchain transaction hash</td>
 </tr>
 <tr>
+<td><code>credits_redeemed</code></td>
+<td><code>str</code></td>
+<td>Credits that were burned</td>
+</tr>
+<tr>
 <td><code>remaining_balance</code></td>
-<td><code>int</code></td>
+<td><code>str</code></td>
 <td>Credits remaining</td>
 </tr>
 </tbody>
 </table>
 <h2 id="payment-required-object">Payment Required Object<a class="headerlink" href="#payment-required-object" title="Permanent link">&para;</a></h2>
 <p>The <code>X402PaymentRequired</code> object specifies what payment is required:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">X402PaymentRequired</span><span class="p">,</span> <span class="n">X402Scheme</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">X402PaymentRequired</span><span class="p">,</span> <span class="n">X402Resource</span><span class="p">,</span> <span class="n">X402Scheme</span><span class="p">,</span> <span class="n">X402SchemeExtra</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">payment_required</span> <span class="o">=</span> <span class="n">X402PaymentRequired</span><span class="p">(</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">x402_version</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">accepts</span><span class="o">=</span><span class="p">[</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">X402Scheme</span><span class="p">(</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>            <span class="n">scheme</span><span class="o">=</span><span class="s2">&quot;nvm:erc4337&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>            <span class="n">network</span><span class="o">=</span><span class="s2">&quot;eip155:84532&quot;</span><span class="p">,</span>  <span class="c1"># Base Sepolia</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>            <span class="n">plan_id</span><span class="o">=</span><span class="s2">&quot;your-plan-id&quot;</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="p">)</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="p">],</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="n">extensions</span><span class="o">=</span><span class="p">{}</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">resource</span><span class="o">=</span><span class="n">X402Resource</span><span class="p">(</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://your-api.com/endpoint&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Protected endpoint&quot;</span>  <span class="c1"># Optional</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="p">),</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="n">accepts</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="n">X402Scheme</span><span class="p">(</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>            <span class="n">scheme</span><span class="o">=</span><span class="s2">&quot;nvm:erc4337&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>            <span class="n">network</span><span class="o">=</span><span class="s2">&quot;eip155:84532&quot;</span><span class="p">,</span>  <span class="c1"># Base Sepolia</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>            <span class="n">plan_id</span><span class="o">=</span><span class="s2">&quot;your-plan-id&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>            <span class="n">extra</span><span class="o">=</span><span class="n">X402SchemeExtra</span><span class="p">(</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>                <span class="n">http_verb</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>  <span class="c1"># HTTP method goes in extra, not resource</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>                <span class="n">agent_id</span><span class="o">=</span><span class="s2">&quot;agent-123&quot;</span>  <span class="c1"># Optional</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>            <span class="p">)</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>        <span class="p">)</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="p">],</span>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="n">extensions</span><span class="o">=</span><span class="p">{}</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="p">)</span>
 </code></pre></div>
 <h3 id="using-the-helpers">Using the Helpers<a class="headerlink" href="#using-the-helpers" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_payment_required</span><span class="p">,</span> <span class="n">build_payment_required_for_plans</span>
@@ -1627,7 +1639,7 @@
 <a id="__codelineno-6-37" name="__codelineno-6-37" href="#__codelineno-6-37"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">verification</span><span class="o">.</span><span class="n">is_valid</span><span class="p">:</span>
 <a id="__codelineno-6-38" name="__codelineno-6-38" href="#__codelineno-6-38"></a>        <span class="k">return</span> <span class="n">jsonify</span><span class="p">({</span>
 <a id="__codelineno-6-39" name="__codelineno-6-39" href="#__codelineno-6-39"></a>            <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Payment required&#39;</span><span class="p">,</span>
-<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>            <span class="s1">&#39;details&#39;</span><span class="p">:</span> <span class="n">verification</span><span class="o">.</span><span class="n">error</span><span class="p">,</span>
+<a id="__codelineno-6-40" name="__codelineno-6-40" href="#__codelineno-6-40"></a>            <span class="s1">&#39;details&#39;</span><span class="p">:</span> <span class="n">verification</span><span class="o">.</span><span class="n">invalid_reason</span><span class="p">,</span>
 <a id="__codelineno-6-41" name="__codelineno-6-41" href="#__codelineno-6-41"></a>            <span class="s1">&#39;paymentRequired&#39;</span><span class="p">:</span> <span class="n">payment_required</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
 <a id="__codelineno-6-42" name="__codelineno-6-42" href="#__codelineno-6-42"></a>        <span class="p">}),</span> <span class="mi">402</span>
 <a id="__codelineno-6-43" name="__codelineno-6-43" href="#__codelineno-6-43"></a>
