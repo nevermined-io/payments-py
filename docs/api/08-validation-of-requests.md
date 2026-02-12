@@ -69,9 +69,9 @@ verification = payments.facilitator.verify_permissions(
 
 if verification.is_valid:
     print("Request is valid!")
-    print(f"Subscriber: {verification.subscriber_address}")
+    print(f"Payer: {verification.payer}")
 else:
-    print(f"Invalid request: {verification.error}")
+    print(f"Invalid request: {verification.invalid_reason}")
 ```
 
 ### Settle Permissions
@@ -87,7 +87,7 @@ settlement = payments.facilitator.settle_permissions(
 
 if settlement.success:
     print(f"Credits redeemed: {settlement.credits_redeemed}")
-    print(f"Transaction: {settlement.tx_hash}")
+    print(f"Transaction: {settlement.transaction}")
 ```
 
 ## Complete Example: Flask Agent
@@ -134,7 +134,7 @@ def create_task():
         if not verification.is_valid:
             return jsonify({
                 'error': 'Payment verification failed',
-                'details': verification.error
+                'details': verification.invalid_reason
             }), 402
 
         # 4. Process the request
@@ -236,17 +236,26 @@ For FastAPI applications, use the built-in x402 middleware:
 
 ```python
 from fastapi import FastAPI
-from payments_py.x402.fastapi import X402Middleware
+from payments_py import Payments, PaymentOptions
+from payments_py.x402.fastapi import PaymentMiddleware
 
 app = FastAPI()
 
+# Initialize payments
+payments = Payments.get_instance(
+    PaymentOptions(nvm_api_key="nvm:agent-key", environment="sandbox")
+)
+
 # Add x402 middleware
 app.add_middleware(
-    X402Middleware,
-    nvm_api_key="nvm:agent-key",
-    environment="sandbox",
-    agent_id="your-agent-id",
-    plan_id="your-plan-id"
+    PaymentMiddleware,
+    payments=payments,
+    routes={
+        "/api/tasks": {
+            "plan_id": "your-plan-id",
+            "agent_id": "your-agent-id",
+        }
+    }
 )
 
 @app.post("/api/tasks")
@@ -258,26 +267,27 @@ async def create_task(body: dict):
 
 ## Verification Response
 
-The `verify_permissions` method returns:
+The `verify_permissions` method returns a `VerifyResponse`:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `is_valid` | `bool` | Whether the request is authorized |
-| `subscriber_address` | `str` | Subscriber's wallet address |
-| `plan_id` | `str` | Plan being used |
-| `balance` | `int` | Current credit balance |
-| `error` | `str` | Error message if invalid |
+| `invalid_reason` | `str` | Reason for invalidity (if `is_valid` is false) |
+| `payer` | `str` | Payer's wallet address |
+| `agent_request_id` | `str` | Agent request ID for observability tracking |
 
 ## Settlement Response
 
-The `settle_permissions` method returns:
+The `settle_permissions` method returns a `SettleResponse`:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `success` | `bool` | Whether settlement succeeded |
-| `credits_redeemed` | `int` | Number of credits burned |
-| `tx_hash` | `str` | Blockchain transaction hash |
-| `remaining_balance` | `int` | Credits remaining |
+| `error_reason` | `str` | Reason for settlement failure (if `success` is false) |
+| `payer` | `str` | Payer's wallet address |
+| `transaction` | `str` | Blockchain transaction hash |
+| `credits_redeemed` | `str` | Number of credits burned |
+| `remaining_balance` | `str` | Credits remaining |
 
 ## Best Practices
 
