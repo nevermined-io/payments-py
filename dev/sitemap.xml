@@ -2,62 +2,62 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/01-installation/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/02-initializing-the-library/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/03-payment-plans/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/04-agents/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/05-publishing-static-resources/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/06-payments-and-balance/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/07-querying-an-agent/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/08-validation-of-requests/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/09-mcp-integration/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/10-a2a-integration/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/api/11-x402/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/reference/data_models/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/reference/environments/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
     <url>
          <loc>https://nevermined-io.github.io/payments-py/dev/reference/payments/</loc>
-         <lastmod>2026-02-11</lastmod>
+         <lastmod>2026-02-12</lastmod>
     </url>
 </urlset>
