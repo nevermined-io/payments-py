@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 from typing import AsyncGenerator, Any
 
 import httpx
@@ -40,9 +42,13 @@ class PaymentsClient:  # noqa: D101
     # ------------------------------------------------------------------
     async def _get_access_token(self) -> str:
         if self._access_token is None:
-            token_resp = await self._payments.x402.get_x402_access_token(
-                self._plan_id, self._agent_id
-            )
+            getter = self._payments.x402.get_x402_access_token
+            if inspect.iscoroutinefunction(getter):
+                token_resp = await getter(self._plan_id, self._agent_id)
+            else:
+                token_resp = await asyncio.to_thread(
+                    getter, self._plan_id, self._agent_id
+                )
             self._access_token = token_resp["accessToken"]
         return self._access_token
 
