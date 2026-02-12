@@ -22,7 +22,10 @@ from a2a.types import (
 from payments_py.common.payments_error import PaymentsError
 from payments_py.payments import Payments
 from payments_py.x402.token import decode_access_token
-from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.helpers import (
+    build_payment_required,
+    build_payment_required_for_plans,
+)
 
 from .types import HttpRequestContext
 
@@ -132,8 +135,9 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         Raises:
             PaymentsError: If validation fails
         """
-        # Try to get plan_id from agent card's payment extension first
+        # Try to get plan_id / plan_ids from agent card's payment extension first
         plan_id = None
+        plan_ids = None
         capabilities = (
             self._agent_card.get("capabilities", {})
             if isinstance(self._agent_card, dict)
@@ -149,12 +153,20 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             if ext_dict.get("uri") == "urn:nevermined:payment":
                 params = ext_dict.get("params", {})
                 plan_id = params.get("planId") or params.get("plan_id")
+                plan_ids = params.get("planIds") or params.get("plan_ids")
                 break
+
+        # Normalize to list
+        resolved_plan_ids: list[str] = (
+            plan_ids
+            if isinstance(plan_ids, list) and plan_ids
+            else ([plan_id] if plan_id else [])
+        )
 
         # Decode x402 token to extract subscriber_address (and fallback plan_id if not in agent card)
         decoded = decode_access_token(bearer_token)
         logging.getLogger(__name__).debug(
-            f"[validate_request] plan_id from agent card: {plan_id}"
+            f"[validate_request] plan_ids from agent card: {resolved_plan_ids}"
         )
         logging.getLogger(__name__).debug(
             f"[validate_request] decoded token keys: {list(decoded.keys()) if decoded else 'None'}"
@@ -162,9 +174,11 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         if not decoded:
             raise PaymentsError.unauthorized("Invalid access token")
 
-        # If plan_id not found in agent card, try token
-        if not plan_id:
-            plan_id = decoded.get("planId") or decoded.get("plan_id")
+        # If no plan_ids found in agent card, try token
+        if not resolved_plan_ids:
+            decoded_plan_id = decoded.get("planId") or decoded.get("plan_id")
+            if decoded_plan_id:
+                resolved_plan_ids = [decoded_plan_id]
 
         # Extract subscriber_address from x402 token (payload.authorization.from per x402 spec)
         payload = decoded.get("payload", {})
@@ -175,17 +189,17 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             authorization.get("from") if isinstance(authorization, dict) else None
         )
 
-        if not plan_id or not subscriber_address:
+        if not resolved_plan_ids or not subscriber_address:
             logging.getLogger(__name__).error(
-                f"[validate_request] FAILED - plan_id: {plan_id}, subscriber_address: {subscriber_address}"
+                f"[validate_request] FAILED - plan_ids: {resolved_plan_ids}, subscriber_address: {subscriber_address}"
             )
             raise PaymentsError.unauthorized(
                 "Cannot determine plan_id or subscriber_address from token (expected payload.authorization.from)"
             )
 
         # Build paymentRequired using the helper
-        payment_required = build_payment_required(
-            plan_id=plan_id,
+        payment_required = build_payment_required_for_plans(
+            plan_ids=resolved_plan_ids,
             endpoint=url_requested,
             agent_id=agent_id,
             http_verb=http_method_requested,
@@ -210,7 +224,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         # Return validation data with plan_id and subscriber_address for later use
         return {
             "success": True,
-            "plan_id": plan_id,
+            "plan_id": resolved_plan_ids[0],
+            "plan_ids": resolved_plan_ids,
             "subscriber_address": subscriber_address,
             "balance": {"isSubscriber": True},  # Compatibility with existing checks
         }
@@ -522,20 +537,21 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                                 event, http_ctx
                             )
 
-                # Replace _continue_consuming temporarily
+                # Replace _continue_consuming — the result_aggregator is
+                # per-request so no restore is needed.  The background task
+                # created by consume_and_break_on_interrupt resolves
+                # _continue_consuming AFTER this method returns, so restoring
+                # it in a finally block would undo the replacement before the
+                # background task ever runs.
                 result_aggregator._continue_consuming = (
                     background_credit_burning_processor
                 )
 
-                try:
-                    # Let SDK do its normal non-blocking flow
-                    result = await result_aggregator.consume_and_break_on_interrupt(
-                        consumer, blocking=blocking
-                    )
-                    return result
-                finally:
-                    # Restore original _continue_consuming
-                    result_aggregator._continue_consuming = original_continue_consuming
+                # Let SDK do its normal non-blocking flow
+                result = await result_aggregator.consume_and_break_on_interrupt(
+                    consumer, blocking=blocking
+                )
+                return result
         finally:
             # Restore original consume_all if it wasn't already restored
             if consumer.consume_all != original_consume_all:

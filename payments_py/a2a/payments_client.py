@@ -47,7 +47,7 @@ class PaymentsClient:  # noqa: D101
         return self._access_token
 
     def _auth_headers(self, token: str) -> dict[str, str]:
-        return {"Authorization": f"Bearer {token}"}
+        return {"payment-signature": token}
 
     def _build_context(self, token: str) -> ClientCallContext:
         ctx = ClientCallContext()

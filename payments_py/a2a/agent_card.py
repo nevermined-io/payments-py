@@ -40,6 +40,19 @@ def build_payment_agent_card(
         if credits <= 0:
             raise ValueError("credits must be a positive number for paid plans")
 
+    plan_id = payment_metadata.get("planId")
+    plan_ids = payment_metadata.get("planIds")
+
+    if plan_id and plan_ids:
+        raise ValueError("Provide either planId or planIds, not both")
+
+    if plan_ids is not None:
+        if not isinstance(plan_ids, list) or len(plan_ids) == 0:
+            raise ValueError("planIds must be a non-empty list")
+
+    if not plan_id and not plan_ids:
+        raise ValueError("Either planId or planIds is required")
+
     if not payment_metadata.get("agentId"):
         raise ValueError("agentId is required")
 

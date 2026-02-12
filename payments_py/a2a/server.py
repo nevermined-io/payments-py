@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any
 
@@ -15,6 +16,8 @@ from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import AgentCard, HttpRequestContext
 from payments_py.payments import Payments
+from payments_py.x402.helpers import build_payment_required_for_plans
+from payments_py.x402.types import X402PaymentRequired
 
 
 class PaymentsA2AServerResult:  # noqa: D101
@@ -71,6 +74,9 @@ class PaymentsA2AServer:  # noqa: D101
                             setattr(self, key, _Capabilities(value))
                         else:
                             setattr(self, key, value)
+
+                def model_dump(self, **kwargs):
+                    return dict(self)
 
             agent_card = _Card(agent_card)  # type: ignore[assignment]
 
@@ -152,55 +158,91 @@ class PaymentsA2AServer:  # noqa: D101
         # -----------------------------------------------------------------
         # Middleware: extract bearer token, validate credits, store context
         # -----------------------------------------------------------------
+        def _send_payment_required(
+            payment_required: X402PaymentRequired, message: str
+        ) -> JSONResponse:
+            """Return a 402 with base64-encoded payment-required header."""
+            pr_json = payment_required.model_dump_json(by_alias=True)
+            pr_b64 = base64.b64encode(pr_json.encode()).decode()
+            return JSONResponse(
+                status_code=402,
+                content={"error": {"code": -32001, "message": message}},
+                headers={"payment-required": pr_b64},
+            )
+
         @app.middleware("http")  # type: ignore[misc]
         async def payments_middleware(request, call_next):  # noqa: ANN001, D401
             # Only interested in RPC POSTs under base_path
             if request.method != "POST" or not request.url.path.startswith(base_path):
                 return await call_next(request)
 
-            auth_header = request.headers.get("Authorization")
-            if not auth_header or not auth_header.startswith("Bearer "):
+            # Extract payment extension from agent_card first (needed for 402 header)
+            payment_ext = next(
+                (
+                    ext
+                    for ext in (
+                        agent_card.get("capabilities", {}).get("extensions", [])
+                    )
+                    if ext.get("uri") == "urn:nevermined:payment"
+                ),
+                None,
+            )
+            if payment_ext is None:
                 return JSONResponse(
-                    status_code=401,
+                    status_code=402,
                     content={
-                        "error": {"code": -32001, "message": "Missing bearer token."}
+                        "error": {
+                            "code": -32001,
+                            "message": "Payment extension missing.",
+                        }
                     },
                 )
-            bearer_token = auth_header[len("Bearer ") :]
+            params = payment_ext.get("params", {})
+            agent_id = params.get("agentId")
+            plan_id = params.get("planId")
+            plan_ids = params.get("planIds")
 
+            # Normalize to list
+            resolved_plan_ids = (
+                plan_ids
+                if isinstance(plan_ids, list) and plan_ids
+                else ([plan_id] if plan_id else [])
+            )
+
+            if not agent_id:
+                return JSONResponse(
+                    status_code=402,
+                    content={"error": {"code": -32001, "message": "Agent ID missing."}},
+                )
+
+            if not resolved_plan_ids:
+                return JSONResponse(
+                    status_code=402,
+                    content={
+                        "error": {
+                            "code": -32001,
+                            "message": "Plan ID missing.",
+                        }
+                    },
+                )
+
+            # Build X402PaymentRequired for 402 responses
             absolute_url = str(request.url)
+            payment_required = build_payment_required_for_plans(
+                plan_ids=resolved_plan_ids,
+                agent_id=agent_id,
+                endpoint=absolute_url,
+                http_verb="POST",
+            )
+
+            bearer_token = request.headers.get("payment-signature")
+            if not bearer_token:
+                return _send_payment_required(
+                    payment_required, "Missing payment-signature header."
+                )
+
             validation: Any
             try:
-                # Extract agentId from agent_card payment extension
-                payment_ext = next(
-                    (
-                        ext
-                        for ext in (
-                            agent_card.get("capabilities", {}).get("extensions", [])
-                        )
-                        if ext.get("uri") == "urn:nevermined:payment"
-                    ),
-                    None,
-                )
-                if payment_ext is None:
-                    return JSONResponse(
-                        status_code=402,
-                        content={
-                            "error": {
-                                "code": -32001,
-                                "message": "Payment extension missing.",
-                            }
-                        },
-                    )
-                agent_id = payment_ext.get("params", {}).get("agentId")
-                if not agent_id:
-                    return JSONResponse(
-                        status_code=402,
-                        content={
-                            "error": {"code": -32001, "message": "Agent ID missing."}
-                        },
-                    )
-
                 validation = await handler.validate_request(
                     agent_id=agent_id,
                     bearer_token=bearer_token,
@@ -208,11 +250,8 @@ class PaymentsA2AServer:  # noqa: D101
                     http_method_requested=request.method,
                 )
             except Exception as exc:  # noqa: BLE001
-                return JSONResponse(
-                    status_code=402,
-                    content={
-                        "error": {"code": -32001, "message": f"Validation error: {exc}"}
-                    },
+                return _send_payment_required(
+                    payment_required, f"Validation error: {exc}"
                 )
 
             # Parse JSON body early to capture method / messageId / taskId

@@ -169,7 +169,7 @@ def test_hooks_invoked(agent_card, dummy_payments):  # noqa: D401
         },
         "id": 1,
     }
-    headers = {"Authorization": "Bearer TOKEN"}
+    headers = {"payment-signature": "TOKEN"}
     response = client.post("/rpc", json=payload, headers=headers)
 
     # The call might fail (which would trigger onError) or succeed (which would trigger before/after)
