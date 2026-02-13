@@ -9,7 +9,7 @@ from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
 from a2a.server.tasks.inmemory_push_notification_config_store import (
     InMemoryPushNotificationConfigStore,
 )
-from a2a.types import Task, TaskStatus, TaskState
+from a2a.types import Task, TaskStatus, TaskState, TaskStatusUpdateEvent
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import HttpRequestContext
 
@@ -33,15 +33,15 @@ async def test_streaming_burns_credits():  # noqa: D401
         facilitator=SimpleNamespace(settle_permissions=settle_mock),
     )
 
-    # Fake stream event Generator
+    # Fake stream yielding a Pydantic TaskStatusUpdateEvent (not a dict)
     async def fake_stream(*_args, **_kwargs):  # noqa: D401
-        yield {
-            "kind": "status-update",
-            "final": True,
-            "status": {"state": "completed"},
-            "metadata": {"creditsUsed": 7},
-            "taskId": "tid",
-        }
+        yield TaskStatusUpdateEvent(
+            task_id="tid",
+            context_id="ctx-123",
+            final=True,
+            status=TaskStatus(state=TaskState.completed),
+            metadata={"creditsUsed": 7},
+        )
 
     with patch(
         "payments_py.a2a.payments_request_handler.DefaultRequestHandler.on_message_send_stream",
@@ -57,7 +57,16 @@ async def test_streaming_burns_credits():  # noqa: D401
         await task_store.save(test_task)
 
         handler = PaymentsRequestHandler(
-            agent_card={},
+            agent_card={
+                "capabilities": {
+                    "extensions": [
+                        {
+                            "uri": "urn:nevermined:payment",
+                            "params": {"agentId": "agent-1", "planId": "plan-123"},
+                        }
+                    ]
+                }
+            },
             task_store=task_store,
             agent_executor=DummyExecutor(),
             payments_service=dummy_payments,  # type: ignore[arg-type]

@@ -137,15 +137,14 @@ async def test_stream_and_resubscribe(agent_card, payments_stub):  # noqa: D401
         if http_ctx:
             handler.set_http_ctx_for_task("task-123", http_ctx)
 
-        # Yield a status update event with credits used
-        yield {
-            "kind": "status-update",
-            "taskId": "task-123",
-            "contextId": "ctx-123",
-            "final": True,
-            "status": {"state": "completed"},
-            "metadata": {"creditsUsed": 2},
-        }
+        # Yield a proper Pydantic TaskStatusUpdateEvent (not a dict)
+        yield TaskStatusUpdateEvent(
+            task_id="task-123",
+            context_id="ctx-123",
+            final=True,
+            status=TaskStatus(state=TaskState.completed),
+            metadata={"creditsUsed": 2},
+        )
 
     with unittest.mock.patch.object(
         handler.__class__.__bases__[0],
