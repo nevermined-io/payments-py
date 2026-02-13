@@ -29,6 +29,8 @@ from payments_py.x402.helpers import (
 
 from .types import HttpRequestContext
 
+logger = logging.getLogger(__name__)
+
 _TERMINAL_STATES = {
     "completed",
     "failed",
@@ -358,26 +360,12 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
     ) -> None:
         """Monitor for final events with credit burning in non-blocking mode."""
         try:
-            print(f"[DEBUG] Starting monitor for final events for {task_id}")
-
-            # Wait for the producer task to complete (this publishes the final event)
             await producer_task
-            print(f"[DEBUG] Producer task completed for {task_id}")
 
-            # Create a new consumer to check for any remaining events in the queue
             final_consumer = EventConsumer(queue)
 
-            print(
-                f"[DEBUG] Created final consumer for {task_id}, checking for final events"
-            )
-
-            # Check for any remaining events (with timeout)
             try:
                 async for event in final_consumer.consume_all():
-                    print(
-                        f"[DEBUG] monitor_for_final_events got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')}"
-                    )
-
                     if (
                         isinstance(event, TaskStatusUpdateEvent)
                         and event.final is True
@@ -386,29 +374,22 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                         and event.metadata.get("creditsUsed") is not None
                         and http_ctx.bearer_token
                     ):
-                        print(
-                            f"[DEBUG] Found final event with creditsUsed: {event.metadata.get('creditsUsed')}"
-                        )
                         await self._handle_task_finalization_from_event(event, http_ctx)
                         break
 
             except Exception as e:
-                print(f"[DEBUG] Error consuming final events: {e}")
+                logger.warning(
+                    "Error consuming final events for task %s: %s", task_id, e
+                )
 
-            # Give a bit more time for any delayed events
             await asyncio.sleep(0.2)
 
         except asyncio.CancelledError:
-            print(f"[DEBUG] Monitor task cancelled for {task_id}")
+            pass
         except Exception as e:
-            logging.getLogger(__name__).warning(
-                f"Monitor task failed for {task_id}: {e}"
-            )
-            print(f"[DEBUG] Monitor task exception: {e}")
+            logger.warning("Monitor task failed for %s: %s", task_id, e)
         finally:
-            # Clean up HTTP context
             self.delete_http_ctx_for_task(task_id)
-            print(f"[DEBUG] Monitor cleanup completed for {task_id}")
 
     async def _delayed_cleanup_for_non_blocking(
         self,
@@ -465,12 +446,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         # Create a custom event processor that intercepts events for credit burning
         async def credit_burning_event_processor():
             async for event in original_consume_all():
-                print(
-                    f"[DEBUG] credit_burning_event_processor got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')} - metadata: {getattr(event, 'metadata', 'no-metadata')}"
-                )
-
-                # Handle credit burning on TaskStatusUpdateEvent (like TypeScript
-                # handleTaskFinalization)
                 if (
                     isinstance(event, TaskStatusUpdateEvent)
                     and event.final is True
@@ -479,9 +454,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                     and event.metadata.get("creditsUsed") is not None
                     and http_ctx.bearer_token
                 ):
-                    print(
-                        f"[DEBUG] Processing credit burning for final event: {event.metadata.get('creditsUsed')} credits"
-                    )
                     await self._handle_task_finalization_from_event(event, http_ctx)
 
                 yield event
@@ -510,18 +482,11 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 ):
                     """Process background events with credit burning."""
                     async for event in event_stream:
-                        print(
-                            f"[DEBUG] background_credit_burning_processor got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')}"
-                        )
-
-                        # Process the event normally (like original _continue_consuming)
                         await result_aggregator.task_manager.process(event)
 
-                        # Call the event callback if provided (to match SDK signature)
                         if event_callback:
                             await event_callback(event)
 
-                        # Check for credit burning on final events
                         if (
                             isinstance(event, TaskStatusUpdateEvent)
                             and event.final is True
@@ -530,9 +495,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                             and event.metadata.get("creditsUsed") is not None
                             and http_ctx.bearer_token
                         ):
-                            print(
-                                f"[DEBUG] Background credit burning for: {event.metadata.get('creditsUsed')} credits"
-                            )
                             await self._handle_task_finalization_from_event(
                                 event, http_ctx
                             )
@@ -563,8 +525,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         """Handle credit burning from TaskStatusUpdateEvent using x402 settle_permissions."""
         if not event.metadata or not event.metadata.get("creditsUsed"):
             return
-
-        print(f"[DEBUG] Handling task finalization from event: {event}")
 
         credits_used = event.metadata["creditsUsed"]
         plan_id = http_ctx.validation.get("plan_id")
@@ -610,8 +570,11 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 ),
             )
         except Exception:  # noqa: BLE001
-            # Swallow settle errors (non-blocking)
-            pass
+            logger.warning(
+                "Failed to settle %s credits during task finalization",
+                credits_used,
+                exc_info=True,
+            )
 
     # ------------------------------------------------------------------
     # Streaming override ------------------------------------------------
@@ -652,21 +615,19 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 break
 
         # Call parent streaming method and process events
-        # type: ignore[arg-type]
         async for event in super().on_message_send_stream(params, context):
-            # Handle credit burning on final status updates using x402 settle_permissions
+            # Handle credit burning on final TaskStatusUpdateEvent using x402 settle_permissions
             if (
-                isinstance(event, dict)
-                and event.get("kind") == "status-update"
-                and event.get("final") is True
-                and event.get("metadata", {}).get("creditsUsed") is not None
+                isinstance(event, TaskStatusUpdateEvent)
+                and event.final is True
+                and event.metadata
+                and event.metadata.get("creditsUsed") is not None
                 and http_ctx.bearer_token
             ):
-                credits_used = event["metadata"]["creditsUsed"]
+                credits_used = event.metadata["creditsUsed"]
                 plan_id = http_ctx.validation.get("plan_id")
 
                 if plan_id:
-                    # Build paymentRequired using the helper
                     payment_required = build_payment_required(
                         plan_id=plan_id,
                         endpoint=http_ctx.url_requested,
@@ -685,19 +646,22 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                             ),
                         )
                     except Exception:  # noqa: BLE001
-                        # Swallow settle errors (non-blocking)
-                        pass
+                        logger.warning(
+                            "Failed to settle credits for task %s",
+                            getattr(event, "task_id", "?"),
+                            exc_info=True,
+                        )
 
             # Handle push notifications on final status updates
             if (
-                isinstance(event, dict)
-                and event.get("kind") == "status-update"
-                and event.get("final") is True
-                and event.get("status", {}).get("state") in _TERMINAL_STATES
+                isinstance(event, TaskStatusUpdateEvent)
+                and event.final is True
+                and event.status
+                and event.status.state in _TERMINAL_STATES
             ):
                 try:
-                    task_id = event.get("taskId")
-                    state = event["status"]["state"]
+                    task_id = event.task_id
+                    state = event.status.state
                     push_cfg = await self.on_get_task_push_notification_config(
                         TaskIdParams(id=task_id)
                     )
@@ -708,7 +672,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                             push_cfg["pushNotificationConfig"],
                         )
                 except Exception:  # noqa: BLE001
-                    # Swallow push notification errors (non-blocking)
                     pass
 
             yield event
