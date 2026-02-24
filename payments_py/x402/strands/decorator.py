@@ -54,6 +54,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 from payments_py.x402.helpers import build_payment_required_for_plans
+from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import (
     PaymentContext,
     VerifyResponse,
@@ -79,7 +80,8 @@ class _PaymentConfig:
     plan_ids: list[str]
     credits: Union[int, CreditsCallable]
     agent_id: Optional[str]
-    network: str
+    network: Optional[str]
+    scheme: Optional[str]
     on_before_verify: Optional[BeforeVerifyHook]
     on_after_verify: Optional[AfterVerifyHook]
     on_after_settle: Optional[AfterSettleHook]
@@ -270,12 +272,16 @@ def _verify_payment(
     non-None: either an error dict to return immediately, or a _VerifiedPayment
     containing everything needed for execution and settlement.
     """
+    # Resolve scheme (auto-detect from plan metadata if not explicit)
+    resolved_scheme = resolve_scheme(config.payments, config.plan_ids[0], config.scheme)
+
     # Build payment_required first -- needed for x402-compliant error responses
     payment_required = build_payment_required_for_plans(
         plan_ids=config.plan_ids,
         endpoint=func.__name__,
         agent_id=config.agent_id,
         network=config.network,
+        scheme=resolved_scheme,
     )
 
     token = _extract_payment_token(kwargs)
@@ -369,7 +375,8 @@ def requires_payment(
     plan_ids: Optional[list[str]] = None,
     credits: Union[int, CreditsCallable] = 1,
     agent_id: Optional[str] = None,
-    network: str = "eip155:84532",
+    network: Optional[str] = None,
+    scheme: Optional[str] = None,
     on_before_verify: Optional[BeforeVerifyHook] = None,
     on_after_verify: Optional[AfterVerifyHook] = None,
     on_after_settle: Optional[AfterSettleHook] = None,
@@ -426,6 +433,7 @@ def requires_payment(
         credits=credits,
         agent_id=agent_id,
         network=network,
+        scheme=scheme,
         on_before_verify=on_before_verify,
         on_after_verify=on_after_verify,
         on_after_settle=on_after_settle,

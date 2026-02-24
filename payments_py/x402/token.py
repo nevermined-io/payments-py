@@ -13,6 +13,8 @@ from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.nvm_api import API_URL_CREATE_PERMISSION
+from payments_py.x402.schemes import X402_SCHEME_NETWORKS
+from payments_py.x402.types import X402TokenOptions
 
 
 def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
@@ -28,24 +30,15 @@ def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
     Returns:
         The decoded token data or None if invalid
     """
-    # Try base64-encoded JSON (x402 format)
-    try:
-        # Handle URL-safe base64 (with or without padding)
-        padded = access_token + "=" * (4 - len(access_token) % 4)
-        decoded_bytes = base64.urlsafe_b64decode(padded)
-        decoded = json.loads(decoded_bytes)
-        return decoded
-    except Exception:
-        pass
+    padded = access_token + "=" * (4 - len(access_token) % 4)
 
-    # Try standard base64 (non-URL-safe)
-    try:
-        padded = access_token + "=" * (4 - len(access_token) % 4)
-        decoded_bytes = base64.b64decode(padded)
-        decoded = json.loads(decoded_bytes)
-        return decoded
-    except Exception:
-        pass
+    # Try URL-safe base64 first, then standard base64
+    for decoder in (base64.urlsafe_b64decode, base64.b64decode):
+        try:
+            decoded_bytes = decoder(padded)
+            return json.loads(decoded_bytes)
+        except Exception:
+            continue
 
     return None
 
@@ -78,6 +71,7 @@ class X402TokenAPI(BasePaymentsAPI):
         redemption_limit: Optional[int] = None,
         order_limit: Optional[str] = None,
         expiration: Optional[str] = None,
+        token_options: Optional[X402TokenOptions] = None,
     ) -> Dict[str, Any]:
         """
         Create a permission and get an X402 access token for the given plan.
@@ -92,6 +86,7 @@ class X402TokenAPI(BasePaymentsAPI):
             redemption_limit: Maximum number of interactions/redemptions allowed (optional)
             order_limit: Maximum spend limit in token units (wei) for ordering (optional)
             expiration: Expiration date in ISO 8601 format, e.g. "2025-02-01T10:00:00Z" (optional)
+            token_options: Options controlling scheme and delegation behavior (optional)
 
         Returns:
             A dictionary containing:
@@ -116,6 +111,18 @@ class X402TokenAPI(BasePaymentsAPI):
         """
         url = f"{self.environment.backend}{API_URL_CREATE_PERMISSION}"
 
+        # Extract scheme/network from token_options or defaults
+        scheme = (
+            token_options.scheme
+            if token_options and token_options.scheme
+            else "nvm:erc4337"
+        )
+        network = (
+            token_options.network
+            if token_options and token_options.network
+            else X402_SCHEME_NETWORKS.get(scheme, "eip155:84532")
+        )
+
         # Build x402-aligned request body
         extra: Dict[str, Any] = {}
         if agent_id is not None:
@@ -123,23 +130,34 @@ class X402TokenAPI(BasePaymentsAPI):
 
         body: Dict[str, Any] = {
             "accepted": {
-                "scheme": "nvm:erc4337",
-                "network": "eip155:84532",
+                "scheme": scheme,
+                "network": network,
                 "planId": plan_id,
                 "extra": extra,
             },
         }
 
-        # Add session key config if any options are provided
-        session_key_config: Dict[str, Any] = {}
-        if redemption_limit is not None:
-            session_key_config["redemptionLimit"] = redemption_limit
-        if order_limit is not None:
-            session_key_config["orderLimit"] = order_limit
-        if expiration is not None:
-            session_key_config["expiration"] = expiration
-        if session_key_config:
-            body["sessionKeyConfig"] = session_key_config
+        # Add delegation config for card-delegation scheme
+        if (
+            scheme == "nvm:card-delegation"
+            and token_options
+            and token_options.delegation_config
+        ):
+            body["delegationConfig"] = token_options.delegation_config.model_dump(
+                by_alias=True, exclude_none=True
+            )
+
+        # Add session key config if any options are provided (erc4337 only)
+        if scheme == "nvm:erc4337":
+            session_key_config: Dict[str, Any] = {}
+            if redemption_limit is not None:
+                session_key_config["redemptionLimit"] = redemption_limit
+            if order_limit is not None:
+                session_key_config["orderLimit"] = order_limit
+            if expiration is not None:
+                session_key_config["expiration"] = expiration
+            if session_key_config:
+                body["sessionKeyConfig"] = session_key_config
 
         options = self.get_backend_http_options("POST", body)
 

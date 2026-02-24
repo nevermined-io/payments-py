@@ -71,6 +71,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import PaymentContext, VerifyResponse, X402PaymentRequired
 
 # Type alias for dynamic credits function
@@ -118,8 +119,10 @@ class RouteConfig:
     credits: Union[int, CreditsCallable] = 1
     # Optional agent ID
     agent_id: Optional[str] = None
-    # Network identifier (default: "eip155:84532" for Base Sepolia)
-    network: str = "eip155:84532"
+    # Network identifier. Auto-derived from scheme if None.
+    network: Optional[str] = None
+    # x402 scheme. Auto-resolved from plan metadata when None.
+    scheme: Optional[str] = None
 
 
 # Type for hook callbacks
@@ -277,6 +280,11 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             # Route not protected - pass through
             return await call_next(request)
 
+        # Resolve scheme (auto-detect from plan metadata if not explicit)
+        resolved_scheme = resolve_scheme(
+            self.payments, route_config.plan_id, route_config.scheme
+        )
+
         # Build payment required object
         payment_required = build_payment_required(
             plan_id=route_config.plan_id,
@@ -284,6 +292,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             agent_id=route_config.agent_id,
             http_verb=method,
             network=route_config.network,
+            scheme=resolved_scheme,
         )
 
         # Extract token from headers

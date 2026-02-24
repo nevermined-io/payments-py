@@ -39,6 +39,15 @@ from payments_py.x402 import (
     NeverminedFacilitator,
     FacilitatorAPI,
     X402TokenAPI,
+    # Card delegation
+    CardDelegationConfig,
+    X402TokenOptions,
+    X402SchemeType,
+    X402_SCHEME_NETWORKS,
+    is_valid_scheme,
+    resolve_scheme,
+    DelegationAPI,
+    PaymentMethodSummary,
 )
 
 # Import utility functions
@@ -124,6 +133,15 @@ __all__ = [
     "SupportedSchemes",
     # X402 Facilitator
     "NeverminedFacilitator",
+    # Card delegation
+    "CardDelegationConfig",
+    "X402TokenOptions",
+    "X402SchemeType",
+    "X402_SCHEME_NETWORKS",
+    "is_valid_scheme",
+    "resolve_scheme",
+    "DelegationAPI",
+    "PaymentMethodSummary",
     # Utility functions
     "is_ethereum_address",
     "generate_step_id",
