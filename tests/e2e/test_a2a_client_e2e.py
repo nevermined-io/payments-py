@@ -72,8 +72,8 @@ def setup_plan_and_agent(payments_builder: Payments, payments_subscriber: Paymen
 def _asyncify_get_x402_access_token(payments_subscriber: Payments):  # noqa: D401
     original = payments_subscriber.x402.get_x402_access_token
 
-    async def _async_get(plan_id, agent_id):  # noqa: D401
-        res = original(plan_id, agent_id)
+    async def _async_get(plan_id, agent_id, **kwargs):  # noqa: D401
+        res = original(plan_id, agent_id, **kwargs)
         if isinstance(res, dict):
             token = res.get("accessToken") or res.get("access_token")
         else:
