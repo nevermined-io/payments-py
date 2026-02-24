@@ -6,11 +6,11 @@ and responses used in payment verification and settlement.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, List
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 from .networks import SupportedNetworks
-from .schemes import SupportedSchemes
+from .schemes import SupportedSchemes, X402SchemeType
 
 
 class X402Resource(BaseModel):
@@ -115,8 +115,8 @@ class PaymentRequirements(BaseModel):
     plan_id: str
     agent_id: str
     max_amount: str
-    network: SupportedNetworks
-    scheme: SupportedSchemes
+    network: str
+    scheme: str
     extra: Optional[dict[str, Any]] = None
 
     model_config = ConfigDict(
@@ -265,3 +265,51 @@ class PaymentContext:
     verified: bool
     agent_request_id: Optional[str] = None
     agent_request: Optional[Any] = None
+
+
+class CardDelegationConfig(BaseModel):
+    """
+    Configuration for card delegation (fiat/Stripe) payments.
+
+    Attributes:
+        provider_payment_method_id: Stripe payment method ID (e.g., 'pm_...')
+        spending_limit_cents: Maximum spending limit in cents
+        duration_secs: Duration of the delegation in seconds
+        currency: Currency code (default: 'usd')
+        merchant_account_id: Stripe Connect merchant account ID
+        max_transactions: Maximum number of transactions allowed
+    """
+
+    provider_payment_method_id: str = Field(alias="providerPaymentMethodId")
+    spending_limit_cents: int = Field(alias="spendingLimitCents")
+    duration_secs: int = Field(alias="durationSecs")
+    currency: Optional[str] = None
+    merchant_account_id: Optional[str] = Field(None, alias="merchantAccountId")
+    max_transactions: Optional[int] = Field(None, alias="maxTransactions")
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class X402TokenOptions(BaseModel):
+    """
+    Options for x402 token generation that control scheme and delegation behavior.
+
+    Attributes:
+        scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
+        network: Network identifier (auto-derived from scheme if omitted)
+        delegation_config: Card delegation configuration (only for 'nvm:card-delegation')
+    """
+
+    scheme: Optional[str] = None
+    network: Optional[str] = None
+    delegation_config: Optional[CardDelegationConfig] = Field(
+        None, alias="delegationConfig"
+    )
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+    )

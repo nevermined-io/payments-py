@@ -17,6 +17,7 @@ from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import AgentCard, HttpRequestContext
 from payments_py.payments import Payments
 from payments_py.x402.helpers import build_payment_required_for_plans
+from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import X402PaymentRequired
 
 
@@ -226,6 +227,9 @@ class PaymentsA2AServer:  # noqa: D101
                     },
                 )
 
+            # Resolve scheme from plan metadata
+            resolved_scheme = resolve_scheme(payments_service, resolved_plan_ids[0])
+
             # Build X402PaymentRequired for 402 responses
             absolute_url = str(request.url)
             payment_required = build_payment_required_for_plans(
@@ -233,6 +237,7 @@ class PaymentsA2AServer:  # noqa: D101
                 agent_id=agent_id,
                 endpoint=absolute_url,
                 http_verb="POST",
+                scheme=resolved_scheme,
             )
 
             bearer_token = request.headers.get("payment-signature")

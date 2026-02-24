@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional
 
 from .payments_client import PaymentsClient
 
 if TYPE_CHECKING:  # pragma: no cover
     from payments_py.payments import Payments
+    from payments_py.x402.types import CardDelegationConfig
 
 
 class ClientRegistry:  # noqa: D101
@@ -27,6 +26,7 @@ class ClientRegistry:  # noqa: D101
         agent_base_url: str,
         agent_id: str,
         plan_id: str,
+        delegation_config: Optional["CardDelegationConfig"] = None,
     ) -> PaymentsClient:
         """Return a cached or newly created PaymentsClient instance."""
         if not agent_base_url or not agent_id or not plan_id:
@@ -38,5 +38,6 @@ class ClientRegistry:  # noqa: D101
                 payments=self._payments,
                 agent_id=agent_id,
                 plan_id=plan_id,
+                delegation_config=delegation_config,
             )
         return self._clients[key]

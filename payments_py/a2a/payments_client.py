@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from typing import AsyncGenerator, Any
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional
 
 import httpx
 from a2a.client.client import ClientConfig
@@ -17,15 +17,20 @@ from a2a.types import (
     TaskIdParams,
 )
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:  # pragma: no cover
     from payments_py.payments import Payments
+    from payments_py.x402.types import CardDelegationConfig
 
 
 class PaymentsClient:  # noqa: D101
     def __init__(
-        self, *, agent_base_url: str, payments: "Payments", agent_id: str, plan_id: str
+        self,
+        *,
+        agent_base_url: str,
+        payments: "Payments",
+        agent_id: str,
+        plan_id: str,
+        delegation_config: Optional["CardDelegationConfig"] = None,
     ) -> None:
         # Preserve trailing slash to avoid JSON-RPC 307 redirects between /a2a and /a2a/
         self._agent_base_url = (
@@ -34,6 +39,7 @@ class PaymentsClient:  # noqa: D101
         self._payments = payments
         self._agent_id = agent_id
         self._plan_id = plan_id
+        self._delegation_config = delegation_config
         self._access_token: str | None = None
         self._client = None  # Lazily created to ease unit testing
 
@@ -42,12 +48,30 @@ class PaymentsClient:  # noqa: D101
     # ------------------------------------------------------------------
     async def _get_access_token(self) -> str:
         if self._access_token is None:
+            from payments_py.x402.resolve_scheme import resolve_scheme
+            from payments_py.x402.types import X402TokenOptions
+
+            # Resolve scheme from plan metadata
+            scheme = resolve_scheme(self._payments, self._plan_id)
+
+            # Build token options with resolved scheme
+            token_options = X402TokenOptions(scheme=scheme)
+            if scheme == "nvm:card-delegation" and self._delegation_config:
+                token_options = X402TokenOptions(
+                    scheme=scheme, delegation_config=self._delegation_config
+                )
+
             getter = self._payments.x402.get_x402_access_token
             if inspect.iscoroutinefunction(getter):
-                token_resp = await getter(self._plan_id, self._agent_id)
+                token_resp = await getter(
+                    self._plan_id, self._agent_id, token_options=token_options
+                )
             else:
                 token_resp = await asyncio.to_thread(
-                    getter, self._plan_id, self._agent_id
+                    getter,
+                    self._plan_id,
+                    self._agent_id,
+                    token_options=token_options,
                 )
             self._access_token = token_resp["accessToken"]
         return self._access_token

@@ -26,6 +26,7 @@ from payments_py.x402.helpers import (
     build_payment_required,
     build_payment_required_for_plans,
 )
+from payments_py.x402.schemes import is_valid_scheme
 
 from .types import HttpRequestContext
 
@@ -109,6 +110,35 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
     def delete_http_ctx_for_message(self, message_id: str) -> None:  # noqa: D401
         self._http_ctx_by_message.pop(message_id, None)
 
+    def _get_payment_extension_params(self, agent_card: Any = None) -> dict:
+        """Extract params from the urn:nevermined:payment extension on the agent card.
+
+        Args:
+            agent_card: Optional agent card to use. Falls back to self._agent_card.
+
+        Returns an empty dict if the extension is not found.
+        """
+        card = agent_card if agent_card is not None else self._agent_card
+        capabilities = (
+            card.get("capabilities", {})
+            if isinstance(card, dict)
+            else getattr(card, "capabilities", {})
+        )
+        extensions = (
+            capabilities.get("extensions", [])
+            if isinstance(capabilities, dict)
+            else getattr(capabilities, "extensions", [])
+        )
+        for ext in extensions:
+            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
+            if ext_dict.get("uri") == "urn:nevermined:payment":
+                params = ext_dict.get("params", {})
+                # Normalize SimpleNamespace to dict for uniform .get() access
+                if not isinstance(params, dict):
+                    params = vars(params) if hasattr(params, "__dict__") else {}
+                return params
+        return {}
+
     def migrate_http_ctx_from_message_to_task(
         self, message_id: str, task_id: str
     ) -> None:  # noqa: D401
@@ -138,25 +168,9 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             PaymentsError: If validation fails
         """
         # Try to get plan_id / plan_ids from agent card's payment extension first
-        plan_id = None
-        plan_ids = None
-        capabilities = (
-            self._agent_card.get("capabilities", {})
-            if isinstance(self._agent_card, dict)
-            else getattr(self._agent_card, "capabilities", {})
-        )
-        extensions = (
-            capabilities.get("extensions", [])
-            if isinstance(capabilities, dict)
-            else getattr(capabilities, "extensions", [])
-        )
-        for ext in extensions:
-            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
-            if ext_dict.get("uri") == "urn:nevermined:payment":
-                params = ext_dict.get("params", {})
-                plan_id = params.get("planId") or params.get("plan_id")
-                plan_ids = params.get("planIds") or params.get("plan_ids")
-                break
+        params = self._get_payment_extension_params()
+        plan_id = params.get("planId") or params.get("plan_id")
+        plan_ids = params.get("planIds") or params.get("plan_ids")
 
         # Normalize to list
         resolved_plan_ids: list[str] = (
@@ -199,12 +213,22 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 "Cannot determine plan_id or subscriber_address from token (expected payload.authorization.from)"
             )
 
+        # Extract scheme from decoded token if available
+        accepted = decoded.get("accepted", {})
+        token_scheme = (
+            accepted.get("scheme", "nvm:erc4337")
+            if isinstance(accepted, dict)
+            else "nvm:erc4337"
+        )
+        scheme = token_scheme if is_valid_scheme(token_scheme) else "nvm:erc4337"
+
         # Build paymentRequired using the helper
         payment_required = build_payment_required_for_plans(
             plan_ids=resolved_plan_ids,
             endpoint=url_requested,
             agent_id=agent_id,
             http_verb=http_method_requested,
+            scheme=scheme,
         )
 
         # Use run_in_executor since verify_permissions is synchronous
@@ -229,6 +253,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             "plan_id": resolved_plan_ids[0],
             "plan_ids": resolved_plan_ids,
             "subscriber_address": subscriber_address,
+            "scheme": scheme,
             "balance": {"isSubscriber": True},  # Compatibility with existing checks
         }
 
@@ -260,32 +285,10 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 "HTTP context missing for request; bearer token not found."
             )
 
-        # Get agentId from agent card (like TypeScript)
+        # Get agentId from agent card payment extension
         agent_card = await self.get_agent_card()
-
-        # Extract agentId from payment extension (handle both dict and SimpleNamespace)
-        agent_id = None
-        if hasattr(agent_card, "get"):
-            # Dictionary-style access
-            extensions = agent_card.get("capabilities", {}).get("extensions", [])
-        else:
-            # Object-style access (SimpleNamespace)
-            capabilities = getattr(agent_card, "capabilities", None)
-            extensions = getattr(capabilities, "extensions", []) if capabilities else []
-
-        for ext in extensions:
-            if (hasattr(ext, "get") and ext.get("uri") == "urn:nevermined:payment") or (
-                hasattr(ext, "uri") and ext.uri == "urn:nevermined:payment"
-            ):
-                # Handle both dict and SimpleNamespace for params
-                if hasattr(ext, "get"):
-                    agent_id = ext.get("params", {}).get("agentId")
-                else:
-                    ext_params = getattr(ext, "params", None)
-                    agent_id = (
-                        getattr(ext_params, "agentId", None) if ext_params else None
-                    )
-                break
+        ext_params = self._get_payment_extension_params(agent_card)
+        agent_id = ext_params.get("agentId") or ext_params.get("agent_id")
 
         if not agent_id:
             raise PaymentsError.internal("Agent ID not found in payment extension.")
@@ -528,28 +531,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         credits_used = event.metadata["creditsUsed"]
         plan_id = http_ctx.validation.get("plan_id")
+        scheme = http_ctx.validation.get("scheme", "nvm:erc4337")
 
         if not plan_id:
             return  # Cannot settle without plan_id
 
         # Get agentId from agent card
-        agent_id = None
-        capabilities = (
-            self._agent_card.get("capabilities", {})
-            if isinstance(self._agent_card, dict)
-            else getattr(self._agent_card, "capabilities", {})
-        )
-        extensions = (
-            capabilities.get("extensions", [])
-            if isinstance(capabilities, dict)
-            else getattr(capabilities, "extensions", [])
-        )
-        for ext in extensions:
-            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
-            if ext_dict.get("uri") == "urn:nevermined:payment":
-                params = ext_dict.get("params", {})
-                agent_id = params.get("agentId") or params.get("agent_id")
-                break
+        ext_params = self._get_payment_extension_params()
+        agent_id = ext_params.get("agentId") or ext_params.get("agent_id")
 
         # Build paymentRequired using the helper
         payment_required = build_payment_required(
@@ -557,6 +546,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             endpoint=http_ctx.url_requested,
             agent_id=agent_id,
             http_verb=http_ctx.http_method_requested,
+            scheme=scheme,
         )
 
         try:
@@ -596,23 +586,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             )
 
         # Get agentId from agent card for settle operations
-        agent_id = None
-        capabilities = (
-            self._agent_card.get("capabilities", {})
-            if isinstance(self._agent_card, dict)
-            else getattr(self._agent_card, "capabilities", {})
-        )
-        extensions = (
-            capabilities.get("extensions", [])
-            if isinstance(capabilities, dict)
-            else getattr(capabilities, "extensions", [])
-        )
-        for ext in extensions:
-            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
-            if ext_dict.get("uri") == "urn:nevermined:payment":
-                params_dict = ext_dict.get("params", {})
-                agent_id = params_dict.get("agentId") or params_dict.get("agent_id")
-                break
+        ext_params = self._get_payment_extension_params()
+        agent_id = ext_params.get("agentId") or ext_params.get("agent_id")
 
         # Call parent streaming method and process events
         async for event in super().on_message_send_stream(params, context):
@@ -628,11 +603,13 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 plan_id = http_ctx.validation.get("plan_id")
 
                 if plan_id:
+                    scheme = http_ctx.validation.get("scheme", "nvm:erc4337")
                     payment_required = build_payment_required(
                         plan_id=plan_id,
                         endpoint=http_ctx.url_requested,
                         agent_id=agent_id,
                         http_verb=http_ctx.http_method_requested,
+                        scheme=scheme,
                     )
 
                     try:
