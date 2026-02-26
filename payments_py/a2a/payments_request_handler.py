@@ -72,6 +72,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         self._async_execution = async_execution
         self._http_ctx_by_task: Dict[str, HttpRequestContext] = {}
         self._http_ctx_by_message: Dict[str, HttpRequestContext] = {}
+        self.latest_agent_request: Any = None
+        self.latest_agent_request_id: str | None = None
 
     # ------------------------------------------------------------------
     # Context helpers (called by middleware) ---------------------------
@@ -247,6 +249,10 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 result.invalid_reason or "Permission verification failed"
             )
 
+        # Capture observability data from the verify result
+        self.latest_agent_request = getattr(result, "agent_request", None)
+        self.latest_agent_request_id = getattr(result, "agent_request_id", None)
+
         # Return validation data with plan_id and subscriber_address for later use
         return {
             "success": True,
@@ -255,6 +261,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             "subscriber_address": subscriber_address,
             "scheme": scheme,
             "balance": {"isSubscriber": True},  # Compatibility with existing checks
+            "agent_request_id": self.latest_agent_request_id,
+            "agent_request": self.latest_agent_request,
         }
 
     # ------------------------------------------------------------------
@@ -522,6 +530,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             if consumer.consume_all != original_consume_all:
                 consumer.consume_all = original_consume_all
 
+    def _resolve_agent_request_id(
+        self, http_ctx: HttpRequestContext, event_metadata: dict | None
+    ) -> str | None:
+        """Resolve agent_request_id from validation context, falling back to event metadata."""
+        return http_ctx.validation.get("agent_request_id") or (
+            event_metadata.get("agentRequestId") if event_metadata else None
+        )
+
     async def _handle_task_finalization_from_event(
         self, event: TaskStatusUpdateEvent, http_ctx: HttpRequestContext
     ) -> None:
@@ -535,6 +551,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         if not plan_id:
             return  # Cannot settle without plan_id
+
+        agent_request_id = self._resolve_agent_request_id(http_ctx, event.metadata)
 
         # Get agentId from agent card
         ext_params = self._get_payment_extension_params()
@@ -557,6 +575,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                     payment_required=payment_required,
                     x402_access_token=http_ctx.bearer_token,
                     max_amount=str(int(credits_used)),
+                    agent_request_id=agent_request_id,
                 ),
             )
         except Exception:  # noqa: BLE001
@@ -603,6 +622,9 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 plan_id = http_ctx.validation.get("plan_id")
 
                 if plan_id:
+                    agent_request_id = self._resolve_agent_request_id(
+                        http_ctx, event.metadata
+                    )
                     scheme = http_ctx.validation.get("scheme", "nvm:erc4337")
                     payment_required = build_payment_required(
                         plan_id=plan_id,
@@ -620,6 +642,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                                 payment_required=payment_required,
                                 x402_access_token=http_ctx.bearer_token,
                                 max_amount=str(int(credits_used)),
+                                agent_request_id=agent_request_id,
                             ),
                         )
                     except Exception:  # noqa: BLE001

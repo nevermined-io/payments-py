@@ -75,6 +75,7 @@ class MockFacilitatorAPI:
         payment_required=None,
         max_amount: str = None,
         x402_access_token: str = None,
+        agent_request_id: str = None,
     ):
         """Mock settle_permissions with x402 API."""
         from payments_py.x402.types import SettleResponse

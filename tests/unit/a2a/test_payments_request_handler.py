@@ -1,5 +1,7 @@
 """Unit tests for PaymentsRequestHandler."""
 
+import base64
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -461,6 +463,89 @@ async def test_handle_task_finalization_from_event_burns_credits():  # noqa: D40
     assert call_kwargs["x402_access_token"] == "BEARER_TOKEN"
     assert call_kwargs["max_amount"] == "5"
     assert call_kwargs["payment_required"] is not None
+    assert (
+        call_kwargs["agent_request_id"] is None
+    )  # No agent_request_id in validation or metadata
+
+
+@pytest.mark.asyncio()  # noqa: D401
+async def test_handle_task_finalization_passes_agent_request_id_from_validation():  # noqa: D401
+    """Test that _handle_task_finalization_from_event passes agent_request_id from validation context."""
+
+    settle_mock = Mock(return_value={"success": True, "txHash": "0xabc"})
+    dummy_payments = SimpleNamespace(
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
+    )
+
+    handler = PaymentsRequestHandler(
+        agent_card={},
+        task_store=InMemoryTaskStore(),
+        agent_executor=DummyExecutor(),
+        payments_service=dummy_payments,  # type: ignore[arg-type]
+    )
+
+    event = TaskStatusUpdateEvent(
+        task_id="tid",
+        context_id="ctx-123",
+        status=TaskStatus(state=TaskState.completed),
+        final=True,
+        metadata={"creditsUsed": 5},
+    )
+
+    ctx = HttpRequestContext(
+        bearer_token="BEARER_TOKEN",
+        url_requested="https://x",
+        http_method_requested="POST",
+        validation={
+            "plan_id": "plan123",
+            "subscriber_address": "0x123",
+            "agent_request_id": "req-abc-123",
+        },
+    )
+
+    await handler._handle_task_finalization_from_event(event, ctx)
+
+    settle_mock.assert_called_once()
+    call_kwargs = settle_mock.call_args.kwargs
+    assert call_kwargs["agent_request_id"] == "req-abc-123"
+
+
+@pytest.mark.asyncio()  # noqa: D401
+async def test_handle_task_finalization_passes_agent_request_id_from_event_metadata():  # noqa: D401
+    """Test that _handle_task_finalization_from_event falls back to agentRequestId from event metadata."""
+
+    settle_mock = Mock(return_value={"success": True, "txHash": "0xabc"})
+    dummy_payments = SimpleNamespace(
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
+    )
+
+    handler = PaymentsRequestHandler(
+        agent_card={},
+        task_store=InMemoryTaskStore(),
+        agent_executor=DummyExecutor(),
+        payments_service=dummy_payments,  # type: ignore[arg-type]
+    )
+
+    event = TaskStatusUpdateEvent(
+        task_id="tid",
+        context_id="ctx-123",
+        status=TaskStatus(state=TaskState.completed),
+        final=True,
+        metadata={"creditsUsed": 5, "agentRequestId": "req-from-event"},
+    )
+
+    ctx = HttpRequestContext(
+        bearer_token="BEARER_TOKEN",
+        url_requested="https://x",
+        http_method_requested="POST",
+        validation={"plan_id": "plan123", "subscriber_address": "0x123"},
+    )
+
+    await handler._handle_task_finalization_from_event(event, ctx)
+
+    settle_mock.assert_called_once()
+    call_kwargs = settle_mock.call_args.kwargs
+    assert call_kwargs["agent_request_id"] == "req-from-event"
 
 
 @pytest.mark.asyncio()  # noqa: D401
@@ -585,3 +670,63 @@ async def test_handle_task_finalization_swallows_errors():  # noqa: D401
     assert call_kwargs["x402_access_token"] == "BEARER_TOKEN"
     assert call_kwargs["max_amount"] == "5"
     assert call_kwargs["payment_required"] is not None
+
+
+@pytest.mark.asyncio()  # noqa: D401
+async def test_validate_request_captures_agent_request_attributes():  # noqa: D401
+    """Test that validate_request sets latest_agent_request and latest_agent_request_id."""
+
+    # Mock verify_permissions result
+    verify_result = SimpleNamespace(
+        is_valid=True,
+        invalid_reason=None,
+        agent_request={"agent_request_id": "req-xyz", "some": "data"},
+        agent_request_id="req-xyz",
+    )
+    verify_mock = Mock(return_value=verify_result)
+    dummy_payments = SimpleNamespace(
+        facilitator=SimpleNamespace(verify_permissions=verify_mock),
+    )
+
+    agent_card = {
+        "capabilities": {
+            "extensions": [
+                {
+                    "uri": "urn:nevermined:payment",
+                    "params": {"planId": "plan-abc", "agentId": "agent-1"},
+                }
+            ]
+        }
+    }
+
+    handler = PaymentsRequestHandler(
+        agent_card=agent_card,
+        task_store=InMemoryTaskStore(),
+        agent_executor=DummyExecutor(),
+        payments_service=dummy_payments,  # type: ignore[arg-type]
+    )
+
+    # Craft a minimal valid x402 token (base64-encoded JSON)
+    token_payload = {
+        "payload": {"authorization": {"from": "0xSubscriber"}},
+        "accepted": {"scheme": "nvm:erc4337"},
+    }
+    bearer_token = base64.b64encode(json.dumps(token_payload).encode()).decode()
+
+    result = await handler.validate_request(
+        agent_id="agent-1",
+        bearer_token=bearer_token,
+        url_requested="https://example.com/ask",
+        http_method_requested="POST",
+    )
+
+    # Verify attributes are set on the handler
+    assert handler.latest_agent_request == {
+        "agent_request_id": "req-xyz",
+        "some": "data",
+    }
+    assert handler.latest_agent_request_id == "req-xyz"
+
+    # Verify the return dict includes agent_request_id and agent_request
+    assert result["agent_request_id"] == "req-xyz"
+    assert result["agent_request"] == {"agent_request_id": "req-xyz", "some": "data"}

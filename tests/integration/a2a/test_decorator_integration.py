@@ -68,6 +68,7 @@ class MockFacilitatorAPI:
         payment_required=None,
         max_amount: str = None,
         x402_access_token: str = None,
+        agent_request_id: str = None,
     ):
         self.settle_call_count += 1
         self.last_settle_credits = int(max_amount) if max_amount else 0
