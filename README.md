@@ -83,9 +83,10 @@ Important:
 ```python
 from payments_py import Payments, PaymentOptions
 
-payments_builder = Payments.get_instance(
-    PaymentOptions(nvm_api_key="<BUILDER_API_KEY>", environment="sandbox")
-)
+payments_builder = Payments({
+    "nvm_api_key": "<BUILDER_API_KEY>",
+    "environment": "sandbox",
+})
 
 base_agent_card = {
     "name": "Py A2A Agent",
@@ -142,9 +143,10 @@ server = PaymentsA2AServer.start(
 ### Use the A2A client
 
 ```python
-payments_subscriber = Payments.get_instance(
-    PaymentOptions(nvm_api_key="<SUBSCRIBER_API_KEY>", environment="sandbox")
-)
+payments_subscriber = Payments({
+    "nvm_api_key": "<SUBSCRIBER_API_KEY>",
+    "environment": "sandbox",
+})
 
 client = payments_subscriber.a2a.get_client(
     agent_base_url="https://your-agent.example.com/a2a/",
