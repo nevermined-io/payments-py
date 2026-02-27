@@ -53,14 +53,12 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
-from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.helpers import build_payment_required_for_plans
+from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import (
     PaymentContext,
     VerifyResponse,
     X402PaymentRequired,
-    X402Resource,
-    X402Scheme,
-    X402SchemeExtra,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,7 +80,8 @@ class _PaymentConfig:
     plan_ids: list[str]
     credits: Union[int, CreditsCallable]
     agent_id: Optional[str]
-    network: str
+    network: Optional[str]
+    scheme: Optional[str]
     on_before_verify: Optional[BeforeVerifyHook]
     on_after_verify: Optional[AfterVerifyHook]
     on_after_settle: Optional[AfterSettleHook]
@@ -97,44 +96,6 @@ class _VerifiedPayment:
     payment_required: X402PaymentRequired
     credits_to_charge: int
     payment_context: PaymentContext
-
-
-def _build_payment_required_for_plans(
-    plan_ids: list[str],
-    endpoint: str,
-    agent_id: Optional[str] = None,
-    network: str = "eip155:84532",
-) -> X402PaymentRequired:
-    """Build X402PaymentRequired with one or more plan_ids in the accepts array.
-
-    For a single plan, delegates to the shared ``build_payment_required`` helper.
-    For multiple plans, constructs the accepts array directly.
-    """
-    if len(plan_ids) == 1:
-        return build_payment_required(
-            plan_id=plan_ids[0],
-            endpoint=endpoint,
-            agent_id=agent_id,
-            network=network,
-        )
-
-    extra = X402SchemeExtra(agent_id=agent_id) if agent_id else None
-    schemes = [
-        X402Scheme(
-            scheme="nvm:erc4337",
-            network=network,
-            plan_id=pid,
-            extra=extra,
-        )
-        for pid in plan_ids
-    ]
-
-    return X402PaymentRequired(
-        x402_version=2,
-        resource=X402Resource(url=endpoint),
-        accepts=schemes,
-        extensions={},
-    )
 
 
 def _resolve_credits(credits: Union[int, CreditsCallable], kwargs: dict) -> int:
@@ -311,12 +272,16 @@ def _verify_payment(
     non-None: either an error dict to return immediately, or a _VerifiedPayment
     containing everything needed for execution and settlement.
     """
+    # Resolve scheme (auto-detect from plan metadata if not explicit)
+    resolved_scheme = resolve_scheme(config.payments, config.plan_ids[0], config.scheme)
+
     # Build payment_required first -- needed for x402-compliant error responses
-    payment_required = _build_payment_required_for_plans(
+    payment_required = build_payment_required_for_plans(
         plan_ids=config.plan_ids,
         endpoint=func.__name__,
         agent_id=config.agent_id,
         network=config.network,
+        scheme=resolved_scheme,
     )
 
     token = _extract_payment_token(kwargs)
@@ -410,7 +375,8 @@ def requires_payment(
     plan_ids: Optional[list[str]] = None,
     credits: Union[int, CreditsCallable] = 1,
     agent_id: Optional[str] = None,
-    network: str = "eip155:84532",
+    network: Optional[str] = None,
+    scheme: Optional[str] = None,
     on_before_verify: Optional[BeforeVerifyHook] = None,
     on_after_verify: Optional[AfterVerifyHook] = None,
     on_after_settle: Optional[AfterSettleHook] = None,
@@ -467,6 +433,7 @@ def requires_payment(
         credits=credits,
         agent_id=agent_id,
         network=network,
+        scheme=scheme,
         on_before_verify=on_before_verify,
         on_after_verify=on_after_verify,
         on_after_settle=on_after_settle,

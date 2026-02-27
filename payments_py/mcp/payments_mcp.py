@@ -66,7 +66,7 @@ def _extract_input_schema(fn: Callable) -> Dict[str, Any]:
 
     for param_name, param in sig.parameters.items():
         # Skip self, cls, and special parameters
-        if param_name in ("self", "cls", "context", "ctx", "extra"):
+        if param_name in ("self", "cls", "context", "ctx", "extra", "paywall_context"):
             continue
 
         # Determine type
@@ -224,14 +224,24 @@ class PaymentsMCP:
             # Extract input schema from type hints
             input_schema = _extract_input_schema(fn)
 
+            # Check if the user function accepts a paywall_context parameter
+            _fn_params = inspect.signature(fn).parameters
+            _accepts_paywall_ctx = "paywall_context" in _fn_params
+
             # Create handler that adapts function signature to MCP format
             @functools.wraps(fn)
-            async def handler(args: Dict[str, Any], context: Any = None) -> Any:
-                # Call the original function with unpacked args
+            async def handler(
+                args: Dict[str, Any], context: Any = None, paywall_context: Any = None
+            ) -> Any:
+                # Call the original function with unpacked args,
+                # forwarding paywall_context if the function accepts it
+                call_args = dict(args)
+                if _accepts_paywall_ctx and paywall_context is not None:
+                    call_args["paywall_context"] = paywall_context
                 if asyncio.iscoroutinefunction(fn):
-                    result = await fn(**args)
+                    result = await fn(**call_args)
                 else:
-                    result = fn(**args)
+                    result = fn(**call_args)
 
                 # Convert result to MCP format
                 if isinstance(result, dict) and "content" in result:

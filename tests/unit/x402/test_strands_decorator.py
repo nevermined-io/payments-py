@@ -14,10 +14,10 @@ from payments_py.x402.strands import (
 from payments_py.x402.strands.decorator import (
     _error_result,
     _is_error_result,
-    _build_payment_required_for_plans,
     _payment_required_result,
     _resolve_credits,
 )
+from payments_py.x402.helpers import build_payment_required_for_plans
 from payments_py.x402.types import VerifyResponse, SettleResponse
 
 
@@ -112,11 +112,11 @@ class TestErrorHelpers:
 
 
 class TestBuildPaymentRequiredMulti:
-    """Tests for _build_payment_required_for_plans."""
+    """Tests for build_payment_required_for_plans."""
 
     def test_single_plan_id(self):
         """Test building payment required with single plan."""
-        pr = _build_payment_required_for_plans(
+        pr = build_payment_required_for_plans(
             plan_ids=["plan-1"],
             endpoint="test_tool",
         )
@@ -128,7 +128,7 @@ class TestBuildPaymentRequiredMulti:
 
     def test_multiple_plan_ids(self):
         """Test building payment required with multiple plans."""
-        pr = _build_payment_required_for_plans(
+        pr = build_payment_required_for_plans(
             plan_ids=["plan-basic", "plan-premium", "plan-enterprise"],
             endpoint="test_tool",
         )
@@ -139,7 +139,7 @@ class TestBuildPaymentRequiredMulti:
 
     def test_with_agent_id(self):
         """Test building payment required with agent_id."""
-        pr = _build_payment_required_for_plans(
+        pr = build_payment_required_for_plans(
             plan_ids=["plan-1"],
             endpoint="test_tool",
             agent_id="agent-123",
@@ -149,7 +149,7 @@ class TestBuildPaymentRequiredMulti:
 
     def test_custom_network(self):
         """Test building payment required with custom network."""
-        pr = _build_payment_required_for_plans(
+        pr = build_payment_required_for_plans(
             plan_ids=["plan-1"],
             endpoint="test_tool",
             network="eip155:1",

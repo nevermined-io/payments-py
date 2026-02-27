@@ -54,11 +54,11 @@ async def test_access_token_cached(payments_client):  # noqa: D401
 
 
 @pytest.mark.asyncio()  # noqa: D401
-async def test_authorization_header_injected(payments_client):  # noqa: D401
+async def test_payment_signature_header_injected(payments_client):  # noqa: D401
     await payments_client.send_message({})  # type: ignore[arg-type]
     stub_client = payments_client._client  # type: ignore[attr-defined]
     stub_client.send_message.assert_called()  # type: ignore[attr-defined]
     _, kwargs = stub_client.send_message.call_args  # type: ignore[attr-defined]
     headers = kwargs["http_kwargs"]["headers"]
-    assert headers["Authorization"].startswith("Bearer ")
-    assert headers["Authorization"].endswith("XYZ")
+    assert "payment-signature" in headers
+    assert headers["payment-signature"] == "XYZ"

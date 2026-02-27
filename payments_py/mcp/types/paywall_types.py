@@ -14,6 +14,8 @@ class AuthResult(TypedDict, total=False):
     httpUrl: Optional[str]
     plan_id: str
     subscriber_address: str
+    agent_request: Optional[Any]
+    agent_request_id: Optional[str]
 
 
 CreditsOption = Union[int, Callable[[Dict[str, Any]], int]]
@@ -57,3 +59,5 @@ class PaywallContext(TypedDict, total=False):
     credits: int
     plan_id: str
     subscriber_address: str
+    agent_request: Optional[Any]
+    agent_request_id: Optional[str]

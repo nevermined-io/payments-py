@@ -101,6 +101,9 @@ class Payments(BasePaymentsAPI):
         # Cached AgentCore integration
         self._agentcore_api = None
 
+        # Cached Delegation API
+        self._delegation_api = None
+
     @property
     def contracts(self):
         """
@@ -147,6 +150,36 @@ class Payments(BasePaymentsAPI):
 
             self._agentcore_api = AgentCoreAPI(self)
         return self._agentcore_api
+
+    @property
+    def delegation(self):
+        """
+        Returns the Delegation API for managing card-delegation payment methods.
+
+        Provides methods to list the user's enrolled Stripe payment methods
+        for use with the nvm:card-delegation x402 scheme.
+
+        Example:
+            ```python
+            methods = payments.delegation.list_payment_methods()
+            for pm in methods:
+                print(f"{pm.brand} *{pm.last4}")
+            ```
+        """
+        if self._delegation_api is None:
+            from payments_py.x402.delegation_api import DelegationAPI  # noqa: WPS433
+
+            self._delegation_api = DelegationAPI.get_instance(self._build_options())
+        return self._delegation_api
+
+    def _build_options(self):
+        """Build PaymentOptions from current state."""
+        return PaymentOptions(
+            nvm_api_key=self.nvm_api_key,
+            environment=self.environment_name,
+            app_id=self.app_id,
+            version=self.version,
+        )
 
     @property
     def is_logged_in(self) -> bool:

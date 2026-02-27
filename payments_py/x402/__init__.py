@@ -56,12 +56,22 @@ from .types import (
     SettleResponse,
     # Shared context
     PaymentContext,
+    # Card delegation types
+    CardDelegationConfig,
+    X402TokenOptions,
 )
-from .helpers import build_payment_required
+from .helpers import build_payment_required, build_payment_required_for_plans
 from .networks import SupportedNetworks
-from .schemes import SupportedSchemes
+from .schemes import (
+    SupportedSchemes,
+    X402SchemeType,
+    X402_SCHEME_NETWORKS,
+    is_valid_scheme,
+)
+from .resolve_scheme import resolve_scheme
 from .facilitator import NeverminedFacilitator
 from .facilitator_api import FacilitatorAPI
+from .delegation_api import DelegationAPI, PaymentMethodSummary
 from .a2a import X402A2AUtils, X402Metadata, PaymentStatus as X402PaymentStatus
 from .token import X402TokenAPI, decode_access_token
 
@@ -89,8 +99,14 @@ __all__ = [
     "SettleResponse",
     # Shared context
     "PaymentContext",
+    # Card delegation types
+    "CardDelegationConfig",
+    "X402TokenOptions",
     # Helper functions
     "build_payment_required",
+    "build_payment_required_for_plans",
+    # Scheme resolution
+    "resolve_scheme",
     # Types (V2)
     "Extension",
     "ResourceInfo",
@@ -100,10 +116,16 @@ __all__ = [
     # Constants
     "SupportedNetworks",
     "SupportedSchemes",
+    "X402SchemeType",
+    "X402_SCHEME_NETWORKS",
+    "is_valid_scheme",
     # APIs
     "FacilitatorAPI",
     "X402TokenAPI",
     "decode_access_token",
+    # Delegation API
+    "DelegationAPI",
+    "PaymentMethodSummary",
     # High-level facilitator
     "NeverminedFacilitator",
     # A2A Integration

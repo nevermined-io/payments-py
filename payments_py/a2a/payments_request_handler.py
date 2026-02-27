@@ -22,9 +22,15 @@ from a2a.types import (
 from payments_py.common.payments_error import PaymentsError
 from payments_py.payments import Payments
 from payments_py.x402.token import decode_access_token
-from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.helpers import (
+    build_payment_required,
+    build_payment_required_for_plans,
+)
+from payments_py.x402.schemes import is_valid_scheme
 
 from .types import HttpRequestContext
+
+logger = logging.getLogger(__name__)
 
 _TERMINAL_STATES = {
     "completed",
@@ -66,6 +72,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         self._async_execution = async_execution
         self._http_ctx_by_task: Dict[str, HttpRequestContext] = {}
         self._http_ctx_by_message: Dict[str, HttpRequestContext] = {}
+        self.latest_agent_request: Any = None
+        self.latest_agent_request_id: str | None = None
 
     # ------------------------------------------------------------------
     # Context helpers (called by middleware) ---------------------------
@@ -104,6 +112,35 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
     def delete_http_ctx_for_message(self, message_id: str) -> None:  # noqa: D401
         self._http_ctx_by_message.pop(message_id, None)
 
+    def _get_payment_extension_params(self, agent_card: Any = None) -> dict:
+        """Extract params from the urn:nevermined:payment extension on the agent card.
+
+        Args:
+            agent_card: Optional agent card to use. Falls back to self._agent_card.
+
+        Returns an empty dict if the extension is not found.
+        """
+        card = agent_card if agent_card is not None else self._agent_card
+        capabilities = (
+            card.get("capabilities", {})
+            if isinstance(card, dict)
+            else getattr(card, "capabilities", {})
+        )
+        extensions = (
+            capabilities.get("extensions", [])
+            if isinstance(capabilities, dict)
+            else getattr(capabilities, "extensions", [])
+        )
+        for ext in extensions:
+            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
+            if ext_dict.get("uri") == "urn:nevermined:payment":
+                params = ext_dict.get("params", {})
+                # Normalize SimpleNamespace to dict for uniform .get() access
+                if not isinstance(params, dict):
+                    params = vars(params) if hasattr(params, "__dict__") else {}
+                return params
+        return {}
+
     def migrate_http_ctx_from_message_to_task(
         self, message_id: str, task_id: str
     ) -> None:  # noqa: D401
@@ -132,29 +169,22 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         Raises:
             PaymentsError: If validation fails
         """
-        # Try to get plan_id from agent card's payment extension first
-        plan_id = None
-        capabilities = (
-            self._agent_card.get("capabilities", {})
-            if isinstance(self._agent_card, dict)
-            else getattr(self._agent_card, "capabilities", {})
+        # Try to get plan_id / plan_ids from agent card's payment extension first
+        params = self._get_payment_extension_params()
+        plan_id = params.get("planId") or params.get("plan_id")
+        plan_ids = params.get("planIds") or params.get("plan_ids")
+
+        # Normalize to list
+        resolved_plan_ids: list[str] = (
+            plan_ids
+            if isinstance(plan_ids, list) and plan_ids
+            else ([plan_id] if plan_id else [])
         )
-        extensions = (
-            capabilities.get("extensions", [])
-            if isinstance(capabilities, dict)
-            else getattr(capabilities, "extensions", [])
-        )
-        for ext in extensions:
-            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
-            if ext_dict.get("uri") == "urn:nevermined:payment":
-                params = ext_dict.get("params", {})
-                plan_id = params.get("planId") or params.get("plan_id")
-                break
 
         # Decode x402 token to extract subscriber_address (and fallback plan_id if not in agent card)
         decoded = decode_access_token(bearer_token)
         logging.getLogger(__name__).debug(
-            f"[validate_request] plan_id from agent card: {plan_id}"
+            f"[validate_request] plan_ids from agent card: {resolved_plan_ids}"
         )
         logging.getLogger(__name__).debug(
             f"[validate_request] decoded token keys: {list(decoded.keys()) if decoded else 'None'}"
@@ -162,9 +192,11 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         if not decoded:
             raise PaymentsError.unauthorized("Invalid access token")
 
-        # If plan_id not found in agent card, try token
-        if not plan_id:
-            plan_id = decoded.get("planId") or decoded.get("plan_id")
+        # If no plan_ids found in agent card, try token
+        if not resolved_plan_ids:
+            decoded_plan_id = decoded.get("planId") or decoded.get("plan_id")
+            if decoded_plan_id:
+                resolved_plan_ids = [decoded_plan_id]
 
         # Extract subscriber_address from x402 token (payload.authorization.from per x402 spec)
         payload = decoded.get("payload", {})
@@ -175,20 +207,30 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             authorization.get("from") if isinstance(authorization, dict) else None
         )
 
-        if not plan_id or not subscriber_address:
+        if not resolved_plan_ids or not subscriber_address:
             logging.getLogger(__name__).error(
-                f"[validate_request] FAILED - plan_id: {plan_id}, subscriber_address: {subscriber_address}"
+                f"[validate_request] FAILED - plan_ids: {resolved_plan_ids}, subscriber_address: {subscriber_address}"
             )
             raise PaymentsError.unauthorized(
                 "Cannot determine plan_id or subscriber_address from token (expected payload.authorization.from)"
             )
 
+        # Extract scheme from decoded token if available
+        accepted = decoded.get("accepted", {})
+        token_scheme = (
+            accepted.get("scheme", "nvm:erc4337")
+            if isinstance(accepted, dict)
+            else "nvm:erc4337"
+        )
+        scheme = token_scheme if is_valid_scheme(token_scheme) else "nvm:erc4337"
+
         # Build paymentRequired using the helper
-        payment_required = build_payment_required(
-            plan_id=plan_id,
+        payment_required = build_payment_required_for_plans(
+            plan_ids=resolved_plan_ids,
             endpoint=url_requested,
             agent_id=agent_id,
             http_verb=http_method_requested,
+            scheme=scheme,
         )
 
         # Use run_in_executor since verify_permissions is synchronous
@@ -207,12 +249,20 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 result.invalid_reason or "Permission verification failed"
             )
 
+        # Capture observability data from the verify result
+        self.latest_agent_request = getattr(result, "agent_request", None)
+        self.latest_agent_request_id = getattr(result, "agent_request_id", None)
+
         # Return validation data with plan_id and subscriber_address for later use
         return {
             "success": True,
-            "plan_id": plan_id,
+            "plan_id": resolved_plan_ids[0],
+            "plan_ids": resolved_plan_ids,
             "subscriber_address": subscriber_address,
+            "scheme": scheme,
             "balance": {"isSubscriber": True},  # Compatibility with existing checks
+            "agent_request_id": self.latest_agent_request_id,
+            "agent_request": self.latest_agent_request,
         }
 
     # ------------------------------------------------------------------
@@ -243,32 +293,10 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 "HTTP context missing for request; bearer token not found."
             )
 
-        # Get agentId from agent card (like TypeScript)
+        # Get agentId from agent card payment extension
         agent_card = await self.get_agent_card()
-
-        # Extract agentId from payment extension (handle both dict and SimpleNamespace)
-        agent_id = None
-        if hasattr(agent_card, "get"):
-            # Dictionary-style access
-            extensions = agent_card.get("capabilities", {}).get("extensions", [])
-        else:
-            # Object-style access (SimpleNamespace)
-            capabilities = getattr(agent_card, "capabilities", None)
-            extensions = getattr(capabilities, "extensions", []) if capabilities else []
-
-        for ext in extensions:
-            if (hasattr(ext, "get") and ext.get("uri") == "urn:nevermined:payment") or (
-                hasattr(ext, "uri") and ext.uri == "urn:nevermined:payment"
-            ):
-                # Handle both dict and SimpleNamespace for params
-                if hasattr(ext, "get"):
-                    agent_id = ext.get("params", {}).get("agentId")
-                else:
-                    ext_params = getattr(ext, "params", None)
-                    agent_id = (
-                        getattr(ext_params, "agentId", None) if ext_params else None
-                    )
-                break
+        ext_params = self._get_payment_extension_params(agent_card)
+        agent_id = ext_params.get("agentId") or ext_params.get("agent_id")
 
         if not agent_id:
             raise PaymentsError.internal("Agent ID not found in payment extension.")
@@ -343,26 +371,12 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
     ) -> None:
         """Monitor for final events with credit burning in non-blocking mode."""
         try:
-            print(f"[DEBUG] Starting monitor for final events for {task_id}")
-
-            # Wait for the producer task to complete (this publishes the final event)
             await producer_task
-            print(f"[DEBUG] Producer task completed for {task_id}")
 
-            # Create a new consumer to check for any remaining events in the queue
             final_consumer = EventConsumer(queue)
 
-            print(
-                f"[DEBUG] Created final consumer for {task_id}, checking for final events"
-            )
-
-            # Check for any remaining events (with timeout)
             try:
                 async for event in final_consumer.consume_all():
-                    print(
-                        f"[DEBUG] monitor_for_final_events got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')}"
-                    )
-
                     if (
                         isinstance(event, TaskStatusUpdateEvent)
                         and event.final is True
@@ -371,29 +385,22 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                         and event.metadata.get("creditsUsed") is not None
                         and http_ctx.bearer_token
                     ):
-                        print(
-                            f"[DEBUG] Found final event with creditsUsed: {event.metadata.get('creditsUsed')}"
-                        )
                         await self._handle_task_finalization_from_event(event, http_ctx)
                         break
 
             except Exception as e:
-                print(f"[DEBUG] Error consuming final events: {e}")
+                logger.warning(
+                    "Error consuming final events for task %s: %s", task_id, e
+                )
 
-            # Give a bit more time for any delayed events
             await asyncio.sleep(0.2)
 
         except asyncio.CancelledError:
-            print(f"[DEBUG] Monitor task cancelled for {task_id}")
+            pass
         except Exception as e:
-            logging.getLogger(__name__).warning(
-                f"Monitor task failed for {task_id}: {e}"
-            )
-            print(f"[DEBUG] Monitor task exception: {e}")
+            logger.warning("Monitor task failed for %s: %s", task_id, e)
         finally:
-            # Clean up HTTP context
             self.delete_http_ctx_for_task(task_id)
-            print(f"[DEBUG] Monitor cleanup completed for {task_id}")
 
     async def _delayed_cleanup_for_non_blocking(
         self,
@@ -450,12 +457,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         # Create a custom event processor that intercepts events for credit burning
         async def credit_burning_event_processor():
             async for event in original_consume_all():
-                print(
-                    f"[DEBUG] credit_burning_event_processor got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')} - metadata: {getattr(event, 'metadata', 'no-metadata')}"
-                )
-
-                # Handle credit burning on TaskStatusUpdateEvent (like TypeScript
-                # handleTaskFinalization)
                 if (
                     isinstance(event, TaskStatusUpdateEvent)
                     and event.final is True
@@ -464,9 +465,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                     and event.metadata.get("creditsUsed") is not None
                     and http_ctx.bearer_token
                 ):
-                    print(
-                        f"[DEBUG] Processing credit burning for final event: {event.metadata.get('creditsUsed')} credits"
-                    )
                     await self._handle_task_finalization_from_event(event, http_ctx)
 
                 yield event
@@ -495,18 +493,11 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 ):
                     """Process background events with credit burning."""
                     async for event in event_stream:
-                        print(
-                            f"[DEBUG] background_credit_burning_processor got event: {type(event)} - {getattr(event, 'kind', 'no-kind')} - final: {getattr(event, 'final', 'no-final')}"
-                        )
-
-                        # Process the event normally (like original _continue_consuming)
                         await result_aggregator.task_manager.process(event)
 
-                        # Call the event callback if provided (to match SDK signature)
                         if event_callback:
                             await event_callback(event)
 
-                        # Check for credit burning on final events
                         if (
                             isinstance(event, TaskStatusUpdateEvent)
                             and event.final is True
@@ -515,31 +506,37 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                             and event.metadata.get("creditsUsed") is not None
                             and http_ctx.bearer_token
                         ):
-                            print(
-                                f"[DEBUG] Background credit burning for: {event.metadata.get('creditsUsed')} credits"
-                            )
                             await self._handle_task_finalization_from_event(
                                 event, http_ctx
                             )
 
-                # Replace _continue_consuming temporarily
+                # Replace _continue_consuming — the result_aggregator is
+                # per-request so no restore is needed.  The background task
+                # created by consume_and_break_on_interrupt resolves
+                # _continue_consuming AFTER this method returns, so restoring
+                # it in a finally block would undo the replacement before the
+                # background task ever runs.
                 result_aggregator._continue_consuming = (
                     background_credit_burning_processor
                 )
 
-                try:
-                    # Let SDK do its normal non-blocking flow
-                    result = await result_aggregator.consume_and_break_on_interrupt(
-                        consumer, blocking=blocking
-                    )
-                    return result
-                finally:
-                    # Restore original _continue_consuming
-                    result_aggregator._continue_consuming = original_continue_consuming
+                # Let SDK do its normal non-blocking flow
+                result = await result_aggregator.consume_and_break_on_interrupt(
+                    consumer, blocking=blocking
+                )
+                return result
         finally:
             # Restore original consume_all if it wasn't already restored
             if consumer.consume_all != original_consume_all:
                 consumer.consume_all = original_consume_all
+
+    def _resolve_agent_request_id(
+        self, http_ctx: HttpRequestContext, event_metadata: dict | None
+    ) -> str | None:
+        """Resolve agent_request_id from validation context, falling back to event metadata."""
+        return http_ctx.validation.get("agent_request_id") or (
+            event_metadata.get("agentRequestId") if event_metadata else None
+        )
 
     async def _handle_task_finalization_from_event(
         self, event: TaskStatusUpdateEvent, http_ctx: HttpRequestContext
@@ -548,32 +545,18 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         if not event.metadata or not event.metadata.get("creditsUsed"):
             return
 
-        print(f"[DEBUG] Handling task finalization from event: {event}")
-
         credits_used = event.metadata["creditsUsed"]
         plan_id = http_ctx.validation.get("plan_id")
+        scheme = http_ctx.validation.get("scheme", "nvm:erc4337")
 
         if not plan_id:
             return  # Cannot settle without plan_id
 
+        agent_request_id = self._resolve_agent_request_id(http_ctx, event.metadata)
+
         # Get agentId from agent card
-        agent_id = None
-        capabilities = (
-            self._agent_card.get("capabilities", {})
-            if isinstance(self._agent_card, dict)
-            else getattr(self._agent_card, "capabilities", {})
-        )
-        extensions = (
-            capabilities.get("extensions", [])
-            if isinstance(capabilities, dict)
-            else getattr(capabilities, "extensions", [])
-        )
-        for ext in extensions:
-            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
-            if ext_dict.get("uri") == "urn:nevermined:payment":
-                params = ext_dict.get("params", {})
-                agent_id = params.get("agentId") or params.get("agent_id")
-                break
+        ext_params = self._get_payment_extension_params()
+        agent_id = ext_params.get("agentId") or ext_params.get("agent_id")
 
         # Build paymentRequired using the helper
         payment_required = build_payment_required(
@@ -581,6 +564,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             endpoint=http_ctx.url_requested,
             agent_id=agent_id,
             http_verb=http_ctx.http_method_requested,
+            scheme=scheme,
         )
 
         try:
@@ -591,11 +575,15 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                     payment_required=payment_required,
                     x402_access_token=http_ctx.bearer_token,
                     max_amount=str(int(credits_used)),
+                    agent_request_id=agent_request_id,
                 ),
             )
         except Exception:  # noqa: BLE001
-            # Swallow settle errors (non-blocking)
-            pass
+            logger.warning(
+                "Failed to settle %s credits during task finalization",
+                credits_used,
+                exc_info=True,
+            )
 
     # ------------------------------------------------------------------
     # Streaming override ------------------------------------------------
@@ -617,45 +605,33 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             )
 
         # Get agentId from agent card for settle operations
-        agent_id = None
-        capabilities = (
-            self._agent_card.get("capabilities", {})
-            if isinstance(self._agent_card, dict)
-            else getattr(self._agent_card, "capabilities", {})
-        )
-        extensions = (
-            capabilities.get("extensions", [])
-            if isinstance(capabilities, dict)
-            else getattr(capabilities, "extensions", [])
-        )
-        for ext in extensions:
-            ext_dict = ext if isinstance(ext, dict) else ext.__dict__
-            if ext_dict.get("uri") == "urn:nevermined:payment":
-                params_dict = ext_dict.get("params", {})
-                agent_id = params_dict.get("agentId") or params_dict.get("agent_id")
-                break
+        ext_params = self._get_payment_extension_params()
+        agent_id = ext_params.get("agentId") or ext_params.get("agent_id")
 
         # Call parent streaming method and process events
-        # type: ignore[arg-type]
         async for event in super().on_message_send_stream(params, context):
-            # Handle credit burning on final status updates using x402 settle_permissions
+            # Handle credit burning on final TaskStatusUpdateEvent using x402 settle_permissions
             if (
-                isinstance(event, dict)
-                and event.get("kind") == "status-update"
-                and event.get("final") is True
-                and event.get("metadata", {}).get("creditsUsed") is not None
+                isinstance(event, TaskStatusUpdateEvent)
+                and event.final is True
+                and event.metadata
+                and event.metadata.get("creditsUsed") is not None
                 and http_ctx.bearer_token
             ):
-                credits_used = event["metadata"]["creditsUsed"]
+                credits_used = event.metadata["creditsUsed"]
                 plan_id = http_ctx.validation.get("plan_id")
 
                 if plan_id:
-                    # Build paymentRequired using the helper
+                    agent_request_id = self._resolve_agent_request_id(
+                        http_ctx, event.metadata
+                    )
+                    scheme = http_ctx.validation.get("scheme", "nvm:erc4337")
                     payment_required = build_payment_required(
                         plan_id=plan_id,
                         endpoint=http_ctx.url_requested,
                         agent_id=agent_id,
                         http_verb=http_ctx.http_method_requested,
+                        scheme=scheme,
                     )
 
                     try:
@@ -666,22 +642,26 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                                 payment_required=payment_required,
                                 x402_access_token=http_ctx.bearer_token,
                                 max_amount=str(int(credits_used)),
+                                agent_request_id=agent_request_id,
                             ),
                         )
                     except Exception:  # noqa: BLE001
-                        # Swallow settle errors (non-blocking)
-                        pass
+                        logger.warning(
+                            "Failed to settle credits for task %s",
+                            getattr(event, "task_id", "?"),
+                            exc_info=True,
+                        )
 
             # Handle push notifications on final status updates
             if (
-                isinstance(event, dict)
-                and event.get("kind") == "status-update"
-                and event.get("final") is True
-                and event.get("status", {}).get("state") in _TERMINAL_STATES
+                isinstance(event, TaskStatusUpdateEvent)
+                and event.final is True
+                and event.status
+                and event.status.state in _TERMINAL_STATES
             ):
                 try:
-                    task_id = event.get("taskId")
-                    state = event["status"]["state"]
+                    task_id = event.task_id
+                    state = event.status.state
                     push_cfg = await self.on_get_task_push_notification_config(
                         TaskIdParams(id=task_id)
                     )
@@ -692,7 +672,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                             push_cfg["pushNotificationConfig"],
                         )
                 except Exception:  # noqa: BLE001
-                    # Swallow push notification errors (non-blocking)
                     pass
 
             yield event
