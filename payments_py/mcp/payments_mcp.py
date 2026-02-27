@@ -230,7 +230,9 @@ class PaymentsMCP:
 
             # Create handler that adapts function signature to MCP format
             @functools.wraps(fn)
-            async def handler(args: Dict[str, Any], context: Any = None, paywall_context: Any = None) -> Any:
+            async def handler(
+                args: Dict[str, Any], context: Any = None, paywall_context: Any = None
+            ) -> Any:
                 # Call the original function with unpacked args,
                 # forwarding paywall_context if the function accepts it
                 call_args = dict(args)

@@ -579,7 +579,9 @@ class McpServerManager:
             credits_option = options.get("credits")
 
             # Create a wrapper that calls the tool handler with paywall
-            async def execute_tool(args: Any, extra: Any = None, paywall_context: Any = None) -> Any:
+            async def execute_tool(
+                args: Any, extra: Any = None, paywall_context: Any = None
+            ) -> Any:
                 result = tool_handler(args, extra, paywall_context)
                 if hasattr(result, "__await__"):
                     result = await result

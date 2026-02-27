@@ -81,7 +81,11 @@ class PaymentsMock:
                 return VerifyResult(is_valid=True)
 
             def settle_permissions(
-                self, payment_required=None, max_amount=None, x402_access_token=None, agent_request_id=None
+                self,
+                payment_required=None,
+                max_amount=None,
+                x402_access_token=None,
+                agent_request_id=None,
             ):
                 # Extract plan_id from Pydantic model or dict
                 plan_id = None
@@ -312,7 +316,11 @@ def test_propagates_error_on_settle_when_configured():
                     return VerifyResult(is_valid=True)
 
                 def settle_permissions(
-                    self, payment_required=None, max_amount=None, x402_access_token=None, agent_request_id=None
+                    self,
+                    payment_required=None,
+                    max_amount=None,
+                    x402_access_token=None,
+                    agent_request_id=None,
                 ):
                     raise RuntimeError("settle failed")
 
@@ -514,7 +522,11 @@ class PaymentsMockWithX402Context:
                 return VerifyResult(is_valid=True)
 
             def settle_permissions(
-                self, payment_required=None, max_amount=None, x402_access_token=None, agent_request_id=None
+                self,
+                payment_required=None,
+                max_amount=None,
+                x402_access_token=None,
+                agent_request_id=None,
             ):
                 plan_id = None
                 if payment_required:
@@ -731,9 +743,15 @@ class PaymentsMockWithAgentRequest:
                 )
 
             def settle_permissions(
-                self, payment_required=None, max_amount=None, x402_access_token=None, agent_request_id=None
+                self,
+                payment_required=None,
+                max_amount=None,
+                x402_access_token=None,
+                agent_request_id=None,
             ):
-                self._parent.calls.append(("settle", x402_access_token, int(max_amount), agent_request_id))
+                self._parent.calls.append(
+                    ("settle", x402_access_token, int(max_amount), agent_request_id)
+                )
                 return self._settle_result
 
         class Agents:
@@ -901,7 +919,9 @@ def test_agent_request_usable_with_observability_api():
 
     assert oai_config_captured is not None
     assert oai_config_captured.api_key == "sk-fake-key"
-    assert oai_config_captured.base_url == "https://helicone.test/jawn/v1/gateway/oai/v1"
+    assert (
+        oai_config_captured.base_url == "https://helicone.test/jawn/v1/gateway/oai/v1"
+    )
 
     headers = oai_config_captured.default_headers
     assert headers["Helicone-Auth"] == "Bearer hlk-fake-key"
@@ -949,7 +969,9 @@ def test_tool_handler_forwards_paywall_context_to_fn():
         handler, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan123"}
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
-    out = asyncio.get_event_loop().run_until_complete(wrapped({"query": "hello"}, extra))
+    out = asyncio.get_event_loop().run_until_complete(
+        wrapped({"query": "hello"}, extra)
+    )
 
     assert out["content"][0]["text"] == "result: hello"
     assert captured_ctx is not None
