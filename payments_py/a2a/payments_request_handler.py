@@ -429,14 +429,25 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             # Clean up HTTP context
             self.delete_http_ctx_for_task(task_id)
 
-    async def _cleanup_producer(self, producer_task, task_id: str) -> None:
-        """Cleanup producer task (from parent implementation)."""
-        if not producer_task.done():
-            producer_task.cancel()
-            try:
-                await producer_task
-            except asyncio.CancelledError:
-                pass
+    async def _cleanup_producer(
+        self, producer_task: "asyncio.Task[None]", task_id: str
+    ) -> None:
+        """Wait for producer to finish naturally (no cancellation) and clean up.
+
+        Unlike the parent SDK implementation, this does NOT cancel the producer
+        task.  In non-blocking mode the producer must run to completion so the
+        background consumer can observe the final event and settle credits.
+        """
+        try:
+            await producer_task
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            await self._queue_manager.close(task_id)
+        except Exception:  # noqa: BLE001
+            pass
+        async with self._running_agents_lock:
+            self._running_agents.pop(task_id, None)
 
     async def _consume_and_burn_credits(
         self,

@@ -461,120 +461,116 @@ async def test_non_blocking_execution_with_polling():
         run_async=False,
     )
 
-    client = TestClient(result.app)
-
-    # Test non-blocking message/send
-    payload = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "message/send",
-        "params": {
-            "configuration": {
-                "blocking": False,  # Non-blocking execution
-            },
-            "message": {
-                "messageId": "nonblock-msg-123",
-                "contextId": "nonblock-ctx-456",
-                "role": "user",
-                "parts": [{"kind": "text", "text": "Start non-blocking task!"}],
-            },
-        },
-    }
-
-    headers = {"payment-signature": "NONBLOCK_TEST_TOKEN"}
-    response = client.post("/rpc", json=payload, headers=headers)
-
-    # Verify immediate response (should be submitted state)
-    assert response.status_code == 200
-    response_data = response.json()
-    assert "result" in response_data
-
-    task = response_data["result"]
-    assert task["kind"] == "task"
-    assert task["status"]["state"] == "submitted"  # Should return immediately
-
-    task_id = task["id"]
-
-    # For now, just verify the immediate response behavior
-    # The non-blocking execution continues in background
-    # In a real scenario, you'd poll the task or use webhooks
-
-    # Verify initial validation occurred exactly once
-    initial_validation_count = mock_payments.facilitator.validation_call_count
-    assert (
-        initial_validation_count == 1
-    ), f"Expected exactly 1 validation call, got {initial_validation_count}"
-
-    # Poll for task completion - now that we've fixed the background processing,
-    # the task should actually complete and credits should be burned
-    max_attempts = 10
-    final_task = None
-
-    for attempt in range(max_attempts):
-        poll_payload = {
+    # Use TestClient as context manager so the event loop persists across
+    # requests, allowing background tasks (consumer, settlement) to complete.
+    with TestClient(result.app) as client:
+        # Test non-blocking message/send
+        payload = {
             "jsonrpc": "2.0",
-            "id": 2 + attempt,  # Different ID for each poll
-            "method": "tasks/get",
-            "params": {"id": task_id},
+            "id": 1,
+            "method": "message/send",
+            "params": {
+                "configuration": {
+                    "blocking": False,  # Non-blocking execution
+                },
+                "message": {
+                    "messageId": "nonblock-msg-123",
+                    "contextId": "nonblock-ctx-456",
+                    "role": "user",
+                    "parts": [{"kind": "text", "text": "Start non-blocking task!"}],
+                },
+            },
         }
 
-        poll_response = client.post("/rpc", json=poll_payload, headers=headers)
+        headers = {"payment-signature": "NONBLOCK_TEST_TOKEN"}
+        response = client.post("/rpc", json=payload, headers=headers)
 
-        if poll_response.status_code == 200:
-            poll_data = poll_response.json()
-            if "result" in poll_data:
-                task_result = poll_data["result"]
-                print(
-                    f"[Attempt {attempt + 1}] Task state: {task_result['status']['state']}"
-                )
+        # Verify immediate response (should be submitted state)
+        assert response.status_code == 200
+        response_data = response.json()
+        assert "result" in response_data
 
-                if task_result["status"]["state"] == "completed":
-                    final_task = task_result
-                    break
-                elif task_result["status"]["state"] in ["failed", "canceled"]:
-                    break  # Don't continue polling for terminal failure states
+        task = response_data["result"]
+        assert task["kind"] == "task"
+        assert task["status"]["state"] == "submitted"  # Should return immediately
 
-        await asyncio.sleep(0.2)  # Wait before next poll
+        task_id = task["id"]
 
-    # Verify final task completion
-    assert (
-        final_task is not None
-    ), f"Task should have completed within polling window after {max_attempts} attempts"
-    assert final_task["status"]["state"] == "completed"
-    assert final_task["status"]["message"]["role"] == "agent"
-    assert (
-        final_task["status"]["message"]["parts"][0]["text"]
-        == "Request completed successfully!"
-    )
+        # Verify initial validation occurred exactly once
+        initial_validation_count = mock_payments.facilitator.validation_call_count
+        assert (
+            initial_validation_count == 1
+        ), f"Expected exactly 1 validation call, got {initial_validation_count}"
 
-    # Verify validation occurred (initial + any polling validation)
-    assert mock_payments.facilitator.validation_call_count >= initial_validation_count
+        # Poll for task completion - the background consumer processes events
+        # on the persistent event loop shared across requests.
+        max_attempts = 10
+        final_task = None
 
-    # Wait for background settle to complete — in non-blocking mode, settlement
-    # happens in a background task (via run_in_executor) after the final event
-    # is consumed, so it may not have executed yet when polling sees "completed".
-    #
-    # The background task runs on the TestClient's ASGI event loop.  That loop
-    # only advances when the TestClient processes a request.  After the last
-    # poll that saw "completed", no further requests are in flight, so the
-    # background settlement may be starved of event-loop turns.  We issue a
-    # few extra lightweight polls to give the loop enough ticks to schedule
-    # the settlement (which itself runs settle_permissions via run_in_executor).
-    for _ in range(5):
-        if mock_payments.facilitator.settle_called.wait(timeout=0.1):
-            break
-        # Drive the ASGI event loop with a harmless poll
-        client.post(
-            "/rpc",
-            json={
+        for attempt in range(max_attempts):
+            poll_payload = {
                 "jsonrpc": "2.0",
-                "id": 999,
+                "id": 2 + attempt,
                 "method": "tasks/get",
                 "params": {"id": task_id},
-            },
-            headers=headers,
+            }
+
+            poll_response = client.post("/rpc", json=poll_payload, headers=headers)
+
+            if poll_response.status_code == 200:
+                poll_data = poll_response.json()
+                if "result" in poll_data:
+                    task_result = poll_data["result"]
+                    print(
+                        f"[Attempt {attempt + 1}] Task state: {task_result['status']['state']}"
+                    )
+
+                    if task_result["status"]["state"] == "completed":
+                        final_task = task_result
+                        break
+                    elif task_result["status"]["state"] in [
+                        "failed",
+                        "canceled",
+                    ]:
+                        break
+
+            await asyncio.sleep(0.2)
+
+        # Verify final task completion
+        assert (
+            final_task is not None
+        ), f"Task should have completed within polling window after {max_attempts} attempts"
+        assert final_task["status"]["state"] == "completed"
+        assert final_task["status"]["message"]["role"] == "agent"
+        assert (
+            final_task["status"]["message"]["parts"][0]["text"]
+            == "Request completed successfully!"
         )
 
-    settled = mock_payments.facilitator.settle_called.wait(timeout=10.0)
-    assert settled, "Credits should be settled when task completes in non-blocking mode"
-    assert mock_payments.facilitator.settle_call_count == 1
+        # Verify validation occurred (initial + any polling validation)
+        assert (
+            mock_payments.facilitator.validation_call_count >= initial_validation_count
+        )
+
+        # Wait for background settle to complete — settlement happens in a
+        # background task after the final event is consumed.  Issue extra
+        # lightweight polls to give the event loop enough ticks.
+        for _ in range(10):
+            if mock_payments.facilitator.settle_called.wait(timeout=0.1):
+                break
+            client.post(
+                "/rpc",
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 999,
+                    "method": "tasks/get",
+                    "params": {"id": task_id},
+                },
+                headers=headers,
+            )
+
+        settled = mock_payments.facilitator.settle_called.wait(timeout=10.0)
+        assert (
+            settled
+        ), "Credits should be settled when task completes in non-blocking mode"
+        assert mock_payments.facilitator.settle_call_count == 1
