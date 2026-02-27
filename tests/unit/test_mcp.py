@@ -81,7 +81,7 @@ class PaymentsMock:
                 return VerifyResult(is_valid=True)
 
             def settle_permissions(
-                self, payment_required=None, max_amount=None, x402_access_token=None
+                self, payment_required=None, max_amount=None, x402_access_token=None, agent_request_id=None
             ):
                 # Extract plan_id from Pydantic model or dict
                 plan_id = None
@@ -312,7 +312,7 @@ def test_propagates_error_on_settle_when_configured():
                     return VerifyResult(is_valid=True)
 
                 def settle_permissions(
-                    self, payment_required=None, max_amount=None, x402_access_token=None
+                    self, payment_required=None, max_amount=None, x402_access_token=None, agent_request_id=None
                 ):
                     raise RuntimeError("settle failed")
 
@@ -514,7 +514,7 @@ class PaymentsMockWithX402Context:
                 return VerifyResult(is_valid=True)
 
             def settle_permissions(
-                self, payment_required=None, max_amount=None, x402_access_token=None
+                self, payment_required=None, max_amount=None, x402_access_token=None, agent_request_id=None
             ):
                 plan_id = None
                 if payment_required:
@@ -674,3 +674,306 @@ def test_context_handlers_can_use_x402_context_data():
     assert out["metadata"]["subscriber_address"] == "0x123subscriber"
     assert out["metadata"]["creditsUsed"] == 3
     assert out["metadata"]["agent_id"] == "unit_agent_id_hex"
+
+
+# --- Observability / agent_request propagation tests ---
+
+
+MOCK_AGENT_REQUEST = {
+    "agentRequestId": "arId-test-1234",
+    "agentName": "test-mcp-server",
+    "agentId": "agent-0x42",
+    "balance": {
+        "planId": "plan123",
+        "planName": "Test Plan",
+        "planType": "credits",
+        "holderAddress": "0x123subscriber",
+        "balance": 100,
+        "creditsContract": "0xcredits",
+        "isSubscriber": True,
+        "pricePerCredit": 0.01,
+    },
+    "urlMatching": "mcp://test-mcp/tools/test",
+    "verbMatching": "POST",
+    "batch": False,
+}
+
+
+class VerifyResultWithAgentRequest:
+    """Mock verify result that includes agent_request (as returned by the backend)."""
+
+    def __init__(self, is_valid=True, agent_request=None, agent_request_id=None):
+        self.is_valid = is_valid
+        self.agent_request = agent_request
+        self.agent_request_id = agent_request_id
+
+
+class PaymentsMockWithAgentRequest:
+    """Mock that returns agent_request from verify_permissions."""
+
+    def __init__(self, agent_request=None, agent_request_id=None, settle_result=None):
+        self._agent_request = agent_request
+        self._agent_request_id = agent_request_id
+
+        class Facilitator:
+            def __init__(self, parent, settle_result):
+                self._parent = parent
+                self._settle_result = make_settle_result(settle_result)
+
+            def verify_permissions(
+                self, payment_required=None, max_amount=None, x402_access_token=None
+            ):
+                self._parent.calls.append(("verify", x402_access_token))
+                return VerifyResultWithAgentRequest(
+                    is_valid=True,
+                    agent_request=self._parent._agent_request,
+                    agent_request_id=self._parent._agent_request_id,
+                )
+
+            def settle_permissions(
+                self, payment_required=None, max_amount=None, x402_access_token=None, agent_request_id=None
+            ):
+                self._parent.calls.append(("settle", x402_access_token, int(max_amount), agent_request_id))
+                return self._settle_result
+
+        class Agents:
+            def get_agent_plans(self, agent_id):
+                return {"plans": []}
+
+        self.facilitator = Facilitator(self, settle_result)
+        self.agents = Agents()
+        self.calls = []
+
+
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_agent_request_propagated_to_paywall_context():
+    """Test that agent_request from verify_permissions is included in PaywallContext."""
+    pm = PaymentsMockWithAgentRequest(
+        agent_request=MOCK_AGENT_REQUEST, agent_request_id="arId-test-1234"
+    )
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
+
+    captured_context = None
+
+    async def handler(args, extra=None, context=None):
+        nonlocal captured_context
+        captured_context = context
+        return {"content": [{"type": "text", "text": "ok"}]}
+
+    wrapped = mcp.with_paywall(
+        handler, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan123"}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    assert captured_context is not None
+    assert "agent_request" in captured_context
+    assert captured_context["agent_request"] == MOCK_AGENT_REQUEST
+    assert captured_context["agent_request_id"] == "arId-test-1234"
+
+    # Also propagated inside auth_result
+    assert captured_context["auth_result"]["agent_request"] == MOCK_AGENT_REQUEST
+    assert captured_context["auth_result"]["agent_request_id"] == "arId-test-1234"
+
+
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_agent_request_none_when_not_returned_by_verify():
+    """Test backward compat: agent_request is None when verify doesn't return it."""
+    pm = PaymentsMockWithAgentRequest(agent_request=None)
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
+
+    captured_context = None
+
+    async def handler(args, extra=None, context=None):
+        nonlocal captured_context
+        captured_context = context
+        return {"content": [{"type": "text", "text": "ok"}]}
+
+    wrapped = mcp.with_paywall(
+        handler, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan123"}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    assert captured_context is not None
+    assert captured_context.get("agent_request") is None
+    assert captured_context.get("agent_request_id") is None
+
+
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_agent_request_id_passed_to_settle():
+    """Test that agent_request_id is forwarded to settle_permissions."""
+    pm = PaymentsMockWithAgentRequest(
+        agent_request=MOCK_AGENT_REQUEST, agent_request_id="arId-test-1234"
+    )
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
+
+    async def handler(args, extra=None, context=None):
+        return {"content": [{"type": "text", "text": "ok"}]}
+
+    wrapped = mcp.with_paywall(
+        handler, {"kind": "tool", "name": "test", "credits": 3, "planId": "plan123"}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    # Verify settle was called with the agent_request_id
+    settle_calls = [c for c in pm.calls if c[0] == "settle"]
+    assert len(settle_calls) == 1
+    assert settle_calls[0] == ("settle", "token", 3, "arId-test-1234")
+
+
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_agent_request_can_be_parsed_as_start_agent_request():
+    """Test that agent_request dict can be parsed into a StartAgentRequest model."""
+    from payments_py.common.types import StartAgentRequest
+
+    pm = PaymentsMockWithAgentRequest(
+        agent_request=MOCK_AGENT_REQUEST, agent_request_id="arId-test-1234"
+    )
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
+
+    captured_context = None
+
+    async def handler(args, extra=None, context=None):
+        nonlocal captured_context
+        captured_context = context
+        return {"content": [{"type": "text", "text": "ok"}]}
+
+    wrapped = mcp.with_paywall(
+        handler, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan123"}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    start_req = StartAgentRequest(**captured_context["agent_request"])
+
+    assert start_req.agent_request_id == "arId-test-1234"
+    assert start_req.agent_name == "test-mcp-server"
+    assert start_req.agent_id == "agent-0x42"
+    assert start_req.balance.plan_id == "plan123"
+    assert start_req.balance.holder_address == "0x123subscriber"
+    assert start_req.balance.price_per_credit == 0.01
+    assert start_req.batch is False
+
+
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_agent_request_usable_with_observability_api():
+    """Test full chain: verify → auth → paywall → handler → with_openai().
+
+    Verifies that agent_request from the paywall can be used to create
+    an observability-enabled OpenAI config, without real API keys.
+    """
+    from payments_py.common.types import StartAgentRequest
+    from payments_py.api.observability_api import with_openai
+
+    pm = PaymentsMockWithAgentRequest(
+        agent_request=MOCK_AGENT_REQUEST, agent_request_id="arId-test-1234"
+    )
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
+
+    oai_config_captured = None
+
+    async def handler(args, extra=None, context=None):
+        nonlocal oai_config_captured
+        start_req = StartAgentRequest(**context["agent_request"])
+        oai_config_captured = with_openai(
+            api_key="sk-fake-key",
+            helicone_api_key="hlk-fake-key",
+            helicone_base_logging_url="https://helicone.test/jawn/v1/gateway/oai/v1",
+            account_address="0xbuilder",
+            environment_name="testing",
+            start_agent_request=start_req,
+            custom_properties={"tool": "test"},
+        )
+        return {"content": [{"type": "text", "text": "ok"}]}
+
+    wrapped = mcp.with_paywall(
+        handler, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan123"}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    assert oai_config_captured is not None
+    assert oai_config_captured.api_key == "sk-fake-key"
+    assert oai_config_captured.base_url == "https://helicone.test/jawn/v1/gateway/oai/v1"
+
+    headers = oai_config_captured.default_headers
+    assert headers["Helicone-Auth"] == "Bearer hlk-fake-key"
+    assert headers["Helicone-Property-consumerAddress"] == "0x123subscriber"
+    assert headers["Helicone-Property-agentId"] == "agent-0x42"
+    assert headers["Helicone-Property-planId"] == "plan123"
+    assert headers["Helicone-Property-agentName"] == "test-mcp-server"
+    assert headers["Helicone-Property-agentRequestId"] == "arId-test-1234"
+    assert headers["Helicone-Property-pricePerCredit"] == "0.01"
+    assert headers["Helicone-Property-tool"] == "test"
+
+
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_tool_handler_forwards_paywall_context_to_fn():
+    """Test that the tool handler adapter forwards paywall_context to user functions that accept it."""
+    pm = PaymentsMockWithAgentRequest(
+        agent_request=MOCK_AGENT_REQUEST, agent_request_id="arId-test-1234"
+    )
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
+
+    captured_ctx = None
+
+    # Simulate what @mcp.tool does: create handler that unpacks args and forwards paywall_context
+    import inspect
+    import functools
+
+    def my_tool(query: str, paywall_context=None) -> str:
+        nonlocal captured_ctx
+        captured_ctx = paywall_context
+        return f"result: {query}"
+
+    _fn_params = inspect.signature(my_tool).parameters
+    _accepts_paywall_ctx = "paywall_context" in _fn_params
+
+    @functools.wraps(my_tool)
+    async def handler(args, context=None, paywall_context=None):
+        call_args = dict(args)
+        if _accepts_paywall_ctx and paywall_context is not None:
+            call_args["paywall_context"] = paywall_context
+        result = my_tool(**call_args)
+        return {"content": [{"type": "text", "text": result}]}
+
+    wrapped = mcp.with_paywall(
+        handler, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan123"}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    out = asyncio.get_event_loop().run_until_complete(wrapped({"query": "hello"}, extra))
+
+    assert out["content"][0]["text"] == "result: hello"
+    assert captured_ctx is not None
+    assert captured_ctx["agent_request"] == MOCK_AGENT_REQUEST
+    assert captured_ctx["agent_request_id"] == "arId-test-1234"
+
+
+@patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
+def test_handlers_without_context_still_work_with_agent_request():
+    """Test that old handlers ignoring context still work when agent_request is present."""
+    pm = PaymentsMockWithAgentRequest(
+        agent_request=MOCK_AGENT_REQUEST, agent_request_id="arId-test-1234"
+    )
+    mcp = build_mcp_integration(pm)
+    mcp.configure({"agentId": "unit_agent_id_hex", "serverName": "test-mcp"})
+
+    async def old_handler(args, extra=None):
+        return {"content": [{"type": "text", "text": "old-style"}]}
+
+    wrapped = mcp.with_paywall(
+        old_handler, {"kind": "tool", "name": "test", "credits": 1, "planId": "plan123"}
+    )
+    extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
+    out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+
+    assert out["content"][0]["text"] == "old-style"
+    assert ("verify", "token") in pm.calls
