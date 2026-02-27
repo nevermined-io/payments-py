@@ -163,8 +163,11 @@ class PaywallDecorator:
                 "credits": initial_credits,
                 "plan_id": auth_result.get("plan_id"),
                 "subscriber_address": auth_result.get("subscriber_address"),
+                "agent_request": auth_result.get("agent_request"),
+                "agent_request_id": auth_result.get("agent_request_id"),
             }
 
+            # Call handler with a compatible signature across tool/resource/prompt
             # Call handler with a compatible signature across tool/resource/prompt
             try:
                 result = handler(*all_args, paywall_context)
@@ -203,6 +206,7 @@ class PaywallDecorator:
                         endpoint=auth_result.get("logical_url"),
                         fallback_endpoint=auth_result.get("http_url"),
                         http_verb="POST",
+                        agent_request_id=auth_result.get("agent_request_id"),
                     ),
                 )
 
@@ -216,6 +220,7 @@ class PaywallDecorator:
                 endpoint=auth_result.get("logical_url"),
                 fallback_endpoint=auth_result.get("http_url"),
                 http_verb="POST",
+                agent_request_id=auth_result.get("agent_request_id"),
             )
 
             # Always add _meta to result
@@ -250,6 +255,7 @@ class PaywallDecorator:
         endpoint: Optional[str] = None,
         fallback_endpoint: Optional[str] = None,
         http_verb: Optional[str] = None,
+        agent_request_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Settle credits for a processed request using x402 settle_permissions.
 
@@ -284,6 +290,7 @@ class PaywallDecorator:
                         payment_required=payment_required,
                         x402_access_token=token,
                         max_amount=str(int(credits)),
+                        agent_request_id=agent_request_id,
                     )
                 )
                 settle_success = settle_result.success
@@ -319,6 +326,7 @@ class PaywallDecorator:
                             payment_required=payment_required,
                             x402_access_token=token,
                             max_amount=str(int(credits)),
+                            agent_request_id=agent_request_id,
                         )
                     )
                     settle_success = settle_result.success

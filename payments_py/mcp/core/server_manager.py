@@ -579,8 +579,10 @@ class McpServerManager:
             credits_option = options.get("credits")
 
             # Create a wrapper that calls the tool handler with paywall
-            async def execute_tool(args: Any, extra: Any = None) -> Any:
-                result = tool_handler(args, extra)
+            async def execute_tool(
+                args: Any, extra: Any = None, paywall_context: Any = None
+            ) -> Any:
+                result = tool_handler(args, extra, paywall_context)
                 if hasattr(result, "__await__"):
                     result = await result
                 return result
@@ -606,8 +608,8 @@ class McpServerManager:
             # Convert result to MCP format with metadata
             # Extract metadata from paywall result (txHash, creditsRedeemed, etc.)
             metadata = None
-            if isinstance(result, dict) and "metadata" in result:
-                metadata = result.get("metadata")
+            if isinstance(result, dict) and "_meta" in result:
+                metadata = result.get("_meta")
 
             # Build content list
             if isinstance(result, dict) and "content" in result:

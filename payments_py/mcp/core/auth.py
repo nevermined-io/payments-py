@@ -96,10 +96,18 @@ class PaywallAuthenticator:
         if not result or not result.is_valid:
             raise ValueError("Permission verification failed")
 
-        return {
+        resp: Dict[str, Any] = {
             "plan_id": plan_id,
             "subscriber_address": subscriber_address,
         }
+        # Capture observability data from the verify result (aligned with A2A handler)
+        agent_request = getattr(result, "agent_request", None)
+        if agent_request is not None:
+            resp["agent_request"] = agent_request
+        agent_request_id = getattr(result, "agent_request_id", None)
+        if agent_request_id is not None:
+            resp["agent_request_id"] = agent_request_id
+        return resp
 
     async def _verify_with_fallback(
         self,
@@ -125,7 +133,7 @@ class PaywallAuthenticator:
             result = await self._verify_with_endpoint(
                 access_token, logical_url, agent_id, max_amount, plan_id_override
             )
-            return {
+            auth: Dict[str, Any] = {
                 "token": access_token,
                 "agent_id": agent_id,
                 "logical_url": logical_url,
@@ -133,6 +141,11 @@ class PaywallAuthenticator:
                 "plan_id": result["plan_id"],
                 "subscriber_address": result["subscriber_address"],
             }
+            if "agent_request" in result:
+                auth["agent_request"] = result["agent_request"]
+            if "agent_request_id" in result:
+                auth["agent_request_id"] = result["agent_request_id"]
+            return auth
         except Exception:
             pass
 
@@ -142,7 +155,7 @@ class PaywallAuthenticator:
                 result = await self._verify_with_endpoint(
                     access_token, http_url, agent_id, max_amount, plan_id_override
                 )
-                return {
+                auth = {
                     "token": access_token,
                     "agent_id": agent_id,
                     "logical_url": logical_url,
@@ -150,6 +163,11 @@ class PaywallAuthenticator:
                     "plan_id": result["plan_id"],
                     "subscriber_address": result["subscriber_address"],
                 }
+                if "agent_request" in result:
+                    auth["agent_request"] = result["agent_request"]
+                if "agent_request_id" in result:
+                    auth["agent_request_id"] = result["agent_request_id"]
+                return auth
             except Exception:
                 pass
 
