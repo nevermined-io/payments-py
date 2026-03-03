@@ -71,7 +71,7 @@ from .schemes import (
 from .resolve_scheme import resolve_scheme
 from .facilitator import NeverminedFacilitator
 from .facilitator_api import FacilitatorAPI
-from .delegation_api import DelegationAPI, PaymentMethodSummary
+from .delegation_api import DelegationAPI, DelegationSummary, PaymentMethodSummary
 from .a2a import X402A2AUtils, X402Metadata, PaymentStatus as X402PaymentStatus
 from .token import X402TokenAPI, decode_access_token
 
@@ -125,6 +125,7 @@ __all__ = [
     "decode_access_token",
     # Delegation API
     "DelegationAPI",
+    "DelegationSummary",
     "PaymentMethodSummary",
     # High-level facilitator
     "NeverminedFacilitator",
