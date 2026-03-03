@@ -7,7 +7,7 @@ and responses used in payment verification and settlement.
 
 from dataclasses import dataclass
 from typing import Optional, Any, List
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 from .networks import SupportedNetworks
 from .schemes import SupportedSchemes, X402SchemeType
@@ -271,17 +271,23 @@ class CardDelegationConfig(BaseModel):
     """
     Configuration for card delegation (fiat/Stripe) payments.
 
-    To reuse an existing delegation supply ``delegation_id``.
-    To reuse an existing card (PaymentMethod entity) supply ``card_id``.
-    When creating a brand-new delegation provide ``provider_payment_method_id``,
-    ``spending_limit_cents``, and ``duration_secs``.
+    Exactly one of the following three modes must be used:
+
+    1. **Reuse an existing delegation** — supply ``delegation_id`` only.
+    2. **Reuse an enrolled card** — supply ``card_id``.  Optionally also
+       provide ``spending_limit_cents``, ``duration_secs``,
+       ``merchant_account_id``, ``max_transactions``, and/or ``currency``
+       to override the card's defaults for this delegation.
+    3. **Create a brand-new delegation** — supply
+       ``provider_payment_method_id``, ``spending_limit_cents``, and
+       ``duration_secs`` (all three are required for this mode).
 
     Attributes:
         card_id: PaymentMethod entity UUID -- preferred way to reference an enrolled card
         delegation_id: Existing delegation UUID to reuse instead of creating a new one
-        provider_payment_method_id: Stripe payment method ID (e.g., 'pm_...'). Required only for new delegations.
-        spending_limit_cents: Maximum spending limit in cents. Required only for new delegations.
-        duration_secs: Duration of the delegation in seconds. Required only for new delegations.
+        provider_payment_method_id: Stripe payment method ID (e.g., 'pm_...'). Required for new delegations.
+        spending_limit_cents: Maximum spending limit in cents. Required for new delegations; optional override when using card_id.
+        duration_secs: Duration of the delegation in seconds. Required for new delegations; optional override when using card_id.
         currency: Currency code (default: 'usd')
         merchant_account_id: Stripe Connect merchant account ID
         max_transactions: Maximum number of transactions allowed
@@ -302,6 +308,38 @@ class CardDelegationConfig(BaseModel):
         populate_by_name=True,
         from_attributes=True,
     )
+
+    @model_validator(mode="after")
+    def _check_valid_combination(self) -> "CardDelegationConfig":
+        has_delegation_id = self.delegation_id is not None
+        has_card_id = self.card_id is not None
+        new_delegation_fields = {
+            "provider_payment_method_id": self.provider_payment_method_id,
+            "spending_limit_cents": self.spending_limit_cents,
+            "duration_secs": self.duration_secs,
+        }
+        has_new_delegation = any(v is not None for v in new_delegation_fields.values())
+
+        if not has_delegation_id and not has_card_id and not has_new_delegation:
+            raise ValueError(
+                "CardDelegationConfig requires at least one of: 'delegation_id', "
+                "'card_id', or the new-delegation fields "
+                "('provider_payment_method_id', 'spending_limit_cents', 'duration_secs')."
+            )
+
+        if has_new_delegation and not has_card_id and not has_delegation_id:
+            missing = [
+                name for name, val in new_delegation_fields.items() if val is None
+            ]
+            if missing:
+                raise ValueError(
+                    "When creating a brand-new delegation (without 'card_id' or "
+                    f"'delegation_id') all three fields are required: "
+                    f"'provider_payment_method_id', 'spending_limit_cents', "
+                    f"'duration_secs'. Missing: {missing}."
+                )
+
+        return self
 
 
 class X402TokenOptions(BaseModel):

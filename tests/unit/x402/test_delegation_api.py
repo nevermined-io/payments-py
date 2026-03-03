@@ -5,6 +5,82 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from payments_py.x402.delegation_api import DelegationAPI, PaymentMethodSummary
+from payments_py.x402.types import CardDelegationConfig
+
+
+class TestCardDelegationConfigValidator:
+    """Tests for CardDelegationConfig model_validator."""
+
+    # --- valid combinations ---
+
+    def test_valid_delegation_id_only(self):
+        cfg = CardDelegationConfig(delegation_id="del-abc")
+        assert cfg.delegation_id == "del-abc"
+
+    def test_valid_card_id_only(self):
+        cfg = CardDelegationConfig(card_id="pm-card-123")
+        assert cfg.card_id == "pm-card-123"
+
+    def test_valid_card_id_with_overrides(self):
+        cfg = CardDelegationConfig(
+            card_id="pm-card-123",
+            spending_limit_cents=5000,
+            duration_secs=3600,
+        )
+        assert cfg.card_id == "pm-card-123"
+        assert cfg.spending_limit_cents == 5000
+
+    def test_valid_new_delegation_all_three_fields(self):
+        cfg = CardDelegationConfig(
+            provider_payment_method_id="pm_stripe_123",
+            spending_limit_cents=10000,
+            duration_secs=604800,
+        )
+        assert cfg.provider_payment_method_id == "pm_stripe_123"
+        assert cfg.spending_limit_cents == 10000
+        assert cfg.duration_secs == 604800
+
+    def test_valid_new_delegation_with_extra_fields(self):
+        cfg = CardDelegationConfig(
+            provider_payment_method_id="pm_stripe_123",
+            spending_limit_cents=10000,
+            duration_secs=604800,
+            currency="eur",
+            max_transactions=5,
+        )
+        assert cfg.currency == "eur"
+        assert cfg.max_transactions == 5
+
+    def test_valid_via_alias(self):
+        cfg = CardDelegationConfig.model_validate({"delegationId": "del-xyz"})
+        assert cfg.delegation_id == "del-xyz"
+
+    # --- invalid combinations ---
+
+    def test_invalid_empty_config_raises(self):
+        with pytest.raises(ValueError, match="requires at least one of"):
+            CardDelegationConfig()
+
+    def test_invalid_new_delegation_missing_spending_limit(self):
+        with pytest.raises(ValueError, match="spending_limit_cents"):
+            CardDelegationConfig(
+                provider_payment_method_id="pm_stripe_123",
+                duration_secs=604800,
+            )
+
+    def test_invalid_new_delegation_missing_duration(self):
+        with pytest.raises(ValueError, match="duration_secs"):
+            CardDelegationConfig(
+                provider_payment_method_id="pm_stripe_123",
+                spending_limit_cents=10000,
+            )
+
+    def test_invalid_new_delegation_missing_provider_method(self):
+        with pytest.raises(ValueError, match="provider_payment_method_id"):
+            CardDelegationConfig(
+                spending_limit_cents=10000,
+                duration_secs=604800,
+            )
 
 
 @pytest.fixture
