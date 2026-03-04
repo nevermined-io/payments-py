@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict, Optional, Union, TYPE_CHECKING, Callable
 
 from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.schemes import get_default_network
 from payments_py.x402.types import (
     X402PaymentRequired,
     X402Resource,
@@ -114,7 +115,7 @@ class AgentCoreInterceptor:
         agent_id: Optional[str] = None,
         credits: Union[int, CreditsCallable] = 1,
         endpoint: Optional[str] = None,
-        network: str = "eip155:84532",
+        network: Optional[str] = None,
         description: Optional[str] = None,
         tools: Optional[Dict[str, InterceptorConfig]] = None,
         options: Optional[InterceptorOptions] = None,
@@ -129,7 +130,7 @@ class AgentCoreInterceptor:
             agent_id: Optional agent ID
             credits: Default credits per request (int or callable)
             endpoint: Protected resource endpoint URL
-            network: Blockchain network in CAIP-2 format
+            network: Blockchain network in CAIP-2 format (auto-derived from environment if None)
             description: Description for 402 responses
             tools: Per-tool configuration (overrides defaults)
             options: Global interceptor options
@@ -468,6 +469,7 @@ class AgentCoreInterceptor:
     ) -> X402PaymentRequired:
         """Build payment required, supporting single or multiple plans."""
         plan_ids = config.get_plan_ids()
+        env_name = getattr(self._payments, "environment_name", None)
 
         if len(plan_ids) == 1:
             return build_payment_required(
@@ -477,13 +479,17 @@ class AgentCoreInterceptor:
                 http_verb="POST",
                 network=config.network,
                 description=config.description,
+                environment=env_name,
             )
 
+        resolved_network = config.network or get_default_network(
+            "nvm:erc4337", env_name
+        )
         extra = X402SchemeExtra(agent_id=config.agent_id) if config.agent_id else None
         schemes = [
             X402Scheme(
                 scheme="nvm:erc4337",
-                network=config.network,
+                network=resolved_network,
                 plan_id=pid,
                 extra=extra,
             )
@@ -515,7 +521,7 @@ def create_interceptor(
     agent_id: Optional[str] = None,
     credits: Union[int, CreditsCallable] = 1,
     endpoint: Optional[str] = None,
-    network: str = "eip155:84532",
+    network: Optional[str] = None,
     description: Optional[str] = None,
     tools: Optional[Dict[str, InterceptorConfig]] = None,
     options: Optional[InterceptorOptions] = None,
@@ -532,7 +538,7 @@ def create_interceptor(
         agent_id: Optional agent identifier
         credits: Static int or callable that returns credits to charge
         endpoint: Protected resource endpoint URL
-        network: Blockchain network in CAIP-2 format (default: Base Sepolia)
+        network: Blockchain network in CAIP-2 format (auto-derived from environment if None)
         description: Human-readable description for 402 responses
         tools: Per-tool configuration dict
         options: Global interceptor options

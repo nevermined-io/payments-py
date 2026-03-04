@@ -231,6 +231,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             agent_id=agent_id,
             http_verb=http_method_requested,
             scheme=scheme,
+            environment=getattr(self._payments, "environment_name", None),
         )
 
         # Use run_in_executor since verify_permissions is synchronous
@@ -565,6 +566,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             agent_id=agent_id,
             http_verb=http_ctx.http_method_requested,
             scheme=scheme,
+            environment=getattr(self._payments, "environment_name", None),
         )
 
         try:
@@ -632,6 +634,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                         agent_id=agent_id,
                         http_verb=http_ctx.http_method_requested,
                         scheme=scheme,
+                        environment=getattr(self._payments, "environment_name", None),
                     )
 
                     try:

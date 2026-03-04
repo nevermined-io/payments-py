@@ -282,6 +282,7 @@ def _verify_payment(
         agent_id=config.agent_id,
         network=config.network,
         scheme=resolved_scheme,
+        environment=getattr(config.payments, "environment_name", None),
     )
 
     token = _extract_payment_token(kwargs)
