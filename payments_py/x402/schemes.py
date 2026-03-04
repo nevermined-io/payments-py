@@ -18,10 +18,10 @@ X402_SCHEME_NETWORKS: dict[str, str] = {
 
 # Environment-specific network for the erc4337 scheme
 _ERC4337_NETWORK_BY_ENV: dict[str, str] = {
-    "sandbox": "eip155:84532",       # Base Sepolia
+    "sandbox": "eip155:84532",  # Base Sepolia
     "staging_sandbox": "eip155:84532",  # Base Sepolia
-    "live": "eip155:8453",           # Base Mainnet
-    "staging_live": "eip155:8453",   # Base Mainnet
+    "live": "eip155:8453",  # Base Mainnet
+    "staging_live": "eip155:8453",  # Base Mainnet
 }
 
 
