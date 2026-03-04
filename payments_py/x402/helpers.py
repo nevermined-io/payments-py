@@ -6,7 +6,7 @@ Utility functions for building x402 payment protocol objects.
 
 from typing import Optional
 
-from .schemes import X402_SCHEME_NETWORKS
+from .schemes import get_default_network
 from .types import X402PaymentRequired, X402Resource, X402Scheme, X402SchemeExtra
 
 __all__ = ["build_payment_required", "build_payment_required_for_plans"]
@@ -20,6 +20,7 @@ def build_payment_required(
     network: Optional[str] = None,
     description: Optional[str] = None,
     scheme: str = "nvm:erc4337",
+    environment: Optional[str] = None,
 ) -> X402PaymentRequired:
     """
     Build an X402PaymentRequired object for verify/settle operations.
@@ -32,9 +33,11 @@ def build_payment_required(
         endpoint: The protected resource URL (optional)
         agent_id: The AI agent identifier (optional)
         http_verb: The HTTP method for the endpoint (optional)
-        network: The network identifier. Auto-derived from scheme if None.
+        network: The network identifier. Auto-derived from scheme/environment if None.
         description: Human-readable description of the resource (optional)
         scheme: The x402 payment scheme (default: "nvm:erc4337")
+        environment: The Nevermined environment name (e.g. "sandbox", "live").
+            Used to auto-derive the correct network when ``network`` is not provided.
 
     Returns:
         X402PaymentRequired object ready to use with verify_permissions/settle_permissions
@@ -57,8 +60,8 @@ def build_payment_required(
         )
         ```
     """
-    # Auto-derive network from scheme if not provided
-    resolved_network = network or X402_SCHEME_NETWORKS.get(scheme, "eip155:84532")
+    # Auto-derive network from scheme/environment if not provided
+    resolved_network = network or get_default_network(scheme, environment)
 
     # Build extra fields if any are provided
     extra = None
@@ -94,6 +97,7 @@ def build_payment_required_for_plans(
     network: Optional[str] = None,
     description: Optional[str] = None,
     scheme: str = "nvm:erc4337",
+    environment: Optional[str] = None,
 ) -> X402PaymentRequired:
     """Build X402PaymentRequired with one or more plan_ids in the accepts array.
 
@@ -105,9 +109,11 @@ def build_payment_required_for_plans(
         endpoint: The protected resource URL (optional)
         agent_id: The AI agent identifier (optional)
         http_verb: The HTTP method for the endpoint (optional)
-        network: The network identifier. Auto-derived from scheme if None.
+        network: The network identifier. Auto-derived from scheme/environment if None.
         description: Human-readable description of the resource (optional)
         scheme: The x402 payment scheme (default: "nvm:erc4337")
+        environment: The Nevermined environment name (e.g. "sandbox", "live").
+            Used to auto-derive the correct network when ``network`` is not provided.
 
     Returns:
         X402PaymentRequired object ready to use with verify_permissions/settle_permissions
@@ -121,10 +127,11 @@ def build_payment_required_for_plans(
             network=network,
             description=description,
             scheme=scheme,
+            environment=environment,
         )
 
-    # Auto-derive network from scheme if not provided
-    resolved_network = network or X402_SCHEME_NETWORKS.get(scheme, "eip155:84532")
+    # Auto-derive network from scheme/environment if not provided
+    resolved_network = network or get_default_network(scheme, environment)
 
     extra = None
     if agent_id or http_verb:

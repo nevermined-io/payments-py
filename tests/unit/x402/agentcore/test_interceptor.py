@@ -436,7 +436,7 @@ class TestInterceptorConfig:
         assert config.plan_id == "test-plan"
         assert config.credits == 1
         assert config.agent_id is None
-        assert config.network == "eip155:84532"
+        assert config.network is None
 
     def test_custom_values(self):
         """Test InterceptorConfig with custom values."""

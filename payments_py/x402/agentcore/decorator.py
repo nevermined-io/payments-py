@@ -44,6 +44,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.schemes import get_default_network
 from payments_py.x402.types import (
     PaymentContext,
     SettleResponse,
@@ -81,7 +82,7 @@ class _PaymentConfig:
     credits: Union[int, CreditsCallable]
     agent_id: Optional[str]
     endpoint: Optional[str]
-    network: str
+    network: Optional[str]
     token_headers: list[str]
     on_before_verify: Optional[BeforeVerifyHook]
     on_after_verify: Optional[AfterVerifyHook]
@@ -285,19 +286,23 @@ def _build_payment_required_for_config(config: _PaymentConfig) -> X402PaymentReq
     For a single plan, delegates to the shared ``build_payment_required`` helper.
     For multiple plans, constructs the accepts array with one X402Scheme per plan.
     """
+    env_name = getattr(config.payments, "environment_name", None)
+
     if len(config.plan_ids) == 1:
         return build_payment_required(
             plan_id=config.plan_ids[0],
             endpoint=config.endpoint,
             agent_id=config.agent_id,
             network=config.network,
+            environment=env_name,
         )
 
+    resolved_network = config.network or get_default_network("nvm:erc4337", env_name)
     extra = X402SchemeExtra(agent_id=config.agent_id) if config.agent_id else None
     schemes = [
         X402Scheme(
             scheme="nvm:erc4337",
-            network=config.network,
+            network=resolved_network,
             plan_id=pid,
             extra=extra,
         )
@@ -455,7 +460,7 @@ def requires_payment(
     credits: Union[int, CreditsCallable] = 1,
     agent_id: Optional[str] = None,
     endpoint: Optional[str] = None,
-    network: str = "eip155:84532",
+    network: Optional[str] = None,
     token_header: Union[str, list[str]] = None,
     on_before_verify: Optional[BeforeVerifyHook] = None,
     on_after_verify: Optional[AfterVerifyHook] = None,
