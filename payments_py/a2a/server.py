@@ -238,6 +238,7 @@ class PaymentsA2AServer:  # noqa: D101
                 endpoint=absolute_url,
                 http_verb="POST",
                 scheme=resolved_scheme,
+                environment=getattr(payments_service, "environment_name", None),
             )
 
             bearer_token = request.headers.get("payment-signature")

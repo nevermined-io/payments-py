@@ -84,6 +84,7 @@ class PaywallAuthenticator:
             plan_id=plan_id,
             endpoint=endpoint,
             agent_id=agent_id,
+            environment=getattr(self._payments, "environment_name", None),
         )
         result = self._payments.facilitator.verify_permissions(
             payment_required=payment_required,

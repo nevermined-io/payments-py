@@ -293,6 +293,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             http_verb=method,
             network=route_config.network,
             scheme=resolved_scheme,
+            environment=getattr(self.payments, "environment_name", None),
         )
 
         # Extract token from headers

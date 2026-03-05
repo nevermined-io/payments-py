@@ -66,6 +66,7 @@ from .schemes import (
     SupportedSchemes,
     X402SchemeType,
     X402_SCHEME_NETWORKS,
+    get_default_network,
     is_valid_scheme,
 )
 from .resolve_scheme import resolve_scheme
@@ -118,6 +119,7 @@ __all__ = [
     "SupportedSchemes",
     "X402SchemeType",
     "X402_SCHEME_NETWORKS",
+    "get_default_network",
     "is_valid_scheme",
     # APIs
     "FacilitatorAPI",
