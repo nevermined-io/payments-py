@@ -1897,45 +1897,27 @@
 <a id="__codelineno-9-69" name="__codelineno-9-69" href="#__codelineno-9-69"></a>    <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="http-flow">HTTP Flow<a class="headerlink" href="#http-flow" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>┌─────────────┐                  ┌─────────────┐                  ┌─────────────┐
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>│  Subscriber │                  │    Agent    │                  │  Nevermined │
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>└──────┬──────┘                  └──────┬──────┘                  └──────┬──────┘
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>       │                                │                                │
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>       │ GET /api/process               │                                │
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>       │ (no token)                     │                                │
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>       │ ─────────────────────────────► │                                │
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>       │                                │                                │
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>       │ ◄───────────────────────────── │                                │
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>       │ 402 Payment Required           │                                │
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>       │ {paymentRequired: {...}}       │                                │
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>       │                                │                                │
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>       │ get_x402_access_token()        │                                │
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>       │ ─────────────────────────────────────────────────────────────► │
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>       │                                │                                │
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>       │ ◄───────────────────────────────────────────────────────────── │
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>       │ {accessToken: &quot;...&quot;}           │                                │
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>       │                                │                                │
-<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>       │ GET /api/process               │                                │
-<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>       │ payment-signature: &lt;token&gt;     │                                │
-<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>       │ ─────────────────────────────► │                                │
-<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>       │                                │                                │
-<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>       │                                │ verify_permissions()           │
-<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>       │                                │ ─────────────────────────────► │
-<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>       │                                │                                │
-<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>       │                                │ ◄───────────────────────────── │
-<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>       │                                │ {isValid: true}                │
-<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>       │                                │                                │
-<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>       │                                │ [process request]              │
-<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>       │                                │                                │
-<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>       │                                │ settle_permissions()           │
-<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>       │                                │ ─────────────────────────────► │
-<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a>       │                                │                                │
-<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a>       │                                │ ◄───────────────────────────── │
-<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a>       │                                │ {success: true}                │
-<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a>       │                                │                                │
-<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a>       │ ◄───────────────────────────── │                                │
-<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a>       │ 200 OK {result: ...}           │                                │
-<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a>       │                                │                                │
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>sequenceDiagram
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    participant Subscriber
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    participant Agent
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    participant Nevermined
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    Subscriber-&gt;&gt;Agent: GET /api/process (no token)
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    Agent--&gt;&gt;Subscriber: 402 Payment Required&lt;br/&gt;{paymentRequired: {...}}
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    Subscriber-&gt;&gt;Nevermined: get_x402_access_token()
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    Nevermined--&gt;&gt;Subscriber: {accessToken: &quot;...&quot;}
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    Subscriber-&gt;&gt;Agent: GET /api/process&lt;br/&gt;payment-signature: token
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    Agent-&gt;&gt;Nevermined: verify_permissions()
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    Nevermined--&gt;&gt;Agent: {isValid: true}
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    Note over Agent: Process request
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    Agent-&gt;&gt;Nevermined: settle_permissions()
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>    Nevermined--&gt;&gt;Agent: {success: true}
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>    Agent--&gt;&gt;Subscriber: 200 OK {result: ...}
 </code></pre></div>
 <h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
 <ol>
