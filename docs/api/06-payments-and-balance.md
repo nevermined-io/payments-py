@@ -197,22 +197,24 @@ if final_balance.is_subscriber:
 
 ## Workflow Summary
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                     BUILDER                               │
-│  1. Create Plan (register_credits_plan)                  │
-│  2. Register Agent with Plan                             │
-│  3. Optionally mint credits to users                     │
-└──────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌──────────────────────────────────────────────────────────┐
-│                    SUBSCRIBER                             │
-│  1. Check Balance (get_plan_balance)                     │
-│  2. Order Plan (order_plan)                              │
-│  3. Get Access Token (get_x402_access_token)             │
-│  4. Query Agent (with access token)                      │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Builder
+        B1[1. Create Plan — register_credits_plan]
+        B2[2. Register Agent with Plan]
+        B3[3. Optionally mint credits to users]
+        B1 --> B2 --> B3
+    end
+
+    subgraph Subscriber
+        S1[1. Check Balance — get_plan_balance]
+        S2[2. Order Plan — order_plan]
+        S3[3. Get Access Token — get_x402_access_token]
+        S4[4. Query Agent with access token]
+        S1 --> S2 --> S3 --> S4
+    end
+
+    Builder --> Subscriber
 ```
 
 ## Next Steps
