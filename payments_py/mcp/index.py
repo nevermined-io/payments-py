@@ -356,7 +356,7 @@ class MCPIntegration:
         - FastAPI application with all endpoints
         - OAuth 2.1 discovery endpoints (/.well-known/*)
         - Client registration endpoint (/register)
-        - Health check and server info endpoints
+        - Server info endpoint
         - MCP handlers (POST/GET/DELETE /mcp)
         - HTTP server (uvicorn)
 

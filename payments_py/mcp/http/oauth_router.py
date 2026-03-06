@@ -116,7 +116,6 @@ def create_oauth_router(options: Dict[str, Any]) -> APIRouter:
     protocol_version = options.get("protocolVersion")
     enable_oauth_discovery = options.get("enableOAuthDiscovery", True)
     enable_client_registration = options.get("enableClientRegistration", True)
-    enable_health_check = options.get("enableHealthCheck", True)
     enable_server_info = options.get("enableServerInfo", True)
     version = options.get("version", "1.0.0")
     description = options.get("description")
@@ -230,22 +229,6 @@ def create_oauth_router(options: Dict[str, Any]) -> APIRouter:
                         or "Internal server error during client registration",
                     },
                 )
-
-    # --- Health Check ---
-
-    if enable_health_check:
-
-        @router.get("/health")
-        async def health_check() -> JSONResponse:
-            """Health check endpoint."""
-            log("GET /health")
-            return JSONResponse(
-                content={
-                    "status": "ok",
-                    "service": server_name,
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
-                }
-            )
 
     # --- Server Info ---
 

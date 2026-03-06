@@ -526,13 +526,9 @@ class PaymentsMCP:
     ) -> Dict[str, Any]:
         """Start the MCP server with OAuth and paywall.
 
-        This starts a complete MCP server with:
-        - OAuth 2.1 discovery endpoints (/.well-known/*)
-        - Client registration (/register)
-        - Health check (/health)
-        - Server info (/)
-        - MCP handlers (POST/GET/DELETE /mcp)
-        - Credit redemption for protected handlers
+        This starts the server in the background and returns immediately.
+        Use :meth:`run` for a blocking alternative that handles shutdown
+        automatically.
 
         Args:
             port: Port to listen on.
@@ -545,11 +541,12 @@ class PaymentsMCP:
                 - info: Server info (baseUrl, port, tools, resources, prompts)
                 - stop: Async function to stop the server
 
-        Example:
-            >>> result = await mcp.start(port=3002)
-            >>> print(f"Server running at {result['info']['baseUrl']}")
-            >>> # Later...
-            >>> await result["stop"]()
+        Example::
+
+            result = await mcp.start(port=3002)
+            print(f"Server running at {result['info']['baseUrl']}")
+            # ... do other work ...
+            await result["stop"]()
         """
         if not self.agent_id:
             raise ValueError("agent_id is required. Set it in the constructor.")
@@ -566,6 +563,42 @@ class PaymentsMCP:
         }
 
         return await self._manager.start(config)
+
+    async def run(
+        self,
+        port: int,
+        host: str = "0.0.0.0",
+        base_url: Optional[str] = None,
+        on_log: Optional[Callable[[str], None]] = None,
+    ) -> None:
+        """Start the MCP server and block until shutdown.
+
+        Convenience method that calls :meth:`start` and then waits
+        until interrupted (Ctrl+C) or cancelled, stopping the server
+        automatically on exit.
+
+        Args:
+            port: Port to listen on.
+            host: Host to bind to (default: "0.0.0.0").
+            base_url: Base URL for the server (default: http://localhost:{port}).
+            on_log: Optional callback for logging.
+
+        Example::
+
+            async def main():
+                await mcp.run(port=3000)
+
+            asyncio.run(main())
+        """
+        result = await self.start(
+            port=port, host=host, base_url=base_url, on_log=on_log
+        )
+        try:
+            await asyncio.Event().wait()
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            pass
+        finally:
+            await result["stop"]()
 
     async def stop(self) -> None:
         """Stop the MCP server gracefully.
