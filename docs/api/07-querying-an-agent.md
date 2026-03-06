@@ -210,31 +210,24 @@ except requests.HTTPError as e:
 
 ## Request Flow Diagram
 
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  Subscriber  │     │   Nevermined │     │    Agent     │
-└──────┬───────┘     └──────┬───────┘     └──────┬───────┘
-       │                    │                    │
-       │ get_x402_access_token()                 │
-       │ ─────────────────► │                    │
-       │                    │                    │
-       │ ◄───────────────── │                    │
-       │   accessToken      │                    │
-       │                    │                    │
-       │ POST /tasks (payment-signature header)  │
-       │ ────────────────────────────────────────►
-       │                    │                    │
-       │                    │  verify_permissions│
-       │                    │ ◄────────────────── │
-       │                    │ ─────────────────► │
-       │                    │                    │
-       │                    │  settle_permissions│
-       │                    │ ◄────────────────── │
-       │                    │ ─────────────────► │
-       │                    │                    │
-       │ ◄──────────────────────────────────────
-       │         Response                       │
-       │                    │                    │
+```mermaid
+sequenceDiagram
+    participant Subscriber
+    participant Nevermined
+    participant Agent
+
+    Subscriber->>Nevermined: get_x402_access_token()
+    Nevermined-->>Subscriber: accessToken
+
+    Subscriber->>Agent: POST /tasks<br/>payment-signature: token
+
+    Agent->>Nevermined: verify_permissions()
+    Nevermined-->>Agent: {isValid: true}
+
+    Agent->>Nevermined: settle_permissions()
+    Nevermined-->>Agent: {success: true}
+
+    Agent-->>Subscriber: Response
 ```
 
 ## Next Steps

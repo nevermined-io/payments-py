@@ -196,8 +196,8 @@ class InterceptorConfig:
     # Protected resource endpoint URL (optional)
     endpoint: Optional[str] = None
 
-    # Network identifier (default: Base Sepolia)
-    network: str = "eip155:84532"
+    # Network identifier (auto-derived from environment if None)
+    network: Optional[str] = None
 
     # Human-readable description for 402 response
     description: Optional[str] = None

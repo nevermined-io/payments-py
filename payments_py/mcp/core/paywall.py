@@ -283,6 +283,7 @@ class PaywallDecorator:
                     endpoint=endpoint,
                     agent_id=agent_id,
                     http_verb=http_verb,
+                    environment=getattr(self._payments, "environment_name", None),
                 )
 
                 settle_result = await self._maybe_await(
@@ -319,6 +320,7 @@ class PaywallDecorator:
                         endpoint=fallback_endpoint,
                         agent_id=agent_id,
                         http_verb=http_verb,
+                        environment=getattr(self._payments, "environment_name", None),
                     )
 
                     settle_result = await self._maybe_await(

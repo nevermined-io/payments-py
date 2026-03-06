@@ -13,7 +13,7 @@ from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.nvm_api import API_URL_CREATE_PERMISSION
-from payments_py.x402.schemes import X402_SCHEME_NETWORKS
+from payments_py.x402.schemes import get_default_network
 from payments_py.x402.types import X402TokenOptions
 
 
@@ -120,7 +120,7 @@ class X402TokenAPI(BasePaymentsAPI):
         network = (
             token_options.network
             if token_options and token_options.network
-            else X402_SCHEME_NETWORKS.get(scheme, "eip155:84532")
+            else get_default_network(scheme, self.environment_name)
         )
 
         # Build x402-aligned request body
