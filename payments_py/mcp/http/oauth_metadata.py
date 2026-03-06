@@ -316,7 +316,6 @@ def build_server_info_response(
         or "MCP server with Nevermined OAuth integration via Streamable HTTP",
         "endpoints": {
             "mcp": f"{config['baseUrl']}/mcp",
-            "health": f"{config['baseUrl']}/health",
             "register": f"{config['baseUrl']}/register",
         },
         "oauth": {

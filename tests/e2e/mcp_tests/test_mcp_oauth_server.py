@@ -323,7 +323,6 @@ class TestMcpServerInfoEndpoint:
             # Endpoints
             assert "endpoints" in data
             assert data["endpoints"]["mcp"] == f"{base_url}/mcp"
-            assert data["endpoints"]["health"] == f"{base_url}/health"
             assert data["endpoints"]["register"] == f"{base_url}/register"
 
             # OAuth info
@@ -339,27 +338,6 @@ class TestMcpServerInfoEndpoint:
             assert "weather" in data["tools"]
             assert "data://config" in data["resources"]
             assert "greeting" in data["prompts"]
-        finally:
-            await server_data["result"]["stop"]()
-            await asyncio.sleep(0.3)
-
-
-class TestMcpHealthEndpoint:
-    """Tests for health check endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_health_endpoint(self):
-        """Should return health status."""
-        server_data = await create_and_start_server(18895)
-        base_url = server_data["base_url"]
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{base_url}/health")
-
-            assert response.status_code == 200
-            data = response.json()
-
-            assert data["status"] == "ok"
         finally:
             await server_data["result"]["stop"]()
             await asyncio.sleep(0.3)

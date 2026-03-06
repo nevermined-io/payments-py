@@ -163,7 +163,6 @@ class McpServerConfig(TypedDict, total=False):
         corsOrigins: CORS origins. Defaults to '*'.
         enableOAuthDiscovery: Enable OAuth discovery endpoints. Defaults to True.
         enableClientRegistration: Enable client registration. Defaults to True.
-        enableHealthCheck: Enable health check endpoint. Defaults to True.
         enableServerInfo: Enable server info endpoint. Defaults to True.
         onStart: Callback when server starts (optional).
         onLog: Callback for logging (optional).
@@ -180,7 +179,6 @@ class McpServerConfig(TypedDict, total=False):
     corsOrigins: Union[str, List[str], None]
     enableOAuthDiscovery: Optional[bool]
     enableClientRegistration: Optional[bool]
-    enableHealthCheck: Optional[bool]
     enableServerInfo: Optional[bool]
     onStart: Optional[Callable[[Dict[str, Any]], None]]
     onLog: Optional[Callable[[str, Optional[str]], None]]
