@@ -557,11 +557,15 @@ async def test_non_blocking_execution_with_polling():
     # The background task runs on the TestClient's ASGI event loop.  That loop
     # only advances when the TestClient processes a request.  After the last
     # poll that saw "completed", no further requests are in flight, so the
-    # background settlement may be starved of event-loop turns.  We issue a
-    # few extra lightweight polls to give the loop enough ticks to schedule
+    # background settlement may be starved of event-loop turns.  We keep
+    # issuing lightweight polls to give the loop enough ticks to schedule
     # the settlement (which itself runs settle_permissions via run_in_executor).
-    for _ in range(5):
-        if mock_payments.facilitator.settle_called.wait(timeout=0.1):
+    #
+    # IMPORTANT: We must keep making requests throughout the entire wait period.
+    # A blocking wait(timeout=N) without requests starves the event loop and
+    # the background task can never complete.
+    for _ in range(50):
+        if mock_payments.facilitator.settle_called.wait(timeout=0.2):
             break
         # Drive the ASGI event loop with a harmless poll
         client.post(
@@ -575,6 +579,6 @@ async def test_non_blocking_execution_with_polling():
             headers=headers,
         )
 
-    settled = mock_payments.facilitator.settle_called.wait(timeout=10.0)
+    settled = mock_payments.facilitator.settle_called.is_set()
     assert settled, "Credits should be settled when task completes in non-blocking mode"
     assert mock_payments.facilitator.settle_call_count == 1
