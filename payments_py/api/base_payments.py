@@ -12,6 +12,9 @@ from payments_py.common.types import PaymentOptions
 from payments_py.environments import get_environment
 from payments_py.common.helper import dict_keys_to_camel
 
+# Default timeout for HTTP requests in seconds (connect, read)
+DEFAULT_HTTP_TIMEOUT = (10, 30)
+
 
 class BasePaymentsAPI:
     """
@@ -114,6 +117,7 @@ class BasePaymentsAPI:
                 "Authorization": f"Bearer {self.nvm_api_key}",
             },
             "verify": verify_ssl,
+            "timeout": DEFAULT_HTTP_TIMEOUT,
         }
         if body:
             # Convert to camelCase for consistency with TypeScript
@@ -142,6 +146,7 @@ class BasePaymentsAPI:
                 "Content-Type": "application/json",
             },
             "verify": verify_ssl,
+            "timeout": DEFAULT_HTTP_TIMEOUT,
         }
         if body:
             # Convert to camelCase for consistency with TypeScript
