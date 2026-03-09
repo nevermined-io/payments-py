@@ -271,18 +271,29 @@ class CardDelegationConfig(BaseModel):
     """
     Configuration for card delegation (fiat/Stripe) payments.
 
+    To reuse an existing delegation supply ``delegation_id``.
+    To reuse an existing card (PaymentMethod entity) supply ``card_id``.
+    When creating a brand-new delegation provide ``provider_payment_method_id``,
+    ``spending_limit_cents``, and ``duration_secs``.
+
     Attributes:
-        provider_payment_method_id: Stripe payment method ID (e.g., 'pm_...')
-        spending_limit_cents: Maximum spending limit in cents
-        duration_secs: Duration of the delegation in seconds
+        card_id: PaymentMethod entity UUID -- preferred way to reference an enrolled card
+        delegation_id: Existing delegation UUID to reuse instead of creating a new one
+        provider_payment_method_id: Stripe payment method ID (e.g., 'pm_...'). Required only for new delegations.
+        spending_limit_cents: Maximum spending limit in cents. Required only for new delegations.
+        duration_secs: Duration of the delegation in seconds. Required only for new delegations.
         currency: Currency code (default: 'usd')
         merchant_account_id: Stripe Connect merchant account ID
         max_transactions: Maximum number of transactions allowed
     """
 
-    provider_payment_method_id: str = Field(alias="providerPaymentMethodId")
-    spending_limit_cents: int = Field(alias="spendingLimitCents")
-    duration_secs: int = Field(alias="durationSecs")
+    card_id: Optional[str] = Field(None, alias="cardId")
+    delegation_id: Optional[str] = Field(None, alias="delegationId")
+    provider_payment_method_id: Optional[str] = Field(
+        None, alias="providerPaymentMethodId"
+    )
+    spending_limit_cents: Optional[int] = Field(None, alias="spendingLimitCents")
+    duration_secs: Optional[int] = Field(None, alias="durationSecs")
     currency: Optional[str] = None
     merchant_account_id: Optional[str] = Field(None, alias="merchantAccountId")
     max_transactions: Optional[int] = Field(None, alias="maxTransactions")
