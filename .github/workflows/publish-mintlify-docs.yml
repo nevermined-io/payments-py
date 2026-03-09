@@ -53,11 +53,19 @@ jobs:
 
           echo "✓ Documentation validation passed"
 
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: nevermined-io
+
       - name: Checkout docs_mintlify repository
         uses: actions/checkout@v4
         with:
           repository: nevermined-io/docs_mintlify
-          token: ${{ secrets.DOCS_REPO_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           path: docs_mintlify
           ref: ${{ github.event.inputs.target_branch || 'main' }}
 
@@ -123,7 +131,7 @@ jobs:
         id: create_pr
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.DOCS_REPO_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           path: docs_mintlify
           branch: update-python-docs-${{ steps.version.outputs.version }}
           base: ${{ steps.version.outputs.target_branch }}
@@ -185,7 +193,7 @@ jobs:
       - name: Enable auto-merge in docs_mintlify
         if: steps.create_pr.outputs.pull-request-number != ''
         env:
-          GH_TOKEN: ${{ secrets.DOCS_REPO_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           gh pr merge ${{ steps.create_pr.outputs.pull-request-number }} \
             --repo nevermined-io/docs_mintlify \
