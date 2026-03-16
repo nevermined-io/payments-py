@@ -32,7 +32,7 @@ def get_fiat_price_config(
     Args:
         amount: The amount in the smallest unit of the fiat currency
         receiver: The address that will receive the payment
-        currency: Fiat currency code (default: 'USD'). Supports 'USD' and 'EUR'.
+        currency: Fiat currency code in ISO-4217 format (default: 'USD'), e.g. 'USD', 'EUR', 'GBP'.
 
     Returns:
         A PlanPriceConfig object configured for fiat payments
