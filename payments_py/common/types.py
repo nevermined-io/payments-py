@@ -154,6 +154,26 @@ class PlanMetadata(AgentMetadata):
     is_trial_plan: Optional[bool] = False
 
 
+class Currency(str, Enum):
+    """
+    Supported currencies for payment plans.
+
+    - Fiat: USD, EUR (processed via Stripe)
+    - Crypto: USDC, EURC (ERC20 stablecoins on Base)
+    """
+
+    USD = "USD"
+    EUR = "EUR"
+    USDC = "USDC"
+    EURC = "EURC"
+
+
+# EURC token address on Base Mainnet (chain 8453)
+EURC_TOKEN_ADDRESS: str = "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42"
+# EURC token address on Base Sepolia testnet (chain 84532)
+EURC_TOKEN_ADDRESS_TESTNET: str = "0x808456652fdb597867f38412077A9182bf77359F"
+
+
 class PlanPriceType(Enum):
     """
     Different types of prices that can be configured for a plan.
@@ -223,6 +243,7 @@ class PlanPriceConfig(BaseModel):
     external_price_address: Optional[str] = None
     template_address: Optional[str] = None
     is_crypto: bool = False
+    currency: Optional[str] = None
 
 
 class PlanCreditsConfig(BaseModel):

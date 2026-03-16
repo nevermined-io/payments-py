@@ -4,6 +4,8 @@ Utility functions for creating and managing payment plans.
 
 from typing import Optional
 from payments_py.common.types import (
+    Currency,
+    EURC_TOKEN_ADDRESS,
     PlanCreditsConfig,
     PlanPriceConfig,
     PlanRedemptionType,
@@ -21,13 +23,16 @@ ONE_MONTH_DURATION = (
 ONE_YEAR_DURATION = 31_557_600  # 365.25 * 24 * 60 * 60 seconds
 
 
-def get_fiat_price_config(amount: int, receiver: Address) -> PlanPriceConfig:
+def get_fiat_price_config(
+    amount: int, receiver: Address, currency: str = Currency.USD
+) -> PlanPriceConfig:
     """
     Get a fixed fiat price configuration for a plan.
 
     Args:
         amount: The amount in the smallest unit of the fiat currency
         receiver: The address that will receive the payment
+        currency: Fiat currency code (default: 'USD'). Supports 'USD' and 'EUR'.
 
     Returns:
         A PlanPriceConfig object configured for fiat payments
@@ -46,6 +51,7 @@ def get_fiat_price_config(amount: int, receiver: Address) -> PlanPriceConfig:
         external_price_address=ZeroAddress,
         template_address=ZeroAddress,
         is_crypto=False,
+        currency=currency,
     )
 
 
@@ -95,6 +101,27 @@ def get_erc20_price_config(
         A PlanPriceConfig object configured for ERC20 token payments
     """
     return get_crypto_price_config(amount, receiver, token_address)
+
+
+def get_eurc_price_config(
+    amount: int,
+    receiver: Address,
+    eurc_address: Address = EURC_TOKEN_ADDRESS,
+) -> PlanPriceConfig:
+    """
+    Get a price configuration for EURC (Euro stablecoin) payments.
+
+    Args:
+        amount: The amount in EURC minor units (6 decimals)
+        receiver: The address that will receive the payment
+        eurc_address: EURC token address (defaults to Base Mainnet)
+
+    Returns:
+        A PlanPriceConfig object configured for EURC payments
+    """
+    config = get_erc20_price_config(amount, eurc_address, receiver)
+    config.currency = Currency.EURC
+    return config
 
 
 def get_free_price_config() -> PlanPriceConfig:

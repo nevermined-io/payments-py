@@ -104,14 +104,17 @@ class PlansAPI(BasePaymentsAPI):
         if nonce is None:
             nonce = get_random_big_int()
 
+        price_dict = self.pydantic_to_dict(price_config)
         body = {
             "metadataAttributes": self.pydantic_to_dict(plan_metadata),
-            "priceConfig": self.pydantic_to_dict(price_config),
+            "priceConfig": price_dict,
             "creditsConfig": self.pydantic_to_dict(credits_config),
             "nonce": nonce,
             "isTrialPlan": getattr(plan_metadata, "is_trial_plan", False),
             "accessLimit": access_limit,
         }
+        if price_dict.get("currency"):
+            body["currency"] = price_dict["currency"]
 
         options = self.get_backend_http_options("POST", body)
         url = f"{self.environment.backend}{API_URL_REGISTER_PLAN}"
@@ -452,9 +455,20 @@ class PlansAPI(BasePaymentsAPI):
 
     # Price configuration builders -------------------------------------
     @staticmethod
-    def get_fiat_price_config(amount: int, receiver: str) -> PlanPriceConfig:
+    def get_fiat_price_config(
+        amount: int, receiver: str, currency: str = "USD"
+    ) -> PlanPriceConfig:
         """Build a fiat price configuration."""
-        return plan_utils.get_fiat_price_config(amount, receiver)
+        return plan_utils.get_fiat_price_config(amount, receiver, currency)
+
+    @staticmethod
+    def get_eurc_price_config(
+        amount: int,
+        receiver: str,
+        eurc_address: str = plan_utils.EURC_TOKEN_ADDRESS,
+    ) -> PlanPriceConfig:
+        """Build an EURC (Euro stablecoin) price configuration."""
+        return plan_utils.get_eurc_price_config(amount, receiver, eurc_address)
 
     @staticmethod
     def get_crypto_price_config(
