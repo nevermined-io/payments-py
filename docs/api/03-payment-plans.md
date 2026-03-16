@@ -151,6 +151,40 @@ price_config = get_fiat_price_config(
 )
 ```
 
+### Fiat Price (EUR)
+
+```python
+from payments_py.plans import get_fiat_price_config
+from payments_py.common.types import Currency
+
+price_config = get_fiat_price_config(
+    amount=2900,  # €29.00 in euro cents
+    receiver="0xBuilderAddress",
+    currency=Currency.EUR
+)
+```
+
+### EURC Token Price (Euro Stablecoin)
+
+```python
+from payments_py.plans import get_eurc_price_config
+
+# EURC pricing (Euro stablecoin on Base, 6 decimals)
+price_config = get_eurc_price_config(
+    amount=29_000_000,          # €29.00 in smallest unit (6 decimals)
+    receiver="0xBuilderAddress"
+)
+
+# Or use a custom EURC address (e.g., testnet)
+from payments_py.common.types import EURC_TOKEN_ADDRESS_TESTNET
+
+testnet_config = get_eurc_price_config(
+    amount=29_000_000,
+    receiver="0xBuilderAddress",
+    eurc_address=EURC_TOKEN_ADDRESS_TESTNET
+)
+```
+
 ### Free Price
 
 ```python
