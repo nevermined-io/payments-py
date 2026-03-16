@@ -229,11 +229,8 @@ class PlanPriceConfig(BaseModel):
         is_crypto: Whether this is a crypto payment (False for fiat)
         currency: Optional currency code for off-chain denomination.
             For fiat payments, use an uppercase ISO-4217 code (e.g. ``"USD"``, ``"EUR"``).
-            For stablecoins or similar tokens priced off-chain, use the uppercase token
-            symbol (e.g. ``"USDT"``, ``"USDC"``). For pure ERC20 or native token plans
-            where pricing is defined only by the on-chain asset, this is typically
-            ``None`` and price is implied by ``token_address`` and ``amounts``, so
-            ``currency`` is not redundant with ``token_address`` but usually unused.
+            For stablecoins, use the token symbol (e.g. ``"EURC"``).
+            For pure ERC20 or native token plans, this is typically ``None``.
 
     Example::
         # Don't create directly - use helper functions instead:

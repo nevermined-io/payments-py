@@ -32,7 +32,7 @@ def get_fiat_price_config(
     Args:
         amount: The amount in the smallest unit of the fiat currency
         receiver: The address that will receive the payment
-        currency: Fiat currency code in ISO-4217 format (default: 'USD'), e.g. 'USD', 'EUR', 'GBP'.
+        currency: Fiat currency code in ISO 4217 format (default: 'USD'). Any code accepted by Stripe.
 
     Returns:
         A PlanPriceConfig object configured for fiat payments
@@ -111,8 +111,10 @@ def get_eurc_price_config(
     """
     Get a price configuration for EURC (Euro stablecoin) payments.
 
+    EURC uses 6 decimal places. To charge €29.00, pass ``29_000_000``.
+
     Args:
-        amount: The amount in the smallest unit of the EURC token
+        amount: Amount in the token's smallest unit (6 decimals for EURC).
         receiver: The address that will receive the payment
         eurc_address: EURC token address (defaults to Base Mainnet)
 

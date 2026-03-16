@@ -30,22 +30,24 @@ class TestGetFiatPriceConfig:
         assert config.currency == "EUR"
         assert config.amounts == [2900]
 
-    def test_accepts_string_currency(self):
+    def test_accepts_any_iso_4217_currency_code(self):
         config = get_fiat_price_config(500, RECEIVER, "GBP")
         assert config.currency == "GBP"
 
 
 class TestGetEurcPriceConfig:
     def test_returns_correct_config_with_default_address(self):
-        config = get_eurc_price_config(2900, RECEIVER)
+        config = get_eurc_price_config(29_000_000, RECEIVER)  # €29.00 (6 decimals)
         assert config.is_crypto is True
         assert config.currency == Currency.EURC
         assert config.token_address == EURC_TOKEN_ADDRESS
-        assert config.amounts == [2900]
+        assert config.amounts == [29_000_000]
         assert config.receivers == [RECEIVER]
 
     def test_accepts_custom_eurc_address(self):
-        config = get_eurc_price_config(100, RECEIVER, EURC_TOKEN_ADDRESS_TESTNET)
+        config = get_eurc_price_config(
+            1_000_000, RECEIVER, EURC_TOKEN_ADDRESS_TESTNET
+        )  # €1.00
         assert config.token_address == EURC_TOKEN_ADDRESS_TESTNET
         assert config.currency == Currency.EURC
 

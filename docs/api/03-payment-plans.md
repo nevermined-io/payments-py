@@ -169,9 +169,9 @@ price_config = get_fiat_price_config(
 ```python
 from payments_py.plans import get_eurc_price_config
 
-# EURC pricing (Euro stablecoin on Base)
+# EURC pricing (Euro stablecoin on Base, 6 decimals)
 price_config = get_eurc_price_config(
-    amount=29_000_000,          # Amount in EURC base units (6 decimals): 29 EURC = €29.00
+    amount=29_000_000,          # €29.00 in smallest unit (6 decimals)
     receiver="0xBuilderAddress"
 )
 
@@ -179,7 +179,7 @@ price_config = get_eurc_price_config(
 from payments_py.common.types import EURC_TOKEN_ADDRESS_TESTNET
 
 testnet_config = get_eurc_price_config(
-    amount=29_000_000,  # 29 EURC = €29.00 in 6-decimal base units
+    amount=29_000_000,
     receiver="0xBuilderAddress",
     eurc_address=EURC_TOKEN_ADDRESS_TESTNET
 )
