@@ -659,6 +659,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fiat-price-eur" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fiat Price (EUR)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eurc-token-price-euro-stablecoin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EURC Token Price (Euro Stablecoin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#free-price" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1325,6 +1347,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fiat-price-eur" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fiat Price (EUR)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eurc-token-price-euro-stablecoin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EURC Token Price (Euro Stablecoin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#free-price" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1603,118 +1647,146 @@
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">receiver</span><span class="o">=</span><span class="s2">&quot;0xBuilderAddress&quot;</span>
 <a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="p">)</span>
 </code></pre></div>
+<h3 id="fiat-price-eur">Fiat Price (EUR)<a class="headerlink" href="#fiat-price-eur" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_fiat_price_config</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Currency</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">price_config</span> <span class="o">=</span> <span class="n">get_fiat_price_config</span><span class="p">(</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">amount</span><span class="o">=</span><span class="mi">2900</span><span class="p">,</span>  <span class="c1"># €29.00 in euro cents</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">receiver</span><span class="o">=</span><span class="s2">&quot;0xBuilderAddress&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="n">currency</span><span class="o">=</span><span class="n">Currency</span><span class="o">.</span><span class="n">EUR</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="p">)</span>
+</code></pre></div>
+<h3 id="eurc-token-price-euro-stablecoin">EURC Token Price (Euro Stablecoin)<a class="headerlink" href="#eurc-token-price-euro-stablecoin" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_eurc_price_config</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1"># EURC pricing (Euro stablecoin on Base, 6 decimals)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">price_config</span> <span class="o">=</span> <span class="n">get_eurc_price_config</span><span class="p">(</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">amount</span><span class="o">=</span><span class="mi">29_000_000</span><span class="p">,</span>          <span class="c1"># €29.00 in smallest unit (6 decimals)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="n">receiver</span><span class="o">=</span><span class="s2">&quot;0xBuilderAddress&quot;</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="p">)</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1"># Or use a custom EURC address (e.g., testnet)</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">EURC_TOKEN_ADDRESS_TESTNET</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="n">testnet_config</span> <span class="o">=</span> <span class="n">get_eurc_price_config</span><span class="p">(</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    <span class="n">amount</span><span class="o">=</span><span class="mi">29_000_000</span><span class="p">,</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    <span class="n">receiver</span><span class="o">=</span><span class="s2">&quot;0xBuilderAddress&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    <span class="n">eurc_address</span><span class="o">=</span><span class="n">EURC_TOKEN_ADDRESS_TESTNET</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="p">)</span>
+</code></pre></div>
 <h3 id="free-price">Free Price<a class="headerlink" href="#free-price" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_free_price_config</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">price_config</span> <span class="o">=</span> <span class="n">get_free_price_config</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_free_price_config</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">price_config</span> <span class="o">=</span> <span class="n">get_free_price_config</span><span class="p">()</span>
 </code></pre></div>
 <h2 id="credits-configuration">Credits Configuration<a class="headerlink" href="#credits-configuration" title="Permanent link">&para;</a></h2>
 <h3 id="fixed-credits">Fixed Credits<a class="headerlink" href="#fixed-credits" title="Permanent link">&para;</a></h3>
 <p>Each request consumes a fixed number of credits:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_fixed_credits_config</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_fixed_credits_config</span><span class="p">(</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">credits_granted</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>      <span class="c1"># Total credits granted</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">credits_per_request</span><span class="o">=</span><span class="mi">1</span>     <span class="c1"># Credits consumed per request</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_fixed_credits_config</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_fixed_credits_config</span><span class="p">(</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">credits_granted</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>      <span class="c1"># Total credits granted</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">credits_per_request</span><span class="o">=</span><span class="mi">1</span>     <span class="c1"># Credits consumed per request</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="p">)</span>
 </code></pre></div>
 <h3 id="dynamic-credits">Dynamic Credits<a class="headerlink" href="#dynamic-credits" title="Permanent link">&para;</a></h3>
 <p>Each request can consume a variable number of credits:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_dynamic_credits_config</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_dynamic_credits_config</span><span class="p">(</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">credits_granted</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">min_credits_per_request</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>   <span class="c1"># Minimum credits per request</span>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">max_credits_per_request</span><span class="o">=</span><span class="mi">10</span>   <span class="c1"># Maximum credits per request</span>
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_dynamic_credits_config</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_dynamic_credits_config</span><span class="p">(</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">credits_granted</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">min_credits_per_request</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>   <span class="c1"># Minimum credits per request</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">max_credits_per_request</span><span class="o">=</span><span class="mi">10</span>   <span class="c1"># Maximum credits per request</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="p">)</span>
 </code></pre></div>
 <h3 id="duration-based-time-plans">Duration-Based (Time Plans)<a class="headerlink" href="#duration-based-time-plans" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="n">get_expirable_duration_config</span><span class="p">,</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">get_non_expirable_duration_config</span><span class="p">,</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">ONE_DAY_DURATION</span><span class="p">,</span>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">ONE_WEEK_DURATION</span><span class="p">,</span>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">ONE_MONTH_DURATION</span><span class="p">,</span>
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="n">ONE_YEAR_DURATION</span>
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="p">)</span>
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="c1"># Expirable (time-limited)</span>
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_expirable_duration_config</span><span class="p">(</span><span class="n">ONE_MONTH_DURATION</span><span class="p">)</span>
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="c1"># Non-expirable (permanent access)</span>
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_non_expirable_duration_config</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="n">get_expirable_duration_config</span><span class="p">,</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">get_non_expirable_duration_config</span><span class="p">,</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">ONE_DAY_DURATION</span><span class="p">,</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="n">ONE_WEEK_DURATION</span><span class="p">,</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    <span class="n">ONE_MONTH_DURATION</span><span class="p">,</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="n">ONE_YEAR_DURATION</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="p">)</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="c1"># Expirable (time-limited)</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_expirable_duration_config</span><span class="p">(</span><span class="n">ONE_MONTH_DURATION</span><span class="p">)</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="c1"># Non-expirable (permanent access)</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_non_expirable_duration_config</span><span class="p">()</span>
 </code></pre></div>
 <h2 id="retrieve-plans">Retrieve Plans<a class="headerlink" href="#retrieve-plans" title="Permanent link">&para;</a></h2>
 <h3 id="get-a-single-plan">Get a Single Plan<a class="headerlink" href="#get-a-single-plan" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">plan</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan</span><span class="p">(</span><span class="n">plan_id</span><span class="o">=</span><span class="s2">&quot;123456&quot;</span><span class="p">)</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plan name: </span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plan type: </span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;planType&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">plan</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan</span><span class="p">(</span><span class="n">plan_id</span><span class="o">=</span><span class="s2">&quot;123456&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plan name: </span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plan type: </span><span class="si">{</span><span class="n">plan</span><span class="p">[</span><span class="s1">&#39;planType&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="get-plan-balance">Get Plan Balance<a class="headerlink" href="#get-plan-balance" title="Permanent link">&para;</a></h3>
 <p>Check the balance for a specific account:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">balance</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan_balance</span><span class="p">(</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="s2">&quot;123456&quot;</span><span class="p">,</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">account_address</span><span class="o">=</span><span class="s2">&quot;0xUserAddress&quot;</span>  <span class="c1"># Optional, defaults to current user</span>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="p">)</span>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Balance: </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">balance</span><span class="si">}</span><span class="s2"> credits&quot;</span><span class="p">)</span>
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Is subscriber: </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">is_subscriber</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">balance</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan_balance</span><span class="p">(</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="s2">&quot;123456&quot;</span><span class="p">,</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="n">account_address</span><span class="o">=</span><span class="s2">&quot;0xUserAddress&quot;</span>  <span class="c1"># Optional, defaults to current user</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="p">)</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Balance: </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">balance</span><span class="si">}</span><span class="s2"> credits&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Is subscriber: </span><span class="si">{</span><span class="n">balance</span><span class="o">.</span><span class="n">is_subscriber</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="get-agents-associated-to-a-plan">Get Agents Associated to a Plan<a class="headerlink" href="#get-agents-associated-to-a-plan" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaginationOptions</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">agents</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_agents_associated_to_plan</span><span class="p">(</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="s2">&quot;123456&quot;</span><span class="p">,</span>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">pagination</span><span class="o">=</span><span class="n">PaginationOptions</span><span class="p">(</span><span class="n">page</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="p">)</span>
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agents: </span><span class="si">{</span><span class="n">agents</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaginationOptions</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">agents</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_agents_associated_to_plan</span><span class="p">(</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="s2">&quot;123456&quot;</span><span class="p">,</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    <span class="n">pagination</span><span class="o">=</span><span class="n">PaginationOptions</span><span class="p">(</span><span class="n">page</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="p">)</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agents: </span><span class="si">{</span><span class="n">agents</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="complete-example">Complete Example<a class="headerlink" href="#complete-example" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py</span><span class="w"> </span><span class="kn">import</span> <span class="n">Payments</span><span class="p">,</span> <span class="n">PaymentOptions</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlanMetadata</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="n">get_erc20_price_config</span><span class="p">,</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="n">get_fixed_credits_config</span><span class="p">,</span>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    <span class="n">get_expirable_duration_config</span><span class="p">,</span>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="n">get_free_price_config</span><span class="p">,</span>
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="n">ONE_DAY_DURATION</span>
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="p">)</span>
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="c1"># Initialize</span>
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    <span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:your-key&quot;</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;sandbox&quot;</span><span class="p">)</span>
-<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="p">)</span>
-<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="n">builder_address</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">account_address</span>
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>
-<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a><span class="c1"># ERC20 token address (use a test token in sandbox)</span>
-<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="n">ERC20_TOKEN</span> <span class="o">=</span> <span class="s2">&quot;0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d&quot;</span>
-<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>
-<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a><span class="c1"># 1. Create a credits plan</span>
-<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a><span class="n">credits_plan</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">register_credits_plan</span><span class="p">(</span>
-<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>    <span class="n">plan_metadata</span><span class="o">=</span><span class="n">PlanMetadata</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Basic Credits Plan&quot;</span><span class="p">),</span>
-<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>    <span class="n">price_config</span><span class="o">=</span><span class="n">get_erc20_price_config</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">ERC20_TOKEN</span><span class="p">,</span> <span class="n">builder_address</span><span class="p">),</span>
-<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>    <span class="n">credits_config</span><span class="o">=</span><span class="n">get_fixed_credits_config</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
-<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a><span class="p">)</span>
-<a id="__codelineno-15-26" name="__codelineno-15-26" href="#__codelineno-15-26"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Credits Plan: </span><span class="si">{</span><span class="n">credits_plan</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-15-27" name="__codelineno-15-27" href="#__codelineno-15-27"></a>
-<a id="__codelineno-15-28" name="__codelineno-15-28" href="#__codelineno-15-28"></a><span class="c1"># 2. Create a time plan</span>
-<a id="__codelineno-15-29" name="__codelineno-15-29" href="#__codelineno-15-29"></a><span class="n">time_plan</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">register_time_plan</span><span class="p">(</span>
-<a id="__codelineno-15-30" name="__codelineno-15-30" href="#__codelineno-15-30"></a>    <span class="n">plan_metadata</span><span class="o">=</span><span class="n">PlanMetadata</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Monthly Plan&quot;</span><span class="p">),</span>
-<a id="__codelineno-15-31" name="__codelineno-15-31" href="#__codelineno-15-31"></a>    <span class="n">price_config</span><span class="o">=</span><span class="n">get_erc20_price_config</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">ERC20_TOKEN</span><span class="p">,</span> <span class="n">builder_address</span><span class="p">),</span>
-<a id="__codelineno-15-32" name="__codelineno-15-32" href="#__codelineno-15-32"></a>    <span class="n">credits_config</span><span class="o">=</span><span class="n">get_expirable_duration_config</span><span class="p">(</span><span class="n">ONE_DAY_DURATION</span><span class="p">)</span>
-<a id="__codelineno-15-33" name="__codelineno-15-33" href="#__codelineno-15-33"></a><span class="p">)</span>
-<a id="__codelineno-15-34" name="__codelineno-15-34" href="#__codelineno-15-34"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Time Plan: </span><span class="si">{</span><span class="n">time_plan</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-15-35" name="__codelineno-15-35" href="#__codelineno-15-35"></a>
-<a id="__codelineno-15-36" name="__codelineno-15-36" href="#__codelineno-15-36"></a><span class="c1"># 3. Create a free trial</span>
-<a id="__codelineno-15-37" name="__codelineno-15-37" href="#__codelineno-15-37"></a><span class="n">trial_plan</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">register_credits_trial_plan</span><span class="p">(</span>
-<a id="__codelineno-15-38" name="__codelineno-15-38" href="#__codelineno-15-38"></a>    <span class="n">plan_metadata</span><span class="o">=</span><span class="n">PlanMetadata</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Free Trial&quot;</span><span class="p">),</span>
-<a id="__codelineno-15-39" name="__codelineno-15-39" href="#__codelineno-15-39"></a>    <span class="n">price_config</span><span class="o">=</span><span class="n">get_free_price_config</span><span class="p">(),</span>
-<a id="__codelineno-15-40" name="__codelineno-15-40" href="#__codelineno-15-40"></a>    <span class="n">credits_config</span><span class="o">=</span><span class="n">get_fixed_credits_config</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-<a id="__codelineno-15-41" name="__codelineno-15-41" href="#__codelineno-15-41"></a><span class="p">)</span>
-<a id="__codelineno-15-42" name="__codelineno-15-42" href="#__codelineno-15-42"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trial Plan: </span><span class="si">{</span><span class="n">trial_plan</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-15-43" name="__codelineno-15-43" href="#__codelineno-15-43"></a>
-<a id="__codelineno-15-44" name="__codelineno-15-44" href="#__codelineno-15-44"></a><span class="c1"># 4. Retrieve plan details</span>
-<a id="__codelineno-15-45" name="__codelineno-15-45" href="#__codelineno-15-45"></a><span class="n">plan_details</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan</span><span class="p">(</span><span class="n">credits_plan</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">])</span>
-<a id="__codelineno-15-46" name="__codelineno-15-46" href="#__codelineno-15-46"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plan details: </span><span class="si">{</span><span class="n">plan_details</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py</span><span class="w"> </span><span class="kn">import</span> <span class="n">Payments</span><span class="p">,</span> <span class="n">PaymentOptions</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlanMetadata</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    <span class="n">get_erc20_price_config</span><span class="p">,</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="n">get_fixed_credits_config</span><span class="p">,</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="n">get_expirable_duration_config</span><span class="p">,</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    <span class="n">get_free_price_config</span><span class="p">,</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    <span class="n">ONE_DAY_DURATION</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="p">)</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="c1"># Initialize</span>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>    <span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:your-key&quot;</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;sandbox&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a><span class="p">)</span>
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a><span class="n">builder_address</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">account_address</span>
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a><span class="c1"># ERC20 token address (use a test token in sandbox)</span>
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a><span class="n">ERC20_TOKEN</span> <span class="o">=</span> <span class="s2">&quot;0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d&quot;</span>
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a><span class="c1"># 1. Create a credits plan</span>
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a><span class="n">credits_plan</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">register_credits_plan</span><span class="p">(</span>
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>    <span class="n">plan_metadata</span><span class="o">=</span><span class="n">PlanMetadata</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Basic Credits Plan&quot;</span><span class="p">),</span>
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>    <span class="n">price_config</span><span class="o">=</span><span class="n">get_erc20_price_config</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">ERC20_TOKEN</span><span class="p">,</span> <span class="n">builder_address</span><span class="p">),</span>
+<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>    <span class="n">credits_config</span><span class="o">=</span><span class="n">get_fixed_credits_config</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a><span class="p">)</span>
+<a id="__codelineno-17-26" name="__codelineno-17-26" href="#__codelineno-17-26"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Credits Plan: </span><span class="si">{</span><span class="n">credits_plan</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-27" name="__codelineno-17-27" href="#__codelineno-17-27"></a>
+<a id="__codelineno-17-28" name="__codelineno-17-28" href="#__codelineno-17-28"></a><span class="c1"># 2. Create a time plan</span>
+<a id="__codelineno-17-29" name="__codelineno-17-29" href="#__codelineno-17-29"></a><span class="n">time_plan</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">register_time_plan</span><span class="p">(</span>
+<a id="__codelineno-17-30" name="__codelineno-17-30" href="#__codelineno-17-30"></a>    <span class="n">plan_metadata</span><span class="o">=</span><span class="n">PlanMetadata</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Monthly Plan&quot;</span><span class="p">),</span>
+<a id="__codelineno-17-31" name="__codelineno-17-31" href="#__codelineno-17-31"></a>    <span class="n">price_config</span><span class="o">=</span><span class="n">get_erc20_price_config</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">ERC20_TOKEN</span><span class="p">,</span> <span class="n">builder_address</span><span class="p">),</span>
+<a id="__codelineno-17-32" name="__codelineno-17-32" href="#__codelineno-17-32"></a>    <span class="n">credits_config</span><span class="o">=</span><span class="n">get_expirable_duration_config</span><span class="p">(</span><span class="n">ONE_DAY_DURATION</span><span class="p">)</span>
+<a id="__codelineno-17-33" name="__codelineno-17-33" href="#__codelineno-17-33"></a><span class="p">)</span>
+<a id="__codelineno-17-34" name="__codelineno-17-34" href="#__codelineno-17-34"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Time Plan: </span><span class="si">{</span><span class="n">time_plan</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-35" name="__codelineno-17-35" href="#__codelineno-17-35"></a>
+<a id="__codelineno-17-36" name="__codelineno-17-36" href="#__codelineno-17-36"></a><span class="c1"># 3. Create a free trial</span>
+<a id="__codelineno-17-37" name="__codelineno-17-37" href="#__codelineno-17-37"></a><span class="n">trial_plan</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">register_credits_trial_plan</span><span class="p">(</span>
+<a id="__codelineno-17-38" name="__codelineno-17-38" href="#__codelineno-17-38"></a>    <span class="n">plan_metadata</span><span class="o">=</span><span class="n">PlanMetadata</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Free Trial&quot;</span><span class="p">),</span>
+<a id="__codelineno-17-39" name="__codelineno-17-39" href="#__codelineno-17-39"></a>    <span class="n">price_config</span><span class="o">=</span><span class="n">get_free_price_config</span><span class="p">(),</span>
+<a id="__codelineno-17-40" name="__codelineno-17-40" href="#__codelineno-17-40"></a>    <span class="n">credits_config</span><span class="o">=</span><span class="n">get_fixed_credits_config</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-17-41" name="__codelineno-17-41" href="#__codelineno-17-41"></a><span class="p">)</span>
+<a id="__codelineno-17-42" name="__codelineno-17-42" href="#__codelineno-17-42"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trial Plan: </span><span class="si">{</span><span class="n">trial_plan</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-43" name="__codelineno-17-43" href="#__codelineno-17-43"></a>
+<a id="__codelineno-17-44" name="__codelineno-17-44" href="#__codelineno-17-44"></a><span class="c1"># 4. Retrieve plan details</span>
+<a id="__codelineno-17-45" name="__codelineno-17-45" href="#__codelineno-17-45"></a><span class="n">plan_details</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan</span><span class="p">(</span><span class="n">credits_plan</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">])</span>
+<a id="__codelineno-17-46" name="__codelineno-17-46" href="#__codelineno-17-46"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plan details: </span><span class="si">{</span><span class="n">plan_details</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
