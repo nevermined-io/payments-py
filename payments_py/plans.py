@@ -112,7 +112,7 @@ def get_eurc_price_config(
     Get a price configuration for EURC (Euro stablecoin) payments.
 
     Args:
-        amount: The amount in EURC minor units (6 decimals)
+        amount: The amount in the smallest unit of the EURC token
         receiver: The address that will receive the payment
         eurc_address: EURC token address (defaults to Base Mainnet)
 
