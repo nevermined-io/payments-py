@@ -9,7 +9,6 @@ import pytest
 from payments_py.x402.token import X402TokenAPI, decode_access_token
 from payments_py.x402.types import (
     DelegationConfig,
-    CardDelegationConfig,
     X402TokenOptions,
 )
 
@@ -57,7 +56,7 @@ class TestTokenWithOptions:
         api = X402TokenAPI(mock_options)
         token_options = X402TokenOptions(
             scheme="nvm:card-delegation",
-            delegation_config=CardDelegationConfig(
+            delegation_config=DelegationConfig(
                 provider_payment_method_id="pm_123",
                 spending_limit_cents=10000,
                 duration_secs=604800,

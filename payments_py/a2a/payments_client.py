@@ -19,7 +19,7 @@ from a2a.types import (
 
 if TYPE_CHECKING:  # pragma: no cover
     from payments_py.payments import Payments
-    from payments_py.x402.types import CardDelegationConfig
+    from payments_py.x402.types import DelegationConfig
 
 
 class PaymentsClient:  # noqa: D101
@@ -30,7 +30,7 @@ class PaymentsClient:  # noqa: D101
         payments: "Payments",
         agent_id: str,
         plan_id: str,
-        delegation_config: Optional["CardDelegationConfig"] = None,
+        delegation_config: Optional["DelegationConfig"] = None,
     ) -> None:
         # Preserve trailing slash to avoid JSON-RPC 307 redirects between /a2a and /a2a/
         self._agent_base_url = (

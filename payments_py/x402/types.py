@@ -306,9 +306,6 @@ class DelegationConfig(BaseModel):
     )
 
 
-# Backward-compatible alias
-CardDelegationConfig = DelegationConfig
-
 
 class CreateDelegationPayload(BaseModel):
     """

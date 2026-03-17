@@ -58,7 +58,6 @@ from .types import (
     PaymentContext,
     # Delegation types
     DelegationConfig,
-    CardDelegationConfig,
     CreateDelegationPayload,
     CreateDelegationResponse,
     X402TokenOptions,
@@ -105,7 +104,6 @@ __all__ = [
     "PaymentContext",
     # Delegation types
     "DelegationConfig",
-    "CardDelegationConfig",
     "CreateDelegationPayload",
     "CreateDelegationResponse",
     "X402TokenOptions",
