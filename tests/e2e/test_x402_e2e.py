@@ -323,6 +323,31 @@ class TestX402DelegationFlow:
         print("Successfully reused delegation for another token generation")
 
     @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_auto_create_delegation(self, payments_subscriber):
+        """Test token generation with auto-created delegation (Pattern A)."""
+        assert self.plan_id is not None, "plan_id must be set by previous test"
+
+        response = retry_with_backoff(
+            lambda: payments_subscriber.x402.get_x402_access_token(
+                self.plan_id,
+                self.agent_id,
+                token_options=X402TokenOptions(
+                    delegation_config=DelegationConfig(
+                        spending_limit_cents=50000,
+                        duration_secs=3600,
+                    )
+                ),
+            ),
+            label="X402 Access Token Auto-Delegation",
+            attempts=3,
+        )
+
+        assert response is not None
+        assert response.get("accessToken") is not None
+        assert len(response.get("accessToken")) > 0
+        print("Successfully generated token with auto-created delegation")
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
     def test_settle_remaining_credits(self, payments_agent, payments_subscriber):
         """Test settling the remaining credits in smaller amounts."""
 
