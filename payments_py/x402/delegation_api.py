@@ -27,6 +27,7 @@ class PaymentMethodSummary(BaseModel):
     """
 
     id: str
+    type: Optional[str] = None
     brand: str
     last4: str
     exp_month: int = Field(alias="expMonth")

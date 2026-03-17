@@ -14,8 +14,6 @@ import pytest
 from datetime import datetime
 from payments_py.common.types import (
     PlanMetadata,
-    AgentMetadata,
-    AgentAPIAttributes,
 )
 from payments_py.environments import ZeroAddress
 from payments_py.plans import (
@@ -38,13 +36,21 @@ SKIP = not os.environ.get("CARD_DELEGATION_E2E")
 pytestmark = pytest.mark.skipif(SKIP, reason="CARD_DELEGATION_E2E not set")
 
 
+def _find_card(payment_methods):
+    """Find the first payment method of type 'card' from the list."""
+    for pm in payment_methods:
+        if getattr(pm, "type", None) == "card":
+            return pm
+    return None
+
+
 class TestX402CardDelegationFlow:
     """Test X402 card delegation (Stripe) integration."""
 
     plan_id = None
-    agent_id = None
     delegation_id = None
     x402_access_token = None
+    x402_auto_token = None
     agent_address = None
 
     @pytest.mark.timeout(TEST_TIMEOUT)
@@ -54,8 +60,8 @@ class TestX402CardDelegationFlow:
         assert self.agent_address is not None
 
     @pytest.mark.timeout(TEST_TIMEOUT)
-    def test_create_fiat_plan(self, payments_agent):
-        """Create a fiat credits plan for card delegation testing."""
+    def test_create_plan(self, payments_agent):
+        """Create a credits plan for card delegation testing."""
         timestamp = datetime.now().isoformat()
         plan_metadata = PlanMetadata(
             name=f"E2E Card Delegation Plan PYTHON {timestamp}",
@@ -79,52 +85,14 @@ class TestX402CardDelegationFlow:
         print(f"Created card delegation plan with ID: {self.plan_id}")
 
     @pytest.mark.timeout(TEST_TIMEOUT)
-    def test_create_agent(self, payments_agent):
-        """Create an agent for card delegation testing."""
-        assert self.plan_id is not None
-
-        timestamp = datetime.now().isoformat()
-        agent_metadata = AgentMetadata(
-            name=f"E2E Card Agent PYTHON {timestamp}",
-            description="Test agent for card delegation",
-            tags=["card-delegation", "test"],
-        )
-
-        agent_api = AgentAPIAttributes(
-            endpoints=[{"verb": "POST", "url": "http://localhost/ask"}],
-            open_endpoints=[],
-            agent_definition_url="http://localhost/agent-definition",
-            auth_type="bearer",
-        )
-
-        result = retry_with_backoff(
-            lambda: payments_agent.agents.register_agent(
-                agent_metadata, agent_api, [self.plan_id]
-            ),
-            label="Card Agent Registration",
-            attempts=6,
-        )
-
-        assert result is not None
-        TestX402CardDelegationFlow.agent_id = result.get("agentId")
-        assert self.agent_id is not None
-
-        def _check():
-            try:
-                agent = payments_agent.agents.get_agent(self.agent_id)
-                return agent is not None and agent.get("id") == self.agent_id
-            except Exception:
-                return False
-
-        assert wait_for_condition(_check, "Agent Availability", 30.0, 2.0)
-
-    @pytest.mark.timeout(TEST_TIMEOUT)
     def test_create_card_delegation(self, payments_subscriber):
         """Create a card delegation using an enrolled Stripe card."""
-        cards = payments_subscriber.delegation.list_payment_methods()
-        assert len(cards) > 0, "No enrolled payment methods found"
+        methods = payments_subscriber.delegation.list_payment_methods()
+        card = _find_card(methods)
+        assert card is not None, (
+            f"No payment method of type 'card' found among {len(methods)} methods"
+        )
 
-        card = cards[0]
         print(f"Using card: {card.brand} ...{card.last4}")
 
         delegation = retry_with_backoff(
@@ -146,15 +114,14 @@ class TestX402CardDelegationFlow:
         print(f"Created card delegation: {self.delegation_id}")
 
     @pytest.mark.timeout(TEST_TIMEOUT)
-    def test_generate_token_with_card_delegation(self, payments_subscriber):
-        """Generate X402 access token using card delegation."""
+    def test_generate_token_with_explicit_delegation(self, payments_subscriber):
+        """Generate X402 access token using an explicit delegationId (Pattern B)."""
         assert self.plan_id is not None
         assert self.delegation_id is not None
 
         response = retry_with_backoff(
             lambda: payments_subscriber.x402.get_x402_access_token(
                 self.plan_id,
-                self.agent_id,
                 token_options=X402TokenOptions(
                     scheme="nvm:card-delegation",
                     delegation_config=DelegationConfig(
@@ -162,7 +129,7 @@ class TestX402CardDelegationFlow:
                     ),
                 ),
             ),
-            label="Card Delegation Token Generation",
+            label="Card Delegation Token Generation (explicit)",
             attempts=3,
         )
 
@@ -171,6 +138,38 @@ class TestX402CardDelegationFlow:
         assert self.x402_access_token is not None
         print(
             f"Generated card delegation token (length: {len(self.x402_access_token)})"
+        )
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_generate_token_with_auto_delegation(self, payments_subscriber):
+        """Generate X402 access token with auto-created delegation (Pattern A)."""
+        assert self.plan_id is not None
+
+        methods = payments_subscriber.delegation.list_payment_methods()
+        card = _find_card(methods)
+        assert card is not None, "No card-type payment method found"
+
+        response = retry_with_backoff(
+            lambda: payments_subscriber.x402.get_x402_access_token(
+                self.plan_id,
+                token_options=X402TokenOptions(
+                    scheme="nvm:card-delegation",
+                    delegation_config=DelegationConfig(
+                        provider_payment_method_id=card.id,
+                        spending_limit_cents=5000,
+                        duration_secs=3600,
+                    ),
+                ),
+            ),
+            label="Card Delegation Token Generation (auto)",
+            attempts=3,
+        )
+
+        assert response is not None
+        TestX402CardDelegationFlow.x402_auto_token = response.get("accessToken")
+        assert self.x402_auto_token is not None
+        print(
+            f"Generated auto-delegation token (length: {len(self.x402_auto_token)})"
         )
 
     @pytest.mark.timeout(TEST_TIMEOUT)
@@ -191,12 +190,70 @@ class TestX402CardDelegationFlow:
             extensions={},
         )
 
-        response = payments_agent.facilitator.verify_permissions(
-            payment_required=payment_required,
-            x402_access_token=self.x402_access_token,
-            max_amount="2",
+        response = retry_with_backoff(
+            lambda: payments_agent.facilitator.verify_permissions(
+                payment_required=payment_required,
+                x402_access_token=self.x402_access_token,
+                max_amount="2",
+            ),
+            label="Card Delegation Verify",
+            attempts=3,
         )
 
         assert response is not None
         assert response.is_valid is True
         print(f"Card delegation verify response: {response}")
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_settle_with_card_delegation(self, payments_agent, payments_subscriber):
+        """Settle (burn credits) using card delegation token."""
+        assert self.x402_access_token is not None
+
+        payment_required = X402PaymentRequired(
+            x402_version=2,
+            resource=X402Resource(url="/test/endpoint"),
+            accepts=[
+                X402Scheme(
+                    scheme="nvm:card-delegation",
+                    network="stripe",
+                    plan_id=self.plan_id,
+                )
+            ],
+            extensions={},
+        )
+
+        response = retry_with_backoff(
+            lambda: payments_agent.facilitator.settle_permissions(
+                payment_required=payment_required,
+                x402_access_token=self.x402_access_token,
+                max_amount="2",
+            ),
+            label="Card Delegation Settle",
+            attempts=3,
+        )
+
+        assert response is not None
+        assert response.success is True
+        assert response.credits_redeemed == "2"
+        print(f"Card delegation settle: credits_redeemed={response.credits_redeemed}")
+
+        # Wait for balance to reflect settlement (should be 8 from 10)
+        def _check_balance():
+            try:
+                balance = payments_subscriber.plans.get_plan_balance(self.plan_id)
+                if not balance:
+                    return False
+                bal = int(balance.balance)
+                print(f"Balance after card settle: {bal}")
+                return bal == 8
+            except Exception as e:
+                print(f"Error checking balance: {e}")
+                return False
+
+        balance_updated = wait_for_condition(
+            _check_balance,
+            label="Balance After Card Settlement",
+            timeout_secs=30.0,
+            poll_interval_secs=2.0,
+        )
+        assert balance_updated, "Balance was not updated after card delegation settlement"
