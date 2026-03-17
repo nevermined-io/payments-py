@@ -21,7 +21,7 @@ payments = Payments.get_instance(
     PaymentOptions(nvm_api_key="nvm:subscriber-key", environment="sandbox")
 )
 
-# Generate access token
+# Generate access token (basic — auto-creates delegation)
 result = payments.x402.get_x402_access_token(
     plan_id="your-plan-id",
     agent_id="agent-id"  # Optional but recommended
@@ -37,22 +37,44 @@ print(f"Access Token: {access_token[:50]}...")
 |-----------|------|----------|-------------|
 | `plan_id` | `str` | Yes | The payment plan ID |
 | `agent_id` | `str` | No | Target agent ID (recommended) |
-| `redemption_limit` | `int` | No | Max number of redemptions |
-| `order_limit` | `str` | No | Max spend in wei |
-| `expiration` | `str` | No | ISO 8601 expiration date |
+| `token_options` | `X402TokenOptions` | No | Scheme and delegation configuration |
 
-### Advanced Token Options
+### Token Generation with Delegation
+
+For erc4337 (crypto) plans, token generation now uses delegations. Two patterns are supported:
 
 ```python
-from datetime import datetime, timedelta
+from payments_py.x402 import X402TokenOptions, DelegationConfig, CreateDelegationPayload
 
-# Token with limits and expiration
+# Pattern A — Auto-create delegation (simple)
 result = payments.x402.get_x402_access_token(
     plan_id="your-plan-id",
     agent_id="agent-id",
-    redemption_limit=10,  # Max 10 requests
-    order_limit="1000000000000000000",  # Max 1 token in wei
-    expiration=(datetime.now() + timedelta(hours=24)).isoformat()
+    token_options=X402TokenOptions(
+        delegation_config=DelegationConfig(
+            spending_limit_cents=10000,  # $100
+            duration_secs=604800         # 1 week
+        )
+    )
+)
+
+# Pattern B — Explicit create + reuse (for sharing across plans)
+delegation = payments.delegation.create_delegation(
+    CreateDelegationPayload(
+        provider="erc4337",
+        spending_limit_cents=10000,
+        duration_secs=604800
+    )
+)
+
+result = payments.x402.get_x402_access_token(
+    plan_id="your-plan-id",
+    agent_id="agent-id",
+    token_options=X402TokenOptions(
+        delegation_config=DelegationConfig(
+            delegation_id=delegation.delegation_id
+        )
+    )
 )
 ```
 
@@ -205,7 +227,7 @@ except requests.HTTPError as e:
     if e.response.status_code == 401:
         print("Token expired or invalid - generate a new token")
         # Regenerate token
-        new_token = payments.x402.get_x402_access_token(plan_id, agent_id)
+        new_token = payments.x402.get_x402_access_token(plan_id, agent_id, token_options=token_options)
 ```
 
 ## Request Flow Diagram

@@ -35,7 +35,11 @@ poetry run black --check .      # Check formatting only
 
 ### Update Documentation When Changing Public APIs
 
-When modifying public interfaces (function signatures, options, types, response fields) in `payments_py/`, update the corresponding documentation in `docs/api/` to reflect the changes. These are manually maintained guides — not auto-generated.
+When modifying public interfaces (function signatures, options, types, response fields) in `payments_py/`, update the corresponding documentation in `docs/api/` to reflect the changes. These are **hand-written guides** — not auto-generated. Code examples in these files will break at runtime if they reference removed parameters, so they must be updated alongside the source code.
+
+Key docs to update when changing x402/token/delegation APIs:
+- `docs/api/07-querying-an-agent.md` — token generation examples and parameter tables
+- `docs/api/11-x402.md` — scheme examples, delegation config, DelegationAPI usage
 
 After updating, rebuild the documentation site to verify:
 
@@ -43,7 +47,7 @@ After updating, rebuild the documentation site to verify:
 poetry run mkdocs build          # Must succeed without errors
 ```
 
-The `docs/reference/` files are auto-generated from docstrings via mkdocstrings, so keep docstrings up to date in the source code.
+The `docs/reference/` files are auto-generated from docstrings via mkdocstrings, so keep docstrings up to date in the source code. The `docs.yml` CI workflow deploys docs via `mike` on push to main and on version tags.
 
 ### Code Changes Require Test Updates
 
