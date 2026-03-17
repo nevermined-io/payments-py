@@ -80,7 +80,7 @@ pytest tests/e2e/test_x402_e2e.py -v
 pytest tests/e2e/test_a2a_e2e.py -v
 
 # Run specific test
-pytest tests/e2e/test_x402_e2e.py::TestX402AccessTokenFlow::test_05_get_x402_access_token -v
+pytest tests/e2e/test_x402_e2e.py::TestX402DelegationFlow::test_get_x402_access_token -v
 
 # Skip E2E tests (if marked as 'slow')
 pytest tests/ -m "not slow"
