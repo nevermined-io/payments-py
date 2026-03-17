@@ -306,7 +306,6 @@ class DelegationConfig(BaseModel):
     )
 
 
-
 class CreateDelegationPayload(BaseModel):
     """
     Payload for creating a new delegation via POST /api/v1/delegation/create.

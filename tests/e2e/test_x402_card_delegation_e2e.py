@@ -89,9 +89,9 @@ class TestX402CardDelegationFlow:
         """Create a card delegation using an enrolled Stripe card."""
         methods = payments_subscriber.delegation.list_payment_methods()
         card = _find_card(methods)
-        assert card is not None, (
-            f"No payment method of type 'card' found among {len(methods)} methods"
-        )
+        assert (
+            card is not None
+        ), f"No payment method of type 'card' found among {len(methods)} methods"
 
         print(f"Using card: {card.brand} ...{card.last4}")
 
@@ -168,9 +168,7 @@ class TestX402CardDelegationFlow:
         assert response is not None
         TestX402CardDelegationFlow.x402_auto_token = response.get("accessToken")
         assert self.x402_auto_token is not None
-        print(
-            f"Generated auto-delegation token (length: {len(self.x402_auto_token)})"
-        )
+        print(f"Generated auto-delegation token (length: {len(self.x402_auto_token)})")
 
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_verify_with_card_delegation(self, payments_agent):
@@ -256,4 +254,6 @@ class TestX402CardDelegationFlow:
             timeout_secs=30.0,
             poll_interval_secs=2.0,
         )
-        assert balance_updated, "Balance was not updated after card delegation settlement"
+        assert (
+            balance_updated
+        ), "Balance was not updated after card delegation settlement"

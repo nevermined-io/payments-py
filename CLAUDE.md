@@ -16,12 +16,12 @@ poetry run black .          # Format code
 
 ## Development Workflow
 
-### Always Format and Build After Changes
+### Always Format Before Committing
 
-**IMPORTANT:** After making ANY code changes (including new files and test files), always run:
+**CRITICAL:** Always run `poetry run black .` before every `git commit`. The CI lint job will fail if any files are not formatted. This applies to ALL Python files — source, tests, and scripts.
 
 ```bash
-poetry run black .              # Format all code (REQUIRED)
+poetry run black .              # Format all code (REQUIRED before commit)
 poetry build                    # Build must succeed
 ```
 
