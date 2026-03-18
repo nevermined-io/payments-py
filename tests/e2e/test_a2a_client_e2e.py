@@ -17,6 +17,7 @@ import requests
 from payments_py.payments import Payments
 from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.a2a.agent_card import build_payment_agent_card
+from payments_py.x402 import CreateDelegationPayload, DelegationConfig
 from tests.e2e.helpers.a2a_setup_helpers import create_a2a_test_agent_and_plan
 from tests.e2e.conftest import (
     TEST_TIMEOUT,
@@ -66,6 +67,19 @@ def setup_plan_and_agent(payments_builder: Payments, payments_subscriber: Paymen
     assert order_result.get("success") is True
 
     return {"plan_id": PLAN_ID, "agent_id": AGENT_ID}
+
+
+@pytest.fixture(scope="module")
+def delegation_config(payments_subscriber: Payments):
+    """Create a delegation for erc4337 token generation."""
+    delegation = payments_subscriber.delegation.create_delegation(
+        CreateDelegationPayload(
+            provider="erc4337",
+            spending_limit_cents=100000,
+            duration_secs=604800,
+        )
+    )
+    return DelegationConfig(delegation_id=delegation.delegation_id)
 
 
 @pytest.fixture(autouse=True)
@@ -215,12 +229,17 @@ def running_server(payments_builder: Payments, setup_plan_and_agent):
 class TestA2AClientE2E:
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_client_registration(
-        self, payments_subscriber: Payments, setup_plan_and_agent, running_server
+        self,
+        payments_subscriber: Payments,
+        setup_plan_and_agent,
+        running_server,
+        delegation_config,
     ):  # noqa: D401
         client = payments_subscriber.a2a["get_client"](
             agent_base_url="http://localhost:6782/a2a/",
             agent_id=setup_plan_and_agent["agent_id"],
             plan_id=setup_plan_and_agent["plan_id"],
+            delegation_config=delegation_config,
         )
         assert client is not None
         assert hasattr(client, "send_message")
@@ -230,12 +249,17 @@ class TestA2AClientE2E:
     @pytest.mark.asyncio()
     @pytest.mark.timeout(TEST_TIMEOUT)
     async def test_send_message_and_stream(
-        self, payments_subscriber: Payments, setup_plan_and_agent, running_server
+        self,
+        payments_subscriber: Payments,
+        setup_plan_and_agent,
+        running_server,
+        delegation_config,
     ):  # noqa: D401
         client = payments_subscriber.a2a["get_client"](
             agent_base_url="http://localhost:6782/a2a/",
             agent_id=setup_plan_and_agent["agent_id"],
             plan_id=setup_plan_and_agent["plan_id"],
+            delegation_config=delegation_config,
         )
 
         # Send a simple message
@@ -279,12 +303,17 @@ class TestA2AClientE2E:
     @pytest.mark.asyncio()
     @pytest.mark.timeout(TEST_TIMEOUT)
     async def test_resubscribe(
-        self, payments_subscriber: Payments, setup_plan_and_agent, running_server
+        self,
+        payments_subscriber: Payments,
+        setup_plan_and_agent,
+        running_server,
+        delegation_config,
     ):  # noqa: D401
         client = payments_subscriber.a2a["get_client"](
             agent_base_url="http://localhost:6782/a2a/",
             agent_id=setup_plan_and_agent["agent_id"],
             plan_id=setup_plan_and_agent["plan_id"],
+            delegation_config=delegation_config,
         )
 
         # Start streaming but stop early to simulate disconnect

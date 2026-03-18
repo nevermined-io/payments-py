@@ -26,6 +26,7 @@ from a2a.types import (
 from payments_py import Payments
 from payments_py.a2a.agent_card import build_payment_agent_card
 from payments_py.common.types import PaymentOptions
+from payments_py.x402 import CreateDelegationPayload, DelegationConfig, X402TokenOptions
 from tests.e2e.helpers.a2a_setup_helpers import create_a2a_test_agent_and_plan
 from tests.e2e.conftest import (
     SUBSCRIBER_API_KEY,
@@ -749,9 +750,23 @@ class TestA2AE2EFlow:
             except Exception:
                 break
 
+        # Create delegation for x402 token generation
+        delegation = cls.payments_subscriber.delegation.create_delegation(
+            CreateDelegationPayload(
+                provider="erc4337",
+                spending_limit_cents=100000,
+                duration_secs=604800,
+            )
+        )
+        cls.delegation_id = delegation.delegation_id
+
         # Get x402 access token
         agent_access_params = cls.payments_subscriber.x402.get_x402_access_token(
-            cls.PLAN_ID, cls.AGENT_ID
+            cls.PLAN_ID,
+            cls.AGENT_ID,
+            token_options=X402TokenOptions(
+                delegation_config=DelegationConfig(delegation_id=cls.delegation_id)
+            ),
         )
         cls.access_token = agent_access_params.get("accessToken")
         if cls.access_token:
@@ -763,7 +778,11 @@ class TestA2AE2EFlow:
     def _refresh_access_token(cls):
         """Get a fresh access token to avoid exhausting redemption limits."""
         agent_access_params = cls.payments_subscriber.x402.get_x402_access_token(
-            cls.PLAN_ID, cls.AGENT_ID
+            cls.PLAN_ID,
+            cls.AGENT_ID,
+            token_options=X402TokenOptions(
+                delegation_config=DelegationConfig(delegation_id=cls.delegation_id)
+            ),
         )
         cls.access_token = agent_access_params.get("accessToken")
         if not cls.access_token:

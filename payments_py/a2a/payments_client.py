@@ -55,11 +55,16 @@ class PaymentsClient:  # noqa: D101
             scheme = resolve_scheme(self._payments, self._plan_id)
 
             # Build token options with resolved scheme
-            token_options = X402TokenOptions(scheme=scheme)
-            if scheme == "nvm:card-delegation" and self._delegation_config:
+            if scheme != "nvm:erc4337":
                 token_options = X402TokenOptions(
                     scheme=scheme, delegation_config=self._delegation_config
                 )
+            elif self._delegation_config:
+                token_options = X402TokenOptions(
+                    delegation_config=self._delegation_config
+                )
+            else:
+                token_options = X402TokenOptions(scheme=scheme)
 
             getter = self._payments.x402.get_x402_access_token
             if inspect.iscoroutinefunction(getter):
