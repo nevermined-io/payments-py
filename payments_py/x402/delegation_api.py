@@ -1,8 +1,8 @@
 """
-Delegation API for managing card-delegation payment methods.
+Delegation API for managing payment methods and delegations.
 
 Provides access to the user's enrolled Stripe payment methods
-and delegations for use with the nvm:card-delegation x402 scheme.
+and delegations for use with both nvm:erc4337 and nvm:card-delegation x402 schemes.
 """
 
 import requests
@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
+from payments_py.x402.types import CreateDelegationPayload, CreateDelegationResponse
 
 
 class PaymentMethodSummary(BaseModel):
@@ -26,6 +27,7 @@ class PaymentMethodSummary(BaseModel):
     """
 
     id: str
+    type: Optional[str] = None
     brand: str
     last4: str
     exp_month: int = Field(alias="expMonth")
@@ -39,7 +41,7 @@ class PaymentMethodSummary(BaseModel):
 
 class DelegationSummary(BaseModel):
     """
-    Summary of an existing card delegation.
+    Summary of an existing delegation (card or crypto).
 
     Attributes:
         id: Delegation UUID
@@ -70,7 +72,7 @@ class DelegationSummary(BaseModel):
 
 
 class DelegationAPI(BasePaymentsAPI):
-    """API for managing enrolled payment methods and delegations for card delegation."""
+    """API for managing enrolled payment methods and delegations."""
 
     @classmethod
     def get_instance(cls, options: PaymentOptions) -> "DelegationAPI":
@@ -108,6 +110,46 @@ class DelegationAPI(BasePaymentsAPI):
         except Exception as err:
             raise PaymentsError.internal(
                 f"Network error while listing payment methods: {str(err)}"
+            ) from err
+
+    def create_delegation(
+        self, payload: CreateDelegationPayload
+    ) -> CreateDelegationResponse:
+        """
+        Create a new delegation for either stripe or erc4337 provider.
+
+        Args:
+            payload: The delegation creation parameters
+
+        Returns:
+            The created delegation ID (and token for card delegations)
+
+        Raises:
+            PaymentsError: If the request fails
+        """
+        url = f"{self.environment.backend}/api/v1/delegation/create"
+        body = payload.model_dump(exclude_none=True)
+        options = self.get_backend_http_options("POST", body)
+
+        try:
+            response = requests.post(url, **options)
+            response.raise_for_status()
+            return CreateDelegationResponse.model_validate(response.json())
+        except requests.HTTPError as err:
+            try:
+                error_message = response.json().get(
+                    "message", "Failed to create delegation"
+                )
+            except Exception:
+                error_message = "Failed to create delegation"
+            raise PaymentsError.internal(
+                f"{error_message} (HTTP {response.status_code})"
+            ) from err
+        except Exception as err:
+            if isinstance(err, PaymentsError):
+                raise
+            raise PaymentsError.internal(
+                f"Network error while creating delegation: {str(err)}"
             ) from err
 
     def list_delegations(self) -> List[DelegationSummary]:

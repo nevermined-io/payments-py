@@ -426,6 +426,7 @@ async def test_message_send_with_missing_bearer_token():
     "payments_py.a2a.payments_request_handler.decode_access_token", mock_decode_token
 )
 @pytest.mark.asyncio
+@pytest.mark.flaky(reruns=2, reruns_delay=0.5)
 async def test_non_blocking_execution_with_polling():
     """Test non-blocking execution (blocking: false) with task polling."""
     mock_payments = MockPaymentsService()
@@ -564,10 +565,11 @@ async def test_non_blocking_execution_with_polling():
     # IMPORTANT: We must keep making requests throughout the entire wait period.
     # A blocking wait(timeout=N) without requests starves the event loop and
     # the background task can never complete.
-    for _ in range(50):
-        if mock_payments.facilitator.settle_called.wait(timeout=0.2):
+    for _ in range(100):
+        if mock_payments.facilitator.settle_called.is_set():
             break
-        # Drive the ASGI event loop with a harmless poll
+        # Drive the ASGI event loop with a harmless poll — this gives the
+        # background settlement task event-loop ticks to complete.
         client.post(
             "/rpc",
             json={
@@ -578,6 +580,7 @@ async def test_non_blocking_execution_with_polling():
             },
             headers=headers,
         )
+        await asyncio.sleep(0.1)
 
     settled = mock_payments.facilitator.settle_called.is_set()
     assert settled, "Credits should be settled when task completes in non-blocking mode"

@@ -1,8 +1,12 @@
 """
-End-to-end tests for X402 Access Token functionality.
+End-to-end tests for X402 Access Token functionality with delegation flow.
 
-This test suite validates the X402 access token flow which allows AI agents
-to verify and settle permissions on behalf of subscribers using delegated session keys.
+This test suite validates the X402 access token flow using delegations:
+1. Create plan + agent
+2. Create a crypto delegation
+3. Generate token with delegation_id
+4. Verify + settle
+5. Reuse delegation for another token generation
 """
 
 import pytest
@@ -17,16 +21,25 @@ from payments_py.plans import (
     get_crypto_price_config,
     get_dynamic_credits_config,
 )
+from payments_py.x402 import (
+    CreateDelegationPayload,
+    DelegationConfig,
+    X402PaymentRequired,
+    X402Resource,
+    X402Scheme,
+    X402TokenOptions,
+)
 from tests.e2e.utils import retry_with_backoff, wait_for_condition
 from tests.e2e.conftest import TEST_TIMEOUT
 
 
-class TestX402AccessTokenFlow:
-    """Test X402 Access Token integration using ZeroDev Policies."""
+class TestX402DelegationFlow:
+    """Test X402 Access Token integration using delegation flow."""
 
     # Class variables to store test data across test methods
     plan_id = None
     agent_id = None
+    delegation_id = None
     x402_access_token = None
     subscriber_address = None
     agent_address = None
@@ -39,19 +52,19 @@ class TestX402AccessTokenFlow:
         assert payments_subscriber.account_address is not None
         assert payments_agent.account_address is not None
 
-        TestX402AccessTokenFlow.subscriber_address = payments_subscriber.account_address
-        TestX402AccessTokenFlow.agent_address = payments_agent.account_address
+        TestX402DelegationFlow.subscriber_address = payments_subscriber.account_address
+        TestX402DelegationFlow.agent_address = payments_agent.account_address
 
         print(f"Subscriber address: {self.subscriber_address}")
         print(f"Agent address: {self.agent_address}")
 
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_create_credits_plan(self, payments_agent):
-        """Test creating a credits plan for X402 integration."""
+        """Test creating a credits plan for X402 delegation integration."""
         timestamp = datetime.now().isoformat()
         plan_metadata = PlanMetadata(
             name=f"E2E X402 Credits Plan PYTHON {timestamp}",
-            description="Test plan for X402 Access Token integration",
+            description="Test plan for X402 Delegation integration",
         )
 
         # Create a free crypto plan (amount = 0) for testing
@@ -77,7 +90,7 @@ class TestX402AccessTokenFlow:
         )
 
         assert response is not None
-        TestX402AccessTokenFlow.plan_id = response.get("planId")
+        TestX402DelegationFlow.plan_id = response.get("planId")
         assert self.plan_id is not None
         assert int(self.plan_id) > 0
         print(f"Created X402 Credits Plan with ID: {self.plan_id}")
@@ -90,8 +103,8 @@ class TestX402AccessTokenFlow:
         timestamp = datetime.now().isoformat()
         agent_metadata = AgentMetadata(
             name=f"E2E X402 Agent PYTHON {timestamp}",
-            description="Test agent for X402 Access Token integration",
-            tags=["x402", "test"],
+            description="Test agent for X402 Delegation integration",
+            tags=["x402", "delegation", "test"],
         )
 
         agent_api = AgentAPIAttributes(
@@ -116,7 +129,7 @@ class TestX402AccessTokenFlow:
         )
 
         assert result is not None
-        TestX402AccessTokenFlow.agent_id = result.get("agentId")
+        TestX402DelegationFlow.agent_id = result.get("agentId")
         assert self.agent_id is not None
         print(f"Created X402 Agent with ID: {self.agent_id}")
 
@@ -137,10 +150,33 @@ class TestX402AccessTokenFlow:
         assert agent_available, "Agent did not become available in time"
 
     @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_create_crypto_delegation(self, payments_subscriber):
+        """Test creating a crypto delegation."""
+        delegation = retry_with_backoff(
+            lambda: payments_subscriber.delegation.create_delegation(
+                CreateDelegationPayload(
+                    provider="erc4337",
+                    spending_limit_cents=100000,  # $1000 USDC
+                    duration_secs=604800,  # 1 week
+                )
+            ),
+            label="Crypto Delegation Creation",
+            attempts=3,
+        )
+
+        assert delegation is not None
+        assert delegation.delegation_id is not None
+        TestX402DelegationFlow.delegation_id = delegation.delegation_id
+        print(f"Created crypto delegation with ID: {self.delegation_id}")
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
     def test_get_x402_access_token(self, payments_subscriber):
-        """Test generating X402 access token for the subscriber."""
+        """Test generating X402 access token using delegationId."""
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert self.agent_id is not None, "agent_id must be set by previous test"
+        assert (
+            self.delegation_id is not None
+        ), "delegation_id must be set by previous test"
 
         print(
             f"Generating X402 Access Token for plan: {self.plan_id}, agent: {self.agent_id}"
@@ -148,14 +184,18 @@ class TestX402AccessTokenFlow:
 
         response = retry_with_backoff(
             lambda: payments_subscriber.x402.get_x402_access_token(
-                self.plan_id, self.agent_id
+                self.plan_id,
+                self.agent_id,
+                token_options=X402TokenOptions(
+                    delegation_config=DelegationConfig(delegation_id=self.delegation_id)
+                ),
             ),
             label="X402 Access Token Generation",
             attempts=3,
         )
 
         assert response is not None
-        TestX402AccessTokenFlow.x402_access_token = response.get("accessToken")
+        TestX402DelegationFlow.x402_access_token = response.get("accessToken")
         assert self.x402_access_token is not None
         assert len(self.x402_access_token) > 0
         print(f"Generated X402 Access Token (length: {len(self.x402_access_token)})")
@@ -163,7 +203,6 @@ class TestX402AccessTokenFlow:
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_verify_permissions(self, payments_agent):
         """Test verifying permissions using X402 access token."""
-        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
 
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
@@ -172,7 +211,6 @@ class TestX402AccessTokenFlow:
 
         print(f"Verifying permissions for plan: {self.plan_id}, max_amount: 2")
 
-        # Note: planId and subscriberAddress are extracted from the token
         payment_required = X402PaymentRequired(
             x402_version=2,
             resource=X402Resource(url="/test/endpoint"),
@@ -202,7 +240,6 @@ class TestX402AccessTokenFlow:
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_settle_permissions(self, payments_agent, payments_subscriber):
         """Test settling (burning) credits using X402 access token."""
-        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
 
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
@@ -211,7 +248,6 @@ class TestX402AccessTokenFlow:
 
         print(f"Settling permissions for plan: {self.plan_id}, max_amount: 2")
 
-        # Note: planId and subscriberAddress are extracted from the token
         payment_required = X402PaymentRequired(
             x402_version=2,
             resource=X402Resource(url="/test/endpoint"),
@@ -262,9 +298,58 @@ class TestX402AccessTokenFlow:
         assert balance_updated, "Balance was not updated correctly after settlement"
 
     @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_reuse_delegation(self, payments_subscriber):
+        """Test reusing the same delegation for another token generation."""
+        assert self.plan_id is not None, "plan_id must be set by previous test"
+        assert (
+            self.delegation_id is not None
+        ), "delegation_id must be set by previous test"
+
+        response = retry_with_backoff(
+            lambda: payments_subscriber.x402.get_x402_access_token(
+                self.plan_id,
+                self.agent_id,
+                token_options=X402TokenOptions(
+                    delegation_config=DelegationConfig(delegation_id=self.delegation_id)
+                ),
+            ),
+            label="X402 Access Token Reuse Delegation",
+            attempts=3,
+        )
+
+        assert response is not None
+        assert response.get("accessToken") is not None
+        assert len(response.get("accessToken")) > 0
+        print("Successfully reused delegation for another token generation")
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
+    def test_auto_create_delegation(self, payments_subscriber):
+        """Test token generation with auto-created delegation (Pattern A)."""
+        assert self.plan_id is not None, "plan_id must be set by previous test"
+
+        response = retry_with_backoff(
+            lambda: payments_subscriber.x402.get_x402_access_token(
+                self.plan_id,
+                self.agent_id,
+                token_options=X402TokenOptions(
+                    delegation_config=DelegationConfig(
+                        spending_limit_cents=50000,
+                        duration_secs=3600,
+                    )
+                ),
+            ),
+            label="X402 Access Token Auto-Delegation",
+            attempts=3,
+        )
+
+        assert response is not None
+        assert response.get("accessToken") is not None
+        assert len(response.get("accessToken")) > 0
+        print("Successfully generated token with auto-created delegation")
+
+    @pytest.mark.timeout(TEST_TIMEOUT)
     def test_settle_remaining_credits(self, payments_agent, payments_subscriber):
         """Test settling the remaining credits in smaller amounts."""
-        from payments_py.x402 import X402PaymentRequired, X402Scheme, X402Resource
 
         assert self.plan_id is not None, "plan_id must be set by previous test"
         assert (
@@ -273,7 +358,6 @@ class TestX402AccessTokenFlow:
 
         # Settle 2 more credits (should have 6 remaining after previous settlement)
         print("Settling 2 more credits...")
-        # Note: planId and subscriberAddress are extracted from the token
         payment_required = X402PaymentRequired(
             x402_version=2,
             resource=X402Resource(url="/test/endpoint"),

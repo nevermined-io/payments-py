@@ -19,7 +19,7 @@ from a2a.types import (
 
 if TYPE_CHECKING:  # pragma: no cover
     from payments_py.payments import Payments
-    from payments_py.x402.types import CardDelegationConfig
+    from payments_py.x402.types import DelegationConfig
 
 
 class PaymentsClient:  # noqa: D101
@@ -30,7 +30,7 @@ class PaymentsClient:  # noqa: D101
         payments: "Payments",
         agent_id: str,
         plan_id: str,
-        delegation_config: Optional["CardDelegationConfig"] = None,
+        delegation_config: Optional["DelegationConfig"] = None,
     ) -> None:
         # Preserve trailing slash to avoid JSON-RPC 307 redirects between /a2a and /a2a/
         self._agent_base_url = (
@@ -54,11 +54,23 @@ class PaymentsClient:  # noqa: D101
             # Resolve scheme from plan metadata
             scheme = resolve_scheme(self._payments, self._plan_id)
 
+            # Delegation config is required for all schemes
+            if not self._delegation_config:
+                from payments_py.common.payments_error import PaymentsError
+
+                raise PaymentsError.validation(
+                    f"{scheme} scheme requires delegation_config. "
+                    "Pass it to PaymentsClient() or get_client()."
+                )
+
             # Build token options with resolved scheme
-            token_options = X402TokenOptions(scheme=scheme)
-            if scheme == "nvm:card-delegation" and self._delegation_config:
+            if scheme != "nvm:erc4337":
                 token_options = X402TokenOptions(
                     scheme=scheme, delegation_config=self._delegation_config
+                )
+            else:
+                token_options = X402TokenOptions(
+                    delegation_config=self._delegation_config
                 )
 
             getter = self._payments.x402.get_x402_access_token

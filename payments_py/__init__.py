@@ -39,8 +39,8 @@ from payments_py.x402 import (
     NeverminedFacilitator,
     FacilitatorAPI,
     X402TokenAPI,
-    # Card delegation
-    CardDelegationConfig,
+    # Delegation
+    DelegationConfig,
     X402TokenOptions,
     X402SchemeType,
     X402_SCHEME_NETWORKS,
@@ -134,8 +134,8 @@ __all__ = [
     "SupportedSchemes",
     # X402 Facilitator
     "NeverminedFacilitator",
-    # Card delegation
-    "CardDelegationConfig",
+    # Delegation
+    "DelegationConfig",
     "X402TokenOptions",
     "X402SchemeType",
     "X402_SCHEME_NETWORKS",

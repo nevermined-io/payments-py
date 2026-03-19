@@ -68,24 +68,21 @@ class X402TokenAPI(BasePaymentsAPI):
         self,
         plan_id: str,
         agent_id: Optional[str] = None,
-        redemption_limit: Optional[int] = None,
-        order_limit: Optional[str] = None,
-        expiration: Optional[str] = None,
         token_options: Optional[X402TokenOptions] = None,
     ) -> Dict[str, Any]:
         """
-        Create a permission and get an X402 access token for the given plan.
+        Create a delegation and get an X402 access token for the given plan.
 
-        This token allows the agent to verify and settle permissions on behalf
-        of the subscriber. The token contains cryptographically signed session keys
-        that delegate specific permissions (order, burn) to the agent.
+        This token allows the agent to verify and settle delegations on behalf
+        of the subscriber.
+
+        For erc4337 scheme, you must pass ``token_options.delegation_config`` with either:
+        - ``delegation_id`` to reuse an existing delegation, or
+        - ``spending_limit_cents`` + ``duration_secs`` to auto-create a new one.
 
         Args:
             plan_id: The unique identifier of the payment plan
             agent_id: The unique identifier of the AI agent (optional)
-            redemption_limit: Maximum number of interactions/redemptions allowed (optional)
-            order_limit: Maximum spend limit in token units (wei) for ordering (optional)
-            expiration: Expiration date in ISO 8601 format, e.g. "2025-02-01T10:00:00Z" (optional)
             token_options: Options controlling scheme and delegation behavior (optional)
 
         Returns:
@@ -97,16 +94,25 @@ class X402TokenAPI(BasePaymentsAPI):
 
         Example:
             ```python
-            from payments_py import Payments, PaymentOptions
-            from payments_py.x402 import X402TokenAPI
-
-            payments = Payments.get_instance(
-                PaymentOptions(nvm_api_key="nvm:subscriber-key", environment="sandbox")
+            # Pattern A - auto-create delegation
+            result = payments.x402.get_x402_access_token(
+                plan_id, agent_id,
+                token_options=X402TokenOptions(
+                    delegation_config=DelegationConfig(
+                        spending_limit_cents=10000, duration_secs=604800
+                    )
+                )
             )
 
-            token_api = X402TokenAPI.get_instance(payments.options)
-            result = token_api.get_x402_access_token(plan_id="123", agent_id="456")
-            token = result["accessToken"]
+            # Pattern B - reuse existing delegation
+            result = payments.x402.get_x402_access_token(
+                plan_id, agent_id,
+                token_options=X402TokenOptions(
+                    delegation_config=DelegationConfig(
+                        delegation_id="existing-delegation-uuid"
+                    )
+                )
+            )
             ```
         """
         url = f"{self.environment.backend}{API_URL_CREATE_PERMISSION}"
@@ -137,27 +143,11 @@ class X402TokenAPI(BasePaymentsAPI):
             },
         }
 
-        # Add delegation config for card-delegation scheme
-        if (
-            scheme == "nvm:card-delegation"
-            and token_options
-            and token_options.delegation_config
-        ):
+        # Add delegation config for both erc4337 and card-delegation schemes
+        if token_options and token_options.delegation_config:
             body["delegationConfig"] = token_options.delegation_config.model_dump(
                 by_alias=True, exclude_none=True
             )
-
-        # Add session key config if any options are provided (erc4337 only)
-        if scheme == "nvm:erc4337":
-            session_key_config: Dict[str, Any] = {}
-            if redemption_limit is not None:
-                session_key_config["redemptionLimit"] = redemption_limit
-            if order_limit is not None:
-                session_key_config["orderLimit"] = order_limit
-            if expiration is not None:
-                session_key_config["expiration"] = expiration
-            if session_key_config:
-                body["sessionKeyConfig"] = session_key_config
 
         options = self.get_backend_http_options("POST", body)
 
@@ -168,16 +158,16 @@ class X402TokenAPI(BasePaymentsAPI):
         except requests.HTTPError as err:
             try:
                 error_message = response.json().get(
-                    "message", "Failed to create X402 permission"
+                    "message", "Failed to create X402 delegation token"
                 )
             except Exception:
-                error_message = "Failed to create X402 permission"
+                error_message = "Failed to create X402 delegation token"
             raise PaymentsError.internal(
                 f"{error_message} (HTTP {response.status_code})"
             ) from err
         except Exception as err:
             raise PaymentsError.internal(
-                f"Network error while creating X402 permission: {str(err)}"
+                f"Network error while creating X402 delegation token: {str(err)}"
             ) from err
 
 

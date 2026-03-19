@@ -7,6 +7,7 @@ import pytest
 import pytest_asyncio
 
 from payments_py.a2a.payments_client import PaymentsClient
+from payments_py.x402.types import DelegationConfig
 
 
 class DummyPayments:  # noqa: D101
@@ -33,6 +34,7 @@ async def payments_client(monkeypatch):  # noqa: D401
             payments=dummy_payments,  # type: ignore[arg-type]
             agent_id="agent1",
             plan_id="1",
+            delegation_config=DelegationConfig(delegation_id="test-delegation"),
         )
         # Monkeypatch internal _get_client to avoid ClientFactory path
         client._client = StubClient()  # type: ignore[attr-defined]

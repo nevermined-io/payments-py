@@ -56,8 +56,10 @@ from .types import (
     SettleResponse,
     # Shared context
     PaymentContext,
-    # Card delegation types
-    CardDelegationConfig,
+    # Delegation types
+    DelegationConfig,
+    CreateDelegationPayload,
+    CreateDelegationResponse,
     X402TokenOptions,
 )
 from .helpers import build_payment_required, build_payment_required_for_plans
@@ -100,8 +102,10 @@ __all__ = [
     "SettleResponse",
     # Shared context
     "PaymentContext",
-    # Card delegation types
-    "CardDelegationConfig",
+    # Delegation types
+    "DelegationConfig",
+    "CreateDelegationPayload",
+    "CreateDelegationResponse",
     "X402TokenOptions",
     # Helper functions
     "build_payment_required",

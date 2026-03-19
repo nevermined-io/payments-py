@@ -1,11 +1,16 @@
 """Unit tests for X402 token generation with token_options."""
 
+import base64
+import json
 from unittest.mock import patch, MagicMock
 
 import pytest
 
 from payments_py.x402.token import X402TokenAPI, decode_access_token
-from payments_py.x402.types import CardDelegationConfig, X402TokenOptions
+from payments_py.x402.types import (
+    DelegationConfig,
+    X402TokenOptions,
+)
 
 
 @pytest.fixture
@@ -35,10 +40,7 @@ class TestTokenWithOptions:
         result = api.get_x402_access_token("plan-123")
 
         assert result["accessToken"] == "test-token"
-        # Verify the request body
         call_args = mock_post.call_args
-        import json
-
         body = json.loads(call_args.kwargs.get("data", "{}"))
         assert body["accepted"]["scheme"] == "nvm:erc4337"
         assert body["accepted"]["network"] == "eip155:84532"
@@ -54,7 +56,7 @@ class TestTokenWithOptions:
         api = X402TokenAPI(mock_options)
         token_options = X402TokenOptions(
             scheme="nvm:card-delegation",
-            delegation_config=CardDelegationConfig(
+            delegation_config=DelegationConfig(
                 provider_payment_method_id="pm_123",
                 spending_limit_cents=10000,
                 duration_secs=604800,
@@ -65,8 +67,6 @@ class TestTokenWithOptions:
 
         assert result["accessToken"] == "card-token"
         call_args = mock_post.call_args
-        import json
-
         body = json.loads(call_args.kwargs.get("data", "{}"))
         assert body["accepted"]["scheme"] == "nvm:card-delegation"
         assert body["accepted"]["network"] == "stripe"
@@ -77,51 +77,45 @@ class TestTokenWithOptions:
         assert "sessionKeyConfig" not in body
 
     @patch("payments_py.x402.token.requests.post")
-    def test_erc4337_with_session_key_config(self, mock_post, mock_options):
-        """Test that erc4337 scheme includes sessionKeyConfig."""
+    def test_erc4337_with_delegation_config(self, mock_post, mock_options):
+        """Test that erc4337 scheme includes delegationConfig when provided."""
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
         mock_response.json.return_value = {"accessToken": "erc-token"}
         mock_post.return_value = mock_response
 
         api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(
+                delegation_id="deleg-123",
+            ),
+        )
         result = api.get_x402_access_token(
             "plan-crypto",
-            redemption_limit=10,
-            order_limit="1000",
-            expiration="2026-01-01T00:00:00Z",
+            token_options=token_options,
         )
 
         call_args = mock_post.call_args
-        import json
-
         body = json.loads(call_args.kwargs.get("data", "{}"))
         assert body["accepted"]["scheme"] == "nvm:erc4337"
-        assert body["sessionKeyConfig"]["redemptionLimit"] == 10
-        assert body["sessionKeyConfig"]["orderLimit"] == "1000"
-        assert body["sessionKeyConfig"]["expiration"] == "2026-01-01T00:00:00Z"
-        assert "delegationConfig" not in body
+        assert body["delegationConfig"]["delegationId"] == "deleg-123"
+        assert "sessionKeyConfig" not in body
 
     @patch("payments_py.x402.token.requests.post")
-    def test_card_delegation_no_session_key(self, mock_post, mock_options):
-        """Test that card-delegation does not send sessionKeyConfig even with limits."""
+    def test_erc4337_without_delegation_config(self, mock_post, mock_options):
+        """Test that erc4337 without delegation config sends no delegationConfig."""
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
         mock_response.json.return_value = {"accessToken": "token"}
         mock_post.return_value = mock_response
 
         api = X402TokenAPI(mock_options)
-        token_options = X402TokenOptions(scheme="nvm:card-delegation")
-        result = api.get_x402_access_token(
-            "plan-fiat",
-            redemption_limit=5,  # Should be ignored for card-delegation
-            token_options=token_options,
-        )
+        result = api.get_x402_access_token("plan-crypto")
 
         call_args = mock_post.call_args
-        import json
-
         body = json.loads(call_args.kwargs.get("data", "{}"))
+        assert body["accepted"]["scheme"] == "nvm:erc4337"
+        assert "delegationConfig" not in body
         assert "sessionKeyConfig" not in body
 
 
@@ -129,9 +123,6 @@ class TestDecodeAccessToken:
     """Tests for decode_access_token."""
 
     def test_decode_valid_token(self):
-        import base64
-        import json
-
         data = {"accepted": {"scheme": "nvm:erc4337", "planId": "plan-1"}}
         encoded = base64.b64encode(json.dumps(data).encode()).decode()
         result = decode_access_token(encoded)

@@ -13,6 +13,7 @@ from payments_py.payments import Payments
 from payments_py.common.types import PlanMetadata, PaymentOptions
 from payments_py.environments import ZeroAddress
 from payments_py.x402.token import decode_access_token
+from payments_py.x402 import CreateDelegationPayload, DelegationConfig, X402TokenOptions
 from payments_py.plans import (
     get_erc20_price_config,
     get_expirable_duration_config,
@@ -448,9 +449,22 @@ class TestE2ESubscriberAgentFlow:
         ), "credits_plan_id must be set by previous test"
         assert agent_id is not None, "agent_id must be set by previous test"
 
+        delegation = payments_subscriber.delegation.create_delegation(
+            CreateDelegationPayload(
+                provider="erc4337",
+                spending_limit_cents=100000,
+                duration_secs=604800,
+            )
+        )
         agent_access_params = retry_with_backoff(
             lambda: payments_subscriber.x402.get_x402_access_token(
-                credits_plan_id, agent_id
+                credits_plan_id,
+                agent_id,
+                token_options=X402TokenOptions(
+                    delegation_config=DelegationConfig(
+                        delegation_id=delegation.delegation_id
+                    )
+                ),
             ),
             label="Access Token Generation",
             attempts=5,

@@ -267,9 +267,9 @@ class PaymentContext:
     agent_request: Optional[Any] = None
 
 
-class CardDelegationConfig(BaseModel):
+class DelegationConfig(BaseModel):
     """
-    Configuration for card delegation (fiat/Stripe) payments.
+    Configuration for delegation-based payments (both crypto and card schemes).
 
     To reuse an existing delegation supply ``delegation_id``.
     To reuse an existing card (PaymentMethod entity) supply ``card_id``.
@@ -285,6 +285,7 @@ class CardDelegationConfig(BaseModel):
         currency: Currency code (default: 'usd')
         merchant_account_id: Stripe Connect merchant account ID
         max_transactions: Maximum number of transactions allowed
+        api_key_id: NVM API Key ID to scope the delegation to
     """
 
     card_id: Optional[str] = Field(None, alias="cardId")
@@ -297,6 +298,59 @@ class CardDelegationConfig(BaseModel):
     currency: Optional[str] = None
     merchant_account_id: Optional[str] = Field(None, alias="merchantAccountId")
     max_transactions: Optional[int] = Field(None, alias="maxTransactions")
+    api_key_id: Optional[str] = Field(None, alias="apiKeyId")
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class CreateDelegationPayload(BaseModel):
+    """
+    Payload for creating a new delegation via POST /api/v1/delegation/create.
+
+    Attributes:
+        provider: Delegation provider ('stripe' for card, 'erc4337' for crypto)
+        provider_payment_method_id: Stripe payment method ID (required for stripe provider)
+        spending_limit_cents: Maximum spending limit in cents
+        duration_secs: Duration of the delegation in seconds
+        currency: Currency code (default: 'usd')
+        plan_id: Plan ID to scope the delegation to
+        merchant_account_id: Stripe Connect merchant account ID
+        max_transactions: Maximum number of transactions allowed
+        api_key_id: NVM API Key ID to scope the delegation to
+    """
+
+    provider: str  # 'stripe' or 'erc4337'
+    provider_payment_method_id: Optional[str] = Field(
+        None, alias="providerPaymentMethodId"
+    )
+    spending_limit_cents: int = Field(..., alias="spendingLimitCents")
+    duration_secs: int = Field(..., alias="durationSecs")
+    currency: Optional[str] = None
+    plan_id: Optional[str] = Field(None, alias="planId")
+    merchant_account_id: Optional[str] = Field(None, alias="merchantAccountId")
+    max_transactions: Optional[int] = Field(None, alias="maxTransactions")
+    api_key_id: Optional[str] = Field(None, alias="apiKeyId")
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class CreateDelegationResponse(BaseModel):
+    """
+    Response from creating a delegation.
+
+    Attributes:
+        delegation_token: Delegation token (for card delegations)
+        delegation_id: Delegation UUID
+    """
+
+    delegation_token: Optional[str] = Field(None, alias="delegationToken")
+    delegation_id: str = Field(..., alias="delegationId")
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -311,12 +365,12 @@ class X402TokenOptions(BaseModel):
     Attributes:
         scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
         network: Network identifier (auto-derived from scheme if omitted)
-        delegation_config: Card delegation configuration (only for 'nvm:card-delegation')
+        delegation_config: Delegation configuration for both erc4337 and card-delegation schemes
     """
 
     scheme: Optional[str] = None
     network: Optional[str] = None
-    delegation_config: Optional[CardDelegationConfig] = Field(
+    delegation_config: Optional[DelegationConfig] = Field(
         None, alias="delegationConfig"
     )
 

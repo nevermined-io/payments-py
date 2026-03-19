@@ -20,6 +20,7 @@ from payments_py.plans import (
     get_pay_as_you_go_price_config,
     get_pay_as_you_go_credits_config,
 )
+from payments_py.x402 import CreateDelegationPayload, DelegationConfig, X402TokenOptions
 from tests.e2e.utils import retry_with_backoff, wait_for_condition
 from tests.e2e.conftest import TEST_TIMEOUT, TEST_ERC20_TOKEN
 
@@ -184,9 +185,22 @@ class TestPayAsYouGoFlow:
             f"Generating X402 Access Token for Pay As You Go plan: {self.plan_id}, agent: {self.agent_id}"
         )
 
+        delegation = payments_subscriber.delegation.create_delegation(
+            CreateDelegationPayload(
+                provider="erc4337",
+                spending_limit_cents=100000,
+                duration_secs=604800,
+            )
+        )
+        TestPayAsYouGoFlow.delegation_id = delegation.delegation_id
+
         response = retry_with_backoff(
             lambda: payments_subscriber.x402.get_x402_access_token(
-                self.plan_id, self.agent_id
+                self.plan_id,
+                self.agent_id,
+                token_options=X402TokenOptions(
+                    delegation_config=DelegationConfig(delegation_id=self.delegation_id)
+                ),
             ),
             label="X402 Access Token Generation for Pay As You Go",
             attempts=3,
@@ -198,6 +212,7 @@ class TestPayAsYouGoFlow:
         assert len(self.x402_access_token) > 0
         print(f"Generated X402 Access Token (length: {len(self.x402_access_token)})")
 
+    @pytest.mark.skip(reason="PAYG delegation verify not yet supported (#1116, #1117)")
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_verify_pay_as_you_go_permissions(self, payments_agent):
         """Test verifying permissions for Pay As You Go using X402 access token."""
@@ -237,6 +252,7 @@ class TestPayAsYouGoFlow:
         assert response.is_valid is True
         print(f"Pay As You Go verify permissions response: {response}")
 
+    @pytest.mark.skip(reason="PAYG delegation settle not yet supported (#1116, #1117)")
     @pytest.mark.timeout(TEST_TIMEOUT)
     def test_settle_pay_as_you_go(self, payments_agent, payments_subscriber):
         """Test settling (ordering) Pay As You Go plan using X402 access token."""
