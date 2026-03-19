@@ -41,7 +41,7 @@ class PaymentMethodSummary(BaseModel):
 
 class DelegationSummary(BaseModel):
     """
-    Summary of an existing card delegation.
+    Summary of an existing delegation (card or crypto).
 
     Attributes:
         id: Delegation UUID

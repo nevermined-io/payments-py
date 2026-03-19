@@ -54,17 +54,24 @@ class PaymentsClient:  # noqa: D101
             # Resolve scheme from plan metadata
             scheme = resolve_scheme(self._payments, self._plan_id)
 
+            # Delegation config is required for all schemes
+            if not self._delegation_config:
+                from payments_py.common.payments_error import PaymentsError
+
+                raise PaymentsError.validation(
+                    f"{scheme} scheme requires delegation_config. "
+                    "Pass it to PaymentsClient() or get_client()."
+                )
+
             # Build token options with resolved scheme
             if scheme != "nvm:erc4337":
                 token_options = X402TokenOptions(
                     scheme=scheme, delegation_config=self._delegation_config
                 )
-            elif self._delegation_config:
+            else:
                 token_options = X402TokenOptions(
                     delegation_config=self._delegation_config
                 )
-            else:
-                token_options = X402TokenOptions(scheme=scheme)
 
             getter = self._payments.x402.get_x402_access_token
             if inspect.iscoroutinefunction(getter):

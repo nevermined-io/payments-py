@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from payments_py.a2a.payments_client import PaymentsClient
+from payments_py.x402.types import DelegationConfig
 
 
 class DummyPayments:  # noqa: D101
@@ -23,6 +24,7 @@ async def test_resubscribe_task():  # noqa: D401
         payments=dummy_payments,  # type: ignore[arg-type]
         agent_id="aid",
         plan_id="pid",
+        delegation_config=DelegationConfig(delegation_id="test-delegation"),
     )
 
     # Patch underlying jsonrpc client

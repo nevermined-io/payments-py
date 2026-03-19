@@ -322,7 +322,7 @@ class CreateDelegationPayload(BaseModel):
         api_key_id: NVM API Key ID to scope the delegation to
     """
 
-    provider: Optional[str] = None
+    provider: str  # 'stripe' or 'erc4337'
     provider_payment_method_id: Optional[str] = Field(
         None, alias="providerPaymentMethodId"
     )
