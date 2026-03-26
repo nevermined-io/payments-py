@@ -19,11 +19,13 @@ class PaymentMethodSummary(BaseModel):
     Summary of a user's enrolled payment method.
 
     Attributes:
-        id: Payment method ID (e.g., 'pm_...')
-        brand: Card brand (e.g., 'visa', 'mastercard')
-        last4: Last 4 digits of the card number
-        exp_month: Card expiration month
-        exp_year: Card expiration year
+        id: Payment method ID (Stripe 'pm_...' or Braintree vault token)
+        type: Payment method type (e.g., 'card', 'paypal')
+        brand: Card brand (e.g., 'visa', 'mastercard') or payment method type ('paypal', 'venmo')
+        last4: Last 4 digits (cards) or email/username (PayPal/Venmo)
+        exp_month: Expiration month (0 for non-card methods)
+        exp_year: Expiration year (0 for non-card methods)
+        provider: Payment provider ('stripe' or 'braintree')
     """
 
     id: str
@@ -32,6 +34,7 @@ class PaymentMethodSummary(BaseModel):
     last4: str
     exp_month: int = Field(alias="expMonth")
     exp_year: int = Field(alias="expYear")
+    provider: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
