@@ -32,8 +32,8 @@ class PaymentMethodSummary(BaseModel):
     type: Optional[str] = None
     brand: str
     last4: str
-    exp_month: int = Field(alias="expMonth")
-    exp_year: int = Field(alias="expYear")
+    exp_month: Optional[int] = Field(None, alias="expMonth")
+    exp_year: Optional[int] = Field(None, alias="expYear")
     provider: Optional[str] = None
 
     model_config = ConfigDict(
