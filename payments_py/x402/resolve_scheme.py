@@ -30,7 +30,10 @@ def _fetch_plan_metadata(payments: Any, plan_id: str) -> X402SchemeType:
         registry = plan.get("registry", {}) if isinstance(plan, dict) else {}
         price = registry.get("price", {}) if isinstance(registry, dict) else {}
         is_crypto = price.get("isCrypto")
-        fiat_provider = price.get("fiatPaymentProvider")
+        # fiatPaymentProvider is in plan.metadata.plan, not in registry.price
+        metadata = plan.get("metadata", {}) if isinstance(plan, dict) else {}
+        plan_meta = metadata.get("plan", {}) if isinstance(metadata, dict) else {}
+        fiat_provider = plan_meta.get("fiatPaymentProvider")
         scheme: X402SchemeType = (
             "nvm:card-delegation" if is_crypto is False else "nvm:erc4337"
         )
