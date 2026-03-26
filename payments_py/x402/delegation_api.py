@@ -92,7 +92,7 @@ class DelegationAPI(BasePaymentsAPI):
         Raises:
             PaymentsError: If the request fails
         """
-        url = f"{self.environment.backend}/api/v1/delegation/payment-methods"
+        url = f"{self.environment.backend}/api/v1/payment-methods"
         options = self.get_backend_http_options("GET")
 
         try:
