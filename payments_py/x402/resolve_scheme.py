@@ -30,11 +30,13 @@ def _fetch_plan_metadata(payments: Any, plan_id: str) -> X402SchemeType:
         registry = plan.get("registry", {}) if isinstance(plan, dict) else {}
         price = registry.get("price", {}) if isinstance(registry, dict) else {}
         is_crypto = price.get("isCrypto")
+        fiat_provider = price.get("fiatPaymentProvider")
         scheme: X402SchemeType = (
             "nvm:card-delegation" if is_crypto is False else "nvm:erc4337"
         )
         _plan_metadata_cache[plan_id] = {
             "scheme": scheme,
+            "fiat_provider": fiat_provider,
             "cached_at": time.monotonic(),
         }
         return scheme
@@ -67,6 +69,34 @@ def resolve_scheme(
     if explicit_scheme:
         return explicit_scheme  # type: ignore[return-value]
     return _fetch_plan_metadata(payments, plan_id)
+
+
+def resolve_network(
+    payments: Any,
+    plan_id: str,
+    explicit_network: Optional[str] = None,
+) -> Optional[str]:
+    """Resolve the network for a plan from its fiatPaymentProvider metadata.
+
+    For ``nvm:card-delegation`` plans, the network is the provider
+    (``'stripe'`` or ``'braintree'``). Returns None for crypto plans.
+
+    Args:
+        payments: The Payments instance.
+        plan_id: The plan identifier.
+        explicit_network: Optional explicit override; returned immediately if provided.
+
+    Returns:
+        The resolved network (e.g. ``'stripe'``, ``'braintree'``) or None.
+    """
+    if explicit_network:
+        return explicit_network
+    # Ensure plan metadata is fetched/cached
+    _fetch_plan_metadata(payments, plan_id)
+    cached = _plan_metadata_cache.get(plan_id)
+    if cached and cached.get("fiat_provider"):
+        return cached["fiat_provider"]
+    return None
 
 
 def clear_scheme_cache() -> None:

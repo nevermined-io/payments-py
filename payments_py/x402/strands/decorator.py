@@ -54,7 +54,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 from payments_py.x402.helpers import build_payment_required_for_plans
-from payments_py.x402.resolve_scheme import resolve_scheme
+from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
 from payments_py.x402.types import (
     PaymentContext,
     VerifyResponse,
@@ -272,15 +272,16 @@ def _verify_payment(
     non-None: either an error dict to return immediately, or a _VerifiedPayment
     containing everything needed for execution and settlement.
     """
-    # Resolve scheme (auto-detect from plan metadata if not explicit)
+    # Resolve scheme and network (auto-detect from plan metadata if not explicit)
     resolved_scheme = resolve_scheme(config.payments, config.plan_ids[0], config.scheme)
+    resolved_network = resolve_network(config.payments, config.plan_ids[0], config.network)
 
     # Build payment_required first -- needed for x402-compliant error responses
     payment_required = build_payment_required_for_plans(
         plan_ids=config.plan_ids,
         endpoint=func.__name__,
         agent_id=config.agent_id,
-        network=config.network,
+        network=resolved_network,
         scheme=resolved_scheme,
         environment=getattr(config.payments, "environment_name", None),
     )

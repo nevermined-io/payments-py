@@ -44,6 +44,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.resolve_scheme import resolve_network
 from payments_py.x402.schemes import get_default_network
 from payments_py.x402.types import (
     PaymentContext,
@@ -289,11 +290,12 @@ def _build_payment_required_for_config(config: _PaymentConfig) -> X402PaymentReq
     env_name = getattr(config.payments, "environment_name", None)
 
     if len(config.plan_ids) == 1:
+        net = resolve_network(config.payments, config.plan_ids[0], config.network)
         return build_payment_required(
             plan_id=config.plan_ids[0],
             endpoint=config.endpoint,
             agent_id=config.agent_id,
-            network=config.network,
+            network=net,
             environment=env_name,
         )
 
