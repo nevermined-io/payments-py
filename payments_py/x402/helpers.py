@@ -19,6 +19,7 @@ def build_payment_required(
     http_verb: Optional[str] = None,
     network: Optional[str] = None,
     description: Optional[str] = None,
+    mime_type: Optional[str] = None,
     scheme: str = "nvm:erc4337",
     environment: Optional[str] = None,
 ) -> X402PaymentRequired:
@@ -75,6 +76,7 @@ def build_payment_required(
         resource=X402Resource(
             url=endpoint or "",
             description=description,
+            mime_type=mime_type,
         ),
         accepts=[
             X402Scheme(

@@ -300,6 +300,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             http_verb=method,
             network=resolved_network,
             description=route_config.description,
+            mime_type=route_config.mime_type,
             scheme=resolved_scheme,
             environment=getattr(self.payments, "environment_name", None),
         )
