@@ -123,6 +123,10 @@ class RouteConfig:
     network: Optional[str] = None
     # x402 scheme. Auto-resolved from plan metadata when None.
     scheme: Optional[str] = None
+    # Human-readable description of the protected resource
+    description: Optional[str] = None
+    # Expected response MIME type (e.g., "application/json")
+    mime_type: Optional[str] = None
 
 
 # Type for hook callbacks
@@ -295,6 +299,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             agent_id=route_config.agent_id,
             http_verb=method,
             network=resolved_network,
+            description=route_config.description,
             scheme=resolved_scheme,
             environment=getattr(self.payments, "environment_name", None),
         )
