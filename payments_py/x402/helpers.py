@@ -63,13 +63,12 @@ def build_payment_required(
     # Auto-derive network from scheme/environment if not provided
     resolved_network = network or get_default_network(scheme, environment)
 
-    # Build extra fields if any are provided
-    extra = None
-    if agent_id or http_verb:
-        extra = X402SchemeExtra(
-            agent_id=agent_id,
-            http_verb=http_verb,
-        )
+    # Build extra fields — always include version for scheme versioning
+    extra = X402SchemeExtra(
+        version="1",
+        agent_id=agent_id,
+        http_verb=http_verb,
+    )
 
     return X402PaymentRequired(
         x402_version=2,
@@ -133,9 +132,7 @@ def build_payment_required_for_plans(
     # Auto-derive network from scheme/environment if not provided
     resolved_network = network or get_default_network(scheme, environment)
 
-    extra = None
-    if agent_id or http_verb:
-        extra = X402SchemeExtra(agent_id=agent_id, http_verb=http_verb)
+    extra = X402SchemeExtra(version="1", agent_id=agent_id, http_verb=http_verb)
 
     schemes = [
         X402Scheme(
