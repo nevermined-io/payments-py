@@ -25,7 +25,7 @@ from datetime import datetime
 from payments_py.common.types import PlanMetadata
 from payments_py.environments import ZeroAddress
 from payments_py.plans import (
-    get_crypto_price_config,
+    get_fiat_price_config,
     get_dynamic_credits_config,
 )
 from payments_py.x402 import (
@@ -77,9 +77,11 @@ class TestX402BraintreeCardDelegationFlow:
             description="Test plan for Braintree card delegation integration",
         )
 
-        # Price in USDC smallest units (6 decimals): 1000000 = $1.00
+        # Fiat plan (isCrypto=false): 1000000 = $1.00 in USDC 6-decimal format
         # Must be > 0 for card delegation settle to work
-        price_config = get_crypto_price_config(1000000, self.agent_address, ZeroAddress)
+        price_config = get_fiat_price_config(1000000, self.agent_address)
+        # Amounts must be strings for BigInt compatibility on the backend
+        price_config.amounts = [str(a) for a in price_config.amounts]
         credits_config = get_dynamic_credits_config(10, 1, 2)
 
         response = retry_with_backoff(
