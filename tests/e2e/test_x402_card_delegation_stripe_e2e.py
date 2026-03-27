@@ -36,10 +36,10 @@ SKIP = not os.environ.get("CARD_DELEGATION_E2E")
 pytestmark = pytest.mark.skipif(SKIP, reason="CARD_DELEGATION_E2E not set")
 
 
-def _find_card(payment_methods):
-    """Find the first payment method of type 'card' from the list."""
+def _find_stripe_card(payment_methods):
+    """Find the first Stripe payment method of type 'card'."""
     for pm in payment_methods:
-        if getattr(pm, "type", None) == "card":
+        if getattr(pm, "type", None) == "card" and getattr(pm, "provider", "stripe") == "stripe":
             return pm
     return None
 
@@ -68,7 +68,9 @@ class TestX402CardDelegationFlow:
             description="Test plan for card delegation integration",
         )
 
-        price_config = get_crypto_price_config(0, self.agent_address, ZeroAddress)
+        # Price in USDC smallest units (6 decimals): 1000000 = $1.00
+        # Must be >= Stripe minimum ($0.50) for card delegation settle to work
+        price_config = get_crypto_price_config(1000000, self.agent_address, ZeroAddress)
         credits_config = get_dynamic_credits_config(10, 1, 2)
 
         response = retry_with_backoff(
@@ -88,7 +90,7 @@ class TestX402CardDelegationFlow:
     def test_create_card_delegation(self, payments_subscriber):
         """Create a card delegation using an enrolled Stripe card."""
         methods = payments_subscriber.delegation.list_payment_methods()
-        card = _find_card(methods)
+        card = _find_stripe_card(methods)
         assert (
             card is not None
         ), f"No payment method of type 'card' found among {len(methods)} methods"
@@ -146,7 +148,7 @@ class TestX402CardDelegationFlow:
         assert self.plan_id is not None
 
         methods = payments_subscriber.delegation.list_payment_methods()
-        card = _find_card(methods)
+        card = _find_stripe_card(methods)
         assert card is not None, "No card-type payment method found"
 
         response = retry_with_backoff(

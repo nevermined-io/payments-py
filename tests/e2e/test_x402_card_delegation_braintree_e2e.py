@@ -77,8 +77,9 @@ class TestX402BraintreeCardDelegationFlow:
             description="Test plan for Braintree card delegation integration",
         )
 
-        # Use isCrypto=False for fiat plan
-        price_config = get_crypto_price_config(0, self.agent_address, ZeroAddress)
+        # Price in USDC smallest units (6 decimals): 1000000 = $1.00
+        # Must be > 0 for card delegation settle to work
+        price_config = get_crypto_price_config(1000000, self.agent_address, ZeroAddress)
         credits_config = get_dynamic_credits_config(10, 1, 2)
 
         response = retry_with_backoff(
