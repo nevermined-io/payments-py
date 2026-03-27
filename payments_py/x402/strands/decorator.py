@@ -274,7 +274,9 @@ def _verify_payment(
     """
     # Resolve scheme and network (auto-detect from plan metadata if not explicit)
     resolved_scheme = resolve_scheme(config.payments, config.plan_ids[0], config.scheme)
-    resolved_network = resolve_network(config.payments, config.plan_ids[0], config.network)
+    resolved_network = resolve_network(
+        config.payments, config.plan_ids[0], config.network
+    )
 
     # Build payment_required first -- needed for x402-compliant error responses
     payment_required = build_payment_required_for_plans(

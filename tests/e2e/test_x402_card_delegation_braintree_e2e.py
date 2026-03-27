@@ -40,6 +40,7 @@ from tests.e2e.conftest import TEST_TIMEOUT
 
 # Skip unless explicitly enabled
 
+
 def _find_braintree_method(payment_methods):
     """Find the first Braintree payment method (card or paypal)."""
     for pm in payment_methods:

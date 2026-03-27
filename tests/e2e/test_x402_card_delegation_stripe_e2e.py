@@ -31,11 +31,13 @@ from tests.e2e.utils import retry_with_backoff, wait_for_condition
 from tests.e2e.conftest import TEST_TIMEOUT
 
 
-
 def _find_stripe_card(payment_methods):
     """Find the first Stripe payment method of type 'card'."""
     for pm in payment_methods:
-        if getattr(pm, "type", None) == "card" and getattr(pm, "provider", "stripe") == "stripe":
+        if (
+            getattr(pm, "type", None) == "card"
+            and getattr(pm, "provider", "stripe") == "stripe"
+        ):
             return pm
     return None
 
