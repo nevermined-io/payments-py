@@ -9,7 +9,6 @@ Until staging is deployed with PR #1102, these tests will be skipped.
 Set CARD_DELEGATION_E2E=1 to enable.
 """
 
-import os
 import pytest
 from datetime import datetime
 from payments_py.common.types import (
@@ -31,9 +30,6 @@ from payments_py.x402 import (
 from tests.e2e.utils import retry_with_backoff, wait_for_condition
 from tests.e2e.conftest import TEST_TIMEOUT
 
-# Skip these tests unless CARD_DELEGATION_E2E is explicitly enabled
-SKIP = not os.environ.get("CARD_DELEGATION_E2E")
-pytestmark = pytest.mark.skipif(SKIP, reason="CARD_DELEGATION_E2E not set")
 
 
 def _find_stripe_card(payment_methods):
@@ -71,8 +67,6 @@ class TestX402CardDelegationFlow:
         # Fiat plan (isCrypto=false): 1000000 = $1.00 in USDC 6-decimal format
         # Must be >= Stripe minimum ($0.50) for card delegation settle to work
         price_config = get_fiat_price_config(1000000, self.agent_address)
-        # Amounts must be strings for BigInt compatibility on the backend
-        price_config.amounts = [str(a) for a in price_config.amounts]
         credits_config = get_dynamic_credits_config(10, 1, 2)
 
         response = retry_with_backoff(
@@ -204,6 +198,7 @@ class TestX402CardDelegationFlow:
 
         assert response is not None
         assert response.is_valid is True
+        assert response.network == "stripe"
         print(f"Card delegation verify response: {response}")
 
     @pytest.mark.timeout(TEST_TIMEOUT)

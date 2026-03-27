@@ -19,7 +19,6 @@ See the nvm-monorepo E2E test at:
 for the full setup pattern including DB-based merchant profile injection.
 """
 
-import os
 import pytest
 from datetime import datetime
 from payments_py.common.types import PlanMetadata
@@ -40,9 +39,6 @@ from tests.e2e.utils import retry_with_backoff, wait_for_condition
 from tests.e2e.conftest import TEST_TIMEOUT
 
 # Skip unless explicitly enabled
-SKIP = not os.environ.get("BRAINTREE_DELEGATION_E2E")
-pytestmark = pytest.mark.skipif(SKIP, reason="BRAINTREE_DELEGATION_E2E not set")
-
 
 def _find_braintree_method(payment_methods):
     """Find the first Braintree payment method (card or paypal)."""
@@ -80,8 +76,6 @@ class TestX402BraintreeCardDelegationFlow:
         # Fiat plan (isCrypto=false): 1000000 = $1.00 in USDC 6-decimal format
         # Must be > 0 for card delegation settle to work
         price_config = get_fiat_price_config(1000000, self.agent_address)
-        # Amounts must be strings for BigInt compatibility on the backend
-        price_config.amounts = [str(a) for a in price_config.amounts]
         credits_config = get_dynamic_credits_config(10, 1, 2)
 
         response = retry_with_backoff(

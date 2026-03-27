@@ -2,7 +2,7 @@
 Type definitions for the Nevermined Payments protocol.
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 
@@ -240,7 +240,7 @@ class PlanPriceConfig(BaseModel):
     """
 
     token_address: Optional[str] = None
-    amounts: List[int] = Field(default_factory=list)
+    amounts: List[Union[int, str]] = Field(default_factory=list)
     receivers: List[str] = Field(default_factory=list)
     contract_address: Optional[str] = None
     fee_controller: Optional[str] = None
@@ -248,6 +248,13 @@ class PlanPriceConfig(BaseModel):
     template_address: Optional[str] = None
     is_crypto: bool = False
     currency: Optional[str] = None
+
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        """Override to serialize amounts as strings for backend BigInt compatibility."""
+        d = super().model_dump(**kwargs)
+        if "amounts" in d:
+            d["amounts"] = [str(a) for a in d["amounts"]]
+        return d
 
 
 class PlanCreditsConfig(BaseModel):
