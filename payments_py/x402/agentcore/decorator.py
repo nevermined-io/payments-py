@@ -300,7 +300,7 @@ def _build_payment_required_for_config(config: _PaymentConfig) -> X402PaymentReq
         )
 
     resolved_network = config.network or get_default_network("nvm:erc4337", env_name)
-    extra = X402SchemeExtra(agent_id=config.agent_id) if config.agent_id else None
+    extra = X402SchemeExtra(version="1", agent_id=config.agent_id)
     schemes = [
         X402Scheme(
             scheme="nvm:erc4337",

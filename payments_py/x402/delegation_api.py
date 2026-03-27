@@ -1,7 +1,7 @@
 """
 Delegation API for managing payment methods and delegations.
 
-Provides access to the user's enrolled Stripe payment methods
+Provides access to the user's enrolled payment methods (Stripe and Braintree)
 and delegations for use with both nvm:erc4337 and nvm:card-delegation x402 schemes.
 """
 
@@ -32,8 +32,8 @@ class PaymentMethodSummary(BaseModel):
     type: Optional[str] = None
     brand: str
     last4: str
-    exp_month: Optional[int] = Field(None, alias="expMonth")
-    exp_year: Optional[int] = Field(None, alias="expYear")
+    exp_month: Optional[int] = Field(0, alias="expMonth")
+    exp_year: Optional[int] = Field(0, alias="expYear")
     provider: Optional[str] = None
 
     model_config = ConfigDict(
