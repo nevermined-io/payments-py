@@ -71,7 +71,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from payments_py.x402.helpers import build_payment_required
-from payments_py.x402.resolve_scheme import resolve_scheme
+from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
 from payments_py.x402.types import PaymentContext, VerifyResponse, X402PaymentRequired
 
 # Type alias for dynamic credits function
@@ -123,6 +123,10 @@ class RouteConfig:
     network: Optional[str] = None
     # x402 scheme. Auto-resolved from plan metadata when None.
     scheme: Optional[str] = None
+    # Human-readable description of the protected resource
+    description: Optional[str] = None
+    # Expected response MIME type (e.g., "application/json")
+    mime_type: Optional[str] = None
 
 
 # Type for hook callbacks
@@ -280,9 +284,12 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             # Route not protected - pass through
             return await call_next(request)
 
-        # Resolve scheme (auto-detect from plan metadata if not explicit)
+        # Resolve scheme and network (auto-detect from plan metadata if not explicit)
         resolved_scheme = resolve_scheme(
             self.payments, route_config.plan_id, route_config.scheme
+        )
+        resolved_network = resolve_network(
+            self.payments, route_config.plan_id, route_config.network
         )
 
         # Build payment required object
@@ -291,7 +298,9 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             endpoint=str(request.url.path),
             agent_id=route_config.agent_id,
             http_verb=method,
-            network=route_config.network,
+            network=resolved_network,
+            description=route_config.description,
+            mime_type=route_config.mime_type,
             scheme=resolved_scheme,
             environment=getattr(self.payments, "environment_name", None),
         )

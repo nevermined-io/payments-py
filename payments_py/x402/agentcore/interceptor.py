@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict, Optional, Union, TYPE_CHECKING, Callable
 
 from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.resolve_scheme import resolve_network
 from payments_py.x402.schemes import get_default_network
 from payments_py.x402.types import (
     X402PaymentRequired,
@@ -472,12 +473,13 @@ class AgentCoreInterceptor:
         env_name = getattr(self._payments, "environment_name", None)
 
         if len(plan_ids) == 1:
+            net = resolve_network(self._payments, plan_ids[0], config.network)
             return build_payment_required(
                 plan_id=plan_ids[0],
                 agent_id=config.agent_id,
                 endpoint=endpoint,
                 http_verb="POST",
-                network=config.network,
+                network=net,
                 description=config.description,
                 environment=env_name,
             )
@@ -485,7 +487,7 @@ class AgentCoreInterceptor:
         resolved_network = config.network or get_default_network(
             "nvm:erc4337", env_name
         )
-        extra = X402SchemeExtra(agent_id=config.agent_id) if config.agent_id else None
+        extra = X402SchemeExtra(version="1", agent_id=config.agent_id)
         schemes = [
             X402Scheme(
                 scheme="nvm:erc4337",

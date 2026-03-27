@@ -19,6 +19,7 @@ def build_payment_required(
     http_verb: Optional[str] = None,
     network: Optional[str] = None,
     description: Optional[str] = None,
+    mime_type: Optional[str] = None,
     scheme: str = "nvm:erc4337",
     environment: Optional[str] = None,
 ) -> X402PaymentRequired:
@@ -35,6 +36,7 @@ def build_payment_required(
         http_verb: The HTTP method for the endpoint (optional)
         network: The network identifier. Auto-derived from scheme/environment if None.
         description: Human-readable description of the resource (optional)
+        mime_type: Expected response MIME type (e.g., "application/json") (optional)
         scheme: The x402 payment scheme (default: "nvm:erc4337")
         environment: The Nevermined environment name (e.g. "sandbox", "live").
             Used to auto-derive the correct network when ``network`` is not provided.
@@ -63,19 +65,19 @@ def build_payment_required(
     # Auto-derive network from scheme/environment if not provided
     resolved_network = network or get_default_network(scheme, environment)
 
-    # Build extra fields if any are provided
-    extra = None
-    if agent_id or http_verb:
-        extra = X402SchemeExtra(
-            agent_id=agent_id,
-            http_verb=http_verb,
-        )
+    # Build extra fields — always include version for scheme versioning
+    extra = X402SchemeExtra(
+        version="1",
+        agent_id=agent_id,
+        http_verb=http_verb,
+    )
 
     return X402PaymentRequired(
         x402_version=2,
         resource=X402Resource(
             url=endpoint or "",
             description=description,
+            mime_type=mime_type,
         ),
         accepts=[
             X402Scheme(
@@ -133,9 +135,7 @@ def build_payment_required_for_plans(
     # Auto-derive network from scheme/environment if not provided
     resolved_network = network or get_default_network(scheme, environment)
 
-    extra = None
-    if agent_id or http_verb:
-        extra = X402SchemeExtra(agent_id=agent_id, http_verb=http_verb)
+    extra = X402SchemeExtra(version="1", agent_id=agent_id, http_verb=http_verb)
 
     schemes = [
         X402Scheme(

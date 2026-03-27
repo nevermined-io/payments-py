@@ -1,7 +1,7 @@
 """
 Delegation API for managing payment methods and delegations.
 
-Provides access to the user's enrolled Stripe payment methods
+Provides access to the user's enrolled payment methods (Stripe and Braintree)
 and delegations for use with both nvm:erc4337 and nvm:card-delegation x402 schemes.
 """
 
@@ -19,19 +19,22 @@ class PaymentMethodSummary(BaseModel):
     Summary of a user's enrolled payment method.
 
     Attributes:
-        id: Payment method ID (e.g., 'pm_...')
-        brand: Card brand (e.g., 'visa', 'mastercard')
-        last4: Last 4 digits of the card number
-        exp_month: Card expiration month
-        exp_year: Card expiration year
+        id: Payment method ID (Stripe 'pm_...' or Braintree vault token)
+        type: Payment method type (e.g., 'card', 'paypal')
+        brand: Card brand (e.g., 'visa', 'mastercard') or payment method type ('paypal', 'venmo')
+        last4: Last 4 digits (cards) or email/username (PayPal/Venmo)
+        exp_month: Expiration month (0 for non-card methods)
+        exp_year: Expiration year (0 for non-card methods)
+        provider: Payment provider ('stripe' or 'braintree')
     """
 
     id: str
     type: Optional[str] = None
     brand: str
     last4: str
-    exp_month: int = Field(alias="expMonth")
-    exp_year: int = Field(alias="expYear")
+    exp_month: Optional[int] = Field(0, alias="expMonth")
+    exp_year: Optional[int] = Field(0, alias="expYear")
+    provider: Optional[str] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -89,7 +92,7 @@ class DelegationAPI(BasePaymentsAPI):
         Raises:
             PaymentsError: If the request fails
         """
-        url = f"{self.environment.backend}/api/v1/delegation/payment-methods"
+        url = f"{self.environment.backend}/api/v1/payment-methods"
         options = self.get_backend_http_options("GET")
 
         try:

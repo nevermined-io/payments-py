@@ -207,6 +207,7 @@ class VerifyResponse(BaseModel):
     is_valid: bool = Field(alias="isValid")
     invalid_reason: Optional[str] = Field(None, alias="invalidReason")
     payer: Optional[str] = None
+    network: Optional[str] = None
     agent_request_id: Optional[str] = Field(None, alias="agentRequestId")
     url_matching: Optional[str] = Field(None, alias="urlMatching")
     agent_request: Optional[Any] = Field(None, alias="agentRequest")
@@ -311,18 +312,18 @@ class CreateDelegationPayload(BaseModel):
     Payload for creating a new delegation via POST /api/v1/delegation/create.
 
     Attributes:
-        provider: Delegation provider ('stripe' for card, 'erc4337' for crypto)
-        provider_payment_method_id: Stripe payment method ID (required for stripe provider)
+        provider: Delegation provider ('stripe' or 'braintree' for card, 'erc4337' for crypto)
+        provider_payment_method_id: Payment method ID from the provider (Stripe 'pm_...' or Braintree vault token)
         spending_limit_cents: Maximum spending limit in cents
         duration_secs: Duration of the delegation in seconds
         currency: Currency code (default: 'usd')
         plan_id: Plan ID to scope the delegation to
-        merchant_account_id: Stripe Connect merchant account ID
+        merchant_account_id: Merchant account ID (Stripe Connect acct_xxx or Braintree merchantId)
         max_transactions: Maximum number of transactions allowed
         api_key_id: NVM API Key ID to scope the delegation to
     """
 
-    provider: str  # 'stripe' or 'erc4337'
+    provider: str  # 'stripe', 'braintree', or 'erc4337'
     provider_payment_method_id: Optional[str] = Field(
         None, alias="providerPaymentMethodId"
     )
