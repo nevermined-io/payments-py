@@ -207,6 +207,7 @@ class VerifyResponse(BaseModel):
     is_valid: bool = Field(alias="isValid")
     invalid_reason: Optional[str] = Field(None, alias="invalidReason")
     payer: Optional[str] = None
+    network: Optional[str] = None
     agent_request_id: Optional[str] = Field(None, alias="agentRequestId")
     url_matching: Optional[str] = Field(None, alias="urlMatching")
     agent_request: Optional[Any] = Field(None, alias="agentRequest")
