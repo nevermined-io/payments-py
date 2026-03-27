@@ -113,7 +113,6 @@ def build_payment_required_for_plans(
         http_verb: The HTTP method for the endpoint (optional)
         network: The network identifier. Auto-derived from scheme/environment if None.
         description: Human-readable description of the resource (optional)
-        mime_type: Expected response MIME type (e.g., "application/json") (optional)
         scheme: The x402 payment scheme (default: "nvm:erc4337")
         environment: The Nevermined environment name (e.g. "sandbox", "live").
             Used to auto-derive the correct network when ``network`` is not provided.
