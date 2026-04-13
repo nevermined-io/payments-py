@@ -40,7 +40,7 @@ API_URL_VERIFY_PERMISSIONS = "/api/v1/x402/verify"
 API_URL_SETTLE_PERMISSIONS = "/api/v1/x402/settle"
 
 # Stripe endpoints
-API_URL_STRIPE_CHECKOUT = "/api/v1/stripe/payment"
+API_URL_STRIPE_CHECKOUT = "/api/v1/fiat/stripe/payment"
 
 # Info endpoint
 API_URL_INFO = "/"
