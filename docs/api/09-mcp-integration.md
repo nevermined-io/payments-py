@@ -371,7 +371,6 @@ The MCP server exposes:
 - `/.well-known/oauth-protected-resource` - Resource metadata
 - `/register` - Client registration
 - `/mcp` - MCP protocol endpoint (POST/GET/DELETE)
-- `/health` - Health check
 
 ## Next Steps
 

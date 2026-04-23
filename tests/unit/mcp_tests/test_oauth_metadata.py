@@ -240,7 +240,6 @@ class TestBuildServerInfoResponse:
         assert info["version"] == "1.0.0"
         assert info["endpoints"] is not None
         assert info["endpoints"]["mcp"] == "http://localhost:3000/mcp"
-        assert info["endpoints"]["health"] == "http://localhost:3000/health"
         assert info["endpoints"]["register"] == "http://localhost:3000/register"
 
     def test_includes_oauth_endpoints(self, base_config):
