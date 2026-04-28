@@ -74,6 +74,7 @@ class AgentAPIAttributes(BaseModel):
         headers: Additional headers to include in requests
 
     Example::
+
         # Minimal (recommended): your library middleware handles per-route gating
         agent_api = AgentAPIAttributes(
             auth_type=AuthType.BEARER,
@@ -83,7 +84,7 @@ class AgentAPIAttributes(BaseModel):
         # With Additional Security: platform enforces a route allowlist
         agent_api = AgentAPIAttributes(
             endpoints=[
-                {"POST": "https://example.com/api/v1/agents/:agentId/tasks"},
+                {"verb": "POST", "url": "https://example.com/api/v1/agents/:agentId/tasks"},
             ],
             agent_definition_url="https://example.com/api/v1/openapi.json",
             auth_type=AuthType.BEARER,
