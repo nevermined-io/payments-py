@@ -47,15 +47,25 @@ class AgentAPIAttributes(BaseModel):
     """
     API attributes for an agent.
 
-    Defines the API endpoints and authentication configuration for an agent.
+    All fields are optional. Provide ``endpoints`` and/or
+    ``agent_definition_url`` only when you want the platform to enforce a
+    route-level allowlist as **Additional Security** (defense-in-depth on top
+    of any per-route gating the Payments library applies in your agent), or
+    when you want a discoverable agent definition. Otherwise omit them — your
+    library middleware remains the sole gate.
+
     Used when registering agents with :meth:`payments.agents.register_agent` or
     :meth:`payments.agents.register_agent_and_plan`.
 
     Args:
-        endpoints: List of endpoint dictionaries with HTTP verb as key and URL as value.
-                  URLs can include placeholders like `:agentId` which will be replaced.
-        open_endpoints: List of endpoints that don't require authentication
-        agent_definition_url: URL to the agent definition. Can be an OpenAPI spec, MCP Manifest, or A2A agent card. This field is mandatory.
+        endpoints: Optional allowlist of endpoint dictionaries with HTTP verb
+                  as key and URL as value. When provided, the Nevermined
+                  platform enforces this list as Additional Security on x402
+                  verify. URLs can include placeholders like ``:agentId``.
+        open_endpoints: Optional list of endpoints that don't require subscription.
+        agent_definition_url: Optional URL to a discoverable agent definition
+                  (OpenAPI spec, MCP Manifest, or A2A agent card). Stored as
+                  metadata; not consumed at runtime by the platform.
         auth_type: Authentication type (default: AuthType.NONE)
         username: Username for basic auth (if auth_type is BASIC)
         password: Password for basic auth (if auth_type is BASIC)
@@ -64,19 +74,26 @@ class AgentAPIAttributes(BaseModel):
         headers: Additional headers to include in requests
 
     Example::
+
+        # Minimal (recommended): your library middleware handles per-route gating
+        agent_api = AgentAPIAttributes(
+            auth_type=AuthType.BEARER,
+            token="sk-test",
+        )
+
+        # With Additional Security: platform enforces a route allowlist
         agent_api = AgentAPIAttributes(
             endpoints=[
-                {"POST": "https://example.com/api/v1/agents/:agentId/tasks"},
-                {"GET": "https://example.com/api/v1/agents/:agentId/tasks/:taskId"}
+                {"verb": "POST", "url": "https://example.com/api/v1/agents/:agentId/tasks"},
             ],
-            agent_definition_url="https://example.com/api/v1/openapi.json",  # OpenAPI spec, MCP Manifest, or A2A agent card
-            auth_type=AuthType.BEARER
+            agent_definition_url="https://example.com/api/v1/openapi.json",
+            auth_type=AuthType.BEARER,
         )
     """
 
-    endpoints: List[Endpoint]
+    endpoints: Optional[List[Endpoint]] = None
     open_endpoints: Optional[List[str]] = None
-    agent_definition_url: str
+    agent_definition_url: Optional[str] = None
     auth_type: Optional[AuthType] = AuthType.NONE
     username: Optional[str] = None
     password: Optional[str] = None
