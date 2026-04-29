@@ -162,10 +162,10 @@ plan_id = plan_result['planId']
 
 agent_result = builder.agents.register_agent(
     agent_metadata=AgentMetadata(name="Demo Agent"),
-    agent_api=AgentAPIAttributes(
-        endpoints=[{"POST": "https://api.example.com/tasks"}],
-        agent_definition_url="https://api.example.com/openapi.json"
-    ),
+    # AgentAPIAttributes() with no args registers a minimal agent — your
+    # Payments library middleware handles per-route gating. See
+    # docs/api/04-agents.md for opt-in Additional Security.
+    agent_api=AgentAPIAttributes(),
     payment_plans=[plan_id]
 )
 agent_id = agent_result['agentId']

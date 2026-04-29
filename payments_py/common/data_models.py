@@ -139,20 +139,31 @@ class CreateAgentDto(BaseModel):
     Create agent data transfer object.
 
     Example::
-        from payments_py.common.types import AgentMetadata, AgentAPIAttributes
+
+        from payments_py.common.types import (
+            AgentMetadata,
+            AgentAPIAttributes,
+            AuthType,
+        )
 
         agent_metadata = AgentMetadata(
             name="Agent",
             description="Agent description",
-            tags=["ai"]
+            tags=["ai"],
         )
+        # All AgentAPIAttributes fields are optional. The minimal form only
+        # configures authentication; `endpoints` is opt-in Additional
+        # Security, and `agent_definition_url` is optional discoverable
+        # definition metadata.
         agent_api = AgentAPIAttributes(
-            endpoints=[{"POST": "https://example.com/api/v1/agents/:agentId/tasks"}],
-            agent_definition_url="https://example.com/api/v1/openapi.json"  # OpenAPI spec, MCP Manifest, or A2A agent card
+            auth_type=AuthType.BEARER,
+            token="your-bearer-token",
         )
         payment_plans = [plan_id_1, plan_id_2]
 
-        result = payments.agents.register_agent(agent_metadata, agent_api, payment_plans)
+        result = payments.agents.register_agent(
+            agent_metadata, agent_api, payment_plans
+        )
     """
 
     plan_did: str
