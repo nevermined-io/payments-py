@@ -665,10 +665,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#endpoint-configuration" class="md-nav__link">
+  <a href="#additional-security-endpoint-allowlist-opt-in" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Endpoint Configuration
+        Additional Security: Endpoint Allowlist (opt-in)
       
     </span>
   </a>
@@ -1287,10 +1287,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#endpoint-configuration" class="md-nav__link">
+  <a href="#additional-security-endpoint-allowlist-opt-in" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Endpoint Configuration
+        Additional Security: Endpoint Allowlist (opt-in)
       
     </span>
   </a>
@@ -1474,80 +1474,88 @@
 <h2 id="register-agents">Register Agents<a class="headerlink" href="#register-agents" title="Permanent link">&para;</a></h2>
 <h3 id="basic-agent-registration">Basic Agent Registration<a class="headerlink" href="#basic-agent-registration" title="Permanent link">&para;</a></h3>
 <p>Register an agent and associate it with existing payment plans:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgentMetadata</span><span class="p">,</span> <span class="n">AgentAPIAttributes</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Define agent metadata</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">agent_metadata</span> <span class="o">=</span> <span class="n">AgentMetadata</span><span class="p">(</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;My AI Assistant&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;An intelligent assistant that helps with various tasks&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ai&quot;</span><span class="p">,</span> <span class="s2">&quot;assistant&quot;</span><span class="p">,</span> <span class="s2">&quot;productivity&quot;</span><span class="p">],</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">author</span><span class="o">=</span><span class="s2">&quot;Your Company&quot;</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">)</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># Define API configuration</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">agent_api</span> <span class="o">=</span> <span class="n">AgentAPIAttributes</span><span class="p">(</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="n">endpoints</span><span class="o">=</span><span class="p">[</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        <span class="p">{</span><span class="s2">&quot;POST&quot;</span><span class="p">:</span> <span class="s2">&quot;https://your-api.com/api/v1/agents/:agentId/tasks&quot;</span><span class="p">},</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        <span class="p">{</span><span class="s2">&quot;GET&quot;</span><span class="p">:</span> <span class="s2">&quot;https://your-api.com/api/v1/agents/:agentId/tasks/:taskId&quot;</span><span class="p">}</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="p">],</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="n">agent_definition_url</span><span class="o">=</span><span class="s2">&quot;https://your-api.com/api/v1/openapi.json&quot;</span>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="p">)</span>
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="c1"># List of plan IDs that grant access to this agent</span>
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="n">payment_plans</span> <span class="o">=</span> <span class="p">[</span><span class="n">plan_id_1</span><span class="p">,</span> <span class="n">plan_id_2</span><span class="p">]</span>
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="c1"># Register the agent</span>
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span>
-<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="n">agent_metadata</span><span class="o">=</span><span class="n">agent_metadata</span><span class="p">,</span>
-<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    <span class="n">agent_api</span><span class="o">=</span><span class="n">agent_api</span><span class="p">,</span>
-<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    <span class="n">payment_plans</span><span class="o">=</span><span class="n">payment_plans</span>
-<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="p">)</span>
-<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agent ID: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;agentId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgentMetadata</span><span class="p">,</span> <span class="n">AgentAPIAttributes</span><span class="p">,</span> <span class="n">AuthType</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># Define agent metadata</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">agent_metadata</span> <span class="o">=</span> <span class="n">AgentMetadata</span><span class="p">(</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;My AI Assistant&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;An intelligent assistant that helps with various tasks&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ai&quot;</span><span class="p">,</span> <span class="s2">&quot;assistant&quot;</span><span class="p">,</span> <span class="s2">&quot;productivity&quot;</span><span class="p">],</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">author</span><span class="o">=</span><span class="s2">&quot;Your Company&quot;</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="p">)</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># Define API configuration. All AgentAPIAttributes fields are optional —</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="c1"># most builders only need to set authentication. See</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1"># &quot;AgentAPIAttributes Fields&quot; below for opt-in Additional Security.</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">agent_api</span> <span class="o">=</span> <span class="n">AgentAPIAttributes</span><span class="p">(</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="n">auth_type</span><span class="o">=</span><span class="n">AuthType</span><span class="o">.</span><span class="n">BEARER</span><span class="p">,</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;AGENT_BEARER_TOKEN&quot;</span><span class="p">],</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="p">)</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="c1"># List of plan IDs that grant access to this agent</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="n">payment_plans</span> <span class="o">=</span> <span class="p">[</span><span class="n">plan_id_1</span><span class="p">,</span> <span class="n">plan_id_2</span><span class="p">]</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="c1"># Register the agent</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    <span class="n">agent_metadata</span><span class="o">=</span><span class="n">agent_metadata</span><span class="p">,</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    <span class="n">agent_api</span><span class="o">=</span><span class="n">agent_api</span><span class="p">,</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="n">payment_plans</span><span class="o">=</span><span class="n">payment_plans</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="p">)</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agent ID: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;agentId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="register-agent-and-plan-together">Register Agent and Plan Together<a class="headerlink" href="#register-agent-and-plan-together" title="Permanent link">&para;</a></h3>
 <p>Create both an agent and a payment plan in a single operation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgentMetadata</span><span class="p">,</span> <span class="n">AgentAPIAttributes</span><span class="p">,</span> <span class="n">PlanMetadata</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_erc20_price_config</span><span class="p">,</span> <span class="n">get_fixed_credits_config</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Agent configuration</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">agent_metadata</span> <span class="o">=</span> <span class="n">AgentMetadata</span><span class="p">(</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;AI Code Reviewer&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Automated code review assistant&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;code&quot;</span><span class="p">,</span> <span class="s2">&quot;review&quot;</span><span class="p">,</span> <span class="s2">&quot;ai&quot;</span><span class="p">]</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">AgentMetadata</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">AgentAPIAttributes</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">AuthType</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">PlanMetadata</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">)</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_erc20_price_config</span><span class="p">,</span> <span class="n">get_fixed_credits_config</span>
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="n">agent_api</span> <span class="o">=</span> <span class="n">AgentAPIAttributes</span><span class="p">(</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="n">endpoints</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;POST&quot;</span><span class="p">:</span> <span class="s2">&quot;https://your-api.com/api/v1/review&quot;</span><span class="p">}],</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">agent_definition_url</span><span class="o">=</span><span class="s2">&quot;https://your-api.com/openapi.json&quot;</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="p">)</span>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1"># Plan configuration</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="n">plan_metadata</span> <span class="o">=</span> <span class="n">PlanMetadata</span><span class="p">(</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Code Review Plan&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;100 code reviews&quot;</span>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="p">)</span>
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="n">price_config</span> <span class="o">=</span> <span class="n">get_erc20_price_config</span><span class="p">(</span>
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    <span class="n">amount</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    <span class="n">token_address</span><span class="o">=</span><span class="s2">&quot;0xYourTokenAddress&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    <span class="n">receiver</span><span class="o">=</span><span class="n">payments</span><span class="o">.</span><span class="n">account_address</span>
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="p">)</span>
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_fixed_credits_config</span><span class="p">(</span><span class="n">credits_granted</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="c1"># Register both in one call</span>
-<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">register_agent_and_plan</span><span class="p">(</span>
-<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    <span class="n">agent_metadata</span><span class="o">=</span><span class="n">agent_metadata</span><span class="p">,</span>
-<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>    <span class="n">agent_api</span><span class="o">=</span><span class="n">agent_api</span><span class="p">,</span>
-<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>    <span class="n">plan_metadata</span><span class="o">=</span><span class="n">plan_metadata</span><span class="p">,</span>
-<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    <span class="n">price_config</span><span class="o">=</span><span class="n">price_config</span><span class="p">,</span>
-<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    <span class="n">credits_config</span><span class="o">=</span><span class="n">credits_config</span><span class="p">,</span>
-<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>    <span class="n">access_limit</span><span class="o">=</span><span class="s2">&quot;credits&quot;</span>  <span class="c1"># or &quot;time&quot;</span>
-<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="p">)</span>
-<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>
-<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agent ID: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;agentId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plan ID: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transaction: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;txHash&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1"># Agent configuration</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="n">agent_metadata</span> <span class="o">=</span> <span class="n">AgentMetadata</span><span class="p">(</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;AI Code Reviewer&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Automated code review assistant&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;code&quot;</span><span class="p">,</span> <span class="s2">&quot;review&quot;</span><span class="p">,</span> <span class="s2">&quot;ai&quot;</span><span class="p">]</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="p">)</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="n">agent_api</span> <span class="o">=</span> <span class="n">AgentAPIAttributes</span><span class="p">(</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    <span class="n">auth_type</span><span class="o">=</span><span class="n">AuthType</span><span class="o">.</span><span class="n">BEARER</span><span class="p">,</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;AGENT_BEARER_TOKEN&quot;</span><span class="p">],</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="p">)</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="c1"># Plan configuration</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="n">plan_metadata</span> <span class="o">=</span> <span class="n">PlanMetadata</span><span class="p">(</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Code Review Plan&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;100 code reviews&quot;</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="p">)</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="n">price_config</span> <span class="o">=</span> <span class="n">get_erc20_price_config</span><span class="p">(</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    <span class="n">amount</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    <span class="n">token_address</span><span class="o">=</span><span class="s2">&quot;0xYourTokenAddress&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    <span class="n">receiver</span><span class="o">=</span><span class="n">payments</span><span class="o">.</span><span class="n">account_address</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="p">)</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">get_fixed_credits_config</span><span class="p">(</span><span class="n">credits_granted</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="c1"># Register both in one call</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">register_agent_and_plan</span><span class="p">(</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>    <span class="n">agent_metadata</span><span class="o">=</span><span class="n">agent_metadata</span><span class="p">,</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>    <span class="n">agent_api</span><span class="o">=</span><span class="n">agent_api</span><span class="p">,</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>    <span class="n">plan_metadata</span><span class="o">=</span><span class="n">plan_metadata</span><span class="p">,</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>    <span class="n">price_config</span><span class="o">=</span><span class="n">price_config</span><span class="p">,</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>    <span class="n">credits_config</span><span class="o">=</span><span class="n">credits_config</span><span class="p">,</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>    <span class="n">access_limit</span><span class="o">=</span><span class="s2">&quot;credits&quot;</span>  <span class="c1"># or &quot;time&quot;</span>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="p">)</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Agent ID: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;agentId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plan ID: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;planId&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transaction: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;txHash&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="agent-configuration">Agent Configuration<a class="headerlink" href="#agent-configuration" title="Permanent link">&para;</a></h2>
 <h3 id="agentmetadata-fields">AgentMetadata Fields<a class="headerlink" href="#agentmetadata-fields" title="Permanent link">&para;</a></h3>
@@ -1606,6 +1614,7 @@
 </tbody>
 </table>
 <h3 id="agentapiattributes-fields">AgentAPIAttributes Fields<a class="headerlink" href="#agentapiattributes-fields" title="Permanent link">&para;</a></h3>
+<p>All fields are optional. Provide only what your integration needs.</p>
 <table>
 <thead>
 <tr>
@@ -1617,43 +1626,72 @@
 </thead>
 <tbody>
 <tr>
-<td><code>endpoints</code></td>
-<td><code>list[dict]</code></td>
-<td>Yes</td>
-<td>List of endpoint configurations</td>
+<td><code>auth_type</code></td>
+<td><code>AuthType</code></td>
+<td>No</td>
+<td>Authentication type (default: <code>AuthType.NONE</code>)</td>
 </tr>
 <tr>
-<td><code>agent_definition_url</code></td>
+<td><code>token</code></td>
 <td><code>str</code></td>
-<td>Yes</td>
-<td>URL to OpenAPI/MCP/A2A spec</td>
+<td>No</td>
+<td>Bearer token (when <code>auth_type</code> is <code>BEARER</code> or <code>OAUTH</code>)</td>
+</tr>
+<tr>
+<td><code>username</code></td>
+<td><code>str</code></td>
+<td>No</td>
+<td>Basic-auth username</td>
+</tr>
+<tr>
+<td><code>password</code></td>
+<td><code>str</code></td>
+<td>No</td>
+<td>Basic-auth password</td>
+</tr>
+<tr>
+<td><code>endpoints</code></td>
+<td><code>list[Endpoint]</code></td>
+<td>No</td>
+<td><strong>Additional Security</strong> allowlist — see below</td>
 </tr>
 <tr>
 <td><code>open_endpoints</code></td>
 <td><code>list[str]</code></td>
 <td>No</td>
-<td>Endpoints without auth</td>
+<td>Public endpoints (no subscription required)</td>
 </tr>
 <tr>
-<td><code>auth_type</code></td>
-<td><code>AuthType</code></td>
+<td><code>agent_definition_url</code></td>
+<td><code>str</code></td>
 <td>No</td>
-<td>Authentication type</td>
+<td>Discoverable agent definition (OpenAPI / MCP / A2A)</td>
 </tr>
 </tbody>
 </table>
-<h3 id="endpoint-configuration">Endpoint Configuration<a class="headerlink" href="#endpoint-configuration" title="Permanent link">&para;</a></h3>
-<p>Endpoints are defined as dictionaries with HTTP verb as key and URL as value:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">agent_api</span> <span class="o">=</span> <span class="n">AgentAPIAttributes</span><span class="p">(</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">endpoints</span><span class="o">=</span><span class="p">[</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="p">{</span><span class="s2">&quot;POST&quot;</span><span class="p">:</span> <span class="s2">&quot;https://api.example.com/agents/:agentId/tasks&quot;</span><span class="p">},</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="p">{</span><span class="s2">&quot;GET&quot;</span><span class="p">:</span> <span class="s2">&quot;https://api.example.com/agents/:agentId/tasks/:taskId&quot;</span><span class="p">},</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        <span class="p">{</span><span class="s2">&quot;DELETE&quot;</span><span class="p">:</span> <span class="s2">&quot;https://api.example.com/agents/:agentId/tasks/:taskId&quot;</span><span class="p">}</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="p">],</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">agent_definition_url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/openapi.json&quot;</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="p">)</span>
+<h3 id="additional-security-endpoint-allowlist-opt-in">Additional Security: Endpoint Allowlist (opt-in)<a class="headerlink" href="#additional-security-endpoint-allowlist-opt-in" title="Permanent link">&para;</a></h3>
+<p>Setting <code>endpoints</code> opts the agent into a platform-enforced allowlist. When set, only requests matching one of the registered URLs are accepted during x402 verification; non-matching requests are rejected. When omitted, the platform performs no route-level allowlist check — your Payments library middleware (<code>PaymentMiddleware</code>, <code>@requires_payment</code>) remains the sole gate.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgentAPIAttributes</span><span class="p">,</span> <span class="n">AuthType</span><span class="p">,</span> <span class="n">Endpoint</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">agent_api</span> <span class="o">=</span> <span class="n">AgentAPIAttributes</span><span class="p">(</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">auth_type</span><span class="o">=</span><span class="n">AuthType</span><span class="o">.</span><span class="n">BEARER</span><span class="p">,</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;AGENT_BEARER_TOKEN&quot;</span><span class="p">],</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="c1"># Opt-in: route allowlist enforced by x402 verify</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">endpoints</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        <span class="n">Endpoint</span><span class="p">(</span><span class="n">verb</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/agents/:agentId/tasks&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        <span class="n">Endpoint</span><span class="p">(</span><span class="n">verb</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/agents/:agentId/tasks/:taskId&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        <span class="n">Endpoint</span><span class="p">(</span><span class="n">verb</span><span class="o">=</span><span class="s2">&quot;DELETE&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/agents/:agentId/tasks/:taskId&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="p">],</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="n">open_endpoints</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;https://api.example.com/health&quot;</span><span class="p">],</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    <span class="n">agent_definition_url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/openapi.json&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="p">)</span>
 </code></pre></div>
 <p>The <code>:agentId</code> and <code>:taskId</code> placeholders will be replaced with actual values during request validation.</p>
+<blockquote>
+<p><strong>Migration note:</strong> existing agents that registered before April 2026 still have these fields populated and continue to enforce the allowlist as before. No migration is needed.</p>
+</blockquote>
 <h2 id="retrieve-agents">Retrieve Agents<a class="headerlink" href="#retrieve-agents" title="Permanent link">&para;</a></h2>
 <h3 id="get-a-single-agent">Get a Single Agent<a class="headerlink" href="#get-a-single-agent" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">get_agent</span><span class="p">(</span><span class="n">agent_id</span><span class="o">=</span><span class="s2">&quot;your-agent-id&quot;</span><span class="p">)</span>
@@ -1671,23 +1709,37 @@
 </code></pre></div>
 <h2 id="update-agents">Update Agents<a class="headerlink" href="#update-agents" title="Permanent link">&para;</a></h2>
 <h3 id="update-agent-metadata">Update Agent Metadata<a class="headerlink" href="#update-agent-metadata" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">updated_metadata</span> <span class="o">=</span> <span class="n">AgentMetadata</span><span class="p">(</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Updated Agent Name&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Updated description with new features&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ai&quot;</span><span class="p">,</span> <span class="s2">&quot;updated&quot;</span><span class="p">,</span> <span class="s2">&quot;v2&quot;</span><span class="p">]</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">)</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">updated_api</span> <span class="o">=</span> <span class="n">AgentAPIAttributes</span><span class="p">(</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="n">endpoints</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;POST&quot;</span><span class="p">:</span> <span class="s2">&quot;https://new-api.com/v2/tasks&quot;</span><span class="p">}],</span>
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    <span class="n">agent_definition_url</span><span class="o">=</span><span class="s2">&quot;https://new-api.com/v2/openapi.json&quot;</span>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="p">)</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">update_agent_metadata</span><span class="p">(</span>
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="s2">&quot;your-agent-id&quot;</span><span class="p">,</span>
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    <span class="n">agent_metadata</span><span class="o">=</span><span class="n">updated_metadata</span><span class="p">,</span>
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    <span class="n">agent_api</span><span class="o">=</span><span class="n">updated_api</span>
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="p">)</span>
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Update successful: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<p><code>update_agent_metadata</code> is also where builders typically opt in to <strong>Additional Security</strong> by adding an <code>endpoints</code> allowlist or <code>agent_definition_url</code> to an existing agent:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">AgentMetadata</span><span class="p">,</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">AgentAPIAttributes</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">AuthType</span><span class="p">,</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="n">Endpoint</span><span class="p">,</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="p">)</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="n">updated_metadata</span> <span class="o">=</span> <span class="n">AgentMetadata</span><span class="p">(</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Updated Agent Name&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Updated description with new features&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ai&quot;</span><span class="p">,</span> <span class="s2">&quot;updated&quot;</span><span class="p">,</span> <span class="s2">&quot;v2&quot;</span><span class="p">]</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="p">)</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="c1"># Adding `endpoints` activates the platform-enforced allowlist for this</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="c1"># agent. To return to allow-all, omit it on the next update.</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="n">updated_api</span> <span class="o">=</span> <span class="n">AgentAPIAttributes</span><span class="p">(</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    <span class="n">auth_type</span><span class="o">=</span><span class="n">AuthType</span><span class="o">.</span><span class="n">BEARER</span><span class="p">,</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    <span class="n">token</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;AGENT_BEARER_TOKEN&quot;</span><span class="p">],</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>    <span class="n">endpoints</span><span class="o">=</span><span class="p">[</span><span class="n">Endpoint</span><span class="p">(</span><span class="n">verb</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://new-api.com/v2/tasks&quot;</span><span class="p">)],</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    <span class="n">agent_definition_url</span><span class="o">=</span><span class="s2">&quot;https://new-api.com/v2/openapi.json&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="p">)</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">update_agent_metadata</span><span class="p">(</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="s2">&quot;your-agent-id&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>    <span class="n">agent_metadata</span><span class="o">=</span><span class="n">updated_metadata</span><span class="p">,</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>    <span class="n">agent_api</span><span class="o">=</span><span class="n">updated_api</span>
+<a id="__codelineno-6-29" name="__codelineno-6-29" href="#__codelineno-6-29"></a><span class="p">)</span>
+<a id="__codelineno-6-30" name="__codelineno-6-30" href="#__codelineno-6-30"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Update successful: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="manage-plan-associations">Manage Plan Associations<a class="headerlink" href="#manage-plan-associations" title="Permanent link">&para;</a></h2>
 <h3 id="add-a-plan-to-an-agent">Add a Plan to an Agent<a class="headerlink" href="#add-a-plan-to-an-agent" title="Permanent link">&para;</a></h3>

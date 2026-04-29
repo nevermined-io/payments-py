@@ -1459,10 +1459,10 @@
 <a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>
 <a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="n">agent_result</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span>
 <a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    <span class="n">agent_metadata</span><span class="o">=</span><span class="n">AgentMetadata</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Demo Agent&quot;</span><span class="p">),</span>
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    <span class="n">agent_api</span><span class="o">=</span><span class="n">AgentAPIAttributes</span><span class="p">(</span>
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>        <span class="n">endpoints</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;POST&quot;</span><span class="p">:</span> <span class="s2">&quot;https://api.example.com/tasks&quot;</span><span class="p">}],</span>
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>        <span class="n">agent_definition_url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/openapi.json&quot;</span>
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    <span class="p">),</span>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>    <span class="c1"># AgentAPIAttributes() with no args registers a minimal agent — your</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    <span class="c1"># Payments library middleware handles per-route gating. See</span>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    <span class="c1"># docs/api/04-agents.md for opt-in Additional Security.</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a>    <span class="n">agent_api</span><span class="o">=</span><span class="n">AgentAPIAttributes</span><span class="p">(),</span>
 <a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a>    <span class="n">payment_plans</span><span class="o">=</span><span class="p">[</span><span class="n">plan_id</span><span class="p">]</span>
 <a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a><span class="p">)</span>
 <a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="n">agent_id</span> <span class="o">=</span> <span class="n">agent_result</span><span class="p">[</span><span class="s1">&#39;agentId&#39;</span><span class="p">]</span>
