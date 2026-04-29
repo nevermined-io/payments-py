@@ -2278,8 +2278,13 @@
 
 
         <p>API attributes for an agent.</p>
-<p>Defines the API endpoints and authentication configuration for an agent.
-Used when registering agents with :meth:<code>payments.agents.register_agent</code> or
+<p>All fields are optional. Provide <code>endpoints</code> and/or
+<code>agent_definition_url</code> only when you want the platform to enforce a
+route-level allowlist as <strong>Additional Security</strong> (defense-in-depth on top
+of any per-route gating the Payments library applies in your agent), or
+when you want a discoverable agent definition. Otherwise omit them — your
+library middleware remains the sole gate.</p>
+<p>Used when registering agents with :meth:<code>payments.agents.register_agent</code> or
 :meth:<code>payments.agents.register_agent_and_plan</code>.</p>
 
 
@@ -2297,8 +2302,10 @@ Used when registering agents with :meth:<code>payments.agents.register_agent</co
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>List of endpoint dictionaries with HTTP verb as key and URL as value.
-      URLs can include placeholders like <code>:agentId</code> which will be replaced.</p>
+                <p>Optional allowlist of endpoint dictionaries with HTTP verb
+      as key and URL as value. When provided, the Nevermined
+      platform enforces this list as Additional Security on x402
+      verify. URLs can include placeholders like <code>:agentId</code>.</p>
               </div>
               <p>
               </p>
@@ -2310,7 +2317,7 @@ Used when registering agents with :meth:<code>payments.agents.register_agent</co
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>List of endpoints that don't require authentication</p>
+                <p>Optional list of endpoints that don't require subscription.</p>
               </div>
               <p>
               </p>
@@ -2322,7 +2329,9 @@ Used when registering agents with :meth:<code>payments.agents.register_agent</co
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>URL to the agent definition. Can be an OpenAPI spec, MCP Manifest, or A2A agent card. This field is mandatory.</p>
+                <p>Optional URL to a discoverable agent definition
+      (OpenAPI spec, MCP Manifest, or A2A agent card). Stored as
+      metadata; not consumed at runtime by the platform.</p>
               </div>
               <p>
               </p>
@@ -2402,15 +2411,22 @@ Used when registering agents with :meth:<code>payments.agents.register_agent</co
           </tr>
       </tbody>
     </table>
-        <p>Example::
-    agent_api = AgentAPIAttributes(
-        endpoints=[
-            {"POST": "https://example.com/api/v1/agents/:agentId/tasks"},
-            {"GET": "https://example.com/api/v1/agents/:agentId/tasks/:taskId"}
-        ],
-        agent_definition_url="https://example.com/api/v1/openapi.json",  # OpenAPI spec, MCP Manifest, or A2A agent card
-        auth_type=AuthType.BEARER
-    )</p>
+        <p>Example::</p>
+<div class="highlight"><pre><span></span><code># Minimal (recommended): your library middleware handles per-route gating
+agent_api = AgentAPIAttributes(
+    auth_type=AuthType.BEARER,
+    token=&quot;sk-test&quot;,
+)
+
+# With Additional Security: platform enforces a route allowlist
+agent_api = AgentAPIAttributes(
+    endpoints=[
+        {&quot;verb&quot;: &quot;POST&quot;, &quot;url&quot;: &quot;https://example.com/api/v1/agents/:agentId/tasks&quot;},
+    ],
+    agent_definition_url=&quot;https://example.com/api/v1/openapi.json&quot;,
+    auth_type=AuthType.BEARER,
+)
+</code></pre></div>
 
 
 
@@ -2749,17 +2765,17 @@ For pure ERC20 or native token plans, this is typically <code>None</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>payments_py/common/types.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-252">252</a></span>
-<span class="normal"><a href="#__codelineno-0-253">253</a></span>
-<span class="normal"><a href="#__codelineno-0-254">254</a></span>
-<span class="normal"><a href="#__codelineno-0-255">255</a></span>
-<span class="normal"><a href="#__codelineno-0-256">256</a></span>
-<span class="normal"><a href="#__codelineno-0-257">257</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="k">def</span><span class="w"> </span><span class="nf">model_dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Override to serialize amounts as strings for backend BigInt compatibility.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>    <span class="n">d</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-255" name="__codelineno-0-255"></a>    <span class="k">if</span> <span class="s2">&quot;amounts&quot;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
-<a id="__codelineno-0-256" name="__codelineno-0-256"></a>        <span class="n">d</span><span class="p">[</span><span class="s2">&quot;amounts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">d</span><span class="p">[</span><span class="s2">&quot;amounts&quot;</span><span class="p">]]</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="k">return</span> <span class="n">d</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-269">269</a></span>
+<span class="normal"><a href="#__codelineno-0-270">270</a></span>
+<span class="normal"><a href="#__codelineno-0-271">271</a></span>
+<span class="normal"><a href="#__codelineno-0-272">272</a></span>
+<span class="normal"><a href="#__codelineno-0-273">273</a></span>
+<span class="normal"><a href="#__codelineno-0-274">274</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="k">def</span><span class="w"> </span><span class="nf">model_dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Override to serialize amounts as strings for backend BigInt compatibility.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>    <span class="n">d</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>    <span class="k">if</span> <span class="s2">&quot;amounts&quot;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a>        <span class="n">d</span><span class="p">[</span><span class="s2">&quot;amounts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">d</span><span class="p">[</span><span class="s2">&quot;amounts&quot;</span><span class="p">]]</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>    <span class="k">return</span> <span class="n">d</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
