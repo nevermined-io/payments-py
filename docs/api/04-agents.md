@@ -33,7 +33,7 @@ agents_api = payments.agents
 Register an agent and associate it with existing payment plans:
 
 ```python
-from payments_py.common.types import AgentMetadata, AgentAPIAttributes
+from payments_py.common.types import AgentMetadata, AgentAPIAttributes, AuthType
 
 # Define agent metadata
 agent_metadata = AgentMetadata(
@@ -43,13 +43,12 @@ agent_metadata = AgentMetadata(
     author="Your Company"
 )
 
-# Define API configuration
+# Define API configuration. All AgentAPIAttributes fields are optional —
+# most builders only need to set authentication. See
+# "AgentAPIAttributes Fields" below for opt-in Additional Security.
 agent_api = AgentAPIAttributes(
-    endpoints=[
-        {"POST": "https://your-api.com/api/v1/agents/:agentId/tasks"},
-        {"GET": "https://your-api.com/api/v1/agents/:agentId/tasks/:taskId"}
-    ],
-    agent_definition_url="https://your-api.com/api/v1/openapi.json"
+    auth_type=AuthType.BEARER,
+    token=os.environ["AGENT_BEARER_TOKEN"],
 )
 
 # List of plan IDs that grant access to this agent
@@ -80,8 +79,8 @@ agent_metadata = AgentMetadata(
 )
 
 agent_api = AgentAPIAttributes(
-    endpoints=[{"POST": "https://your-api.com/api/v1/review"}],
-    agent_definition_url="https://your-api.com/openapi.json"
+    auth_type=AuthType.BEARER,
+    token=os.environ["AGENT_BEARER_TOKEN"],
 )
 
 # Plan configuration
@@ -129,29 +128,42 @@ print(f"Transaction: {result['txHash']}")
 
 ### AgentAPIAttributes Fields
 
+All fields are optional. Provide only what your integration needs.
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `endpoints` | `list[dict]` | Yes | List of endpoint configurations |
-| `agent_definition_url` | `str` | Yes | URL to OpenAPI/MCP/A2A spec |
-| `open_endpoints` | `list[str]` | No | Endpoints without auth |
-| `auth_type` | `AuthType` | No | Authentication type |
+| `auth_type` | `AuthType` | No | Authentication type (default: `AuthType.NONE`) |
+| `token` | `str` | No | Bearer token (when `auth_type` is `BEARER` or `OAUTH`) |
+| `username` | `str` | No | Basic-auth username |
+| `password` | `str` | No | Basic-auth password |
+| `endpoints` | `list[Endpoint]` | No | **Additional Security** allowlist — see below |
+| `open_endpoints` | `list[str]` | No | Public endpoints (no subscription required) |
+| `agent_definition_url` | `str` | No | Discoverable agent definition (OpenAPI / MCP / A2A) |
 
-### Endpoint Configuration
+### Additional Security: Endpoint Allowlist (opt-in)
 
-Endpoints are defined as dictionaries with HTTP verb as key and URL as value:
+Setting `endpoints` opts the agent into a platform-enforced allowlist. When set, only requests matching one of the registered URLs are accepted by x402 verify; mismatches reject with `BCK.PROTOCOL.0031`. When omitted, the platform performs no route-level allowlist check — your Payments library middleware (`PaymentMiddleware`, `@requires_payment`) remains the sole gate.
 
 ```python
+from payments_py.common.types import AgentAPIAttributes, AuthType, Endpoint
+
 agent_api = AgentAPIAttributes(
+    auth_type=AuthType.BEARER,
+    token=os.environ["AGENT_BEARER_TOKEN"],
+    # Opt-in: route allowlist enforced by x402 verify
     endpoints=[
-        {"POST": "https://api.example.com/agents/:agentId/tasks"},
-        {"GET": "https://api.example.com/agents/:agentId/tasks/:taskId"},
-        {"DELETE": "https://api.example.com/agents/:agentId/tasks/:taskId"}
+        Endpoint(verb="POST", url="https://api.example.com/agents/:agentId/tasks"),
+        Endpoint(verb="GET", url="https://api.example.com/agents/:agentId/tasks/:taskId"),
+        Endpoint(verb="DELETE", url="https://api.example.com/agents/:agentId/tasks/:taskId"),
     ],
-    agent_definition_url="https://api.example.com/openapi.json"
+    open_endpoints=["https://api.example.com/health"],
+    agent_definition_url="https://api.example.com/openapi.json",
 )
 ```
 
 The `:agentId` and `:taskId` placeholders will be replaced with actual values during request validation.
+
+> **Migration note:** existing agents that registered before April 2026 still have these fields populated and continue to enforce the allowlist as before. No migration is needed.
 
 ## Retrieve Agents
 
@@ -179,16 +191,24 @@ print(f"Associated plans: {plans}")
 
 ### Update Agent Metadata
 
+`update_agent_metadata` is also where builders typically opt in to **Additional Security** by adding an `endpoints` allowlist or `agent_definition_url` to an existing agent:
+
 ```python
+from payments_py.common.types import AgentMetadata, AgentAPIAttributes, AuthType, Endpoint
+
 updated_metadata = AgentMetadata(
     name="Updated Agent Name",
     description="Updated description with new features",
     tags=["ai", "updated", "v2"]
 )
 
+# Adding `endpoints` activates the platform-enforced allowlist for this
+# agent. To return to allow-all, omit it on the next update.
 updated_api = AgentAPIAttributes(
-    endpoints=[{"POST": "https://new-api.com/v2/tasks"}],
-    agent_definition_url="https://new-api.com/v2/openapi.json"
+    auth_type=AuthType.BEARER,
+    token=os.environ["AGENT_BEARER_TOKEN"],
+    endpoints=[Endpoint(verb="POST", url="https://new-api.com/v2/tasks")],
+    agent_definition_url="https://new-api.com/v2/openapi.json",
 )
 
 result = payments.agents.update_agent_metadata(
