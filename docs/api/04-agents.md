@@ -33,6 +33,8 @@ agents_api = payments.agents
 Register an agent and associate it with existing payment plans:
 
 ```python
+import os
+
 from payments_py.common.types import AgentMetadata, AgentAPIAttributes, AuthType
 
 # Define agent metadata
@@ -68,7 +70,14 @@ print(f"Agent ID: {result['agentId']}")
 Create both an agent and a payment plan in a single operation:
 
 ```python
-from payments_py.common.types import AgentMetadata, AgentAPIAttributes, PlanMetadata
+import os
+
+from payments_py.common.types import (
+    AgentMetadata,
+    AgentAPIAttributes,
+    AuthType,
+    PlanMetadata,
+)
 from payments_py.plans import get_erc20_price_config, get_fixed_credits_config
 
 # Agent configuration
@@ -142,9 +151,11 @@ All fields are optional. Provide only what your integration needs.
 
 ### Additional Security: Endpoint Allowlist (opt-in)
 
-Setting `endpoints` opts the agent into a platform-enforced allowlist. When set, only requests matching one of the registered URLs are accepted by x402 verify; mismatches reject with `BCK.PROTOCOL.0031`. When omitted, the platform performs no route-level allowlist check — your Payments library middleware (`PaymentMiddleware`, `@requires_payment`) remains the sole gate.
+Setting `endpoints` opts the agent into a platform-enforced allowlist. When set, only requests matching one of the registered URLs are accepted during x402 verification; non-matching requests are rejected. When omitted, the platform performs no route-level allowlist check — your Payments library middleware (`PaymentMiddleware`, `@requires_payment`) remains the sole gate.
 
 ```python
+import os
+
 from payments_py.common.types import AgentAPIAttributes, AuthType, Endpoint
 
 agent_api = AgentAPIAttributes(
@@ -194,7 +205,14 @@ print(f"Associated plans: {plans}")
 `update_agent_metadata` is also where builders typically opt in to **Additional Security** by adding an `endpoints` allowlist or `agent_definition_url` to an existing agent:
 
 ```python
-from payments_py.common.types import AgentMetadata, AgentAPIAttributes, AuthType, Endpoint
+import os
+
+from payments_py.common.types import (
+    AgentMetadata,
+    AgentAPIAttributes,
+    AuthType,
+    Endpoint,
+)
 
 updated_metadata = AgentMetadata(
     name="Updated Agent Name",

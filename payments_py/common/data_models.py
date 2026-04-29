@@ -152,8 +152,9 @@ class CreateAgentDto(BaseModel):
             tags=["ai"],
         )
         # All AgentAPIAttributes fields are optional. The minimal form only
-        # configures authentication; `endpoints` and `agent_definition_url`
-        # are opt-in Additional Security.
+        # configures authentication; `endpoints` is opt-in Additional
+        # Security, and `agent_definition_url` is optional discoverable
+        # definition metadata.
         agent_api = AgentAPIAttributes(
             auth_type=AuthType.BEARER,
             token="your-bearer-token",
