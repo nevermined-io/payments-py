@@ -85,3 +85,62 @@ class TestPayAsYouGoHelperFunctions:
         assert credits_config.amount == "1"
         assert credits_config.min_amount == 1
         assert credits_config.max_amount == 1
+
+
+class TestPlanCreditsConfigCamelCaseAlias:
+    """Verify the wire-format compatibility added in #1281: API JSON
+    speaks camelCase (`onchainMirror`); the snake_case Python field
+    `onchain_mirror` resolves both names via `populate_by_name=True` +
+    `Field(alias="onchainMirror")`. Without this contract, plans
+    returned from the API would fail to deserialize."""
+
+    def test_model_validate_accepts_camel_case_onchain_mirror(self):
+        """The API emits camelCase; PlanCreditsConfig must accept it."""
+        from payments_py.common.types import PlanCreditsConfig, PlanRedemptionType
+
+        config = PlanCreditsConfig.model_validate(
+            {
+                "is_redemption_amount_fixed": True,
+                "redemption_type": PlanRedemptionType.ONLY_SUBSCRIBER,
+                "onchainMirror": True,  # camelCase wire format
+                "duration_secs": 0,
+                "amount": "100",
+                "min_amount": 1,
+                "max_amount": 1,
+            }
+        )
+        assert config.onchain_mirror is True
+
+    def test_model_validate_accepts_snake_case_onchain_mirror(self):
+        """populate_by_name=True keeps snake_case construction working."""
+        from payments_py.common.types import PlanCreditsConfig, PlanRedemptionType
+
+        config = PlanCreditsConfig.model_validate(
+            {
+                "is_redemption_amount_fixed": True,
+                "redemption_type": PlanRedemptionType.ONLY_SUBSCRIBER,
+                "onchain_mirror": True,  # snake_case
+                "duration_secs": 0,
+                "amount": "100",
+                "min_amount": 1,
+                "max_amount": 1,
+            }
+        )
+        assert config.onchain_mirror is True
+
+    def test_model_validate_defaults_to_false_when_field_omitted(self):
+        """Legacy API responses that omit the field must parse cleanly."""
+        from payments_py.common.types import PlanCreditsConfig, PlanRedemptionType
+
+        config = PlanCreditsConfig.model_validate(
+            {
+                "is_redemption_amount_fixed": True,
+                "redemption_type": PlanRedemptionType.ONLY_SUBSCRIBER,
+                # onchainMirror intentionally omitted
+                "duration_secs": 0,
+                "amount": "100",
+                "min_amount": 1,
+                "max_amount": 1,
+            }
+        )
+        assert config.onchain_mirror is False
