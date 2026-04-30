@@ -4707,7 +4707,8 @@ time_config = get_expirable_duration_config(ONE_DAY_DURATION)
 <span class="normal"><a href="#__codelineno-0-262">262</a></span>
 <span class="normal"><a href="#__codelineno-0-263">263</a></span>
 <span class="normal"><a href="#__codelineno-0-264">264</a></span>
-<span class="normal"><a href="#__codelineno-0-265">265</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_redemption_type</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-265">265</a></span>
+<span class="normal"><a href="#__codelineno-0-266">266</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_redemption_type</span><span class="p">(</span>
 <a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="n">credits_config</span><span class="p">:</span> <span class="n">PlanCreditsConfig</span><span class="p">,</span> <span class="n">redemption_type</span><span class="p">:</span> <span class="n">PlanRedemptionType</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlanCreditsConfig</span><span class="p">:</span>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -4721,14 +4722,15 @@ time_config = get_expirable_duration_config(ONE_DAY_DURATION)
 <a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">        A new PlanCreditsConfig with the updated redemption type</span>
 <a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="k">return</span> <span class="n">PlanCreditsConfig</span><span class="p">(</span>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a>        <span class="n">credits_type</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">credits_type</span><span class="p">,</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a>        <span class="n">is_redemption_amount_fixed</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">is_redemption_amount_fixed</span><span class="p">,</span>
 <a id="__codelineno-0-259" name="__codelineno-0-259"></a>        <span class="n">redemption_type</span><span class="o">=</span><span class="n">redemption_type</span><span class="p">,</span>
 <a id="__codelineno-0-260" name="__codelineno-0-260"></a>        <span class="n">onchain_mirror</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">onchain_mirror</span><span class="p">,</span>
 <a id="__codelineno-0-261" name="__codelineno-0-261"></a>        <span class="n">duration_secs</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">duration_secs</span><span class="p">,</span>
 <a id="__codelineno-0-262" name="__codelineno-0-262"></a>        <span class="n">amount</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span>
 <a id="__codelineno-0-263" name="__codelineno-0-263"></a>        <span class="n">min_amount</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">min_amount</span><span class="p">,</span>
 <a id="__codelineno-0-264" name="__codelineno-0-264"></a>        <span class="n">max_amount</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">max_amount</span><span class="p">,</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a>    <span class="p">)</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>        <span class="n">nft_address</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">nft_address</span><span class="p">,</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4834,8 +4836,7 @@ mirror; pass <code>False</code> explicitly to disable it.</p>
 
             <details class="quote">
               <summary>Source code in <code>payments_py/plans.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-268">268</a></span>
-<span class="normal"><a href="#__codelineno-0-269">269</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-269">269</a></span>
 <span class="normal"><a href="#__codelineno-0-270">270</a></span>
 <span class="normal"><a href="#__codelineno-0-271">271</a></span>
 <span class="normal"><a href="#__codelineno-0-272">272</a></span>
@@ -4862,35 +4863,38 @@ mirror; pass <code>False</code> explicitly to disable it.</p>
 <span class="normal"><a href="#__codelineno-0-293">293</a></span>
 <span class="normal"><a href="#__codelineno-0-294">294</a></span>
 <span class="normal"><a href="#__codelineno-0-295">295</a></span>
-<span class="normal"><a href="#__codelineno-0-296">296</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_onchain_mirror</span><span class="p">(</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>    <span class="n">credits_config</span><span class="p">:</span> <span class="n">PlanCreditsConfig</span><span class="p">,</span> <span class="n">onchain_mirror</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlanCreditsConfig</span><span class="p">:</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">    Set whether burns of these credits are mirrored on-chain.</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">    When ``False`` (the structural default of all credits-config builders)</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">    the credits ledger lives in the API&#39;s Postgres and burns are recorded</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">    off-chain only. When ``True`` an on-chain audit mirror replays each</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">    burn to ``NFT1155Credits``.</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">        credits_config: The credits configuration to modify</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">        onchain_mirror: Whether on-chain mirroring is enabled. Defaults to</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">            ``True`` so calling ``set_onchain_mirror(config)`` enables the</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">            mirror; pass ``False`` explicitly to disable it.</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">        A new PlanCreditsConfig with the updated on-chain mirror flag</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a>    <span class="k">return</span> <span class="n">PlanCreditsConfig</span><span class="p">(</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>        <span class="n">credits_type</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">credits_type</span><span class="p">,</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a>        <span class="n">redemption_type</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">redemption_type</span><span class="p">,</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a>        <span class="n">onchain_mirror</span><span class="o">=</span><span class="n">onchain_mirror</span><span class="p">,</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a>        <span class="n">duration_secs</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">duration_secs</span><span class="p">,</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a>        <span class="n">amount</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a>        <span class="n">min_amount</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">min_amount</span><span class="p">,</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a>        <span class="n">max_amount</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">max_amount</span><span class="p">,</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-296">296</a></span>
+<span class="normal"><a href="#__codelineno-0-297">297</a></span>
+<span class="normal"><a href="#__codelineno-0-298">298</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_onchain_mirror</span><span class="p">(</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>    <span class="n">credits_config</span><span class="p">:</span> <span class="n">PlanCreditsConfig</span><span class="p">,</span> <span class="n">onchain_mirror</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlanCreditsConfig</span><span class="p">:</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">    Set whether burns of these credits are mirrored on-chain.</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">    When ``False`` (the structural default of all credits-config builders)</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">    the credits ledger lives in the API&#39;s Postgres and burns are recorded</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">    off-chain only. When ``True`` an on-chain audit mirror replays each</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">    burn to ``NFT1155Credits``.</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">        credits_config: The credits configuration to modify</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">        onchain_mirror: Whether on-chain mirroring is enabled. Defaults to</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">            ``True`` so calling ``set_onchain_mirror(config)`` enables the</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">            mirror; pass ``False`` explicitly to disable it.</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">        A new PlanCreditsConfig with the updated on-chain mirror flag</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>    <span class="k">return</span> <span class="n">PlanCreditsConfig</span><span class="p">(</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>        <span class="n">is_redemption_amount_fixed</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">is_redemption_amount_fixed</span><span class="p">,</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>        <span class="n">redemption_type</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">redemption_type</span><span class="p">,</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a>        <span class="n">onchain_mirror</span><span class="o">=</span><span class="n">onchain_mirror</span><span class="p">,</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>        <span class="n">duration_secs</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">duration_secs</span><span class="p">,</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a>        <span class="n">amount</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a>        <span class="n">min_amount</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">min_amount</span><span class="p">,</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>        <span class="n">max_amount</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">max_amount</span><span class="p">,</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a>        <span class="n">nft_address</span><span class="o">=</span><span class="n">credits_config</span><span class="o">.</span><span class="n">nft_address</span><span class="p">,</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
