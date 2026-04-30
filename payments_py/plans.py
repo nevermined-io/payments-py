@@ -172,7 +172,7 @@ def get_expirable_duration_config(duration_of_plan: int) -> PlanCreditsConfig:
     return PlanCreditsConfig(
         is_redemption_amount_fixed=False,
         redemption_type=PlanRedemptionType.ONLY_SUBSCRIBER,
-        proof_required=False,
+        onchain_mirror=False,
         duration_secs=duration_of_plan,
         amount="1",
         min_amount=1,
@@ -206,7 +206,7 @@ def get_fixed_credits_config(
     return PlanCreditsConfig(
         is_redemption_amount_fixed=True,
         redemption_type=PlanRedemptionType.ONLY_SUBSCRIBER,
-        proof_required=False,
+        onchain_mirror=False,
         duration_secs=0,
         amount=str(credits_granted),
         min_amount=credits_per_request,
@@ -233,7 +233,7 @@ def get_dynamic_credits_config(
     return PlanCreditsConfig(
         is_redemption_amount_fixed=False,
         redemption_type=PlanRedemptionType.ONLY_SUBSCRIBER,
-        proof_required=False,
+        onchain_mirror=False,
         duration_secs=0,
         amount=str(credits_granted),
         min_amount=min_credits_per_request,
@@ -257,7 +257,7 @@ def set_redemption_type(
     return PlanCreditsConfig(
         credits_type=credits_config.credits_type,
         redemption_type=redemption_type,
-        proof_required=credits_config.proof_required,
+        onchain_mirror=credits_config.onchain_mirror,
         duration_secs=credits_config.duration_secs,
         amount=credits_config.amount,
         min_amount=credits_config.min_amount,
@@ -265,23 +265,30 @@ def set_redemption_type(
     )
 
 
-def set_proof_required(
-    credits_config: PlanCreditsConfig, proof_required: bool = True
+def set_onchain_mirror(
+    credits_config: PlanCreditsConfig, onchain_mirror: bool = True
 ) -> PlanCreditsConfig:
     """
-    Set whether proof is required for a credits configuration.
+    Set whether burns of these credits are mirrored on-chain.
+
+    When ``False`` (the structural default of all credits-config builders)
+    the credits ledger lives in the API's Postgres and burns are recorded
+    off-chain only. When ``True`` an on-chain audit mirror replays each
+    burn to ``NFT1155Credits``.
 
     Args:
         credits_config: The credits configuration to modify
-        proof_required: Whether proof is required (default: True)
+        onchain_mirror: Whether on-chain mirroring is enabled. Defaults to
+            ``True`` so calling ``set_onchain_mirror(config)`` enables the
+            mirror; pass ``False`` explicitly to disable it.
 
     Returns:
-        A new PlanCreditsConfig with the updated proof requirement
+        A new PlanCreditsConfig with the updated on-chain mirror flag
     """
     return PlanCreditsConfig(
         credits_type=credits_config.credits_type,
         redemption_type=credits_config.redemption_type,
-        proof_required=proof_required,
+        onchain_mirror=onchain_mirror,
         duration_secs=credits_config.duration_secs,
         amount=credits_config.amount,
         min_amount=credits_config.min_amount,
@@ -384,7 +391,7 @@ def get_pay_as_you_go_credits_config() -> PlanCreditsConfig:
     return PlanCreditsConfig(
         is_redemption_amount_fixed=False,
         redemption_type=PlanRedemptionType.ONLY_SUBSCRIBER,
-        proof_required=False,
+        onchain_mirror=False,
         duration_secs=0,
         amount="1",
         min_amount=1,

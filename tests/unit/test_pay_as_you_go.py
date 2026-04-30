@@ -67,7 +67,7 @@ class TestPayAsYouGoHelperFunctions:
 
         assert credits_config.is_redemption_amount_fixed is False
         assert credits_config.redemption_type == PlanRedemptionType.ONLY_SUBSCRIBER
-        assert credits_config.proof_required is False
+        assert credits_config.onchain_mirror is False
         assert credits_config.duration_secs == 0
         assert credits_config.amount == "1"
         assert credits_config.min_amount == 1

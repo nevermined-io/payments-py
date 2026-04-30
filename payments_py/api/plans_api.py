@@ -533,11 +533,11 @@ class PlansAPI(BasePaymentsAPI):
         return plan_utils.set_redemption_type(credits_config, redemption_type)
 
     @staticmethod
-    def set_proof_required(
-        credits_config: PlanCreditsConfig, proof_required: bool = True
+    def set_onchain_mirror(
+        credits_config: PlanCreditsConfig, onchain_mirror: bool = True
     ) -> PlanCreditsConfig:
-        """Set proof requirement on a credits configuration (returns new object)."""
-        return plan_utils.set_proof_required(credits_config, proof_required)
+        """Set the on-chain mirror flag on a credits configuration (returns new object)."""
+        return plan_utils.set_onchain_mirror(credits_config, onchain_mirror)
 
     # Pay As You Go configuration builders -----------------------------------
     def get_pay_as_you_go_price_config(

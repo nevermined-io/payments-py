@@ -287,7 +287,14 @@ class PlanCreditsConfig(BaseModel):
     Args:
         is_redemption_amount_fixed: Whether credits consumed per request is fixed (True) or variable (False)
         redemption_type: Who can redeem credits (PlanRedemptionType enum)
-        proof_required: Whether proof is required for redemption
+        onchain_mirror: Whether burns of these credits are mirrored on-chain.
+            Defaults to ``False`` — keeps the ledger off-chain in the API's
+            Postgres, and recovers gracefully when API responses omit the
+            field entirely. ``True`` enables the API-side
+            ``OnchainMirrorWorker`` that replays each burn to
+            ``NFT1155Credits`` for audit. Accepts the camelCase alias
+            ``onchainMirror`` so plans deserialized from API JSON also
+            resolve cleanly into this field regardless of casing.
         duration_secs: Duration in seconds (0 for non-expirable, >0 for expirable)
         amount: Total credits granted as string
         min_amount: Minimum credits consumed per request
@@ -305,9 +312,11 @@ class PlanCreditsConfig(BaseModel):
         time_config = get_expirable_duration_config(ONE_DAY_DURATION)
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     is_redemption_amount_fixed: bool = False
     redemption_type: PlanRedemptionType
-    proof_required: bool
+    onchain_mirror: bool = Field(default=False, alias="onchainMirror")
     duration_secs: int
     amount: str
     min_amount: int
