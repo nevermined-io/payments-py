@@ -39,6 +39,15 @@ class TestSetRedemptionType:
         assert updated is not original
         assert original.redemption_type == original_redemption
 
+    def test_preserves_nft_address(self):
+        original = get_fixed_credits_config(100).model_copy(
+            update={"nft_address": "0xdeadbeef"}
+        )
+
+        updated = set_redemption_type(original, PlanRedemptionType.ONLY_OWNER)
+
+        assert updated.nft_address == "0xdeadbeef"
+
 
 class TestSetOnchainMirror:
     def test_enables_mirror_by_default(self):
@@ -79,3 +88,12 @@ class TestSetOnchainMirror:
 
         assert updated is not original
         assert original.onchain_mirror is False
+
+    def test_preserves_nft_address(self):
+        original = get_fixed_credits_config(100).model_copy(
+            update={"nft_address": "0xdeadbeef"}
+        )
+
+        updated = set_onchain_mirror(original, True)
+
+        assert updated.nft_address == "0xdeadbeef"

@@ -262,6 +262,7 @@ def set_redemption_type(
         amount=credits_config.amount,
         min_amount=credits_config.min_amount,
         max_amount=credits_config.max_amount,
+        nft_address=credits_config.nft_address,
     )
 
 
@@ -293,6 +294,7 @@ def set_onchain_mirror(
         amount=credits_config.amount,
         min_amount=credits_config.min_amount,
         max_amount=credits_config.max_amount,
+        nft_address=credits_config.nft_address,
     )
 
 
