@@ -81,7 +81,7 @@ from payments_py.plans import (
     get_fixed_credits_config,
     get_dynamic_credits_config,
     set_redemption_type,
-    set_proof_required,
+    set_onchain_mirror,
     # Pay As You Go functions
     get_pay_as_you_go_price_config,
     get_pay_as_you_go_credits_config,
@@ -170,7 +170,7 @@ __all__ = [
     "get_fixed_credits_config",
     "get_dynamic_credits_config",
     "set_redemption_type",
-    "set_proof_required",
+    "set_onchain_mirror",
     # Pay As You Go functions
     "get_pay_as_you_go_price_config",
     "get_pay_as_you_go_credits_config",

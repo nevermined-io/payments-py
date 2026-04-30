@@ -118,4 +118,4 @@ Type definitions and models used throughout the SDK.
         - get_expirable_duration_config
         - get_non_expirable_duration_config
         - set_redemption_type
-        - set_proof_required
+        - set_onchain_mirror
