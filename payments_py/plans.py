@@ -255,7 +255,7 @@ def set_redemption_type(
         A new PlanCreditsConfig with the updated redemption type
     """
     return PlanCreditsConfig(
-        credits_type=credits_config.credits_type,
+        is_redemption_amount_fixed=credits_config.is_redemption_amount_fixed,
         redemption_type=redemption_type,
         onchain_mirror=credits_config.onchain_mirror,
         duration_secs=credits_config.duration_secs,
@@ -286,7 +286,7 @@ def set_onchain_mirror(
         A new PlanCreditsConfig with the updated on-chain mirror flag
     """
     return PlanCreditsConfig(
-        credits_type=credits_config.credits_type,
+        is_redemption_amount_fixed=credits_config.is_redemption_amount_fixed,
         redemption_type=credits_config.redemption_type,
         onchain_mirror=onchain_mirror,
         duration_secs=credits_config.duration_secs,
