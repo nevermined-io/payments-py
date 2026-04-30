@@ -1199,10 +1199,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#payments_py.api.plans_api.PlansAPI.set_proof_required" class="md-nav__link">
+  <a href="#payments_py.api.plans_api.PlansAPI.set_onchain_mirror" class="md-nav__link">
     <span class="md-ellipsis">
       
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;set_proof_required
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;set_onchain_mirror
       
     </span>
   </a>
@@ -2029,10 +2029,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#payments_py.api.plans_api.PlansAPI.set_proof_required" class="md-nav__link">
+  <a href="#payments_py.api.plans_api.PlansAPI.set_onchain_mirror" class="md-nav__link">
     <span class="md-ellipsis">
       
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;set_proof_required
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;set_onchain_mirror
       
     </span>
   </a>
@@ -5740,24 +5740,24 @@ A Trial plan is a plan that only can be purchased once by a user.</p>
 <div class="doc doc-object doc-function">
 
 
-<h4 id="payments_py.api.plans_api.PlansAPI.set_proof_required" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">set_proof_required</span>
+<h4 id="payments_py.api.plans_api.PlansAPI.set_onchain_mirror" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">set_onchain_mirror</span>
 
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
   </span>
 
-<a href="#payments_py.api.plans_api.PlansAPI.set_proof_required" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">set_proof_required</span><span class="p">(</span>
+<a href="#payments_py.api.plans_api.PlansAPI.set_onchain_mirror" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">set_onchain_mirror</span><span class="p">(</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">credits_config</span><span class="p">:</span> <span class="n">PlanCreditsConfig</span><span class="p">,</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">proof_required</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">onchain_mirror</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlanCreditsConfig</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>Set proof requirement on a credits configuration (returns new object).</p>
+        <p>Set the on-chain mirror flag on a credits configuration (returns new object).</p>
 
 
             <details class="quote">
@@ -5768,11 +5768,11 @@ A Trial plan is a plan that only can be purchased once by a user.</p>
 <span class="normal"><a href="#__codelineno-0-538">538</a></span>
 <span class="normal"><a href="#__codelineno-0-539">539</a></span>
 <span class="normal"><a href="#__codelineno-0-540">540</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-535" name="__codelineno-0-535"></a><span class="nd">@staticmethod</span>
-<a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_proof_required</span><span class="p">(</span>
-<a id="__codelineno-0-537" name="__codelineno-0-537"></a>    <span class="n">credits_config</span><span class="p">:</span> <span class="n">PlanCreditsConfig</span><span class="p">,</span> <span class="n">proof_required</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_onchain_mirror</span><span class="p">(</span>
+<a id="__codelineno-0-537" name="__codelineno-0-537"></a>    <span class="n">credits_config</span><span class="p">:</span> <span class="n">PlanCreditsConfig</span><span class="p">,</span> <span class="n">onchain_mirror</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <a id="__codelineno-0-538" name="__codelineno-0-538"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlanCreditsConfig</span><span class="p">:</span>
-<a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Set proof requirement on a credits configuration (returns new object).&quot;&quot;&quot;</span>
-<a id="__codelineno-0-540" name="__codelineno-0-540"></a>    <span class="k">return</span> <span class="n">plan_utils</span><span class="o">.</span><span class="n">set_proof_required</span><span class="p">(</span><span class="n">credits_config</span><span class="p">,</span> <span class="n">proof_required</span><span class="p">)</span>
+<a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the on-chain mirror flag on a credits configuration (returns new object).&quot;&quot;&quot;</span>
+<a id="__codelineno-0-540" name="__codelineno-0-540"></a>    <span class="k">return</span> <span class="n">plan_utils</span><span class="o">.</span><span class="n">set_onchain_mirror</span><span class="p">(</span><span class="n">credits_config</span><span class="p">,</span> <span class="n">onchain_mirror</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
