@@ -115,7 +115,12 @@ class PlansAPI(BasePaymentsAPI):
             "metadataAttributes": self.pydantic_to_dict(plan_metadata),
             "priceConfig": price_dict,
             "creditsConfig": self.pydantic_to_dict(credits_config),
-            "nonce": nonce,
+            # Send `nonce` as a decimal string so the backend's uint256
+            # validator (BCK.COMMON.0026) accepts it for very large
+            # values that would overflow JSON's safe-integer range.
+            # The TypeScript SDK gets this for free via the BigInt
+            # `jsonReplacer`; Python needs the explicit cast.
+            "nonce": str(nonce),
             "isTrialPlan": getattr(plan_metadata, "is_trial_plan", False),
             "accessLimit": access_limit,
         }
