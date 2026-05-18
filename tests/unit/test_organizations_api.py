@@ -105,9 +105,9 @@ class TestGetMyMemberships:
         assert memberships[1].role == OrganizationMemberRole.MEMBER
 
     def test_tolerates_unexpected_non_array_body(self):
-        # Backend changes that return an object instead of an array must not
-        # crash the SDK — newer event types and forward-compat shapes should
-        # degrade gracefully to an empty list rather than a TypeError.
+        # Backend changes that return an object instead of an array must
+        # not crash the SDK — `get_my_memberships()` should degrade
+        # gracefully to an empty list rather than a TypeError.
         payments = _make_payments()
         with requests_mock.Mocker() as m:
             m.get(

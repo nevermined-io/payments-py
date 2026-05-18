@@ -220,10 +220,13 @@ class Payments(BasePaymentsAPI):
             ):
                 attr.set_organization_id(organization_id)
 
-        # Lazily-built APIs (mcp, agentcore, delegation) are reset so the
-        # next access reconstructs them with the new pin in place.
-        self._mcp_integration = None
-        self._agentcore_api = None
+        # ``_mcp_integration`` and ``_agentcore_api`` hold a reference to
+        # ``self`` and observe ``current_organization_id`` live — don't
+        # discard them here or any tools/resources/prompts that callers
+        # already registered on the MCP integration would be lost.
+        # ``_delegation_api`` snapshots the org id at construction time
+        # via ``_build_options()``, so reset it to force a rebuild with
+        # the new pin on the next access.
         self._delegation_api = None
 
     @property

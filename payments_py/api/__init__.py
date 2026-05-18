@@ -7,6 +7,7 @@ from payments_py.api.query_api import AIQueryApi
 from payments_py.api.observability_api import ObservabilityAPI
 from payments_py.api.contracts_api import ContractsAPI
 from payments_py.api.base_payments import BasePaymentsAPI
+from payments_py.api.organizations_api import OrganizationsAPI
 
 __all__ = [
     "AgentsAPI",
@@ -16,4 +17,5 @@ __all__ = [
     "ObservabilityAPI",
     "ContractsAPI",
     "BasePaymentsAPI",
+    "OrganizationsAPI",
 ]
