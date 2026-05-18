@@ -2,7 +2,7 @@
 Main Payments class for the Nevermined Payments protocol.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.query_api import AIQueryApi
@@ -11,6 +11,7 @@ from payments_py.api.plans_api import PlansAPI
 from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
 from payments_py.api.observability_api import ObservabilityAPI
+from payments_py.api.organizations_api import OrganizationsAPI
 from payments_py.api.contracts_api import ContractsAPI
 from payments_py.x402.facilitator_api import FacilitatorAPI
 from payments_py.x402.token import X402TokenAPI
@@ -91,6 +92,7 @@ class Payments(BasePaymentsAPI):
         self.requests = AgentRequestsAPI.get_instance(options)
         self.query = AIQueryApi.get_instance()
         self.observability = ObservabilityAPI.get_instance(options)
+        self.organizations = OrganizationsAPI.get_instance(options)
         self.facilitator = FacilitatorAPI.get_instance(options)
         self.x402 = X402TokenAPI.get_instance(options)
         self.contracts_api = ContractsAPI(options)
@@ -179,7 +181,50 @@ class Payments(BasePaymentsAPI):
             environment=self.environment_name,
             app_id=self.app_id,
             version=self.version,
+            organization_id=self.current_organization_id,
         )
+
+    def set_organization_id(self, organization_id: Optional[str]) -> None:
+        """Pin (or clear) the active organization workspace across every sub-API.
+
+        Forwards the choice as the ``X-Current-Org-Id`` header on every
+        subsequent authenticated request. Pass ``None`` to clear the pin
+        and let the backend fall back to the API key's org tag or the
+        caller's most-recent active membership.
+
+        For one-off targeting (e.g. publish a single agent into Org B
+        without leaving Org B as the active workspace) prefer the
+        per-call ``organization_id`` argument on the relevant publish
+        method.
+
+        Args:
+            organization_id: Org id to pin (e.g. ``"org-..."``) or ``None``
+                to clear.
+
+        Example::
+
+            payments.set_organization_id("org-abc123")
+            payments.agents.register_agent(metadata, api, [plan_id])
+            # → lands in org-abc123
+        """
+        super().set_organization_id(organization_id)
+        # Propagate to every eagerly-constructed sub-API automatically so a
+        # future addition to ``_initialize_api`` is picked up without
+        # touching this method. ``hasattr`` filters out attrs that don't
+        # carry org context (e.g. ``query`` which is not a Payments API).
+        for attr in vars(self).values():
+            if attr is self:
+                continue
+            if hasattr(attr, "set_organization_id") and callable(
+                getattr(attr, "set_organization_id")
+            ):
+                attr.set_organization_id(organization_id)
+
+        # Lazily-built APIs (mcp, agentcore, delegation) are reset so the
+        # next access reconstructs them with the new pin in place.
+        self._mcp_integration = None
+        self._agentcore_api = None
+        self._delegation_api = None
 
     @property
     def is_logged_in(self) -> bool:

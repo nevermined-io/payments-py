@@ -15,6 +15,7 @@ from payments_py.common.types import (
     PaginationOptions,
 )
 from payments_py.api.base_payments import BasePaymentsAPI
+from payments_py.api.organizations_api import resolve_publication_headers
 from payments_py.api.nvm_api import (
     API_URL_REGISTER_AGENT,
     API_URL_GET_AGENT,
@@ -49,6 +50,7 @@ class AgentsAPI(BasePaymentsAPI):
         agent_metadata: AgentMetadata,
         agent_api: AgentAPIAttributes,
         payment_plans: List[str],
+        organization_id: Optional[str] = None,
     ) -> Dict[str, str]:
         """
         Registers a new AI Agent on Nevermined.
@@ -60,6 +62,10 @@ class AgentsAPI(BasePaymentsAPI):
             agent_metadata: Agent metadata
             agent_api: Agent API attributes
             payment_plans: The list of payment plans giving access to the agent
+            organization_id: Optional org id (e.g. ``"org-..."``) to publish
+                into for this call only. Sends an ``X-Current-Org-Id``
+                header without mutating the instance-level pin (set via
+                :meth:`Payments.set_organization_id`).
 
         Returns:
             The unique identifier of the newly created agent (Agent Id)
@@ -73,7 +79,9 @@ class AgentsAPI(BasePaymentsAPI):
             "plans": payment_plans,
         }
 
-        options = self.get_backend_http_options("POST", body)
+        options = self.get_backend_http_options(
+            "POST", body, extra_headers=resolve_publication_headers(organization_id)
+        )
         url = f"{self.environment.backend}{API_URL_REGISTER_AGENT}"
 
         response = requests.post(url, **options)
@@ -94,6 +102,7 @@ class AgentsAPI(BasePaymentsAPI):
         price_config: PlanPriceConfig,
         credits_config: PlanCreditsConfig,
         access_limit: Optional[Literal["credits", "time"]] = None,
+        organization_id: Optional[str] = None,
     ) -> Dict[str, str]:
         """
         Registers a new AI Agent and a Payment Plan associated to this new agent.
@@ -107,6 +116,9 @@ class AgentsAPI(BasePaymentsAPI):
             price_config: Plan price configuration
             credits_config: Plan credits configuration
             access_limit: Optional access limit for the plan
+            organization_id: Optional org id (e.g. ``"org-..."``) to publish
+                into for this call only. Sends an ``X-Current-Org-Id``
+                header without mutating the instance-level pin.
         Returns:
             Dictionary containing agentId, planId, and txHash
 
@@ -134,7 +146,9 @@ class AgentsAPI(BasePaymentsAPI):
             },
         }
 
-        options = self.get_backend_http_options("POST", body)
+        options = self.get_backend_http_options(
+            "POST", body, extra_headers=resolve_publication_headers(organization_id)
+        )
         url = f"{self.environment.backend}{API_URL_REGISTER_AGENTS_AND_PLAN}"
 
         response = requests.post(url, **options)

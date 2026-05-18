@@ -13,6 +13,23 @@ Address = str
 class PaymentOptions(BaseModel):
     """
     Options for initializing the Payments class.
+
+    Args:
+        environment: Nevermined environment (e.g. ``"sandbox"``, ``"live"``).
+        nvm_api_key: NVM API key used to authenticate against the backend.
+        return_url: Optional URL to return to after login (browser flows).
+        app_id: Optional application identifier stamped on registered assets.
+        version: Optional SDK version reported to the backend.
+        headers: Optional default headers to merge into every request.
+        organization_id: Optional organization id (e.g. ``"org-..."``) used
+            as the active workspace for every authenticated backend call.
+            When set, the SDK forwards it as the ``X-Current-Org-Id``
+            request header so the backend scopes published agents, plans,
+            and other workspace-aware resources to this organization.
+            If omitted, the backend falls back to the API key's org tag
+            or the caller's most-recent active membership (see
+            ``CurrentOrgContextGuard`` in nvm-monorepo). Override per-call
+            via the ``organization_id`` argument on publish methods.
     """
 
     environment: str
@@ -21,6 +38,7 @@ class PaymentOptions(BaseModel):
     app_id: Optional[str] = None
     version: Optional[str] = None
     headers: Optional[Dict[str, str]] = None
+    organization_id: Optional[str] = None
 
 
 class Endpoint(BaseModel):
@@ -411,3 +429,104 @@ class NvmAPIResult(BaseModel):
     http_status: Optional[int] = None
     data: Optional[Dict[str, Any]] = None
     when: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Organizations
+# ---------------------------------------------------------------------------
+
+
+class OrganizationMemberRole(str, Enum):
+    """Role of a member inside an organization.
+
+    Mirrors ``OrganizationMemberRole`` from ``@nevermined-io/commons`` in the
+    nvm-monorepo backend. ``CLIENT`` is retained for backwards compatibility
+    with historical rows; new memberships only use ``ADMIN`` or ``MEMBER``.
+    """
+
+    ADMIN = "Admin"
+    MEMBER = "Member"
+    CLIENT = "Client"
+
+
+class OrganizationType(str, Enum):
+    """Tier of an organization."""
+
+    FREE = "Free"
+    PREMIUM = "Premium"
+    ENTERPRISE = "Enterprise"
+    LAPSED = "Lapsed"
+
+
+class MyMembership(BaseModel):
+    """A single organization the authenticated user is an active member of.
+
+    Returned by :meth:`OrganizationsAPI.get_my_memberships` and used by
+    clients to power workspace pickers and "where will this publish?" UX.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    org_id: str = Field(alias="orgId")
+    organization_name: str = Field(alias="organizationName")
+    organization_type: OrganizationType = Field(alias="organizationType")
+    role: OrganizationMemberRole
+    user_is_active: bool = Field(alias="userIsActive")
+    organization_is_active: bool = Field(alias="organizationIsActive")
+
+
+class OrganizationActivityEventType(str, Enum):
+    """Known event types emitted into the organization activity feed.
+
+    The SDK accepts unknown strings as well — when the backend introduces
+    a new event type, ``OrganizationActivityEvent.event_type`` stays a
+    plain ``str`` so consumers don't break on first-encounter.
+    """
+
+    MEMBER_INVITED = "MEMBER_INVITED"
+    MEMBER_ACCEPTED = "MEMBER_ACCEPTED"
+    MEMBER_ROLE_CHANGED = "MEMBER_ROLE_CHANGED"
+    MEMBER_DEACTIVATED = "MEMBER_DEACTIVATED"
+    MEMBER_REACTIVATED = "MEMBER_REACTIVATED"
+    MEMBER_REMOVED = "MEMBER_REMOVED"
+    CUSTOMER_ADDED = "CUSTOMER_ADDED"
+    CUSTOMER_BLOCKED = "CUSTOMER_BLOCKED"
+    SUBSCRIPTION_CREATED = "SUBSCRIPTION_CREATED"
+    SUBSCRIPTION_CANCELED = "SUBSCRIPTION_CANCELED"
+    WEBHOOK_DELIVERED = "WEBHOOK_DELIVERED"
+
+
+class OrganizationActivityEvent(BaseModel):
+    """A single event emitted into the organization activity feed."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    event_type: str = Field(alias="eventType")
+    org_id: str = Field(alias="orgId")
+    actor_user_id: Optional[str] = Field(default=None, alias="actorUserId")
+    target_user_id: Optional[str] = Field(default=None, alias="targetUserId")
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: str = Field(alias="createdAt")
+
+
+class OrganizationActivityPage(BaseModel):
+    """Paginated page of activity events."""
+
+    items: List[OrganizationActivityEvent] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    offset: int = 10
+
+
+class OrganizationActivityFilters(BaseModel):
+    """Optional filters accepted by :meth:`OrganizationsAPI.get_organization_activity`."""
+
+    event_type: Optional[Union[OrganizationActivityEventType, str]] = None
+    actor_user_id: Optional[str] = None
+    from_: Optional[str] = Field(default=None, alias="from")
+    to: Optional[str] = None
+    page: Optional[int] = None
+    offset: Optional[int] = None
+
+    model_config = ConfigDict(populate_by_name=True)

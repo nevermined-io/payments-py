@@ -17,14 +17,22 @@ from payments_py.common.types import (
     AgentAccessCredentials,
     NvmAPIResult,
     PaginationOptions,
+    MyMembership,
+    OrganizationActivityEvent,
+    OrganizationActivityEventType,
+    OrganizationActivityFilters,
+    OrganizationActivityPage,
+    OrganizationMemberRole,
+    OrganizationType,
 )
 from payments_py.common.payments_error import PaymentsError
 from payments_py.api.query_api import AIQueryApi
 from payments_py.api.plans_api import PlansAPI
 from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
-from payments_py.api.base_payments import BasePaymentsAPI
+from payments_py.api.base_payments import BasePaymentsAPI, CURRENT_ORG_ID_HEADER
 from payments_py.api.observability_api import ObservabilityAPI
+from payments_py.api.organizations_api import OrganizationsAPI
 
 # X402 Payment Protocol Module
 from payments_py.x402 import (
@@ -119,7 +127,16 @@ __all__ = [
     "AgentsAPI",
     "AgentRequestsAPI",
     "BasePaymentsAPI",
+    "CURRENT_ORG_ID_HEADER",
     "ObservabilityAPI",
+    "OrganizationsAPI",
+    "MyMembership",
+    "OrganizationActivityEvent",
+    "OrganizationActivityEventType",
+    "OrganizationActivityFilters",
+    "OrganizationActivityPage",
+    "OrganizationMemberRole",
+    "OrganizationType",
     # X402 APIs
     "FacilitatorAPI",
     "X402TokenAPI",
