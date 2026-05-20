@@ -47,11 +47,23 @@ def mock_options():
     return mock
 
 
-def _http_error_response(status: int, body: dict) -> MagicMock:
-    """Build a requests-like Response that raise_for_status() raises on."""
+def _http_error_response(
+    status: int,
+    body: dict | list | None = None,
+    *,
+    json_error: Exception | None = None,
+) -> MagicMock:
+    """Build a requests-like Response that raise_for_status() raises on.
+
+    Pass ``json_error`` to simulate a non-JSON body (``.json()`` raises);
+    otherwise the supplied ``body`` is returned from ``.json()``.
+    """
     resp = MagicMock()
     resp.status_code = status
-    resp.json.return_value = body
+    if json_error is not None:
+        resp.json.side_effect = json_error
+    else:
+        resp.json.return_value = body
     resp.raise_for_status.side_effect = requests.HTTPError(
         f"{status} Client Error", response=resp
     )
@@ -281,3 +293,139 @@ class TestFacilitatorVisa:
 
         assert excinfo.value.code == "BCK.X402.0005"
         assert "Insufficient credits" in str(excinfo.value)
+
+
+class TestErrorEnvelopeCoverage:
+    """Tests for PaymentsError.from_response edge cases via real SDK call sites.
+
+    The helper is reached through every public SDK method that calls the
+    backend, so we exercise its branches through real call sites rather
+    than testing it in isolation."""
+
+    @patch("payments_py.x402.delegation_api.requests.get")
+    def test_list_payment_methods_surfaces_backend_code_on_4xx(
+        self, mock_get, mock_options
+    ):
+        mock_get.return_value = _http_error_response(
+            401,
+            {"code": "BCK.AUTH.0003", "message": "API key revoked"},
+        )
+
+        with pytest.raises(PaymentsError) as excinfo:
+            DelegationAPI(mock_options).list_payment_methods()
+
+        assert excinfo.value.code == "BCK.AUTH.0003"
+        assert "API key revoked" in str(excinfo.value)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_get_x402_access_token_surfaces_backend_code_on_4xx(
+        self, mock_post, mock_options
+    ):
+        mock_post.return_value = _http_error_response(
+            400,
+            {
+                "code": "BCK.X402.0013",
+                "message": "Delegation expired",
+                "hint": "Re-run the WebAuthn ceremony on /payment-methods",
+            },
+        )
+
+        with pytest.raises(PaymentsError) as excinfo:
+            X402TokenAPI(mock_options).get_x402_access_token(
+                plan_id="42",
+                token_options=X402TokenOptions(
+                    scheme="nvm:card-delegation",
+                    network="visa",
+                    delegation_config=DelegationConfig(
+                        delegation_id="11111111-1111-1111-1111-111111111111"
+                    ),
+                ),
+            )
+
+        assert excinfo.value.code == "BCK.X402.0013"
+        assert "Delegation expired" in str(excinfo.value)
+        # ``hint`` should also surface so the developer sees the corrective action
+        assert "Re-run the WebAuthn ceremony" in str(excinfo.value)
+
+    @patch("payments_py.x402.delegation_api.requests.post")
+    def test_non_json_body_falls_back_to_http_status_code(
+        self, mock_post, mock_options
+    ):
+        """A 502 from a load balancer with an HTML body should not crash —
+        the helper falls back to the generic message and ``http_<status>``."""
+        mock_post.return_value = _http_error_response(
+            502,
+            json_error=ValueError("Expecting value: line 1 column 1 (char 0)"),
+        )
+
+        with pytest.raises(PaymentsError) as excinfo:
+            DelegationAPI(mock_options).create_delegation(
+                CreateDelegationPayload(
+                    provider="visa",
+                    providerPaymentMethodId="vat_1abc23def45",
+                    spendingLimitCents=1_000,
+                    durationSecs=3_600,
+                )
+            )
+
+        assert excinfo.value.code == "http_502"
+        assert "Failed to create delegation" in str(excinfo.value)
+        assert "HTTP 502" in str(excinfo.value)
+
+    @patch("payments_py.x402.delegation_api.requests.post")
+    def test_non_dict_body_falls_back_to_http_status_code(
+        self, mock_post, mock_options
+    ):
+        """A backend that returns a JSON array (rather than a dict envelope)
+        should not crash either."""
+        mock_post.return_value = _http_error_response(400, body=["unexpected"])  # type: ignore[arg-type]
+
+        with pytest.raises(PaymentsError) as excinfo:
+            DelegationAPI(mock_options).create_delegation(
+                CreateDelegationPayload(
+                    provider="visa",
+                    providerPaymentMethodId="vat_1abc23def45",
+                    spendingLimitCents=1_000,
+                    durationSecs=3_600,
+                )
+            )
+
+        assert excinfo.value.code == "http_400"
+        assert "Failed to create delegation" in str(excinfo.value)
+
+    @patch("payments_py.x402.delegation_api.requests.post")
+    def test_details_field_is_appended_to_message(self, mock_post, mock_options):
+        """The NVMException ``details`` field carries the per-field
+        validation breakdown (e.g. which of consumerPrompt/assuranceData
+        was missing) — it should surface to the developer."""
+        mock_post.return_value = _http_error_response(
+            400,
+            {
+                "code": "BCK.VISA.0014",
+                "message": "Visa delegation creation requires consumerPrompt and assuranceData",
+                "details": "consumerPrompt: missing",
+            },
+        )
+
+        with pytest.raises(PaymentsError) as excinfo:
+            DelegationAPI(mock_options).create_delegation(
+                CreateDelegationPayload(
+                    provider="visa",
+                    providerPaymentMethodId="vat_1abc23def45",
+                    spendingLimitCents=1_000,
+                    durationSecs=3_600,
+                )
+            )
+
+        assert excinfo.value.code == "BCK.VISA.0014"
+        assert "consumerPrompt: missing" in str(excinfo.value)
+
+    def test_from_response_handles_none(self):
+        """A future caller wiring the helper outside of the standard
+        try/except shape must not crash on a None response."""
+        from payments_py.common.payments_error import PaymentsError as PE
+
+        err = PE.from_response(None, "fallback msg")
+        assert isinstance(err, PE)
+        assert err.code == "payments_error"
+        assert "fallback msg" in str(err)

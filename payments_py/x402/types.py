@@ -6,11 +6,19 @@ and responses used in payment verification and settlement.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Any, List
+from typing import Literal, Optional, Any, List
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 from .networks import SupportedNetworks
 from .schemes import SupportedSchemes, X402SchemeType
+
+# Card-delegation providers exposed by the SDK. Kept symmetric with the
+# output side (``PaymentMethodSummary.provider``). If the backend surfaces
+# a new provider, the SDK release should be bumped accordingly. Both
+# Literals are validated at runtime by Pydantic on model construction.
+CardProvider = Literal["stripe", "braintree", "visa"]
+# All delegation providers — card providers above plus the crypto path.
+DelegationProvider = Literal["stripe", "braintree", "visa", "erc4337"]
 
 
 class X402Resource(BaseModel):
@@ -329,7 +337,7 @@ class CreateDelegationPayload(BaseModel):
         api_key_id: NVM API Key ID to scope the delegation to
     """
 
-    provider: str  # 'stripe', 'braintree', 'visa', or 'erc4337'
+    provider: DelegationProvider
     provider_payment_method_id: Optional[str] = Field(
         None, alias="providerPaymentMethodId"
     )

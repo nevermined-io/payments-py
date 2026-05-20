@@ -124,8 +124,6 @@ class FacilitatorAPI(BasePaymentsAPI):
                 response, "Permission verification failed"
             ) from err
         except Exception as err:
-            if isinstance(err, PaymentsError):
-                raise
             raise PaymentsError.from_backend(
                 "Network error during permission verification",
                 {"code": "network_error", "message": str(err)},
@@ -182,8 +180,6 @@ class FacilitatorAPI(BasePaymentsAPI):
                 response, "Permission settlement failed"
             ) from err
         except Exception as err:
-            if isinstance(err, PaymentsError):
-                raise
             raise PaymentsError.from_backend(
                 "Network error during permission settlement",
                 {"code": "network_error", "message": str(err)},

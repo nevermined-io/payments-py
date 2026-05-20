@@ -12,7 +12,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
-from payments_py.x402.types import CreateDelegationPayload, CreateDelegationResponse
+from payments_py.x402.types import (
+    CardProvider,
+    CreateDelegationPayload,
+    CreateDelegationResponse,
+)
 
 
 class PaymentMethodSummary(BaseModel):
@@ -36,7 +40,7 @@ class PaymentMethodSummary(BaseModel):
     last4: str
     exp_month: Optional[int] = Field(0, alias="expMonth")
     exp_year: Optional[int] = Field(0, alias="expYear")
-    provider: Optional[str] = None
+    provider: Optional[CardProvider] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -147,8 +151,6 @@ class DelegationAPI(BasePaymentsAPI):
                 response, "Failed to create delegation"
             ) from err
         except Exception as err:
-            if isinstance(err, PaymentsError):
-                raise
             raise PaymentsError.internal(
                 f"Network error while creating delegation: {str(err)}"
             ) from err
