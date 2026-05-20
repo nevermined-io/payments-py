@@ -2,8 +2,9 @@
 
 Nevermined supports multiple payment schemes:
 - nvm:erc4337: ERC-4337 account abstraction for crypto credit-based payments
-- nvm:card-delegation: Card delegation for fiat payments (Stripe or Braintree).
-  The ``network`` field in the x402 token differentiates: ``'stripe'`` or ``'braintree'``.
+- nvm:card-delegation: Card delegation for fiat payments (Stripe, Braintree, or Visa).
+  The ``network`` field in the x402 token differentiates the provider:
+  ``'stripe'``, ``'braintree'``, or ``'visa'``.
 """
 
 from typing import Literal, Optional

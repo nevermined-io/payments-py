@@ -156,14 +156,8 @@ class X402TokenAPI(BasePaymentsAPI):
             response.raise_for_status()
             return response.json()
         except requests.HTTPError as err:
-            try:
-                error_message = response.json().get(
-                    "message", "Failed to create X402 delegation token"
-                )
-            except Exception:
-                error_message = "Failed to create X402 delegation token"
-            raise PaymentsError.internal(
-                f"{error_message} (HTTP {response.status_code})"
+            raise PaymentsError.from_response(
+                response, "Failed to create X402 delegation token"
             ) from err
         except Exception as err:
             raise PaymentsError.internal(

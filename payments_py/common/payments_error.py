@@ -38,3 +38,32 @@ class PaymentsError(Exception):
         backend_message = error.get("message", str(error))
         code = error.get("code", "payments_error")
         return cls(f"{message}. {backend_message}", code)
+
+    @classmethod
+    def from_response(cls, response, fallback_message: str) -> "PaymentsError":
+        """Build a PaymentsError from an HTTP error response, preserving the
+        backend's structured envelope.
+
+        The Nevermined backend wraps errors in an NVMException envelope:
+        ``{code, message, httpStatus, hint, details, ...}``. This helper
+        promotes the canonical ``code`` (e.g. ``'BCK.VISA.0014'``) onto the
+        exception so callers can branch programmatically, and appends ``hint``
+        to the message so corrective actions surface to the developer.
+
+        Falls back to ``http_<status>`` and the supplied ``fallback_message``
+        when the body isn't JSON or doesn't follow the NVMException shape.
+        """
+        error_message = fallback_message
+        error_code = f"http_{response.status_code}"
+        try:
+            body = response.json()
+            if isinstance(body, dict):
+                if body.get("message"):
+                    error_message = body["message"]
+                if body.get("code"):
+                    error_code = body["code"]
+                if body.get("hint"):
+                    error_message = f"{error_message} — {body['hint']}"
+        except Exception:
+            pass
+        return cls(f"{error_message} (HTTP {response.status_code})", error_code)

@@ -223,6 +223,59 @@ kill -9 <PID>
 - Check that `TaskStatusUpdateEvent` has `final=True`
 - Review `PaymentsRequestHandler` logs
 
+## Visa e2e fixture (local only, not for CI)
+
+> **Do not enable this suite in CI.** The fixture is a real Visa Agentic delegation with a finite `durationSecs`, and refreshing it requires a manual browser flow. If CI ran it on every PR the delegation would eventually expire mid-week and start blocking unrelated work. The suite is gated by three env vars and is `pytest.mark.skipif`'d when any are missing or malformed, so the default CI behavior is "skipped, exit 0" — that's intentional.
+
+The Visa Agentic-Tokens flow involves two browser-only steps that the SDK cannot perform programmatically:
+
+1. **Card enrolment** — PAN entry through the VGS Collect iframe in the Nevermined webapp.
+2. **Delegation creation** — WebAuthn/passkey device-binding ceremony embedded by Visa VTS, producing a single-use `assuranceData` blob.
+
+The plan itself also has to exist beforehand: a Visa delegation is bound to a single plan at creation time (backend rejects with `BCK.VISA.0015` otherwise), so creating a fresh plan per run would mint the access token against a planId the delegation isn't bound to and the verify step would fail.
+
+### What the suite asserts (and what it deliberately omits)
+
+| Step | Asserted? | Notes |
+|---|---|---|
+| Plan creation | ❌ | Plan must pre-exist; see above |
+| `list_payment_methods` returns the visa PM | ✅ | |
+| `get_x402_access_token` mints against `delegation_id` + `plan_id` | ✅ | |
+| `verify_permissions` returns `is_valid=True`, `network='visa'` | ✅ | Read-only — does not charge the card |
+| `settle_permissions` returning `credits_redeemed='2'` | ❌ | Omitted on purpose — the sandbox card providers (Stripe sandbox, Visa sandbox CMP) do not actually charge. End-to-end settlement is validated separately at the platform level. |
+
+### One-time provisioning
+
+> All three of plan, card, and delegation are committed to a single `(subscriber, planId)` pair on the backend, so the accounts and ordering matter:
+> - **Plan** must be created by the builder whose key is set as `TEST_BUILDER_API_KEY` in `conftest.py` (or via the env var override). That builder ends up as the seller of the plan and is also the account the e2e's `verify_permissions` runs as.
+> - **Card + delegation** must be enrolled by the subscriber whose key is `TEST_SUBSCRIBER_API_KEY`.
+
+1. **Create the plan** — as the builder, register a fiat credits plan (via the webapp builder UI or a one-shot script using `payments.plans.register_credits_plan({...}, get_fiat_price_config(1_000_000, builder_address), get_dynamic_credits_config(10, 1, 2))`). Capture the returned `planId` (long decimal uint256 string).
+
+2. **Enrol the Visa card** — open the Nevermined webapp against staging (`https://nevermined.dev`) and sign in as the SDK test subscriber. On `/payment-methods`, click **Enroll with Visa** and enter a VTS-registered sandbox PAN — e.g. `4622943123121387`, CVC `123`, expiry `12/27`. Capture the `paymentMethodId` (`vat_…`) from `POST /api/v1/delegation/enroll-visa` in the network panel.
+
+3. **Create the delegation** — from the same card row, click **Create delegation**, pick the plan from step 1, set any spending limit + a duration that matches how long you want the fixture alive, then complete the WebAuthn ceremony with sandbox OTP `456789`. Capture the `delegationId` (UUID).
+
+4. **Export all three**:
+
+   ```bash
+   export NVM_TEST_VISA_PLAN_ID=…             # uint256 decimal string from step 1
+   export NVM_TEST_VISA_DELEGATION_ID=…       # uuid from step 3
+   export NVM_TEST_VISA_PAYMENT_METHOD_ID=…   # vat_… from step 2
+   ```
+
+### Running the suite locally
+
+```bash
+poetry run pytest tests/e2e/test_x402_card_delegation_visa_e2e.py -v
+```
+
+If any of the three env vars are unset (or malformed) the suite reports skipped with a reason that names the missing or invalid variable.
+
+### Refreshing the fixture
+
+The delegation expires after the configured `durationSecs`. When the suite starts failing with VGS rejections that mention an expired delegation, re-run **step 3** (the delegation-create with WebAuthn ceremony) — the plan from step 1 and the enrolled card from step 2 can be reused as long as they're still active.
+
 ## Contributing
 
 To add new E2E tests:

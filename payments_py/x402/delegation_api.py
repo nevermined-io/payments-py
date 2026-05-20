@@ -1,8 +1,9 @@
 """
 Delegation API for managing payment methods and delegations.
 
-Provides access to the user's enrolled payment methods (Stripe and Braintree)
-and delegations for use with both nvm:erc4337 and nvm:card-delegation x402 schemes.
+Provides access to the user's enrolled payment methods (Stripe, Braintree,
+and Visa) and delegations for use with both nvm:erc4337 and
+nvm:card-delegation x402 schemes.
 """
 
 import requests
@@ -19,13 +20,14 @@ class PaymentMethodSummary(BaseModel):
     Summary of a user's enrolled payment method.
 
     Attributes:
-        id: Payment method ID (Stripe 'pm_...' or Braintree vault token)
+        id: Payment method ID (Stripe 'pm_...', Braintree vault token, or
+            Visa Agentic token id 'vat_...')
         type: Payment method type (e.g., 'card', 'paypal')
         brand: Card brand (e.g., 'visa', 'mastercard') or payment method type ('paypal', 'venmo')
         last4: Last 4 digits (cards) or email/username (PayPal/Venmo)
         exp_month: Expiration month (0 for non-card methods)
         exp_year: Expiration year (0 for non-card methods)
-        provider: Payment provider ('stripe' or 'braintree')
+        provider: Payment provider ('stripe', 'braintree', or 'visa')
     """
 
     id: str
@@ -101,14 +103,8 @@ class DelegationAPI(BasePaymentsAPI):
             data = response.json()
             return [PaymentMethodSummary.model_validate(pm) for pm in data]
         except requests.HTTPError as err:
-            try:
-                error_message = response.json().get(
-                    "message", "Failed to list payment methods"
-                )
-            except Exception:
-                error_message = "Failed to list payment methods"
-            raise PaymentsError.internal(
-                f"{error_message} (HTTP {response.status_code})"
+            raise PaymentsError.from_response(
+                response, "Failed to list payment methods"
             ) from err
         except Exception as err:
             raise PaymentsError.internal(
@@ -119,7 +115,13 @@ class DelegationAPI(BasePaymentsAPI):
         self, payload: CreateDelegationPayload
     ) -> CreateDelegationResponse:
         """
-        Create a new delegation for either stripe or erc4337 provider.
+        Create a new delegation for any supported provider (stripe, braintree,
+        visa, or erc4337).
+
+        Note: Visa delegations require a per-delegation device-binding ceremony
+        (FIDO/passkey + assuranceData) that must be performed in the browser
+        via the Nevermined webapp. The SDK can list and consume an already-
+        created Visa delegation but cannot create one programmatically.
 
         Args:
             payload: The delegation creation parameters
@@ -128,7 +130,9 @@ class DelegationAPI(BasePaymentsAPI):
             The created delegation ID (and token for card delegations)
 
         Raises:
-            PaymentsError: If the request fails
+            PaymentsError: If the request fails. ``error.code`` carries the
+                backend NVMException code (e.g. ``'BCK.VISA.0014'``) when the
+                response was a structured failure.
         """
         url = f"{self.environment.backend}/api/v1/delegation/create"
         body = payload.model_dump(exclude_none=True)
@@ -139,14 +143,8 @@ class DelegationAPI(BasePaymentsAPI):
             response.raise_for_status()
             return CreateDelegationResponse.model_validate(response.json())
         except requests.HTTPError as err:
-            try:
-                error_message = response.json().get(
-                    "message", "Failed to create delegation"
-                )
-            except Exception:
-                error_message = "Failed to create delegation"
-            raise PaymentsError.internal(
-                f"{error_message} (HTTP {response.status_code})"
+            raise PaymentsError.from_response(
+                response, "Failed to create delegation"
             ) from err
         except Exception as err:
             if isinstance(err, PaymentsError):
@@ -174,14 +172,8 @@ class DelegationAPI(BasePaymentsAPI):
             data = response.json()
             return [DelegationSummary.model_validate(d) for d in data]
         except requests.HTTPError as err:
-            try:
-                error_message = response.json().get(
-                    "message", "Failed to list delegations"
-                )
-            except Exception:
-                error_message = "Failed to list delegations"
-            raise PaymentsError.internal(
-                f"{error_message} (HTTP {response.status_code})"
+            raise PaymentsError.from_response(
+                response, "Failed to list delegations"
             ) from err
         except Exception as err:
             raise PaymentsError.internal(
