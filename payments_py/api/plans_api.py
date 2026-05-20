@@ -109,7 +109,10 @@ class PlansAPI(BasePaymentsAPI):
             "metadataAttributes": self.pydantic_to_dict(plan_metadata),
             "priceConfig": price_dict,
             "creditsConfig": self.pydantic_to_dict(credits_config),
-            "nonce": nonce,
+            # Backend validates ``nonce`` as a uint256 decimal *string*
+            # (BCK.COMMON.0026 rejects raw JSON numbers — the TS SDK has a
+            # jsonReplacer that stringifies bigints; Python doesn't).
+            "nonce": str(nonce),
             "isTrialPlan": getattr(plan_metadata, "is_trial_plan", False),
             "accessLimit": access_limit,
         }
