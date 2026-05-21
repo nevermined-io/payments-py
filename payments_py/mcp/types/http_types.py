@@ -385,11 +385,13 @@ class ServerInfoEndpoints(TypedDict, total=False):
         mcp: MCP endpoint URL.
         health: Health check endpoint URL.
         register: Client registration endpoint URL.
+        x402_payment: x402 payment discovery endpoint URL.
     """
 
     mcp: str
     health: Optional[str]
     register: Optional[str]
+    x402_payment: Optional[str]
 
 
 class ServerInfoOAuth(TypedDict, total=False):
@@ -399,6 +401,7 @@ class ServerInfoOAuth(TypedDict, total=False):
         authorization_server_metadata: OAuth AS metadata endpoint URL.
         protected_resource_metadata: Protected resource metadata endpoint URL.
         openid_configuration: OIDC configuration endpoint URL.
+        x402_payment_discovery: x402 payment discovery endpoint URL.
         authorization_endpoint: OAuth authorization endpoint URL.
         token_endpoint: OAuth token endpoint URL.
         jwks_uri: JWKS endpoint URL.
@@ -410,6 +413,7 @@ class ServerInfoOAuth(TypedDict, total=False):
     authorization_server_metadata: str
     protected_resource_metadata: str
     openid_configuration: str
+    x402_payment_discovery: str
     authorization_endpoint: str
     token_endpoint: str
     jwks_uri: str

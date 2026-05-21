@@ -41,6 +41,7 @@ from .oauth_metadata import (
     build_oidc_configuration,
     build_protected_resource_metadata,
     build_server_info_response,
+    build_x402_payment_discovery_metadata,
 )
 
 # =============================================================================
@@ -185,6 +186,16 @@ def create_oauth_router(options: Dict[str, Any]) -> APIRouter:
                 headers={"Cache-Control": "public, max-age=3600"},
             )
 
+        @router.get("/.well-known/x402-payment")
+        async def x402_payment_discovery() -> JSONResponse:
+            """x402 discovery metadata for MCP payment-aware clients."""
+            log("GET /.well-known/x402-payment")
+            metadata = build_x402_payment_discovery_metadata(config)
+            return JSONResponse(
+                content=metadata,
+                headers={"Cache-Control": "public, max-age=3600"},
+            )
+
     # --- Dynamic Client Registration ---
 
     if enable_client_registration:
@@ -296,10 +307,17 @@ def create_cors_middleware(origins: Union[str, List[str]] = "*") -> Dict[str, An
             "Content-Type",
             "Accept",
             "Authorization",
+            "payment-signature",
+            "payment-required",
+            "payment-response",
             "mcp-session-id",
             "mcp-protocol-version",
         ],
-        "expose_headers": ["mcp-session-id"],
+        "expose_headers": [
+            "mcp-session-id",
+            "payment-required",
+            "payment-response",
+        ],
     }
 
 
