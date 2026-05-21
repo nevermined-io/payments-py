@@ -48,6 +48,15 @@ def _stringify_unsafe_ints(value: Any) -> Any:
 # `apps/api/src/common/guards/current-org-context.guard.ts` (nvm-monorepo).
 CURRENT_ORG_ID_HEADER = "X-Current-Org-Id"
 
+# Allowlist for the per-call ``extra_headers`` argument on
+# :meth:`get_backend_http_options`. Mirrors the TS source-of-truth
+# (`ALLOWED_EXTRA_HEADERS` in `payments/src/api/base-payments.ts`): without
+# this filter a caller could inject ``Authorization`` / ``Content-Type``
+# through the new per-call header channel and override the SDK's own
+# auth, escalating any per-call workspace targeting path into a
+# header-injection surface.
+ALLOWED_EXTRA_HEADERS = frozenset({CURRENT_ORG_ID_HEADER})
+
 
 class BasePaymentsAPI:
     """
@@ -186,7 +195,13 @@ class BasePaymentsAPI:
         if self.current_organization_id:
             headers[CURRENT_ORG_ID_HEADER] = self.current_organization_id
         if extra_headers:
-            headers.update(extra_headers)
+            # Filter through the allowlist so a per-call header argument
+            # can't override Authorization / Content-Type or otherwise
+            # poison the transport. Mirror of the TS source-of-truth
+            # (`ALLOWED_EXTRA_HEADERS` in `payments/src/api/base-payments.ts`).
+            headers.update(
+                {k: v for k, v in extra_headers.items() if k in ALLOWED_EXTRA_HEADERS}
+            )
 
         options = {
             "headers": headers,

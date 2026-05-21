@@ -468,12 +468,18 @@ class OrganizationMemberRole(str, Enum):
 
 
 class OrganizationType(str, Enum):
-    """Tier of an organization."""
+    """Tier of an organization. Mirrors the backend ``OrganizationType`` enum
+    (``libs/commons/src/lib/types/types.ts`` in nvm-monorepo).
 
-    FREE = "Free"
+    No ``Free`` member — the backend never emits it (legacy bucket replaced
+    by ``Lapsed``). ``Other`` is the legacy pre-tiered-pricing bucket and
+    is still returned for orgs that pre-date the tier system.
+    """
+
     PREMIUM = "Premium"
     ENTERPRISE = "Enterprise"
     LAPSED = "Lapsed"
+    OTHER = "Other"
 
 
 class MyMembership(BaseModel):
@@ -491,7 +497,11 @@ class MyMembership(BaseModel):
     org_id: str = Field(alias="orgId")
     org_name: str = Field(alias="orgName")
     role: OrganizationMemberRole
-    org_type: OrganizationType = Field(alias="orgType")
+    # ``Union[OrganizationType, str]`` for forward-compat: if the backend
+    # introduces a new tier before the SDK ships an enum update,
+    # ``model_validate`` falls through to a bare string instead of raising.
+    # Matches the same shape used by ``OrganizationActivityEvent.event_type``.
+    org_type: Union[OrganizationType, str] = Field(alias="orgType")
     is_admin: bool = Field(alias="isAdmin")
     # `True` when the org has at least one ``organizationSubscription`` row —
     # the org has previously been associated with a paid tier (active,
