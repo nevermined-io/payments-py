@@ -1041,6 +1041,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label=" PlanCreditsConfig">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#payments_py.common.types.PlanCreditsConfig.model_dump" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;model_dump
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1642,6 +1659,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label=" PlanCreditsConfig">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#payments_py.common.types.PlanCreditsConfig.model_dump" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;model_dump
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2057,6 +2091,110 @@
 
 
         <p>Options for initializing the Payments class.</p>
+
+
+<table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">PARAMETER</span></th>
+          <th><span>DESCRIPTION</span></th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>environment</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>Nevermined environment (e.g. <code>"sandbox"</code>, <code>"live"</code>).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>nvm_api_key</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>NVM API key used to authenticate against the backend.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>return_url</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>Optional URL to return to after login (browser flows).</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>app_id</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>Optional application identifier stamped on registered assets.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>version</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>Optional SDK version reported to the backend.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>headers</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>Optional default headers to merge into every request.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>organization_id</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>Optional organization id (e.g. <code>"org-..."</code>) used
+as the active workspace for every authenticated backend call.
+When set, the SDK forwards it as the <code>X-Current-Org-Id</code>
+request header so the backend scopes published agents, plans,
+and other workspace-aware resources to this organization.
+If omitted, the backend falls back to the API key's org tag
+or the caller's most-recent active membership (see
+<code>CurrentOrgContextGuard</code> in nvm-monorepo). Override per-call
+via the <code>organization_id</code> argument on publish methods.</p>
+              </div>
+              <p>
+              </p>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
 
@@ -2765,17 +2903,17 @@ For pure ERC20 or native token plans, this is typically <code>None</code>.</p>
 
             <details class="quote">
               <summary>Source code in <code>payments_py/common/types.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-269">269</a></span>
-<span class="normal"><a href="#__codelineno-0-270">270</a></span>
-<span class="normal"><a href="#__codelineno-0-271">271</a></span>
-<span class="normal"><a href="#__codelineno-0-272">272</a></span>
-<span class="normal"><a href="#__codelineno-0-273">273</a></span>
-<span class="normal"><a href="#__codelineno-0-274">274</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="k">def</span><span class="w"> </span><span class="nf">model_dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Override to serialize amounts as strings for backend BigInt compatibility.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>    <span class="n">d</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>    <span class="k">if</span> <span class="s2">&quot;amounts&quot;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>        <span class="n">d</span><span class="p">[</span><span class="s2">&quot;amounts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">d</span><span class="p">[</span><span class="s2">&quot;amounts&quot;</span><span class="p">]]</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>    <span class="k">return</span> <span class="n">d</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-287">287</a></span>
+<span class="normal"><a href="#__codelineno-0-288">288</a></span>
+<span class="normal"><a href="#__codelineno-0-289">289</a></span>
+<span class="normal"><a href="#__codelineno-0-290">290</a></span>
+<span class="normal"><a href="#__codelineno-0-291">291</a></span>
+<span class="normal"><a href="#__codelineno-0-292">292</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="k">def</span><span class="w"> </span><span class="nf">model_dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Override to serialize amounts as strings for backend BigInt compatibility.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>    <span class="n">d</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>    <span class="k">if</span> <span class="s2">&quot;amounts&quot;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>        <span class="n">d</span><span class="p">[</span><span class="s2">&quot;amounts&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">d</span><span class="p">[</span><span class="s2">&quot;amounts&quot;</span><span class="p">]]</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a>    <span class="k">return</span> <span class="n">d</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -2956,6 +3094,71 @@ time_config = get_expirable_duration_config(ONE_DAY_DURATION)
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="payments_py.common.types.PlanCreditsConfig.model_dump" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">model_dump</span>
+
+
+<a href="#payments_py.common.types.PlanCreditsConfig.model_dump" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">model_dump</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Serialize uint256-typed fields as decimal strings.</p>
+<p>The Nevermined backend tightened uint256 validation on plan and
+agent-and-plan registration. JSON numbers are rejected for fields
+that map to Solidity <code>uint256</code> (<code>durationSecs</code>, <code>amount</code>,
+<code>minAmount</code>, <code>maxAmount</code>) because numbers larger than
+<code>Number.MAX_SAFE_INTEGER</code> lose precision in transit. The
+TypeScript SDK gets this for free via the <code>BigInt</code>
+<code>jsonReplacer</code>; Python emits the same wire shape by
+stringifying here.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>payments_py/common/types.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-344">344</a></span>
+<span class="normal"><a href="#__codelineno-0-345">345</a></span>
+<span class="normal"><a href="#__codelineno-0-346">346</a></span>
+<span class="normal"><a href="#__codelineno-0-347">347</a></span>
+<span class="normal"><a href="#__codelineno-0-348">348</a></span>
+<span class="normal"><a href="#__codelineno-0-349">349</a></span>
+<span class="normal"><a href="#__codelineno-0-350">350</a></span>
+<span class="normal"><a href="#__codelineno-0-351">351</a></span>
+<span class="normal"><a href="#__codelineno-0-352">352</a></span>
+<span class="normal"><a href="#__codelineno-0-353">353</a></span>
+<span class="normal"><a href="#__codelineno-0-354">354</a></span>
+<span class="normal"><a href="#__codelineno-0-355">355</a></span>
+<span class="normal"><a href="#__codelineno-0-356">356</a></span>
+<span class="normal"><a href="#__codelineno-0-357">357</a></span>
+<span class="normal"><a href="#__codelineno-0-358">358</a></span>
+<span class="normal"><a href="#__codelineno-0-359">359</a></span>
+<span class="normal"><a href="#__codelineno-0-360">360</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="k">def</span><span class="w"> </span><span class="nf">model_dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize uint256-typed fields as decimal strings.</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a>
+<a id="__codelineno-0-347" name="__codelineno-0-347"></a><span class="sd">    The Nevermined backend tightened uint256 validation on plan and</span>
+<a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">    agent-and-plan registration. JSON numbers are rejected for fields</span>
+<a id="__codelineno-0-349" name="__codelineno-0-349"></a><span class="sd">    that map to Solidity ``uint256`` (``durationSecs``, ``amount``,</span>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">    ``minAmount``, ``maxAmount``) because numbers larger than</span>
+<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">    ``Number.MAX_SAFE_INTEGER`` lose precision in transit. The</span>
+<a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">    TypeScript SDK gets this for free via the ``BigInt``</span>
+<a id="__codelineno-0-353" name="__codelineno-0-353"></a><span class="sd">    ``jsonReplacer``; Python emits the same wire shape by</span>
+<a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="sd">    stringifying here.</span>
+<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-356" name="__codelineno-0-356"></a>    <span class="n">d</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-357" name="__codelineno-0-357"></a>    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;duration_secs&quot;</span><span class="p">,</span> <span class="s2">&quot;amount&quot;</span><span class="p">,</span> <span class="s2">&quot;min_amount&quot;</span><span class="p">,</span> <span class="s2">&quot;max_amount&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-358" name="__codelineno-0-358"></a>        <span class="k">if</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">d</span> <span class="ow">and</span> <span class="n">d</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-359" name="__codelineno-0-359"></a>            <span class="n">d</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="n">field</span><span class="p">])</span>
+<a id="__codelineno-0-360" name="__codelineno-0-360"></a>    <span class="k">return</span> <span class="n">d</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 
