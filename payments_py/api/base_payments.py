@@ -43,6 +43,21 @@ def _stringify_unsafe_ints(value: Any) -> Any:
     return value
 
 
+# Header used by the Nevermined backend to resolve the active organization
+# context for an authenticated request. See `CurrentOrgContextGuard` in
+# `apps/api/src/common/guards/current-org-context.guard.ts` (nvm-monorepo).
+CURRENT_ORG_ID_HEADER = "X-Current-Org-Id"
+
+# Allowlist for the per-call ``extra_headers`` argument on
+# :meth:`get_backend_http_options`. Mirrors the TS source-of-truth
+# (`ALLOWED_EXTRA_HEADERS` in `payments/src/api/base-payments.ts`): without
+# this filter a caller could inject ``Authorization`` / ``Content-Type``
+# through the new per-call header channel and override the SDK's own
+# auth, escalating any per-call workspace targeting path into a
+# header-injection surface.
+ALLOWED_EXTRA_HEADERS = frozenset({CURRENT_ORG_ID_HEADER})
+
+
 class BasePaymentsAPI:
     """
     Base class extended by all Payments API classes.
@@ -65,6 +80,7 @@ class BasePaymentsAPI:
         self.account_address: Optional[str] = None
         self.helicone_api_key: str = None
         self.is_browser_instance = True
+        self.current_organization_id: Optional[str] = options.organization_id
         self._parse_nvm_api_key()
 
     def _parse_nvm_api_key(self) -> None:
@@ -98,6 +114,33 @@ class BasePaymentsAPI:
         """
         return self.account_address
 
+    def get_organization_id(self) -> Optional[str]:
+        """Return the org id pinned for every authenticated backend call.
+
+        ``None`` means no pinned workspace — the backend falls back to the
+        API key's org tag or the caller's most-recent active membership.
+        """
+        return self.current_organization_id
+
+    def set_organization_id(self, organization_id: Optional[str]) -> None:
+        """Pin (or clear) the organization context used for every authenticated request.
+
+        When set, the SDK forwards the value as the
+        ``X-Current-Org-Id`` header so the backend scopes published
+        agents, plans, and other workspace-aware resources to this
+        organization.
+
+        Pass ``None`` to clear the pin and let the backend fall back to
+        the API key's org tag or the caller's most-recent active
+        membership.
+
+        For one-off targeting on publish, prefer the per-call
+        ``organization_id`` argument on
+        :meth:`payments.agents.register_agent` /
+        :meth:`payments.plans.register_plan` / similar.
+        """
+        self.current_organization_id = organization_id
+
     def pydantic_to_dict(self, obj):
         """
         Recursively convert Pydantic models and Enums to serializable dicts.
@@ -120,7 +163,10 @@ class BasePaymentsAPI:
             return obj
 
     def get_backend_http_options(
-        self, method: str, body: Optional[Dict[str, Any]] = None
+        self,
+        method: str,
+        body: Optional[Dict[str, Any]] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Get HTTP options for backend requests.
@@ -128,6 +174,10 @@ class BasePaymentsAPI:
         Args:
             method: HTTP method
             body: Optional request body
+            extra_headers: Optional per-call header overrides. Use
+                ``{"X-Current-Org-Id": org_id}`` to target a specific
+                workspace for one call without mutating the instance-level
+                pin.
 
         Returns:
             HTTP options object
@@ -137,12 +187,24 @@ class BasePaymentsAPI:
         # self-signed certificates
         verify_ssl = False
 
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.nvm_api_key}",
+        }
+        if self.current_organization_id:
+            headers[CURRENT_ORG_ID_HEADER] = self.current_organization_id
+        if extra_headers:
+            # Filter through the allowlist so a per-call header argument
+            # can't override Authorization / Content-Type or otherwise
+            # poison the transport. Mirror of the TS source-of-truth
+            # (`ALLOWED_EXTRA_HEADERS` in `payments/src/api/base-payments.ts`).
+            headers.update(
+                {k: v for k, v in extra_headers.items() if k in ALLOWED_EXTRA_HEADERS}
+            )
+
         options = {
-            "headers": {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.nvm_api_key}",
-            },
+            "headers": headers,
             "verify": verify_ssl,
             "timeout": DEFAULT_HTTP_TIMEOUT,
         }

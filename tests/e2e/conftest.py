@@ -32,16 +32,27 @@ TEST_TIMEOUT = int(os.getenv("TEST_TIMEOUT", "60"))
 # Same address used across all E2E tests
 TEST_ERC20_TOKEN = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 
-# Test API keys - can be overridden via environment variables
-# Default values are for staging_sandbox environment
+# Test API keys - can be overridden via environment variables.
+# Defaults are the staging-sandbox `testing-merchant@nevermined.io` /
+# `testing-buyer@nevermined.io` accounts; both are members of the
+# `Nevermined Testing` Enterprise org so plan/agent registrations bypass
+# the personal-account caps.
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDcxZTZGN2Y4QzY4ZTdlMkU5NkIzYzkwNjU1YzJEMmNBMzc2QmMzZmQiLCJqdGkiOiIweDMwN2Y0NWRkMTBiOTc1YjhlNDU5NzNkMmNiNTljY2MzZDQ2NjFmY2RiOTJiMTVmMjI2ZDNhY2Q0NjdkODYyMDUiLCJleHAiOjE3OTY5MzM3MjcsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.0khtYy6bG_m6mDE2Oa1sozQLBHve2yVwyUeeM9DAHzFxhwK86JSfGL973Sg8FzhTfD2xhzYWiFP3KV2GjWNnDRs",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDRkNEM5RmFBRjY2ZmI1NjI5NDY0MGZDMzI5NjgzMTdEYWQ4ZWQ4ZWQiLCJqdGkiOiIweGZjNzU1N2Q0NGNmNjEzYjI0OWRjNjZkYjk1ZGMyZmNiMmM5MTUxM2M1YmYxMWZkNjEzYmE2YTM3ZjA1ZWJmN2MiLCJleHAiOjQ5MzUxMzE2OTcsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.kwvQxOC0XLMXQlVOSQiGgr7iggma1X5QIu46odHXzp5zwNav1PQfR3j6xW1KgkVFt0tHHRjVuzVBPHG2Dahbnhw",
 )
 
 AGENT_API_KEY = os.getenv(
     "TEST_BUILDER_API_KEY",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDlkREQwMkQ0RTExMWFiNWNFNDc1MTE5ODdCMjUwMGZjQjU2MjUyYzYiLCJqdGkiOiIweDQ2YzY3OTk5MTY5NDBhZmI4ZGNmNmQ2NmRmZmY4MGE0YmVhYWMyY2NiYWZlOTlkOGEwOTAwYTBjMzhmZjdkNjEiLCJleHAiOjE3OTU1NDI4NzAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.n51gkto9Jw-MXxnXW92XDAB_CnHUFxkritWp9Lj1qFASmtf_TuQwU57bauIEGrQygumX8S3pXqRqeGRWT2AJiRs",
+    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDM0RDdGMjBmOTYzMDI0NGFkRmI0Y2Q0ODQwY2Q1MTBGN0ZGQTczQzgiLCJqdGkiOiIweGNiZGVhMzE2OTgzYTJjOWYyNDVlYzQyZWI3MjJiNmM4ZDkxNTM2ZmYwOGNmM2QyNTg5ZjBkN2VmMGZlNjA0NTMiLCJleHAiOjQ5MzUxMzE2MjQsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.gmI-i6GlwA0t__X1Ql5kBAjxViDas-cVY3WuNW5oTAh5I-CuALkIxznF468bfNvnwImAfgc2GrJ_PSnLJg3F7xw",
+)
+
+# Enterprise org on staging where both fixture accounts are members; passed
+# through to the SDK so the `X-Current-Org-Id` header is set explicitly on
+# every publish. Override via `TEST_BUILDER_ORG_ID` if a CI run should target
+# a different org.
+TEST_BUILDER_ORG_ID = os.getenv(
+    "TEST_BUILDER_ORG_ID", "org-031a0329-ebe2-444e-ac2a-1637f694ad0b"
 )
 
 # Alias for backward compatibility (some tests use BUILDER_API_KEY)
@@ -94,10 +105,16 @@ def payments_subscriber():
     Create a Payments instance for the subscriber.
 
     This fixture is shared across all E2E test files and provides
-    a Payments instance configured with the subscriber API key.
+    a Payments instance configured with the subscriber API key. The
+    Enterprise org is pinned via ``organization_id`` so any writes the
+    subscriber drives are scoped to the test workspace.
     """
     return Payments(
-        PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
+        PaymentOptions(
+            nvm_api_key=SUBSCRIBER_API_KEY,
+            environment=TEST_ENVIRONMENT,
+            organization_id=TEST_BUILDER_ORG_ID,
+        )
     )
 
 
@@ -107,10 +124,16 @@ def payments_agent():
     Create a Payments instance for the agent (builder).
 
     This fixture is shared across all E2E test files and provides
-    a Payments instance configured with the agent/builder API key.
+    a Payments instance configured with the agent/builder API key,
+    pinned to the Enterprise test org so plan / agent registrations
+    bypass the personal-account cap.
     """
     return Payments(
-        PaymentOptions(nvm_api_key=AGENT_API_KEY, environment=TEST_ENVIRONMENT)
+        PaymentOptions(
+            nvm_api_key=AGENT_API_KEY,
+            environment=TEST_ENVIRONMENT,
+            organization_id=TEST_BUILDER_ORG_ID,
+        )
     )
 
 
@@ -124,7 +147,11 @@ def payments_builder():
     This provides backward compatibility.
     """
     return Payments(
-        PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
+        PaymentOptions(
+            nvm_api_key=BUILDER_API_KEY,
+            environment=TEST_ENVIRONMENT,
+            organization_id=TEST_BUILDER_ORG_ID,
+        )
     )
 
 

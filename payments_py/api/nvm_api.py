@@ -42,6 +42,10 @@ API_URL_SETTLE_PERMISSIONS = "/api/v1/x402/settle"
 # Stripe endpoints
 API_URL_STRIPE_CHECKOUT = "/api/v1/fiat/stripe/payment"
 
+# Organizations endpoints
+API_URL_MY_MEMBERSHIPS = "/api/v1/organizations/my-memberships"
+API_URL_ORG_ACTIVITY = "/api/v1/organizations/{org_id}/activity"
+
 # Info endpoint
 API_URL_INFO = "/"
 

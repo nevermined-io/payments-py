@@ -15,6 +15,7 @@ from payments_py.common.types import (
     PlanBalance,
 )
 from payments_py.api.base_payments import BasePaymentsAPI
+from payments_py.api.organizations_api import resolve_publication_headers
 from payments_py.api.nvm_api import (
     API_URL_REGISTER_PLAN,
     API_URL_GET_PLAN,
@@ -73,6 +74,7 @@ class PlansAPI(BasePaymentsAPI):
         access_limit: Optional[
             Literal["credits", "time"]
         ] = None,  # 'credits' or 'time'
+        organization_id: Optional[str] = None,
     ) -> Dict[str, str]:
         """
         Allows an AI Builder to create a Payment Plan on Nevermined in a flexible manner.
@@ -86,6 +88,10 @@ class PlansAPI(BasePaymentsAPI):
             price_config: Plan price configuration
             credits_config: Plan credits configuration
             nonce: Optional nonce for the transaction
+            access_limit: Optional access limit for the plan
+            organization_id: Optional org id (e.g. ``"org-..."``) to publish
+                into for this call only. Sends an ``X-Current-Org-Id``
+                header without mutating the instance-level pin.
 
         Returns:
             The unique identifier of the plan (Plan ID) of the newly created plan
@@ -109,14 +115,21 @@ class PlansAPI(BasePaymentsAPI):
             "metadataAttributes": self.pydantic_to_dict(plan_metadata),
             "priceConfig": price_dict,
             "creditsConfig": self.pydantic_to_dict(credits_config),
-            "nonce": nonce,
+            # Send `nonce` as a decimal string so the backend's uint256
+            # validator (BCK.COMMON.0026) accepts it for very large
+            # values that would overflow JSON's safe-integer range.
+            # The TypeScript SDK gets this for free via the BigInt
+            # `jsonReplacer`; Python needs the explicit cast.
+            "nonce": str(nonce),
             "isTrialPlan": getattr(plan_metadata, "is_trial_plan", False),
             "accessLimit": access_limit,
         }
         if price_dict.get("currency"):
             body["currency"] = price_dict["currency"]
 
-        options = self.get_backend_http_options("POST", body)
+        options = self.get_backend_http_options(
+            "POST", body, extra_headers=resolve_publication_headers(organization_id)
+        )
         url = f"{self.environment.backend}{API_URL_REGISTER_PLAN}"
 
         response = requests.post(url, **options)
@@ -132,6 +145,7 @@ class PlansAPI(BasePaymentsAPI):
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
         credits_config: PlanCreditsConfig,
+        organization_id: Optional[str] = None,
     ) -> Dict[str, str]:
         """
         Allows an AI Builder to create a Payment Plan on Nevermined based on Credits.
@@ -144,6 +158,7 @@ class PlansAPI(BasePaymentsAPI):
             plan_metadata: Plan metadata
             price_config: Plan price configuration
             credits_config: Plan credits configuration
+            organization_id: Optional org id to publish into for this call.
 
         Returns:
             The unique identifier of the plan (Plan ID) of the newly created plan
@@ -158,7 +173,11 @@ class PlansAPI(BasePaymentsAPI):
             )
 
         return self.register_plan(
-            plan_metadata, price_config, credits_config, access_limit="credits"
+            plan_metadata,
+            price_config,
+            credits_config,
+            access_limit="credits",
+            organization_id=organization_id,
         )
 
     def register_time_plan(
@@ -166,6 +185,7 @@ class PlansAPI(BasePaymentsAPI):
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
         credits_config: PlanCreditsConfig,
+        organization_id: Optional[str] = None,
     ) -> Dict[str, str]:
         """
         Allows an AI Builder to create a Payment Plan on Nevermined limited by duration.
@@ -178,6 +198,7 @@ class PlansAPI(BasePaymentsAPI):
             plan_metadata: Plan metadata
             price_config: Plan price configuration
             credits_config: Plan credits configuration
+            organization_id: Optional org id to publish into for this call.
 
         Returns:
             The unique identifier of the plan (Plan ID) of the newly created plan
@@ -187,7 +208,11 @@ class PlansAPI(BasePaymentsAPI):
         """
 
         return self.register_plan(
-            plan_metadata, price_config, credits_config, access_limit="time"
+            plan_metadata,
+            price_config,
+            credits_config,
+            access_limit="time",
+            organization_id=organization_id,
         )
 
     def register_credits_trial_plan(
@@ -195,6 +220,7 @@ class PlansAPI(BasePaymentsAPI):
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
         credits_config: PlanCreditsConfig,
+        organization_id: Optional[str] = None,
     ) -> Dict[str, str]:
         """
         Allows an AI Builder to create a Trial Payment Plan on Nevermined based on Credits.
@@ -205,18 +231,25 @@ class PlansAPI(BasePaymentsAPI):
             plan_metadata: Plan metadata
             price_config: Plan price configuration
             credits_config: Plan credits configuration
+            organization_id: Optional org id to publish into for this call.
 
         Returns:
             The unique identifier of the plan (Plan ID) of the newly created plan
         """
         plan_metadata.is_trial_plan = True
-        return self.register_credits_plan(plan_metadata, price_config, credits_config)
+        return self.register_credits_plan(
+            plan_metadata,
+            price_config,
+            credits_config,
+            organization_id=organization_id,
+        )
 
     def register_time_trial_plan(
         self,
         plan_metadata: PlanMetadata,
         price_config: PlanPriceConfig,
         credits_config: PlanCreditsConfig,
+        organization_id: Optional[str] = None,
     ) -> Dict[str, str]:
         """
         Allows an AI Builder to create a Trial Payment Plan on Nevermined limited by duration.
@@ -227,12 +260,18 @@ class PlansAPI(BasePaymentsAPI):
             plan_metadata: Plan metadata
             price_config: Plan price configuration
             credits_config: Plan credits configuration
+            organization_id: Optional org id to publish into for this call.
 
         Returns:
             The unique identifier of the plan (Plan ID) of the newly created plan
         """
         plan_metadata.is_trial_plan = True
-        return self.register_time_plan(plan_metadata, price_config, credits_config)
+        return self.register_time_plan(
+            plan_metadata,
+            price_config,
+            credits_config,
+            organization_id=organization_id,
+        )
 
     def get_plan(self, plan_id: str) -> Dict[str, Any]:
         """

@@ -12,7 +12,9 @@ import json
 from unittest.mock import MagicMock
 
 from payments_py.api.base_payments import (
+    ALLOWED_EXTRA_HEADERS,
     BasePaymentsAPI,
+    CURRENT_ORG_ID_HEADER,
     _JS_MAX_SAFE_INTEGER,
     _stringify_unsafe_ints,
 )
@@ -102,3 +104,69 @@ class TestGetBackendHTTPOptions:
         assert body["amount"] == str(big)
         # Public path doesn't carry Authorization
         assert "Authorization" not in opts["headers"]
+
+
+class TestExtraHeadersAllowlist:
+    """The ``extra_headers`` argument on :meth:`get_backend_http_options` is
+    used by the per-call workspace-targeting path (``X-Current-Org-Id``).
+    Without an allowlist a caller could inject ``Authorization`` or
+    ``Content-Type`` through it and override the SDK's own auth — these
+    tests pin the allowlist (mirror of TS ``ALLOWED_EXTRA_HEADERS``).
+    """
+
+    def test_allowlist_includes_only_current_org_id_header(self):
+        # Hard-coded membership check — drift here implies the security
+        # surface widened. Any addition must be a deliberate review item.
+        assert ALLOWED_EXTRA_HEADERS == {CURRENT_ORG_ID_HEADER}
+
+    def test_current_org_id_header_passes_through(self):
+        bp = _bp_with_safe_jwt()
+        opts = bp.get_backend_http_options(
+            "GET",
+            extra_headers={CURRENT_ORG_ID_HEADER: "org-target-123"},
+        )
+        assert opts["headers"][CURRENT_ORG_ID_HEADER] == "org-target-123"
+
+    def test_unknown_headers_are_dropped(self):
+        bp = _bp_with_safe_jwt()
+        opts = bp.get_backend_http_options(
+            "GET",
+            extra_headers={"X-Custom-Trace-Id": "abc-123"},
+        )
+        assert "X-Custom-Trace-Id" not in opts["headers"]
+
+    def test_authorization_header_cannot_be_overridden(self):
+        # The SDK sets Authorization itself from the NVM API key. A caller
+        # passing Authorization through extra_headers must not silently
+        # replace it — that would let a per-call override hijack the auth.
+        bp = _bp_with_safe_jwt()
+        original_auth = bp.get_backend_http_options("GET")["headers"]["Authorization"]
+        opts = bp.get_backend_http_options(
+            "GET",
+            extra_headers={"Authorization": "Bearer evil-token"},
+        )
+        assert opts["headers"]["Authorization"] == original_auth
+
+    def test_content_type_header_cannot_be_overridden(self):
+        bp = _bp_with_safe_jwt()
+        opts = bp.get_backend_http_options(
+            "POST",
+            {"foo": "bar"},
+            extra_headers={"Content-Type": "text/plain"},
+        )
+        assert opts["headers"]["Content-Type"] == "application/json"
+
+    def test_mixed_allowed_and_disallowed_headers(self):
+        # Allowed key still goes through; disallowed keys silently dropped.
+        bp = _bp_with_safe_jwt()
+        opts = bp.get_backend_http_options(
+            "GET",
+            extra_headers={
+                CURRENT_ORG_ID_HEADER: "org-keep",
+                "X-Forwarded-For": "192.0.2.1",
+                "Cookie": "session=evil",
+            },
+        )
+        assert opts["headers"][CURRENT_ORG_ID_HEADER] == "org-keep"
+        assert "X-Forwarded-For" not in opts["headers"]
+        assert "Cookie" not in opts["headers"]
