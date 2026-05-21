@@ -72,6 +72,47 @@ def _http_error_response(
 
 class TestListPaymentMethodsVisa:
     @patch("payments_py.x402.delegation_api.requests.get")
+    def test_handles_heterogeneous_list_including_erc4337_wallet(
+        self, mock_get, mock_options
+    ):
+        """``/payment-methods`` deliberately returns a mixed list: enrolled
+        cards plus the user's ERC-4337 smart account as a
+        ``provider='erc4337'`` entry (see
+        ``apps/api/src/delegation/delegation.service.ts::listPaymentMethods``).
+        The SDK must surface all entries — filtering crypto wallets out
+        of view would hide a real payment option from consumers."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = [
+            {
+                "id": "vat_1abc",
+                "type": "card",
+                "brand": "visa",
+                "last4": "1387",
+                "expMonth": 12,
+                "expYear": 2027,
+                "provider": "visa",
+            },
+            {
+                "id": "0xabc1234567890123456789012345678901231234",
+                "type": "crypto_wallet",
+                "brand": "ethereum",
+                "last4": "1234",
+                "expMonth": None,
+                "expYear": None,
+                "alias": "Crypto Wallet",
+                "provider": "erc4337",
+            },
+        ]
+        mock_get.return_value = mock_response
+
+        methods = DelegationAPI(mock_options).list_payment_methods()
+
+        assert len(methods) == 2
+        providers = [m.provider for m in methods]
+        assert providers == ["visa", "erc4337"]
+
+    @patch("payments_py.x402.delegation_api.requests.get")
     def test_visa_card_surfaces_unchanged(self, mock_get, mock_options):
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None

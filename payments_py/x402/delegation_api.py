@@ -13,9 +13,9 @@ from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.x402.types import (
-    CardProvider,
     CreateDelegationPayload,
     CreateDelegationResponse,
+    DelegationProvider,
 )
 
 
@@ -23,15 +23,25 @@ class PaymentMethodSummary(BaseModel):
     """
     Summary of a user's enrolled payment method.
 
+    The list returned by ``list_payment_methods`` is heterogeneous: it
+    includes enrolled cards (``provider`` in ``stripe`` / ``braintree`` /
+    ``visa``) AND, when the user has a smart account configured, an
+    entry for the user's ERC-4337 wallet (``provider='erc4337'``,
+    ``type='crypto_wallet'``, ``brand='ethereum'``). Filter on
+    ``provider`` when callers only want one shape.
+
     Attributes:
-        id: Payment method ID (Stripe 'pm_...', Braintree vault token, or
-            Visa Agentic token id 'vat_...')
-        type: Payment method type (e.g., 'card', 'paypal')
-        brand: Card brand (e.g., 'visa', 'mastercard') or payment method type ('paypal', 'venmo')
-        last4: Last 4 digits (cards) or email/username (PayPal/Venmo)
-        exp_month: Expiration month (0 for non-card methods)
-        exp_year: Expiration year (0 for non-card methods)
-        provider: Payment provider ('stripe', 'braintree', or 'visa')
+        id: Payment method ID (Stripe 'pm_...', Braintree vault token,
+            Visa Agentic token id 'vat_...', or — for the erc4337 entry —
+            the user's smart-account address)
+        type: Payment method type ('card', 'crypto_wallet', 'paypal', …)
+        brand: Card brand (e.g., 'visa', 'mastercard'), 'ethereum' for
+            the erc4337 entry, or payment method type ('paypal', 'venmo')
+        last4: Last 4 digits (cards), trailing 4 chars of the wallet
+            address (erc4337), or email/username (PayPal/Venmo)
+        exp_month: Expiration month (None / 0 for non-card methods)
+        exp_year: Expiration year (None / 0 for non-card methods)
+        provider: One of 'stripe' | 'braintree' | 'visa' | 'erc4337'
     """
 
     id: str
@@ -40,7 +50,7 @@ class PaymentMethodSummary(BaseModel):
     last4: str
     exp_month: Optional[int] = Field(0, alias="expMonth")
     exp_year: Optional[int] = Field(0, alias="expYear")
-    provider: Optional[CardProvider] = None
+    provider: Optional[DelegationProvider] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
