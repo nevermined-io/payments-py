@@ -1,8 +1,9 @@
 """
 Delegation API for managing payment methods and delegations.
 
-Provides access to the user's enrolled payment methods (Stripe and Braintree)
-and delegations for use with both nvm:erc4337 and nvm:card-delegation x402 schemes.
+Provides access to the user's enrolled payment methods (Stripe, Braintree,
+and Visa) and delegations for use with both nvm:erc4337 and
+nvm:card-delegation x402 schemes.
 """
 
 import requests
@@ -11,21 +12,36 @@ from pydantic import BaseModel, ConfigDict, Field
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
-from payments_py.x402.types import CreateDelegationPayload, CreateDelegationResponse
+from payments_py.x402.types import (
+    CreateDelegationPayload,
+    CreateDelegationResponse,
+    DelegationProvider,
+)
 
 
 class PaymentMethodSummary(BaseModel):
     """
     Summary of a user's enrolled payment method.
 
+    The list returned by ``list_payment_methods`` is heterogeneous: it
+    includes enrolled cards (``provider`` in ``stripe`` / ``braintree`` /
+    ``visa``) AND, when the user has a smart account configured, an
+    entry for the user's ERC-4337 wallet (``provider='erc4337'``,
+    ``type='crypto_wallet'``, ``brand='ethereum'``). Filter on
+    ``provider`` when callers only want one shape.
+
     Attributes:
-        id: Payment method ID (Stripe 'pm_...' or Braintree vault token)
-        type: Payment method type (e.g., 'card', 'paypal')
-        brand: Card brand (e.g., 'visa', 'mastercard') or payment method type ('paypal', 'venmo')
-        last4: Last 4 digits (cards) or email/username (PayPal/Venmo)
-        exp_month: Expiration month (0 for non-card methods)
-        exp_year: Expiration year (0 for non-card methods)
-        provider: Payment provider ('stripe' or 'braintree')
+        id: Payment method ID (Stripe 'pm_...', Braintree vault token,
+            Visa Agentic token id 'vat_...', or — for the erc4337 entry —
+            the user's smart-account address)
+        type: Payment method type ('card', 'crypto_wallet', 'paypal', …)
+        brand: Card brand (e.g., 'visa', 'mastercard'), 'ethereum' for
+            the erc4337 entry, or payment method type ('paypal', 'venmo')
+        last4: Last 4 digits (cards), trailing 4 chars of the wallet
+            address (erc4337), or email/username (PayPal/Venmo)
+        exp_month: Expiration month (None / 0 for non-card methods)
+        exp_year: Expiration year (None / 0 for non-card methods)
+        provider: One of 'stripe' | 'braintree' | 'visa' | 'erc4337'
     """
 
     id: str
@@ -34,7 +50,7 @@ class PaymentMethodSummary(BaseModel):
     last4: str
     exp_month: Optional[int] = Field(0, alias="expMonth")
     exp_year: Optional[int] = Field(0, alias="expYear")
-    provider: Optional[str] = None
+    provider: Optional[DelegationProvider] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -101,25 +117,30 @@ class DelegationAPI(BasePaymentsAPI):
             data = response.json()
             return [PaymentMethodSummary.model_validate(pm) for pm in data]
         except requests.HTTPError as err:
-            try:
-                error_message = response.json().get(
-                    "message", "Failed to list payment methods"
-                )
-            except Exception:
-                error_message = "Failed to list payment methods"
-            raise PaymentsError.internal(
-                f"{error_message} (HTTP {response.status_code})"
+            raise PaymentsError.from_response(
+                response, "Failed to list payment methods"
             ) from err
         except Exception as err:
+            # Include the exception type so backend-shape mismatches
+            # (pydantic ValidationError) don't get masked as "network
+            # error" — the full ValidationError stringifies to the
+            # field path + offending value + reason, which is exactly
+            # what's needed to diagnose backend contract drift.
             raise PaymentsError.internal(
-                f"Network error while listing payment methods: {str(err)}"
+                f"Failed to list payment methods: {type(err).__name__}: {err}"
             ) from err
 
     def create_delegation(
         self, payload: CreateDelegationPayload
     ) -> CreateDelegationResponse:
         """
-        Create a new delegation for either stripe or erc4337 provider.
+        Create a new delegation for any supported provider (stripe, braintree,
+        visa, or erc4337).
+
+        Note: Visa delegations require a per-delegation device-binding ceremony
+        (FIDO/passkey + assuranceData) that must be performed in the browser
+        via the Nevermined webapp. The SDK can list and consume an already-
+        created Visa delegation but cannot create one programmatically.
 
         Args:
             payload: The delegation creation parameters
@@ -128,7 +149,9 @@ class DelegationAPI(BasePaymentsAPI):
             The created delegation ID (and token for card delegations)
 
         Raises:
-            PaymentsError: If the request fails
+            PaymentsError: If the request fails. ``error.code`` carries the
+                backend NVMException code (e.g. ``'BCK.VISA.0014'``) when the
+                response was a structured failure.
         """
         url = f"{self.environment.backend}/api/v1/delegation/create"
         body = payload.model_dump(exclude_none=True)
@@ -139,18 +162,10 @@ class DelegationAPI(BasePaymentsAPI):
             response.raise_for_status()
             return CreateDelegationResponse.model_validate(response.json())
         except requests.HTTPError as err:
-            try:
-                error_message = response.json().get(
-                    "message", "Failed to create delegation"
-                )
-            except Exception:
-                error_message = "Failed to create delegation"
-            raise PaymentsError.internal(
-                f"{error_message} (HTTP {response.status_code})"
+            raise PaymentsError.from_response(
+                response, "Failed to create delegation"
             ) from err
         except Exception as err:
-            if isinstance(err, PaymentsError):
-                raise
             raise PaymentsError.internal(
                 f"Network error while creating delegation: {str(err)}"
             ) from err
@@ -174,14 +189,8 @@ class DelegationAPI(BasePaymentsAPI):
             data = response.json()
             return [DelegationSummary.model_validate(d) for d in data]
         except requests.HTTPError as err:
-            try:
-                error_message = response.json().get(
-                    "message", "Failed to list delegations"
-                )
-            except Exception:
-                error_message = "Failed to list delegations"
-            raise PaymentsError.internal(
-                f"{error_message} (HTTP {response.status_code})"
+            raise PaymentsError.from_response(
+                response, "Failed to list delegations"
             ) from err
         except Exception as err:
             raise PaymentsError.internal(

@@ -7,4 +7,5 @@ SupportedNetworks = Literal[
     "eip155:84532",  # Base Sepolia
     "stripe",  # Stripe (card-delegation)
     "braintree",  # Braintree (card-delegation via Shared Vault)
+    "visa",  # Visa Agentic Tokens (card-delegation via VGS CMP)
 ]
