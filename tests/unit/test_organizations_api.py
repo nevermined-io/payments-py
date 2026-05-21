@@ -78,19 +78,19 @@ class TestGetMyMemberships:
         body = [
             {
                 "orgId": "org-aaa",
-                "organizationName": "Acme",
-                "organizationType": "Premium",
+                "orgName": "Acme",
                 "role": "Admin",
-                "userIsActive": True,
-                "organizationIsActive": True,
+                "orgType": "Premium",
+                "isAdmin": True,
+                "hasSubscriptionHistory": True,
             },
             {
                 "orgId": "org-bbb",
-                "organizationName": "Beta",
-                "organizationType": "Enterprise",
+                "orgName": "Beta",
                 "role": "Member",
-                "userIsActive": True,
-                "organizationIsActive": True,
+                "orgType": "Enterprise",
+                "isAdmin": False,
+                "hasSubscriptionHistory": True,
             },
         ]
         with requests_mock.Mocker() as m:
@@ -100,9 +100,12 @@ class TestGetMyMemberships:
         assert len(memberships) == 2
         assert isinstance(memberships[0], MyMembership)
         assert memberships[0].org_id == "org-aaa"
-        assert memberships[0].organization_type == OrganizationType.PREMIUM
+        assert memberships[0].org_name == "Acme"
+        assert memberships[0].org_type == OrganizationType.PREMIUM
         assert memberships[0].role == OrganizationMemberRole.ADMIN
+        assert memberships[0].is_admin is True
         assert memberships[1].role == OrganizationMemberRole.MEMBER
+        assert memberships[1].is_admin is False
 
     def test_tolerates_unexpected_non_array_body(self):
         # Backend changes that return an object instead of an array must
@@ -131,7 +134,7 @@ class TestGetMyMemberships:
 class TestGetOrganizationActivity:
     def test_encodes_filters_in_query_string(self):
         payments = _make_payments()
-        body = {"items": [], "total": 0, "page": 1, "offset": 25}
+        body = {"items": [], "total": 0}
         with requests_mock.Mocker() as m:
             m.get(
                 f"{BACKEND}/api/v1/organizations/org-xyz/activity",
@@ -145,28 +148,45 @@ class TestGetOrganizationActivity:
                     **{"from": "2026-01-01T00:00:00Z"},
                     to="2026-12-31T23:59:59Z",
                     page=2,
-                    offset=25,
+                    limit=25,
                 ),
             )
 
         assert page.total == 0
         assert m.last_request is not None
-        # requests_mock.qs lowercases everything; parse the raw URL ourselves
-        # so case-sensitive values like "MEMBER_INVITED" survive the check.
         qs = parse_qs(urlparse(m.last_request.url).query)
-        assert qs["eventType"] == ["MEMBER_INVITED"]
+        assert qs["eventType"] == ["member.invited"]
         assert qs["actorUserId"] == ["us-1"]
         assert qs["from"] == ["2026-01-01T00:00:00Z"]
         assert qs["to"] == ["2026-12-31T23:59:59Z"]
         assert qs["page"] == ["2"]
-        assert qs["offset"] == ["25"]
+        assert qs["limit"] == ["25"]
+
+    def test_joins_array_event_type_filter(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.get(
+                f"{BACKEND}/api/v1/organizations/org-xyz/activity",
+                json={"items": [], "total": 0},
+            )
+            payments.organizations.get_organization_activity(
+                "org-xyz",
+                OrganizationActivityFilters(
+                    event_type=[
+                        OrganizationActivityEventType.PLAN_CREATED,
+                        OrganizationActivityEventType.AGENT_CREATED,
+                    ],
+                ),
+            )
+            qs = parse_qs(urlparse(m.last_request.url).query)
+            assert qs["eventType"] == ["plan.created,agent.created"]
 
     def test_no_filters_means_no_query_string(self):
         payments = _make_payments()
         with requests_mock.Mocker() as m:
             m.get(
                 f"{BACKEND}/api/v1/organizations/org-xyz/activity",
-                json={"items": [], "total": 0, "page": 1, "offset": 10},
+                json={"items": [], "total": 0},
             )
             payments.organizations.get_organization_activity("org-xyz")
             assert m.last_request.qs == {}
@@ -176,17 +196,19 @@ class TestGetOrganizationActivity:
         body = {
             "items": [
                 {
-                    "id": "ev-1",
-                    "eventType": "MEMBER_INVITED",
-                    "orgId": "org-xyz",
+                    "id": "ae-1",
+                    "eventType": "plan.created",
                     "actorUserId": "us-admin",
-                    "metadata": {"email": "x@y.z"},
-                    "createdAt": "2026-05-18T00:00:00Z",
+                    "subject": {
+                        "kind": "plan",
+                        "id": "12345",
+                        "name": "Test Plan",
+                    },
+                    "metadata": {"foo": "bar"},
+                    "occurredAt": "2026-05-21T00:00:00Z",
                 },
             ],
             "total": 1,
-            "page": 1,
-            "offset": 10,
         }
         with requests_mock.Mocker() as m:
             m.get(f"{BACKEND}/api/v1/organizations/org-xyz/activity", json=body)
@@ -194,9 +216,16 @@ class TestGetOrganizationActivity:
 
         assert page.total == 1
         assert len(page.items) == 1
-        assert page.items[0].id == "ev-1"
-        assert page.items[0].event_type == "MEMBER_INVITED"
-        assert page.items[0].metadata == {"email": "x@y.z"}
+        event = page.items[0]
+        assert event.id == "ae-1"
+        assert event.event_type == "plan.created"
+        assert event.actor_user_id == "us-admin"
+        assert event.subject.kind == "plan"
+        assert event.subject.id == "12345"
+        # Extras from the subject flow through via Pydantic's extra="allow".
+        assert getattr(event.subject, "name", None) == "Test Plan"
+        assert event.metadata == {"foo": "bar"}
+        assert event.occurred_at == "2026-05-21T00:00:00Z"
 
     def test_rejects_without_org_id(self):
         payments = _make_payments()

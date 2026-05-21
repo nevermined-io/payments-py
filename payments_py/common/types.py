@@ -463,16 +463,26 @@ class MyMembership(BaseModel):
 
     Returned by :meth:`OrganizationsAPI.get_my_memberships` and used by
     clients to power workspace pickers and "where will this publish?" UX.
+
+    Shape mirrors ``MyMembershipDto`` in the Nevermined backend
+    (``apps/api/src/organizations/dto/my-membership.dto.ts``).
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
     org_id: str = Field(alias="orgId")
-    organization_name: str = Field(alias="organizationName")
-    organization_type: OrganizationType = Field(alias="organizationType")
+    org_name: str = Field(alias="orgName")
     role: OrganizationMemberRole
-    user_is_active: bool = Field(alias="userIsActive")
-    organization_is_active: bool = Field(alias="organizationIsActive")
+    org_type: OrganizationType = Field(alias="orgType")
+    is_admin: bool = Field(alias="isAdmin")
+    # `True` when the org has at least one ``organizationSubscription`` row —
+    # the org has previously been associated with a paid tier (active,
+    # past_due, trialing, lapsed, or canceled). Combined with
+    # ``org_type == Lapsed`` it distinguishes "subscription expired" from
+    # "free org that never subscribed".
+    has_subscription_history: bool = Field(
+        default=False, alias="hasSubscriptionHistory"
+    )
 
 
 class OrganizationActivityEventType(str, Enum):
@@ -483,50 +493,96 @@ class OrganizationActivityEventType(str, Enum):
     plain ``str`` so consumers don't break on first-encounter.
     """
 
-    MEMBER_INVITED = "MEMBER_INVITED"
-    MEMBER_ACCEPTED = "MEMBER_ACCEPTED"
-    MEMBER_ROLE_CHANGED = "MEMBER_ROLE_CHANGED"
-    MEMBER_DEACTIVATED = "MEMBER_DEACTIVATED"
-    MEMBER_REACTIVATED = "MEMBER_REACTIVATED"
-    MEMBER_REMOVED = "MEMBER_REMOVED"
-    CUSTOMER_ADDED = "CUSTOMER_ADDED"
-    CUSTOMER_BLOCKED = "CUSTOMER_BLOCKED"
-    SUBSCRIPTION_CREATED = "SUBSCRIPTION_CREATED"
-    SUBSCRIPTION_CANCELED = "SUBSCRIPTION_CANCELED"
-    WEBHOOK_DELIVERED = "WEBHOOK_DELIVERED"
+    # Membership lifecycle
+    MEMBER_INVITED = "member.invited"
+    MEMBER_JOINED = "member.joined"
+    MEMBER_ROLE_CHANGED = "member.role_changed"
+    MEMBER_DEACTIVATED = "member.deactivated"
+    MEMBER_REACTIVATED = "member.reactivated"
+    MEMBER_REMOVED = "member.removed"
+    INVITATION_REVOKED = "invitation.revoked"
+    INVITATION_EXPIRED = "invitation.expired"
+    # Resource lifecycle
+    AGENT_CREATED = "agent.created"
+    PLAN_CREATED = "plan.created"
+    PLAN_PURCHASED = "plan.purchased"
+    # Customer lifecycle
+    CUSTOMER_ADDED = "customer.added"
+    CUSTOMER_BLOCKED = "customer.blocked"
+    CUSTOMER_UNBLOCKED = "customer.unblocked"
+    # Subscription lifecycle
+    SUBSCRIPTION_UPGRADED = "subscription.upgraded"
+    SUBSCRIPTION_DOWNGRADED = "subscription.downgraded"
+    SUBSCRIPTION_CANCELED = "subscription.canceled"
+    SUBSCRIPTION_LAPSED = "subscription.lapsed"
+    # Webhook delivery
+    WEBHOOK_DELIVERED = "webhook.delivered"
+    WEBHOOK_FAILED = "webhook.failed"
+
+
+class OrganizationActivityEventSubject(BaseModel):
+    """Resource an activity event is about.
+
+    ``kind`` describes the resource type (``plan``, ``agent``, ``member``,
+    ``subscription``, ``invitation``, ``customer``, ``webhook``) and ``id``
+    is the resource identifier. Extras vary by kind — invitations include
+    ``role`` + ``email``, members include ``role`` + ``userId``,
+    subscriptions include ``tier``. The model accepts unknown keys for
+    forward-compatibility.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    kind: str
+    id: str
 
 
 class OrganizationActivityEvent(BaseModel):
-    """A single event emitted into the organization activity feed."""
+    """A single event emitted into the organization activity feed.
+
+    Shape mirrors ``OrganizationActivityEventResponseDto`` in the backend.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
     event_type: str = Field(alias="eventType")
-    org_id: str = Field(alias="orgId")
     actor_user_id: Optional[str] = Field(default=None, alias="actorUserId")
-    target_user_id: Optional[str] = Field(default=None, alias="targetUserId")
+    subject: OrganizationActivityEventSubject
     metadata: Optional[Dict[str, Any]] = None
-    created_at: str = Field(alias="createdAt")
+    occurred_at: str = Field(alias="occurredAt")
 
 
 class OrganizationActivityPage(BaseModel):
-    """Paginated page of activity events."""
+    """Paginated page of activity events.
+
+    The backend only echoes ``items`` and ``total``; ``page`` and ``limit``
+    are not in the response.
+    """
 
     items: List[OrganizationActivityEvent] = Field(default_factory=list)
     total: int = 0
-    page: int = 1
-    offset: int = 10
 
 
 class OrganizationActivityFilters(BaseModel):
-    """Optional filters accepted by :meth:`OrganizationsAPI.get_organization_activity`."""
+    """Optional filters accepted by :meth:`OrganizationsAPI.get_organization_activity`.
 
-    event_type: Optional[Union[OrganizationActivityEventType, str]] = None
+    ``event_type`` accepts a single value or a list (sent to the backend
+    as a comma-separated list). ``limit`` is the page size (backend cap
+    is 200); the legacy ``offset`` name is not supported by this endpoint.
+    """
+
+    event_type: Optional[
+        Union[
+            OrganizationActivityEventType,
+            str,
+            List[Union[OrganizationActivityEventType, str]],
+        ]
+    ] = None
     actor_user_id: Optional[str] = None
     from_: Optional[str] = Field(default=None, alias="from")
     to: Optional[str] = None
     page: Optional[int] = None
-    offset: Optional[int] = None
+    limit: Optional[int] = None
 
     model_config = ConfigDict(populate_by_name=True)

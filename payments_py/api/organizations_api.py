@@ -44,7 +44,7 @@ class OrganizationsAPI(BasePaymentsAPI):
         payments = Payments.get_instance(options)
         memberships = payments.organizations.get_my_memberships()
         for membership in memberships:
-            print(membership.organization_name, "-", membership.role)
+            print(membership.org_name, "-", membership.role)
     """
 
     @classmethod
@@ -106,9 +106,16 @@ class OrganizationsAPI(BasePaymentsAPI):
         if filters is not None:
             event_type = filters.event_type
             if event_type is not None:
-                query_params["eventType"] = getattr(
-                    event_type, "value", str(event_type)
-                )
+                if isinstance(event_type, list):
+                    joined = ",".join(
+                        getattr(value, "value", str(value)) for value in event_type
+                    )
+                    if joined:
+                        query_params["eventType"] = joined
+                else:
+                    query_params["eventType"] = getattr(
+                        event_type, "value", str(event_type)
+                    )
             if filters.actor_user_id:
                 query_params["actorUserId"] = filters.actor_user_id
             if filters.from_:
@@ -117,8 +124,8 @@ class OrganizationsAPI(BasePaymentsAPI):
                 query_params["to"] = filters.to
             if filters.page is not None:
                 query_params["page"] = str(filters.page)
-            if filters.offset is not None:
-                query_params["offset"] = str(filters.offset)
+            if filters.limit is not None:
+                query_params["limit"] = str(filters.limit)
 
         path = API_URL_ORG_ACTIVITY.format(org_id=org_id)
         query_string = urlencode(query_params)
@@ -140,14 +147,7 @@ class OrganizationsAPI(BasePaymentsAPI):
         data: Dict[str, Any] = response.json() or {}
         items_raw = data.get("items") or []
         items = [OrganizationActivityEvent.model_validate(item) for item in items_raw]
-        return OrganizationActivityPage(
-            items=items,
-            total=int(data.get("total", 0)),
-            page=int(data.get("page", filters.page if filters and filters.page else 1)),
-            offset=int(
-                data.get("offset", filters.offset if filters and filters.offset else 10)
-            ),
-        )
+        return OrganizationActivityPage(items=items, total=int(data.get("total", 0)))
 
 
 def resolve_publication_headers(
