@@ -111,8 +111,13 @@ class DelegationAPI(BasePaymentsAPI):
                 response, "Failed to list payment methods"
             ) from err
         except Exception as err:
+            # Include the exception type so backend-shape mismatches
+            # (pydantic ValidationError) don't get masked as "network
+            # error" — the full ValidationError stringifies to the
+            # field path + offending value + reason, which is exactly
+            # what's needed to diagnose backend contract drift.
             raise PaymentsError.internal(
-                f"Network error while listing payment methods: {str(err)}"
+                f"Failed to list payment methods: {type(err).__name__}: {err}"
             ) from err
 
     def create_delegation(
