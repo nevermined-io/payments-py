@@ -341,6 +341,24 @@ class PlanCreditsConfig(BaseModel):
     max_amount: int
     nft_address: Optional[str] = None
 
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        """Serialize uint256-typed fields as decimal strings.
+
+        The Nevermined backend tightened uint256 validation on plan and
+        agent-and-plan registration. JSON numbers are rejected for fields
+        that map to Solidity ``uint256`` (``durationSecs``, ``amount``,
+        ``minAmount``, ``maxAmount``) because numbers larger than
+        ``Number.MAX_SAFE_INTEGER`` lose precision in transit. The
+        TypeScript SDK gets this for free via the ``BigInt``
+        ``jsonReplacer``; Python emits the same wire shape by
+        stringifying here.
+        """
+        d = super().model_dump(**kwargs)
+        for field in ("duration_secs", "amount", "min_amount", "max_amount"):
+            if field in d and d[field] is not None:
+                d[field] = str(d[field])
+        return d
+
 
 class PlanBalance(BaseModel):
     """

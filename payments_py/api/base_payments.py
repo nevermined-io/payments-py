@@ -48,6 +48,7 @@ def _stringify_unsafe_ints(value: Any) -> Any:
 # `apps/api/src/common/guards/current-org-context.guard.ts` (nvm-monorepo).
 CURRENT_ORG_ID_HEADER = "X-Current-Org-Id"
 
+
 class BasePaymentsAPI:
     """
     Base class extended by all Payments API classes.
