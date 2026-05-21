@@ -1,0 +1,257 @@
+/* Nevermined Brand Colors for MkDocs Material */
+
+:root {
+  /* Nevermined brand colors */
+  --nvm-green: #9ac022;
+  --nvm-green-light: #bcdc4a;
+  --nvm-teal: #0d3f48;
+  --nvm-teal-light: #abe2dd;
+  --nvm-text: #111827;
+
+  /* Override Material theme colors */
+  --md-primary-fg-color: #0d3f48;
+  --md-primary-fg-color--light: #1a5a66;
+  --md-primary-fg-color--dark: #082a30;
+  --md-accent-fg-color: #9ac022;
+  --md-accent-fg-color--transparent: rgba(154, 192, 34, 0.1);
+}
+
+/* Dark mode overrides */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #0d3f48;
+  --md-accent-fg-color: #bcdc4a;
+  --md-default-bg-color: #1a1a2e;
+}
+
+/* Header styling */
+.md-header {
+  background-color: var(--nvm-teal);
+}
+
+/* Navigation tabs */
+.md-tabs {
+  background-color: var(--nvm-teal);
+}
+
+/* Links */
+.md-typeset a {
+  color: var(--nvm-green);
+}
+
+.md-typeset a:hover {
+  color: var(--nvm-green-light);
+}
+
+/* Inline code */
+.md-typeset code {
+  background-color: #f5f5f5;
+  color: #bcdc4a;
+  padding: 0.2em 0.4em;
+  border-radius: 6px;
+  font-size: 0.85em;
+}
+
+/* Code blocks - Mintlify style (light background) */
+.md-typeset .highlight {
+  background-color: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+}
+
+.md-typeset pre {
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+.md-typeset pre > code,
+.md-typeset .highlight code {
+  background-color: transparent !important;
+  color: #374151 !important;
+}
+
+/* Syntax highlighting for light background */
+.md-typeset .highlight .c,
+.md-typeset .highlight .c1,
+.md-typeset .highlight .cm,
+.md-typeset .highlight .cp,
+.md-typeset .highlight .cs { color: #6b7280 !important; } /* Comments - gray */
+
+.md-typeset .highlight .k,
+.md-typeset .highlight .kc,
+.md-typeset .highlight .kd,
+.md-typeset .highlight .kn,
+.md-typeset .highlight .kp,
+.md-typeset .highlight .kr,
+.md-typeset .highlight .kt { color: #d946ef !important; } /* Keywords - magenta */
+
+.md-typeset .highlight .n,
+.md-typeset .highlight .na,
+.md-typeset .highlight .ni,
+.md-typeset .highlight .nl,
+.md-typeset .highlight .no,
+.md-typeset .highlight .nt,
+.md-typeset .highlight .nv,
+.md-typeset .highlight .nx,
+.md-typeset .highlight .py { color: #374151 !important; } /* Names - dark gray */
+
+.md-typeset .highlight .nc,
+.md-typeset .highlight .nd,
+.md-typeset .highlight .ne { color: #0891b2 !important; } /* Class names - cyan */
+
+.md-typeset .highlight .nb { color: #0891b2 !important; } /* Builtins - cyan */
+
+.md-typeset .highlight .nf,
+.md-typeset .highlight .fm { color: #2563eb !important; } /* Function names - blue */
+
+.md-typeset .highlight .nn { color: #374151 !important; } /* Module names */
+
+.md-typeset .highlight .o,
+.md-typeset .highlight .ow,
+.md-typeset .highlight .p { color: #374151 !important; } /* Operators & Punctuation */
+
+.md-typeset .highlight .s,
+.md-typeset .highlight .s1,
+.md-typeset .highlight .s2,
+.md-typeset .highlight .sa,
+.md-typeset .highlight .sb,
+.md-typeset .highlight .sc,
+.md-typeset .highlight .sd,
+.md-typeset .highlight .se,
+.md-typeset .highlight .sh,
+.md-typeset .highlight .si,
+.md-typeset .highlight .sl,
+.md-typeset .highlight .sr,
+.md-typeset .highlight .ss,
+.md-typeset .highlight .sx { color: #16a34a !important; } /* Strings - green */
+
+.md-typeset .highlight .m,
+.md-typeset .highlight .mb,
+.md-typeset .highlight .mf,
+.md-typeset .highlight .mh,
+.md-typeset .highlight .mi,
+.md-typeset .highlight .mo,
+.md-typeset .highlight .il { color: #ea580c !important; } /* Numbers - orange */
+
+/* Ensure code text doesn't get overridden */
+.md-typeset .highlight span {
+  background-color: transparent !important;
+}
+
+/* Copy button styling */
+.md-typeset .highlight .md-clipboard {
+  color: #9ca3af;
+}
+
+.md-typeset .highlight .md-clipboard:hover {
+  color: var(--nvm-green);
+}
+
+/* Buttons */
+.md-typeset .md-button {
+  background-color: var(--nvm-green);
+  border-color: var(--nvm-green);
+  color: white;
+}
+
+.md-typeset .md-button:hover {
+  background-color: var(--nvm-green-light);
+  border-color: var(--nvm-green-light);
+}
+
+/* Search */
+.md-search__input {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Table of contents active item */
+.md-nav__link--active {
+  color: var(--nvm-green) !important;
+}
+
+/* Admonitions */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-color: var(--nvm-green);
+}
+
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  background-color: rgba(154, 192, 34, 0.1);
+}
+
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+  background-color: var(--nvm-green);
+}
+
+/* Version selector (mike) */
+.md-version__current {
+  color: var(--nvm-green-light);
+}
+
+/* Footer */
+.md-footer {
+  background-color: var(--nvm-teal);
+}
+
+/* Line numbers in code blocks */
+.md-typeset .highlighttable .linenos {
+  background-color: #f9fafb !important;
+  color: #9ca3af !important;
+}
+
+/* Dark mode - keep dark theme for code blocks */
+[data-md-color-scheme="slate"] .md-typeset pre,
+[data-md-color-scheme="slate"] .md-typeset .highlight {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+[data-md-color-scheme="slate"] .md-typeset pre > code,
+[data-md-color-scheme="slate"] .md-typeset .highlight code {
+  color: #f3f4f6 !important;
+}
+
+[data-md-color-scheme="slate"] .md-typeset code {
+  background-color: #374151;
+  color: #bcdc4a;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .c,
+[data-md-color-scheme="slate"] .md-typeset .highlight .c1,
+[data-md-color-scheme="slate"] .md-typeset .highlight .cm { color: #9ca3af !important; }
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .k,
+[data-md-color-scheme="slate"] .md-typeset .highlight .kn { color: #f472b6 !important; }
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .s,
+[data-md-color-scheme="slate"] .md-typeset .highlight .s1,
+[data-md-color-scheme="slate"] .md-typeset .highlight .s2 { color: #4ade80 !important; }
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .nf,
+[data-md-color-scheme="slate"] .md-typeset .highlight .fm { color: #60a5fa !important; }
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .mi,
+[data-md-color-scheme="slate"] .md-typeset .highlight .mf { color: #fb923c !important; }
+
+/* Navigation sidebar active */
+.md-nav__item--active > .md-nav__link {
+  color: var(--nvm-green);
+  font-weight: 600;
+}
+
+/* Top navigation hover */
+.md-tabs__link:hover {
+  color: var(--nvm-green-light);
+}
+
+/* Hero-like styling for index page */
+.md-typeset h1 {
+  color: var(--nvm-teal);
+}
+
+[data-md-color-scheme="slate"] .md-typeset h1 {
+  color: var(--nvm-green-light);
+}
