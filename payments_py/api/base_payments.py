@@ -15,6 +15,33 @@ from payments_py.common.helper import dict_keys_to_camel
 # Default timeout for HTTP requests in seconds (connect, read)
 DEFAULT_HTTP_TIMEOUT = (10, 30)
 
+# JavaScript's ``Number.MAX_SAFE_INTEGER`` (``2**53 - 1``). Python serializes
+# ints of any size as JSON numbers, but the Nevermined backend (Node.js)
+# parses any number above this threshold as a JS ``number`` that loses
+# precision — and its ``@IsUint256()`` validator rejects the precision loss
+# with ``BCK.COMMON.0026``. The TS SDK avoids this by storing uint256 values
+# as ``bigint`` and stringifying them through a ``jsonReplacer``; Python has
+# no equivalent type distinction, so we walk the body recursively and
+# stringify any int outside the safe range just before serialization.
+_JS_MAX_SAFE_INTEGER = (1 << 53) - 1
+
+
+def _stringify_unsafe_ints(value: Any) -> Any:
+    """Return ``value`` with any int outside the JS safe-integer range
+    stringified (recursively into dicts and lists). Booleans are preserved
+    even though ``bool`` subclasses ``int``."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value > _JS_MAX_SAFE_INTEGER or value < -_JS_MAX_SAFE_INTEGER:
+            return str(value)
+        return value
+    if isinstance(value, dict):
+        return {k: _stringify_unsafe_ints(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_stringify_unsafe_ints(v) for v in value]
+    return value
+
 
 class BasePaymentsAPI:
     """
@@ -120,9 +147,11 @@ class BasePaymentsAPI:
             "timeout": DEFAULT_HTTP_TIMEOUT,
         }
         if body:
-            # Convert to camelCase for consistency with TypeScript
+            # Convert to camelCase for consistency with TypeScript, then
+            # stringify any int the JS backend would lose precision on.
             camel_body = dict_keys_to_camel(body)
-            options["data"] = json.dumps(camel_body)
+            safe_body = _stringify_unsafe_ints(camel_body)
+            options["data"] = json.dumps(safe_body)
         return options
 
     def get_public_http_options(
@@ -149,7 +178,9 @@ class BasePaymentsAPI:
             "timeout": DEFAULT_HTTP_TIMEOUT,
         }
         if body:
-            # Convert to camelCase for consistency with TypeScript
+            # Convert to camelCase for consistency with TypeScript, then
+            # stringify any int the JS backend would lose precision on.
             camel_body = dict_keys_to_camel(body)
-            options["data"] = json.dumps(camel_body)
+            safe_body = _stringify_unsafe_ints(camel_body)
+            options["data"] = json.dumps(safe_body)
         return options
