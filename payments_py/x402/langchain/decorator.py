@@ -70,12 +70,45 @@ from payments_py.x402.helpers import build_payment_required_for_plans
 from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import (
     PaymentContext,
+    SettleResponse,
     X402PaymentRequired,
 )
 
 logger = logging.getLogger(__name__)
 
 CreditsCallable = Callable[..., int]
+
+
+# Module-level holder for the most recent settlement receipt. LangGraph runs
+# tools inside worker contexts that do not propagate ContextVar mutations back
+# to the caller, and it copies ``RunnableConfig.configurable`` per node, so
+# neither of those channels surfaces the receipt to the buyer's outer scope.
+# A module-level slot is the simplest reliable signal. It is intentionally
+# single-tenant — if the same process runs multiple concurrent settlements,
+# the last writer wins. For multi-tenant use cases, surface the receipt via
+# a callback or via observability (see Sprint 1 of the LangChain epic).
+_LAST_SETTLEMENT: dict[str, Optional[SettleResponse]] = {"value": None}
+
+
+def last_settlement() -> Optional[SettleResponse]:
+    """Return the most recent ``SettleResponse`` produced by ``@requires_payment``.
+
+    Use this after invoking a LangChain/LangGraph runnable whose tool is
+    decorated with :func:`requires_payment` to recover the settlement
+    receipt (``credits_redeemed``, ``remaining_balance``, ``transaction``,
+    ``network``, ``payer``) without threading it back through the
+    runnable config (which LangGraph copies per node).
+
+    Returns ``None`` if no settlement has happened yet in this process, or
+    if the most recent invocation raised before reaching the settle phase.
+
+    .. note::
+       This accessor reads from a module-level slot. In multi-tenant
+       processes (e.g. a server handling concurrent settlements), the value
+       reflects whichever invocation settled most recently — there is no
+       per-call isolation.
+    """
+    return _LAST_SETTLEMENT["value"]
 
 
 class PaymentRequiredError(Exception):
@@ -249,6 +282,7 @@ def _settle_payment(
         )
 
         _store_in_configurable(runnable_config, "payment_settlement", settlement)
+        _LAST_SETTLEMENT["value"] = settlement
 
     except Exception as settle_error:
         logger.warning("Payment settlement failed: %s", settle_error)
@@ -288,6 +322,17 @@ def requires_payment(
 
             When callable, ``ctx`` is ``{"args": <tool kwargs>, "result": <tool return>}``.
             Credits are resolved **after** execution so the result is available.
+
+            .. note::
+               This argument is sent as ``max_amount`` to the facilitator. The
+               actual amount redeemed depends on the plan's server-side credit
+               configuration:
+
+               - **Fixed plans** (``plan.credits.minAmount == plan.credits.maxAmount``)
+                 always burn ``plan.credits.maxAmount`` — this argument is then
+                 effectively a no-op (see nevermined-io/nvm-monorepo#1568).
+               - **Range plans** clamp this argument into
+                 ``[plan.credits.minAmount, plan.credits.maxAmount]``.
         agent_id: Optional agent identifier
         network: Blockchain network in CAIP-2 format (default: Base Sepolia)
         scheme: x402 payment scheme (auto-detected from plan if None)
