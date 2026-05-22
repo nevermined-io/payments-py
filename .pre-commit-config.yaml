@@ -1,0 +1,37 @@
+# Pre-commit hooks for the Nevermined Payments Python SDK.
+#
+# The black hook below is a `local` hook that calls `poetry run black`, so
+# the black version comes from pyproject.toml (currently ^26.1.0). That is
+# the single source of truth — both this hook and CI use it.
+#
+# To enable locally, install the project (pre-commit ships in the test
+# dependency group) and wire the git hook once per clone:
+#
+#     poetry install
+#     poetry run pre-commit install
+#
+# Alternatively, set up pre-commit's git template once on your machine so
+# every fresh clone gets the hook wired automatically — no per-repo step:
+#
+#     pipx install pre-commit
+#     git config --global init.templateDir ~/.git-template
+#     pre-commit init-templatedir ~/.git-template
+#
+# Note: the global template installs the hook script on clone, but you
+# still need to run `poetry install` once per clone before the first
+# commit — otherwise the hook errors with `poetry: command not found`.
+#
+# `pre-commit autoupdate` is a no-op for the `repo: local` hook below —
+# the black version is sourced from pyproject.toml. Bump it via
+# `poetry update black` instead.
+#
+# CI runs `poetry run pre-commit run --all-files` and enforces the same rules.
+
+repos:
+  - repo: local
+    hooks:
+      - id: black
+        name: black
+        entry: poetry run black
+        language: system
+        types: [python]

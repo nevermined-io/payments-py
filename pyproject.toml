@@ -5,6 +5,9 @@ description = ""
 authors = ["enrique <enrique@nevermined.io>", "Charly López <charly@nevermined.io>"]
 readme = "README.md"
 packages = [{include = "payments_py"}]
+# poetry.lock is on lock-version 2.1; Poetry 1.x cannot read it. Surface the
+# requirement upfront so contributors on older Poetry see a clear error.
+requires-poetry = ">=2.1"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -47,6 +50,7 @@ a2a-sdk = {version = "^0.3.1", extras = ["http-server"]}
 uvicorn = "^0.31.1"
 pytest-rerunfailures = "^14.0.0"
 langgraph = "^0.6.0"
+pre-commit = "^4.0.0"
 
 [build-system]
 requires = ["poetry-core"]
