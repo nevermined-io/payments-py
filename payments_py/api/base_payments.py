@@ -182,11 +182,6 @@ class BasePaymentsAPI:
         Returns:
             HTTP options object
         """
-        # Disable SSL verification for development/staging environments
-        # For now, disable SSL verification for all environments to handle
-        # self-signed certificates
-        verify_ssl = False
-
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -203,9 +198,10 @@ class BasePaymentsAPI:
                 {k: v for k, v in extra_headers.items() if k in ALLOWED_EXTRA_HEADERS}
             )
 
+        # Leave TLS verification on (requests' default). For environments with
+        # self-signed certs, point ``REQUESTS_CA_BUNDLE`` at the CA cert.
         options = {
             "headers": headers,
-            "verify": verify_ssl,
             "timeout": DEFAULT_HTTP_TIMEOUT,
         }
         if body:
@@ -229,14 +225,13 @@ class BasePaymentsAPI:
         Returns:
             HTTP options object
         """
-        verify_ssl = False
-
+        # Leave TLS verification on (requests' default). For environments with
+        # self-signed certs, point ``REQUESTS_CA_BUNDLE`` at the CA cert.
         options = {
             "headers": {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             },
-            "verify": verify_ssl,
             "timeout": DEFAULT_HTTP_TIMEOUT,
         }
         if body:
