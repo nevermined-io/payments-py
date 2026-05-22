@@ -1,0 +1,23 @@
+# Pre-commit hooks for the Nevermined Payments Python SDK.
+#
+# To enable locally, install pre-commit (it's already in the test
+# dependency group) and wire the git hook once per clone:
+#
+#     poetry install
+#     poetry run pre-commit install
+#
+# Alternatively, set up pre-commit's git template once on your machine so
+# every fresh clone gets the hook wired automatically — no per-repo step:
+#
+#     pipx install pre-commit
+#     git config --global init.templateDir ~/.git-template
+#     pre-commit init-templatedir ~/.git-template
+#
+# CI runs `pre-commit run --all-files` to enforce the same rules.
+
+repos:
+  - repo: https://github.com/psf/black
+    rev: 26.5.1
+    hooks:
+      - id: black
+        language_version: python3

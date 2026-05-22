@@ -211,3 +211,39 @@ balance = payments.plans.get_plan_balance(plan_id)
 access = payments.x402.get_x402_access_token(plan_id, agent_id)
 token = access["accessToken"]
 ```
+
+## Development
+
+### Setup
+
+```bash
+poetry install
+poetry run pre-commit install
+```
+
+The second command wires a git hook (lives at `.git/hooks/pre-commit`) that runs [black](https://black.readthedocs.io) on staged Python files before every commit. CI enforces the same rules, so skipping the local hook just defers the failure to push time.
+
+If you'd rather have pre-commit hooks wired automatically on every fresh clone of any repo, set up a global git template once on your machine:
+
+```bash
+pipx install pre-commit
+git config --global init.templateDir ~/.git-template
+pre-commit init-templatedir ~/.git-template
+```
+
+After that, `git clone` of any repo with a `.pre-commit-config.yaml` (this one, for instance) auto-installs its hooks — no per-repo `pre-commit install` step needed.
+
+### Running the formatter manually
+
+```bash
+poetry run black .              # format everything
+poetry run black --check .      # CI-style check, no changes
+```
+
+### Running tests
+
+```bash
+poetry install --extras "strands langchain"   # install all optional extras
+poetry run pytest -m "not slow"               # full unit + integration suite
+poetry run pytest tests/unit/x402/            # one directory
+```

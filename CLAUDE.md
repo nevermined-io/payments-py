@@ -18,20 +18,29 @@ poetry run black .          # Format code
 
 ### Always Format Before Committing
 
-**CRITICAL:** Always run `poetry run black .` before every `git commit`. The CI lint job will fail if any files are not formatted. This applies to ALL Python files — source, tests, and scripts.
+**CRITICAL:** Code must be black-formatted before commit. The CI lint job will fail otherwise. This applies to ALL Python files — source, tests, and scripts.
+
+The repo ships a [`pre-commit`](https://pre-commit.com) config (`.pre-commit-config.yaml`) that runs black automatically on every `git commit`. Enable it once per clone:
 
 ```bash
-poetry run black .              # Format all code (REQUIRED before commit)
-poetry build                    # Build must succeed
+poetry install
+poetry run pre-commit install
 ```
 
-Both commands must succeed before considering the changes complete.
-
-To verify formatting without making changes (CI check):
+After that, `git commit` runs black on staged files; if any file would be reformatted the commit aborts so you re-stage and commit the formatted code. Verify without staging:
 
 ```bash
-poetry run black --check .      # Check formatting only
+poetry run pre-commit run --all-files
 ```
+
+To format manually (matches what the hook does):
+
+```bash
+poetry run black .
+poetry run black --check .      # CI check; no changes
+```
+
+If you skip `pre-commit install`, CI still catches unformatted code via `pre-commit run --all-files`, but the round-trip is wasteful — install it once.
 
 ### Update Documentation When Changing Public APIs
 
