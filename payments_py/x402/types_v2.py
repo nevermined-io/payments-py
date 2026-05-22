@@ -14,7 +14,7 @@ https://github.com/coinbase/x402/tree/v2-development
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from typing import Any, Dict, List, Optional
 
@@ -47,7 +47,12 @@ class Extension(BaseModel):
     """
 
     info: Dict[str, Any]
-    schema: Dict[str, Any]
+    # ``schema`` is the x402 wire field name, but as a Python attribute it
+    # shadows pydantic's deprecated ``BaseModel.schema()`` classmethod and
+    # triggers a UserWarning at class definition time. We use ``schema_`` as
+    # the Python attribute and alias it to ``"schema"`` so the JSON wire
+    # shape is preserved.
+    schema_: Dict[str, Any] = Field(..., alias="schema")
 
     model_config = ConfigDict(
         alias_generator=to_camel,
