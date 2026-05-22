@@ -87,7 +87,7 @@ CreditsCallable = Callable[..., int]
 # single-tenant — if the same process runs multiple concurrent settlements,
 # the last writer wins. For multi-tenant use cases, surface the receipt via
 # a callback or via observability (see Sprint 1 of the LangChain epic).
-_LAST_SETTLEMENT: dict = {"value": None}
+_LAST_SETTLEMENT: dict[str, Optional[SettleResponse]] = {"value": None}
 
 
 def last_settlement() -> Optional[SettleResponse]:

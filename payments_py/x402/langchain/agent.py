@@ -53,14 +53,19 @@ Example::
     receipt = last_settlement()
 """
 
-from typing import Any, Callable, Sequence
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Sequence
+
+if TYPE_CHECKING:
+    from langgraph.graph.state import CompiledStateGraph
 
 
 def create_paid_react_agent(
     model: Any,
     tools: Sequence[Any],
     **kwargs: Any,
-) -> Any:
+) -> "CompiledStateGraph":
     """Build a LangGraph ReAct agent that lets ``PaymentRequiredError`` propagate.
 
     Wraps :func:`langgraph.prebuilt.create_react_agent` with a
@@ -72,7 +77,8 @@ def create_paid_react_agent(
             ``model`` argument).
         tools: Sequence of LangChain tools, typically functions decorated with
             ``@tool`` and ``@requires_payment``.
-        **kwargs: Forwarded verbatim to ``create_react_agent``.
+        **kwargs: Forwarded verbatim to ``create_react_agent``. Unknown kwargs
+            raise ``TypeError`` from LangGraph at call time.
 
     Raises:
         ImportError: If ``langgraph`` is not installed. Install it with
