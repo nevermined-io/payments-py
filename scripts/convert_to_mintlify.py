@@ -69,6 +69,11 @@ FILE_MAPPING = {
         "icon": "lock",
         "description": "Use x402 protocol for payment verification and settlement",
     },
+    "12-langchain-integration.md": {
+        "target": "langchain-module.mdx",
+        "icon": "link-simple",
+        "description": "Decorator, helpers, and exceptions for protecting LangChain and LangGraph tools",
+    },
 }
 
 # Link mapping for internal references
@@ -84,6 +89,7 @@ LINK_MAPPING = {
     "09-mcp-integration.md": "/docs/api-reference/python/mcp-module",
     "10-a2a-integration.md": "/docs/api-reference/python/a2a-module",
     "11-x402.md": "/docs/api-reference/python/x402-module",
+    "12-langchain-integration.md": "/docs/api-reference/python/langchain-module",
 }
 
 
