@@ -46,8 +46,8 @@ jobs:
           FILE_COUNT=$(find payments-py/docs/api -name "*.md" | wc -l)
           echo "Found $FILE_COUNT documentation files"
 
-          if [ "$FILE_COUNT" -lt 11 ]; then
-            echo "Error: Expected at least 11 documentation files, found $FILE_COUNT"
+          if [ "$FILE_COUNT" -lt 12 ]; then
+            echo "Error: Expected at least 12 documentation files, found $FILE_COUNT"
             exit 1
           fi
 
@@ -81,8 +81,8 @@ jobs:
           CONVERTED_COUNT=$(find ../mintlify-output -name "*.mdx" | wc -l)
           echo "Converted $CONVERTED_COUNT files to MDX format"
 
-          if [ "$CONVERTED_COUNT" -lt 11 ]; then
-            echo "Error: Expected at least 11 converted files, found $CONVERTED_COUNT"
+          if [ "$CONVERTED_COUNT" -lt 12 ]; then
+            echo "Error: Expected at least 12 converted files, found $CONVERTED_COUNT"
             exit 1
           fi
 
@@ -151,7 +151,7 @@ jobs:
             This PR updates the Python SDK documentation for version `${{ steps.version.outputs.version }}`.
 
             ### Changes
-            - ✅ Updated all 11 documentation files
+            - ✅ Updated all 12 documentation files
             - 📦 Source: [nevermined-io/payments-py@${{ github.sha }}](https://github.com/nevermined-io/payments-py/commit/${{ github.sha }})
             - 🏷️ Version: `${{ steps.version.outputs.version }}`
             - 🎯 Target Branch: `${{ steps.version.outputs.target_branch }}`
@@ -168,6 +168,7 @@ jobs:
             - `mcp-module.mdx`
             - `a2a-module.mdx`
             - `x402-module.mdx`
+            - `langchain-module.mdx`
 
             ### Conversion Details
             - Converted from Markdown to Mintlify MDX format
