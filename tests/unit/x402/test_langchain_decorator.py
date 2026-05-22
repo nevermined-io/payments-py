@@ -120,7 +120,9 @@ class TestLastSettlement:
         """Last-writer-wins semantics: a second call overrides the first."""
         my_tool = _make_protected_tool(mock_payments)
 
-        my_tool.invoke({"topic": "a"}, config={"configurable": {"payment_token": "tok"}})
+        my_tool.invoke(
+            {"topic": "a"}, config={"configurable": {"payment_token": "tok"}}
+        )
         first = last_settlement()
         assert first.credits_redeemed == "1"
 
@@ -133,7 +135,9 @@ class TestLastSettlement:
             credits_redeemed="2",
             remaining_balance="97",
         )
-        my_tool.invoke({"topic": "b"}, config={"configurable": {"payment_token": "tok"}})
+        my_tool.invoke(
+            {"topic": "b"}, config={"configurable": {"payment_token": "tok"}}
+        )
 
         second = last_settlement()
         assert second.credits_redeemed == "2"
@@ -178,6 +182,6 @@ class TestCreatePaidReactAgent:
         tools_node = agent.get_graph().nodes["tools"]
         underlying = getattr(tools_node, "data", tools_node)
         handle = getattr(underlying, "handle_tool_errors", None)
-        assert handle is False, (
-            f"Expected ToolNode.handle_tool_errors=False, got {handle!r}"
-        )
+        assert (
+            handle is False
+        ), f"Expected ToolNode.handle_tool_errors=False, got {handle!r}"
