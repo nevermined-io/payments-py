@@ -14,7 +14,7 @@ jobs:
         run: pip install poetry
       - name: Check poetry.lock is in sync with pyproject.toml
         run: poetry check --lock
-      - uses: psf/black@stable
-        with:
-          options: "--check --verbose"
-          src: "."
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+      - name: Run pre-commit
+        run: poetry run pre-commit run --all-files --show-diff-on-failure

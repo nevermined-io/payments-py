@@ -1,6 +1,10 @@
 # Pre-commit hooks for the Nevermined Payments Python SDK.
 #
-# To enable locally, install pre-commit (it's already in the test
+# The black hook below is a `local` hook that calls `poetry run black`, so
+# the black version comes from pyproject.toml (currently ^26.1.0). That is
+# the single source of truth — both this hook and CI use it.
+#
+# To enable locally, install the project (pre-commit ships in the test
 # dependency group) and wire the git hook once per clone:
 #
 #     poetry install
@@ -13,11 +17,13 @@
 #     git config --global init.templateDir ~/.git-template
 #     pre-commit init-templatedir ~/.git-template
 #
-# CI runs `pre-commit run --all-files` to enforce the same rules.
+# CI runs `poetry run pre-commit run --all-files` and enforces the same rules.
 
 repos:
-  - repo: https://github.com/psf/black
-    rev: 26.5.1
+  - repo: local
     hooks:
       - id: black
-        language_version: python3
+        name: black
+        entry: poetry run black
+        language: system
+        types: [python]
