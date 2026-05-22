@@ -31,15 +31,19 @@ For full documentation, see the decorator module.
 """
 
 from payments_py.x402.types import PaymentContext
+from .agent import create_paid_react_agent
 from .decorator import (
-    requires_payment,
-    PaymentRequiredError,
     CreditsCallable,
+    PaymentRequiredError,
+    last_settlement,
+    requires_payment,
 )
 
 __all__ = [
-    "requires_payment",
-    "PaymentRequiredError",
-    "PaymentContext",
     "CreditsCallable",
+    "PaymentContext",
+    "PaymentRequiredError",
+    "create_paid_react_agent",
+    "last_settlement",
+    "requires_payment",
 ]
