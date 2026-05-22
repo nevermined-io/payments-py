@@ -247,3 +247,14 @@ poetry install --extras "strands langchain"   # install all optional extras
 poetry run pytest -m "not slow"               # full unit + integration suite
 poetry run pytest tests/unit/x402/            # one directory
 ```
+
+### Custom CA bundle (self-signed-cert environments)
+
+The SDK uses `requests`' default TLS verification against the system trust store. Public Nevermined backends (sandbox, live) serve real certs, so no configuration is needed.
+
+If you're pointing the SDK at a dev environment that serves a self-signed certificate (e.g. a local Caddy with its own CA), export `REQUESTS_CA_BUNDLE` before running — `requests` reads it directly, no SDK change required:
+
+```bash
+export REQUESTS_CA_BUNDLE=/path/to/your-ca.pem
+poetry run python your_script.py
+```
