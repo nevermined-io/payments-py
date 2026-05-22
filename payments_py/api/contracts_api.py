@@ -85,7 +85,7 @@ class ContractsAPI(BasePaymentsAPI):
             info_url = f"{backend_url}{API_URL_INFO}"
 
             # Info endpoint doesn't require authentication
-            response = requests.get(info_url, verify=False)
+            response = requests.get(info_url)
             response.raise_for_status()
 
             info_data = response.json()
