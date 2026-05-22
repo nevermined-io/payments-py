@@ -17,6 +17,14 @@
 #     git config --global init.templateDir ~/.git-template
 #     pre-commit init-templatedir ~/.git-template
 #
+# Note: the global template installs the hook script on clone, but you
+# still need to run `poetry install` once per clone before the first
+# commit — otherwise the hook errors with `poetry: command not found`.
+#
+# `pre-commit autoupdate` is a no-op for the `repo: local` hook below —
+# the black version is sourced from pyproject.toml. Bump it via
+# `poetry update black` instead.
+#
 # CI runs `poetry run pre-commit run --all-files` and enforces the same rules.
 
 repos:
