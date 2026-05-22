@@ -408,7 +408,6 @@ class McpServerManager:
                     "enableClientRegistration": config.get(
                         "enableClientRegistration", True
                     ),
-                    "enableHealthCheck": config.get("enableHealthCheck", True),
                     "enableServerInfo": config.get("enableServerInfo", True),
                     "version": config.get("version", "1.0.0"),
                     "description": config.get("description"),
@@ -788,7 +787,6 @@ class McpServerManager:
 
         self._log(f"""MCP Server Started!
   MCP Endpoint: {info['baseUrl']}/mcp
-  Health Check: {info['baseUrl']}/health
   Server Info:  {info['baseUrl']}/
   OAuth Discovery: {info['baseUrl']}/.well-known/oauth-authorization-server
   Tools: {tools_list}

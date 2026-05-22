@@ -1549,7 +1549,7 @@ files = [
 name = "mcp"
 version = "1.26.0"
 description = "Model Context Protocol SDK"
-optional = false
+optional = true
 python-versions = ">=3.10"
 files = [
     {file = "mcp-1.26.0-py3-none-any.whl", hash = "sha256:904a21c33c25aa98ddbeb47273033c435e595bbacfdb177f4bd87f6dceebe1ca"},
@@ -2523,7 +2523,7 @@ typing-extensions = ">=4.14.1"
 name = "pydantic-settings"
 version = "2.12.0"
 description = "Settings management using Pydantic"
-optional = false
+optional = true
 python-versions = ">=3.10"
 files = [
     {file = "pydantic_settings-2.12.0-py3-none-any.whl", hash = "sha256:fddb9fd99a5b18da837b29710391e945b1e30c135477f484084ee513adb93809"},
@@ -2716,7 +2716,7 @@ six = ">=1.5"
 name = "python-dotenv"
 version = "1.2.1"
 description = "Read key-value pairs from a .env file and set them as environment variables"
-optional = false
+optional = true
 python-versions = ">=3.9"
 files = [
     {file = "python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61"},
@@ -2750,7 +2750,7 @@ docs = ["sphinx"]
 name = "python-multipart"
 version = "0.0.22"
 description = "A streaming multipart parser for Python"
-optional = false
+optional = true
 python-versions = ">=3.10"
 files = [
     {file = "python_multipart-0.0.22-py3-none-any.whl", hash = "sha256:2b2cd894c83d21bf49d702499531c7bafd057d730c201782048f7945d82de155"},
@@ -2836,7 +2836,7 @@ dev = ["black", "build", "mypy", "pytest", "pytest-cov", "setuptools", "tox", "t
 name = "pywin32"
 version = "311"
 description = "Python for Window Extensions"
-optional = false
+optional = true
 python-versions = "*"
 files = [
     {file = "pywin32-311-cp310-cp310-win32.whl", hash = "sha256:d03ff496d2a0cd4a5893504789d4a15399133fe82517455e78bad62efbb7f0a3"},
@@ -4057,9 +4057,10 @@ cffi = ["cffi (>=1.17,<2.0)", "cffi (>=2.0.0b)"]
 [extras]
 fastapi = ["fastapi", "starlette"]
 langchain = ["langchain-core"]
+mcp = ["mcp"]
 strands = ["strands-agents"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "c2a5439bb34b9ea11057506e1d968d11a98a1308afee4f8a55dbc1df3b1b9b9f"
+content-hash = "8d9e943ec0db724bc1f3fab23b503049428f6e41e747e1182ad7210bfa731ee4"

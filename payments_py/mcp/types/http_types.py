@@ -117,8 +117,6 @@ class HttpRouterConfig(TypedDict, total=False):
                              Defaults to True.
         enableClientRegistration: Enable dynamic client registration (/register).
                                  Defaults to True.
-        enableHealthCheck: Enable health check endpoint (/health).
-                          Defaults to True.
         enableServerInfo: Enable server info endpoint (/).
                          Defaults to True.
         corsOrigins: Custom CORS origins. Defaults to '*'.
@@ -136,7 +134,6 @@ class HttpRouterConfig(TypedDict, total=False):
     protocolVersion: Optional[str]
     enableOAuthDiscovery: Optional[bool]
     enableClientRegistration: Optional[bool]
-    enableHealthCheck: Optional[bool]
     enableServerInfo: Optional[bool]
     corsOrigins: Union[str, List[str], None]
 
@@ -165,7 +162,6 @@ class HttpServerConfig(TypedDict, total=False):
     protocolVersion: Optional[str]
     enableOAuthDiscovery: Optional[bool]
     enableClientRegistration: Optional[bool]
-    enableHealthCheck: Optional[bool]
     enableServerInfo: Optional[bool]
     corsOrigins: Union[str, List[str], None]
 
@@ -383,12 +379,10 @@ class ServerInfoEndpoints(TypedDict, total=False):
 
     Attributes:
         mcp: MCP endpoint URL.
-        health: Health check endpoint URL.
         register: Client registration endpoint URL.
     """
 
     mcp: str
-    health: Optional[str]
     register: Optional[str]
 
 
