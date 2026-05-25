@@ -20,16 +20,20 @@ from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import (
     AgentAPIAttributes,
     AgentMetadata,
+    CreateUserResponse,
     MyMembership,
     OrganizationActivityEventType,
     OrganizationActivityFilters,
+    OrganizationMember,
     OrganizationMemberRole,
+    OrganizationMembersResponse,
     OrganizationType,
     PaymentOptions,
     PlanCreditsConfig,
     PlanMetadata,
     PlanPriceConfig,
     PlanRedemptionType,
+    StripeAccountConnectResult,
 )
 from payments_py.environments import Environments
 from payments_py.payments import Payments
@@ -359,3 +363,193 @@ class TestPerCallOrgOverride:
             )
 
             assert m.last_request.headers.get(CURRENT_ORG_ID_HEADER) == "org-d"
+
+
+class TestCreateMember:
+    def test_posts_account_endpoint_and_flattens_wallet_result(self):
+        payments = _make_payments()
+        body = {
+            "walletResult": {
+                "hash": "sandbox-staging:eyJ...new-key...",
+                "userId": "us-new-member",
+                "userWallet": "0xabc",
+                "alreadyMember": False,
+            },
+        }
+        with requests_mock.Mocker() as m:
+            m.post(f"{BACKEND}/api/v1/organizations/account", json=body)
+            result = payments.organizations.create_member(
+                "external-user-1",
+                "alice@example.com",
+                OrganizationMemberRole.ADMIN,
+            )
+
+            sent = m.last_request.json()
+            assert sent == {
+                "uniqueExternalId": "external-user-1",
+                "email": "alice@example.com",
+                "role": "Admin",
+            }
+
+        assert isinstance(result, CreateUserResponse)
+        assert result.nvm_api_key == "sandbox-staging:eyJ...new-key..."
+        assert result.user_id == "us-new-member"
+        assert result.user_wallet == "0xabc"
+        assert result.already_member is False
+
+    def test_omits_optional_args_from_body(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                json={
+                    "walletResult": {"hash": "k", "userId": "u", "userWallet": "0x0"}
+                },
+            )
+            payments.organizations.create_member("external-user-2")
+
+            sent = m.last_request.json()
+            assert sent == {"uniqueExternalId": "external-user-2"}
+            assert "email" not in sent
+            assert "role" not in sent
+
+    def test_raises_on_403_non_admin(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=403,
+                json={"errorCode": "BCK.AUTH.0004", "message": "admin required"},
+            )
+            with pytest.raises(PaymentsError):
+                payments.organizations.create_member("external-user-3")
+
+
+class TestGetMembers:
+    def test_posts_members_endpoint_with_pagination_defaults(self):
+        payments = _make_payments()
+        body = {
+            "members": [
+                {
+                    "id": "om-1",
+                    "userId": "us-1",
+                    "orgId": "org-abc",
+                    "userAddress": "0xaaa",
+                    "role": "Admin",
+                    "isActive": True,
+                    "createdAt": "2026-05-25T00:00:00Z",
+                    "updatedAt": "2026-05-25T00:00:00Z",
+                }
+            ],
+            "totalResults": 1,
+        }
+        with requests_mock.Mocker() as m:
+            m.post(f"{BACKEND}/api/v1/organizations/members", json=body)
+            page = payments.organizations.get_members()
+
+            sent = m.last_request.json()
+            # Default pagination is sent verbatim; optional filters are
+            # omitted when ``None``.
+            assert sent == {"page": 1, "offset": 100}
+
+        assert isinstance(page, OrganizationMembersResponse)
+        assert page.total == 1
+        assert len(page.members) == 1
+        member = page.members[0]
+        assert isinstance(member, OrganizationMember)
+        assert member.id == "om-1"
+        assert member.user_id == "us-1"
+        assert member.org_id == "org-abc"
+        assert member.role == OrganizationMemberRole.ADMIN
+        assert member.is_active is True
+
+    def test_forwards_role_and_active_filters(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/members",
+                json={"members": [], "totalResults": 0},
+            )
+            payments.organizations.get_members(
+                role=OrganizationMemberRole.MEMBER,
+                is_active=False,
+                page=2,
+                offset=50,
+            )
+            assert m.last_request.json() == {
+                "page": 2,
+                "offset": 50,
+                "role": "Member",
+                "isActive": False,
+            }
+
+    def test_falls_back_to_total_when_total_results_absent(self):
+        # Forward-compat: if the backend ever standardises on `total`
+        # the SDK should still read the count correctly.
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/members",
+                json={"members": [], "total": 42},
+            )
+            page = payments.organizations.get_members()
+            assert page.total == 42
+
+    def test_raises_on_5xx(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/members",
+                status_code=500,
+                json={"message": "boom"},
+            )
+            with pytest.raises(PaymentsError):
+                payments.organizations.get_members()
+
+
+class TestConnectStripeAccount:
+    def test_posts_stripe_account_endpoint_and_parses_response(self):
+        payments = _make_payments()
+        body = {
+            "stripeAccountId": "acct_123",
+            "stripeAccountLink": "https://connect.stripe.com/setup/s/xyz",
+            "userId": "us-1",
+            "userCountryCode": "ES",
+            "linkCreatedAt": 1748097600,
+            "linkExpiresAt": 1748184000,
+        }
+        with requests_mock.Mocker() as m:
+            m.post(f"{BACKEND}/api/v1/fiat/stripe/account", json=body)
+            result = payments.organizations.connect_stripe_account(
+                "alice@example.com",
+                "ES",
+                "https://example.com/return",
+            )
+
+            sent = m.last_request.json()
+            assert sent == {
+                "userEmail": "alice@example.com",
+                "userCountryCode": "ES",
+                "returnUrl": "https://example.com/return",
+            }
+
+        assert isinstance(result, StripeAccountConnectResult)
+        assert result.stripe_account_id == "acct_123"
+        assert result.stripe_account_link == "https://connect.stripe.com/setup/s/xyz"
+        assert result.user_id == "us-1"
+        assert result.user_country_code == "ES"
+        assert result.link_created_at == 1748097600
+        assert result.link_expires_at == 1748184000
+
+    def test_raises_on_backend_failure(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/fiat/stripe/account",
+                status_code=400,
+                json={"message": "invalid country"},
+            )
+            with pytest.raises(PaymentsError):
+                payments.organizations.connect_stripe_account(
+                    "alice@example.com", "ZZ", "https://example.com/return"
+                )
