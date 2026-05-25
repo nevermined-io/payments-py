@@ -614,3 +614,75 @@ class OrganizationActivityFilters(BaseModel):
     limit: Optional[int] = None
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class OrganizationMember(BaseModel):
+    """A single row from an organization's member list.
+
+    Returned by :meth:`OrganizationsAPI.get_members`. Mirrors the
+    ``OrganizationMember`` entity in the Nevermined backend.
+
+    ``extra="allow"`` keeps any new backend-emitted fields accessible on
+    the model without an SDK upgrade, matching the forward-compat
+    treatment of :class:`OrganizationActivityEventSubject`.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    id: str
+    user_id: str = Field(alias="userId")
+    org_id: str = Field(alias="orgId")
+    user_address: str = Field(alias="userAddress")
+    role: OrganizationMemberRole
+    is_active: bool = Field(alias="isActive")
+    created_at: str = Field(alias="createdAt")
+    updated_at: str = Field(alias="updatedAt")
+
+
+class OrganizationMembersResponse(BaseModel):
+    """Paginated members response used by :meth:`OrganizationsAPI.get_members`.
+
+    The backend returns ``totalResults`` on the wire; the SDK normalizes
+    it to ``total`` so both Python and TypeScript clients see the same
+    shape.
+    """
+
+    members: List[OrganizationMember] = Field(default_factory=list)
+    total: int = 0
+
+
+class CreateUserResponse(BaseModel):
+    """Result of :meth:`OrganizationsAPI.create_member`.
+
+    The backend response carries the freshly minted wallet under
+    ``walletResult``; the SDK flattens those fields and exposes the
+    wallet hash as ``nvm_api_key`` for parity with the TS SDK.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    nvm_api_key: str = Field(alias="nvmApiKey")
+    user_id: str = Field(alias="userId")
+    user_wallet: str = Field(alias="userWallet")
+    already_member: bool = Field(default=False, alias="alreadyMember")
+
+
+class StripeAccountConnectResult(BaseModel):
+    """Result of :meth:`OrganizationsAPI.connect_stripe_account`.
+
+    Named ``StripeAccountConnectResult`` rather than ``StripeCheckoutResult``
+    to disambiguate the Stripe Connect onboarding flow from the
+    plan-purchase checkout flow that ``payments.plans`` uses.
+
+    Mirrors the TS ``StripeCheckoutResult`` in
+    ``src/api/organizations-api/types.ts``.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    stripe_account_id: str = Field(alias="stripeAccountId")
+    stripe_account_link: str = Field(alias="stripeAccountLink")
+    user_id: str = Field(alias="userId")
+    user_country_code: str = Field(alias="userCountryCode")
+    link_created_at: int = Field(alias="linkCreatedAt")
+    link_expires_at: int = Field(alias="linkExpiresAt")
