@@ -621,9 +621,13 @@ class OrganizationMember(BaseModel):
 
     Returned by :meth:`OrganizationsAPI.get_members`. Mirrors the
     ``OrganizationMember`` entity in the Nevermined backend.
+
+    ``extra="allow"`` keeps any new backend-emitted fields accessible on
+    the model without an SDK upgrade, matching the forward-compat
+    treatment of :class:`OrganizationActivityEventSubject`.
     """
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     id: str
     user_id: str = Field(alias="userId")

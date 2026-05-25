@@ -193,9 +193,14 @@ class OrganizationsAPI(BasePaymentsAPI):
             and NVM API key.
 
         Raises:
-            PaymentsError: If the backend call fails (403 for non-admin
-                callers, validation errors for bad input).
+            PaymentsError: If ``user_id`` is empty, the backend call
+                fails (403 for non-admin callers, validation errors for
+                bad input), or the backend response is missing the
+                expected ``walletResult`` envelope.
         """
+        if not user_id:
+            raise PaymentsError.validation("user_id is required")
+
         body: Dict[str, Any] = {"uniqueExternalId": user_id}
         if user_email is not None:
             body["email"] = user_email
@@ -210,16 +215,36 @@ class OrganizationsAPI(BasePaymentsAPI):
                 error = response.json()
             except (ValueError, requests.exceptions.JSONDecodeError):
                 error = {"message": response.text, "code": response.status_code}
-            raise PaymentsError.from_backend("Unable to create user", error)
+            raise PaymentsError.from_backend("Unable to create member", error)
 
         data: Dict[str, Any] = response.json() or {}
-        wallet = data.get("walletResult") or {}
-        # The backend stores the new NVM API key under ``walletResult.hash``;
-        # both the TS SDK and product copy expose it as ``nvmApiKey``.
+        wallet = data.get("walletResult")
+        # The backend stores the new NVM API key under ``walletResult.hash``
+        # (both the TS SDK and product copy expose it as ``nvmApiKey``).
+        # Fail loudly if the envelope is missing or the required keys are
+        # absent — silent fallback to empty strings would make a contract
+        # regression look like a successful enrolment with invalid data.
+        if not isinstance(wallet, dict):
+            raise PaymentsError.from_backend(
+                "Unable to create member",
+                {"message": "missing walletResult in response"},
+            )
+        required_keys = ("hash", "userId", "userWallet")
+        missing = [k for k in required_keys if not wallet.get(k)]
+        if missing:
+            raise PaymentsError.from_backend(
+                "Unable to create member",
+                {
+                    "message": (
+                        "walletResult is missing required keys: "
+                        f"{', '.join(missing)}"
+                    ),
+                },
+            )
         return CreateUserResponse(
-            nvm_api_key=wallet.get("hash", ""),
-            user_id=wallet.get("userId", ""),
-            user_wallet=wallet.get("userWallet", ""),
+            nvm_api_key=wallet["hash"],
+            user_id=wallet["userId"],
+            user_wallet=wallet["userWallet"],
             already_member=bool(wallet.get("alreadyMember", False)),
         )
 

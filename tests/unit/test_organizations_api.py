@@ -414,15 +414,58 @@ class TestCreateMember:
             assert "role" not in sent
 
     def test_raises_on_403_non_admin(self):
+        # Use the canonical Nevermined NVMException envelope (``code``,
+        # ``message``, ``httpStatus``) rather than the legacy
+        # ``errorCode`` field — the SDK's ``PaymentsError.from_backend``
+        # only reads ``code``, so this mirrors what the backend actually
+        # returns on 403.
         payments = _make_payments()
         with requests_mock.Mocker() as m:
             m.post(
                 f"{BACKEND}/api/v1/organizations/account",
                 status_code=403,
-                json={"errorCode": "BCK.AUTH.0004", "message": "admin required"},
+                json={
+                    "code": "BCK.AUTH.0004",
+                    "message": "admin required",
+                    "httpStatus": 403,
+                },
             )
-            with pytest.raises(PaymentsError):
+            with pytest.raises(PaymentsError) as exc_info:
                 payments.organizations.create_member("external-user-3")
+            # The backend's structured ``code`` propagates to the SDK
+            # exception so callers can branch programmatically.
+            assert exc_info.value.code == "BCK.AUTH.0004"
+            assert "Unable to create member" in str(exc_info.value)
+
+    def test_rejects_empty_user_id_without_hitting_backend(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(f"{BACKEND}/api/v1/organizations/account", json={})
+            with pytest.raises(PaymentsError, match="user_id is required"):
+                payments.organizations.create_member("")
+            # Validation runs client-side; no request is sent.
+            assert not m.called
+
+    def test_raises_when_response_missing_wallet_result(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                json={"unexpectedShape": True},
+            )
+            with pytest.raises(PaymentsError, match="walletResult"):
+                payments.organizations.create_member("external-user-4")
+
+    def test_raises_when_wallet_result_missing_required_keys(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                # Missing ``hash`` and ``userWallet`` — backend contract regression.
+                json={"walletResult": {"userId": "us-x"}},
+            )
+            with pytest.raises(PaymentsError, match="missing required keys"):
+                payments.organizations.create_member("external-user-5")
 
 
 class TestGetMembers:
