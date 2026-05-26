@@ -90,7 +90,9 @@ nav:
     - 09. MCP Integration: api/09-mcp-integration.md
     - 10. A2A Integration: api/10-a2a-integration.md
     - 11. x402 Protocol: api/11-x402.md
+    - 12. LangChain Integration: api/12-langchain-integration.md
   - Reference:
     - Payments Class: reference/payments.md
     - Data Models: reference/data_models.md
     - Environments: reference/environments.md
+    - LangSmith Spans: reference/langsmith.md

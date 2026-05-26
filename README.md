@@ -34,6 +34,21 @@ payments = Payments.get_instance(
 )
 ```
 
+### Optional integrations
+
+The core SDK has no integration dependencies. Add one or more of the following extras when installing:
+
+| Extra | Pulls in | Purpose |
+| --- | --- | --- |
+| `fastapi` | `fastapi`, `starlette` | `payments_py.x402.fastapi.PaymentMiddleware` for HTTP route-level payment gating |
+| `strands` | `strands-agents` | Strands `@requires_payment` decorator |
+| `langchain` | `langchain-core` | LangChain `@requires_payment` decorator + `create_paid_react_agent` |
+| `langsmith` | `langsmith` | Auto-emit `nvm:verify` and `nvm:settlement` spans into LangSmith traces when `LANGSMITH_TRACING=true` |
+
+```bash
+pip install "payments-py[langchain,langsmith]"
+```
+
 ## A2A Integration (Agents-to-Agents)
 
 The Python SDK can both start an A2A server (FastAPI-based) and act as an A2A client.
