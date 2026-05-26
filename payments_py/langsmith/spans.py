@@ -174,6 +174,38 @@ def build_settle_metadata(
 
 
 @contextmanager
+def _open_nvm_span(name: str, inputs: dict) -> Iterator[Optional[Any]]:
+    """Shared implementation behind :func:`verify_span` / :func:`settlement_span`.
+
+    Yields the underlying LangSmith ``RunTree`` if a parent run is active and
+    ``_ls.trace`` setup succeeds; yields ``None`` otherwise. The ``ExitStack``
+    is load-bearing: it swallows setup errors via the try/except below while
+    letting body exceptions propagate cleanly through the ``@contextmanager``
+    protocol (a previous broad try/except here surfaced as
+    ``"generator didn't stop after throw()"`` -- see the regression tests in
+    ``tests/unit/langsmith/test_spans.py``).
+    """
+    if active_run_tree() is None:
+        yield None
+        return
+
+    with ExitStack() as stack:
+        try:
+            span = stack.enter_context(
+                _ls.trace(  # type: ignore[union-attr]
+                    name=name,
+                    run_type="tool",
+                    inputs=inputs,
+                )
+            )
+        except Exception:
+            logger.debug("LangSmith %s setup failed (ignored)", name, exc_info=True)
+            yield None
+            return
+        yield span
+
+
+@contextmanager
 def verify_span(
     plan_ids: list[str],
     scheme: Optional[str] = None,
@@ -200,10 +232,6 @@ def verify_span(
                 plan_ids=["plan-1"], verification=verification,
             ))
     """
-    if active_run_tree() is None:
-        yield None
-        return
-
     inputs: dict = {"plan_ids": list(plan_ids)}
     if scheme:
         inputs["scheme"] = scheme
@@ -212,19 +240,7 @@ def verify_span(
     if agent_id:
         inputs["agent_id"] = agent_id
 
-    with ExitStack() as stack:
-        try:
-            span = stack.enter_context(
-                _ls.trace(  # type: ignore[union-attr]
-                    name="nvm:verify",
-                    run_type="tool",
-                    inputs=inputs,
-                )
-            )
-        except Exception:
-            logger.debug("LangSmith verify_span setup failed (ignored)", exc_info=True)
-            yield None
-            return
+    with _open_nvm_span("nvm:verify", inputs) as span:
         yield span
 
 
@@ -237,27 +253,9 @@ def settlement_span(
 
     Same semantics as :func:`verify_span`.
     """
-    if active_run_tree() is None:
-        yield None
-        return
-
     inputs: dict = {"plan_ids": list(plan_ids)}
     if agent_id:
         inputs["agent_id"] = agent_id
 
-    with ExitStack() as stack:
-        try:
-            span = stack.enter_context(
-                _ls.trace(  # type: ignore[union-attr]
-                    name="nvm:settlement",
-                    run_type="tool",
-                    inputs=inputs,
-                )
-            )
-        except Exception:
-            logger.debug(
-                "LangSmith settlement_span setup failed (ignored)", exc_info=True
-            )
-            yield None
-            return
+    with _open_nvm_span("nvm:settlement", inputs) as span:
         yield span

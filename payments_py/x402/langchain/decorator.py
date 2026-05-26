@@ -207,6 +207,31 @@ def _store_in_configurable(config: Any, key: str, value: Any) -> None:
         configurable[key] = value
 
 
+def _attach_metadata_safely(
+    span: Any,
+    parent_rt: Any,
+    builder: Callable[..., dict],
+    label: str,
+    **builder_kwargs: Any,
+) -> None:
+    """Build metadata via ``builder`` and attach it to ``span`` + ``parent_rt``.
+
+    Wraps the build+attach sequence in a single try/except so observability
+    failures (a builder bug, an ``add_metadata`` exception) are logged at
+    debug and swallowed -- they must never block the payment flow or mask
+    a downstream ``PaymentRequiredError``. ``label`` only affects the log
+    message ("LangSmith <label> metadata attach failed (ignored)").
+    """
+    try:
+        md = builder(**builder_kwargs)
+        add_metadata(span, md)
+        add_metadata(parent_rt, md)
+    except Exception:
+        logger.debug(
+            "LangSmith %s metadata attach failed (ignored)", label, exc_info=True
+        )
+
+
 def _verify_payment(
     func: Callable,
     kwargs: dict,
@@ -250,20 +275,16 @@ def _verify_payment(
     ) as vspan:
         # Pre-verify metadata is best-effort -- a build/attach failure here
         # must not block the actual verify call or mask PaymentRequiredError.
-        try:
-            pre_verify_md = build_verify_metadata(
-                plan_ids=config.plan_ids,
-                scheme=resolved_scheme,
-                network=config.network,
-                agent_id=config.agent_id,
-            )
-            add_metadata(vspan, pre_verify_md)
-            add_metadata(parent_rt, pre_verify_md)
-        except Exception:
-            logger.debug(
-                "LangSmith pre-verify metadata attach failed (ignored)",
-                exc_info=True,
-            )
+        _attach_metadata_safely(
+            vspan,
+            parent_rt,
+            build_verify_metadata,
+            "pre-verify",
+            plan_ids=config.plan_ids,
+            scheme=resolved_scheme,
+            network=config.network,
+            agent_id=config.agent_id,
+        )
 
         token = _extract_payment_token(runnable_config)
         if not token:
@@ -285,22 +306,19 @@ def _verify_payment(
         # Augment metadata with verification results. Same best-effort
         # guarantee -- observability must not mask the PaymentRequiredError
         # that follows if the verification is invalid.
-        try:
-            verify_md = build_verify_metadata(
-                plan_ids=config.plan_ids,
-                scheme=resolved_scheme,
-                network=config.network,
-                agent_id=config.agent_id,
-                verification=verification,
-                duration_ms=(time.monotonic() - verify_started) * 1000,
-                token=token,
-            )
-            add_metadata(vspan, verify_md)
-            add_metadata(parent_rt, verify_md)
-        except Exception:
-            logger.debug(
-                "LangSmith verify metadata attach failed (ignored)", exc_info=True
-            )
+        _attach_metadata_safely(
+            vspan,
+            parent_rt,
+            build_verify_metadata,
+            "verify",
+            plan_ids=config.plan_ids,
+            scheme=resolved_scheme,
+            network=config.network,
+            agent_id=config.agent_id,
+            verification=verification,
+            duration_ms=(time.monotonic() - verify_started) * 1000,
+            token=token,
+        )
 
         if not verification.is_valid:
             reason = verification.invalid_reason or "Payment verification failed"
@@ -366,21 +384,17 @@ def _settle_payment(
             _store_in_configurable(runnable_config, "payment_settlement", settlement)
             _LAST_SETTLEMENT["value"] = settlement
 
-            try:
-                settle_md = build_settle_metadata(
-                    settlement=settlement,
-                    plan_ids=plan_ids,
-                    agent_id=verified.agent_id,
-                    duration_ms=(time.monotonic() - settle_started) * 1000,
-                    token=verified.token,
-                )
-                add_metadata(sspan, settle_md)
-                add_metadata(parent_rt, settle_md)
-            except Exception:
-                logger.debug(
-                    "LangSmith settle metadata attach failed (ignored)",
-                    exc_info=True,
-                )
+            _attach_metadata_safely(
+                sspan,
+                parent_rt,
+                build_settle_metadata,
+                "settle",
+                settlement=settlement,
+                plan_ids=plan_ids,
+                agent_id=verified.agent_id,
+                duration_ms=(time.monotonic() - settle_started) * 1000,
+                token=verified.token,
+            )
 
     except Exception as settle_error:
         logger.warning("Payment settlement failed: %s", settle_error)
