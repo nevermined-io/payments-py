@@ -272,6 +272,7 @@ def _verify_payment(
             agent_id=config.agent_id,
             verification=verification,
             duration_ms=(time.monotonic() - verify_started) * 1000,
+            token=token,
         )
         add_metadata(vspan, verify_md)
         add_metadata(parent_rt, verify_md)
@@ -338,6 +339,7 @@ def _settle_payment(
                 plan_ids=plan_ids,
                 agent_id=verified.agent_id,
                 duration_ms=(time.monotonic() - settle_started) * 1000,
+                token=verified.token,
             )
             add_metadata(sspan, settle_md)
             add_metadata(parent_rt, settle_md)

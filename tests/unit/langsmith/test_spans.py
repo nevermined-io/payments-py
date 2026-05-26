@@ -7,6 +7,7 @@ import pytest
 
 from payments_py.langsmith import spans
 from payments_py.langsmith.spans import (
+    abbreviate_token,
     active_run_tree,
     add_metadata,
     build_settle_metadata,
@@ -15,6 +16,32 @@ from payments_py.langsmith.spans import (
     verify_span,
 )
 from payments_py.x402.types import SettleResponse, VerifyResponse
+
+# --------------------------------------------------------------------------- #
+# abbreviate_token
+# --------------------------------------------------------------------------- #
+
+
+def test_abbreviate_token_long_token():
+    token = "eyJ4NDAyVmVyc2lvbiI6Miwicm9sZXMiOlsicGF5ZXIiXX0.stubsig"
+    abbreviated = abbreviate_token(token)
+    assert abbreviated == "eyJ4NDAyVmVyc2lv…bsig"
+    # Short enough to be a metadata field, far shorter than the original.
+    assert len(abbreviated) < len(token) / 2
+    # Original token is not a substring of the abbreviated form.
+    assert token not in abbreviated
+
+
+def test_abbreviate_token_short_token_returned_as_is():
+    # A 20-char token has no abbreviation benefit and is returned unchanged.
+    short = "a" * 20
+    assert abbreviate_token(short) == short
+
+
+def test_abbreviate_token_none_or_empty_returns_none():
+    assert abbreviate_token(None) is None
+    assert abbreviate_token("") is None
+
 
 # --------------------------------------------------------------------------- #
 # build_verify_metadata
@@ -75,6 +102,19 @@ def test_build_verify_metadata_drops_none_and_empty():
     assert "nvm.agent_id" not in md
 
 
+def test_build_verify_metadata_includes_abbreviated_token():
+    token = "eyJ4NDAyVmVyc2lvbiI6Miwicm9sZXMiOlsicGF5ZXIiXX0.stubsig"
+    md = build_verify_metadata(plan_ids=["plan-1"], token=token)
+    assert md["nvm.payment_token"] == "eyJ4NDAyVmVyc2lv…bsig"
+    # Full token never appears.
+    assert token not in md["nvm.payment_token"]
+
+
+def test_build_verify_metadata_omits_payment_token_when_none():
+    md = build_verify_metadata(plan_ids=["plan-1"], token=None)
+    assert "nvm.payment_token" not in md
+
+
 # --------------------------------------------------------------------------- #
 # build_settle_metadata
 # --------------------------------------------------------------------------- #
@@ -119,6 +159,20 @@ def test_build_settle_metadata_drops_none_credits():
     md = build_settle_metadata(settlement=settlement, plan_ids=["plan-1"])
     assert "nvm.credits_redeemed" not in md
     assert "nvm.balance.after" not in md
+
+
+def test_build_settle_metadata_includes_abbreviated_token():
+    settlement = SettleResponse(success=True, transaction="0x1", network="stripe")
+    token = "eyJ4NDAyVmVyc2lvbiI6Miwicm9sZXMiOlsicGF5ZXIiXX0.stubsig"
+    md = build_settle_metadata(settlement=settlement, plan_ids=["plan-1"], token=token)
+    assert md["nvm.payment_token"] == "eyJ4NDAyVmVyc2lv…bsig"
+    assert token not in md["nvm.payment_token"]
+
+
+def test_build_settle_metadata_omits_payment_token_when_none():
+    settlement = SettleResponse(success=True, transaction="0x1", network="stripe")
+    md = build_settle_metadata(settlement=settlement, plan_ids=["plan-1"], token=None)
+    assert "nvm.payment_token" not in md
 
 
 # --------------------------------------------------------------------------- #

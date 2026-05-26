@@ -26,6 +26,7 @@ LangSmith traces::
 """
 
 from payments_py.langsmith.spans import (
+    abbreviate_token,
     active_run_tree,
     add_metadata,
     build_settle_metadata,
@@ -35,6 +36,7 @@ from payments_py.langsmith.spans import (
 )
 
 __all__ = [
+    "abbreviate_token",
     "active_run_tree",
     "add_metadata",
     "build_settle_metadata",

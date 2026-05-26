@@ -309,13 +309,28 @@ The payment flow itself is unaffected by trace-shipping failures — verify, too
 | `nvm:verify`     | `nvm.agent_id`             | configured `agent_id`                             |
 | `nvm:verify`     | `nvm.payer`                | from `VerifyResponse.payer`                       |
 | `nvm:verify`     | `nvm.agent_request_id`     | from `VerifyResponse.agent_request_id`            |
+| `nvm:verify`     | `nvm.payment_token`        | first 16 chars + `…` + last 4 chars of the x402 access token |
 | `nvm:verify`     | `nvm.verify.duration_ms`   | measured                                          |
 | `nvm:settlement` | `nvm.credits_redeemed`     | from `SettleResponse.credits_redeemed`            |
 | `nvm:settlement` | `nvm.balance.after`        | from `SettleResponse.remaining_balance`           |
 | `nvm:settlement` | `nvm.tx_hash`              | from `SettleResponse.transaction`                 |
 | `nvm:settlement` | `nvm.network`              | from `SettleResponse.network`                     |
 | `nvm:settlement` | `nvm.payer`                | from `SettleResponse.payer`                       |
+| `nvm:settlement` | `nvm.payment_token`        | first 16 chars + `…` + last 4 chars of the x402 access token |
 | `nvm:settlement` | `nvm.settle.duration_ms`   | measured                                          |
+
+### Sensitive data in traces
+
+The `payment_token` that the buyer passes via `config["configurable"]["payment_token"]` is captured by LangChain as part of the run's configurable dict and **surfaced in full in the run's metadata in the LangSmith UI**. The token grants access to the protected tool until it expires — treat a LangSmith trace with the same trust level you'd treat a session log that contains the token.
+
+For correlation across spans the decorator attaches an abbreviated `nvm.payment_token` attribute (`eyJ4NDAyVmVyc2lv…bsig`) to both `nvm:verify` and `nvm:settlement`. That gives you "which token was this?" without exposing the full credential.
+
+If your LangSmith workspace has untrusted readers, redact the full token. Either:
+
+- Set `export LANGSMITH_HIDE_INPUTS=true` to globally suppress the configurable dict from every run's metadata (heavy hammer — affects every traced run, not just paid ones).
+- Or strip `payment_token` from the configurable dict after `agent.invoke()` returns / before logging the trace elsewhere.
+
+The abbreviated `nvm.payment_token` attribute remains visible in either case.
 
 ### Manual use (non-LangChain paths)
 

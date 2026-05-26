@@ -57,6 +57,24 @@ def add_metadata(run_tree: Optional[Any], metadata: dict) -> None:
         logger.debug("LangSmith add_metadata failed (ignored)", exc_info=True)
 
 
+def abbreviate_token(token: Optional[str]) -> Optional[str]:
+    """Return a short ``<first 16>…<last 4>`` form of a payment token.
+
+    Used to attach an identifiable but non-functional reference to the
+    x402 access token in span metadata. Long enough for humans to spot
+    which token was used; short enough not to leak the credential.
+
+    Returns ``None`` if ``token`` is ``None`` or empty. Returns the token
+    unchanged when it is already 20 characters or fewer (no benefit to
+    abbreviating).
+    """
+    if not token:
+        return None
+    if len(token) <= 20:
+        return token
+    return f"{token[:16]}…{token[-4:]}"
+
+
 def build_verify_metadata(
     plan_ids: list[str],
     scheme: Optional[str] = None,
@@ -64,8 +82,14 @@ def build_verify_metadata(
     agent_id: Optional[str] = None,
     verification: Optional[VerifyResponse] = None,
     duration_ms: Optional[float] = None,
+    token: Optional[str] = None,
 ) -> dict:
-    """Build the ``nvm.*`` metadata dict for a verify span. Drops ``None`` values."""
+    """Build the ``nvm.*`` metadata dict for a verify span. Drops ``None`` values.
+
+    ``token`` is abbreviated via :func:`abbreviate_token` before being
+    surfaced as ``nvm.payment_token`` so the full credential never ends
+    up in metadata that we control.
+    """
     md: dict = {"nvm.plan_ids": list(plan_ids)}
     if scheme:
         md["nvm.scheme"] = scheme
@@ -75,6 +99,9 @@ def build_verify_metadata(
         md["nvm.agent_id"] = agent_id
     if duration_ms is not None:
         md["nvm.verify.duration_ms"] = round(duration_ms, 2)
+    abbreviated = abbreviate_token(token)
+    if abbreviated:
+        md["nvm.payment_token"] = abbreviated
     if verification is not None:
         if verification.payer:
             md["nvm.payer"] = verification.payer
@@ -90,13 +117,21 @@ def build_settle_metadata(
     plan_ids: list[str],
     agent_id: Optional[str] = None,
     duration_ms: Optional[float] = None,
+    token: Optional[str] = None,
 ) -> dict:
-    """Build the ``nvm.*`` metadata dict for a settlement span. Drops ``None`` values."""
+    """Build the ``nvm.*`` metadata dict for a settlement span. Drops ``None`` values.
+
+    ``token`` is abbreviated via :func:`abbreviate_token` before being
+    surfaced as ``nvm.payment_token``.
+    """
     md: dict = {"nvm.plan_ids": list(plan_ids)}
     if agent_id:
         md["nvm.agent_id"] = agent_id
     if duration_ms is not None:
         md["nvm.settle.duration_ms"] = round(duration_ms, 2)
+    abbreviated = abbreviate_token(token)
+    if abbreviated:
+        md["nvm.payment_token"] = abbreviated
     if settlement.credits_redeemed is not None:
         md["nvm.credits_redeemed"] = settlement.credits_redeemed
     if settlement.remaining_balance is not None:
