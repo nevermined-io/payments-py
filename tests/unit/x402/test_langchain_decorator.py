@@ -1,6 +1,7 @@
 """Unit tests for the LangChain x402 payment decorator and helpers."""
 
-from unittest.mock import MagicMock
+from contextlib import contextmanager
+from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.runnables import RunnableConfig
@@ -185,3 +186,118 @@ class TestCreatePaidReactAgent:
         assert (
             handle is False
         ), f"Expected ToolNode.handle_tool_errors=False, got {handle!r}"
+
+
+class TestLangSmithSpansIntegration:
+    """Confirm @requires_payment invokes the LangSmith span helpers correctly."""
+
+    def test_verify_and_settle_spans_are_opened(self, mock_payments):
+        """Both context managers must be called with the resolved plan_ids/agent."""
+        verify_calls: list[dict] = []
+        settle_calls: list[dict] = []
+
+        @contextmanager
+        def fake_verify_span(**kwargs):
+            verify_calls.append(kwargs)
+            yield MagicMock(name="verify_span_handle")
+
+        @contextmanager
+        def fake_settlement_span(**kwargs):
+            settle_calls.append(kwargs)
+            yield MagicMock(name="settlement_span_handle")
+
+        @tool
+        @requires_payment(
+            payments=mock_payments, plan_id="plan-123", credits=1, agent_id="agent-x"
+        )
+        def my_tool(topic: str, config: RunnableConfig = None) -> str:
+            """Canned response."""
+            return f"insight for {topic}"
+
+        with (
+            patch.object(decorator_module, "verify_span", fake_verify_span),
+            patch.object(decorator_module, "settlement_span", fake_settlement_span),
+        ):
+            my_tool.invoke(
+                {"topic": "x"},
+                config={"configurable": {"payment_token": "tok"}},
+            )
+
+        assert len(verify_calls) == 1
+        assert verify_calls[0]["plan_ids"] == ["plan-123"]
+        assert verify_calls[0]["agent_id"] == "agent-x"
+
+        assert len(settle_calls) == 1
+        assert settle_calls[0]["plan_ids"] == ["plan-123"]
+        assert settle_calls[0]["agent_id"] == "agent-x"
+
+    def test_metadata_attached_to_parent_and_child_spans(self, mock_payments):
+        """When a parent run is active, both the child span AND the parent receive nvm.* metadata."""
+        parent_rt = MagicMock(name="parent_run_tree")
+        verify_handle = MagicMock(name="verify_handle")
+        settle_handle = MagicMock(name="settle_handle")
+
+        @contextmanager
+        def fake_verify_span(**kwargs):
+            yield verify_handle
+
+        @contextmanager
+        def fake_settlement_span(**kwargs):
+            yield settle_handle
+
+        @tool
+        @requires_payment(payments=mock_payments, plan_id="plan-123", credits=1)
+        def my_tool(topic: str, config: RunnableConfig = None) -> str:
+            """Canned response."""
+            return f"insight for {topic}"
+
+        with (
+            patch.object(decorator_module, "active_run_tree", return_value=parent_rt),
+            patch.object(decorator_module, "verify_span", fake_verify_span),
+            patch.object(decorator_module, "settlement_span", fake_settlement_span),
+        ):
+            my_tool.invoke(
+                {"topic": "x"},
+                config={"configurable": {"payment_token": "tok"}},
+            )
+
+        # Verify span got verify metadata, settle span got settle metadata.
+        verify_handle.add_metadata.assert_called_once()
+        verify_md = verify_handle.add_metadata.call_args.args[0]
+        assert verify_md["nvm.plan_ids"] == ["plan-123"]
+        assert verify_md["nvm.payer"] == "0x1234567890abcdef"
+        assert "nvm.verify.duration_ms" in verify_md
+
+        settle_handle.add_metadata.assert_called_once()
+        settle_md = settle_handle.add_metadata.call_args.args[0]
+        assert settle_md["nvm.credits_redeemed"] == "1"
+        assert settle_md["nvm.tx_hash"] == "0xabc123"
+        assert settle_md["nvm.balance.after"] == "99"
+
+        # Parent run tree should have received metadata twice: once after verify,
+        # once after settle. Both calls' payloads should contain nvm.* keys.
+        assert parent_rt.add_metadata.call_count == 2
+        all_parent_md = {
+            k: v
+            for call in parent_rt.add_metadata.call_args_list
+            for k, v in call.args[0].items()
+        }
+        assert all_parent_md["nvm.plan_ids"] == ["plan-123"]
+        assert all_parent_md["nvm.payer"] == "0x1234567890abcdef"
+        assert all_parent_md["nvm.credits_redeemed"] == "1"
+        assert all_parent_md["nvm.tx_hash"] == "0xabc123"
+
+    def test_spans_no_op_when_no_active_run(self, mock_payments):
+        """With no LangSmith run active, parent metadata is skipped and tool still works."""
+        my_tool = _make_protected_tool(mock_payments)
+
+        # active_run_tree returns None by default in unit-test environment (no
+        # LANGSMITH_TRACING set). Confirm the tool completes normally.
+        result = my_tool.invoke(
+            {"topic": "x"},
+            config={"configurable": {"payment_token": "tok"}},
+        )
+
+        assert result == "insight for x"
+        mock_payments.facilitator.verify_permissions.assert_called_once()
+        mock_payments.facilitator.settle_permissions.assert_called_once()

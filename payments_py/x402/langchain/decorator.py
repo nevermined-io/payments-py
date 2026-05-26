@@ -63,9 +63,18 @@ Client-side flow::
 import functools
 import inspect
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
+from payments_py.langsmith.spans import (
+    active_run_tree,
+    add_metadata,
+    build_settle_metadata,
+    build_verify_metadata,
+    settlement_span,
+    verify_span,
+)
 from payments_py.x402.helpers import build_payment_required_for_plans
 from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import (
@@ -145,6 +154,7 @@ class _VerifiedPayment:
     payment_required: X402PaymentRequired
     credits_to_charge: int
     payment_context: PaymentContext
+    agent_id: Optional[str] = None
 
 
 def _resolve_credits_pre(
@@ -227,18 +237,36 @@ def _verify_payment(
     # For verification, use pre-resolved credits or default to 1
     credits_to_charge = credits_pre if credits_pre is not None else 1
 
-    verification = config.payments.facilitator.verify_permissions(
-        payment_required=payment_required,
-        x402_access_token=token,
-        max_amount=str(credits_to_charge),
-    )
-
-    if not verification.is_valid:
-        reason = verification.invalid_reason or "Payment verification failed"
-        raise PaymentRequiredError(
-            f"Payment verification failed: {reason}",
-            payment_required,
+    parent_rt = active_run_tree()
+    verify_started = time.monotonic()
+    with verify_span(
+        plan_ids=config.plan_ids,
+        scheme=resolved_scheme,
+        network=config.network,
+        agent_id=config.agent_id,
+    ) as vspan:
+        verification = config.payments.facilitator.verify_permissions(
+            payment_required=payment_required,
+            x402_access_token=token,
+            max_amount=str(credits_to_charge),
         )
+        verify_md = build_verify_metadata(
+            plan_ids=config.plan_ids,
+            scheme=resolved_scheme,
+            network=config.network,
+            agent_id=config.agent_id,
+            verification=verification,
+            duration_ms=(time.monotonic() - verify_started) * 1000,
+        )
+        add_metadata(vspan, verify_md)
+        add_metadata(parent_rt, verify_md)
+
+        if not verification.is_valid:
+            reason = verification.invalid_reason or "Payment verification failed"
+            raise PaymentRequiredError(
+                f"Payment verification failed: {reason}",
+                payment_required,
+            )
 
     payment_context = PaymentContext(
         token=token,
@@ -255,6 +283,7 @@ def _verify_payment(
         payment_required=payment_required,
         credits_to_charge=credits_to_charge,
         payment_context=payment_context,
+        agent_id=config.agent_id,
     )
 
 
@@ -273,16 +302,33 @@ def _settle_payment(
     """
     final_credits = _resolve_credits_post(credits_cfg, kwargs, result)
 
-    try:
-        settlement = payments.facilitator.settle_permissions(
-            payment_required=verified.payment_required,
-            x402_access_token=verified.token,
-            max_amount=str(final_credits),
-            agent_request_id=verified.payment_context.agent_request_id,
-        )
+    plan_ids = [a.plan_id for a in verified.payment_required.accepts if a.plan_id]
 
-        _store_in_configurable(runnable_config, "payment_settlement", settlement)
-        _LAST_SETTLEMENT["value"] = settlement
+    parent_rt = active_run_tree()
+    settle_started = time.monotonic()
+    try:
+        with settlement_span(
+            plan_ids=plan_ids,
+            agent_id=verified.agent_id,
+        ) as sspan:
+            settlement = payments.facilitator.settle_permissions(
+                payment_required=verified.payment_required,
+                x402_access_token=verified.token,
+                max_amount=str(final_credits),
+                agent_request_id=verified.payment_context.agent_request_id,
+            )
+
+            settle_md = build_settle_metadata(
+                settlement=settlement,
+                plan_ids=plan_ids,
+                agent_id=verified.agent_id,
+                duration_ms=(time.monotonic() - settle_started) * 1000,
+            )
+            add_metadata(sspan, settle_md)
+            add_metadata(parent_rt, settle_md)
+
+            _store_in_configurable(runnable_config, "payment_settlement", settlement)
+            _LAST_SETTLEMENT["value"] = settlement
 
     except Exception as settle_error:
         logger.warning("Payment settlement failed: %s", settle_error)

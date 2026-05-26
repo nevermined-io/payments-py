@@ -1590,7 +1590,7 @@ files = [
     {file = "langsmith-0.7.10-py3-none-any.whl", hash = "sha256:90b92623c2d7b832ce081a7b3f214ac2e5ec6c5f5af1b28c14b5d32ad6726fcc"},
     {file = "langsmith-0.7.10.tar.gz", hash = "sha256:50163f7016f182907077eb086dbfa84bf576a4b3d6b21ef2565f52169de3579d"},
 ]
-markers = {main = "extra == \"langchain\""}
+markers = {main = "extra == \"langchain\" or extra == \"langsmith\""}
 
 [package.dependencies]
 httpx = ">=0.23.0,<1"
@@ -2305,7 +2305,7 @@ files = [
     {file = "orjson-3.11.7-cp314-cp314-win_arm64.whl", hash = "sha256:4a2e9c5be347b937a2e0203866f12bba36082e89b402ddb9e927d5822e43088d"},
     {file = "orjson-3.11.7.tar.gz", hash = "sha256:9b1a67243945819ce55d24a30b59d6a168e86220452d2c96f4d1f093e71c0c49"},
 ]
-markers = {main = "extra == \"langchain\" and platform_python_implementation != \"PyPy\""}
+markers = {main = "(extra == \"langchain\" or extra == \"langsmith\") and platform_python_implementation != \"PyPy\""}
 
 [[package]]
 name = "ormsgpack"
@@ -3376,7 +3376,7 @@ files = [
     {file = "requests-toolbelt-1.0.0.tar.gz", hash = "sha256:7681a0a3d047012b5bdc0ee37d7f8f07ebe76ab08caeccfc3921ce23c88d5bc6"},
     {file = "requests_toolbelt-1.0.0-py2.py3-none-any.whl", hash = "sha256:cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06"},
 ]
-markers = {main = "extra == \"langchain\""}
+markers = {main = "extra == \"langchain\" or extra == \"langsmith\""}
 
 [package.dependencies]
 requests = ">=2.0.1,<3.0.0"
@@ -3809,7 +3809,7 @@ files = [
     {file = "uuid_utils-0.14.1-pp311-pypy311_pp73-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:258186964039a8e36db10810c1ece879d229b01331e09e9030bc5dcabe231bd2"},
     {file = "uuid_utils-0.14.1.tar.gz", hash = "sha256:9bfc95f64af80ccf129c604fb6b8ca66c6f256451e32bc4570f760e4309c9b69"},
 ]
-markers = {main = "extra == \"langchain\""}
+markers = {main = "extra == \"langchain\" or extra == \"langsmith\""}
 
 [[package]]
 name = "uvicorn"
@@ -4181,7 +4181,7 @@ files = [
     {file = "xxhash-3.6.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:15e0dac10eb9309508bfc41f7f9deaa7755c69e35af835db9cb10751adebc35d"},
     {file = "xxhash-3.6.0.tar.gz", hash = "sha256:f0162a78b13a0d7617b2845b90c763339d1f1d82bb04a4b07f4ab535cc5e05d6"},
 ]
-markers = {main = "extra == \"langchain\""}
+markers = {main = "extra == \"langchain\" or extra == \"langsmith\""}
 
 [[package]]
 name = "yarl"
@@ -4456,7 +4456,7 @@ files = [
     {file = "zstandard-0.25.0-cp39-cp39-win_amd64.whl", hash = "sha256:37daddd452c0ffb65da00620afb8e17abd4adaae6ce6310702841760c2c26860"},
     {file = "zstandard-0.25.0.tar.gz", hash = "sha256:7713e1179d162cf5c7906da876ec2ccb9c3a9dcbdffef0cc7f70c3667a205f0b"},
 ]
-markers = {main = "extra == \"langchain\""}
+markers = {main = "extra == \"langchain\" or extra == \"langsmith\""}
 
 [package.extras]
 cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and python_version < \"3.14\"", "cffi (>=2.0.0b) ; platform_python_implementation != \"PyPy\" and python_version >= \"3.14\""]
@@ -4464,9 +4464,10 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [extras]
 fastapi = ["fastapi", "starlette"]
 langchain = ["langchain-core"]
+langsmith = ["langsmith"]
 strands = ["strands-agents"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "7d043318d67330bba1333bcfe6725a3df751b9f46b63540c960b28aded45722c"
+content-hash = "31a4f1a7ae255dba32565786f8577af04ecb04fa692c96c0ca8a7e1be881a83f"
