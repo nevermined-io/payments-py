@@ -226,25 +226,40 @@ def _verify_payment(
         scheme=resolved_scheme,
     )
 
-    token = _extract_payment_token(runnable_config)
-    if not token:
-        raise PaymentRequiredError(
-            "Payment required: missing payment_token in config['configurable']",
-            payment_required,
-        )
-
-    credits_pre = _resolve_credits_pre(config.credits, kwargs)
-    # For verification, use pre-resolved credits or default to 1
-    credits_to_charge = credits_pre if credits_pre is not None else 1
-
     parent_rt = active_run_tree()
     verify_started = time.monotonic()
+    # Open the verify span BEFORE the token-presence check so failed probes
+    # (no payment_token in config) still produce a clearly-named span and
+    # have the static nvm.* attrs (plan_ids, scheme, network, agent_id)
+    # attached to both the span and the parent tool span. Without this,
+    # discovery-probe traces look like generic LangChain failures with no
+    # Nevermined-related metadata.
     with verify_span(
         plan_ids=config.plan_ids,
         scheme=resolved_scheme,
         network=config.network,
         agent_id=config.agent_id,
     ) as vspan:
+        pre_verify_md = build_verify_metadata(
+            plan_ids=config.plan_ids,
+            scheme=resolved_scheme,
+            network=config.network,
+            agent_id=config.agent_id,
+        )
+        add_metadata(vspan, pre_verify_md)
+        add_metadata(parent_rt, pre_verify_md)
+
+        token = _extract_payment_token(runnable_config)
+        if not token:
+            raise PaymentRequiredError(
+                "Payment required: missing payment_token in config['configurable']",
+                payment_required,
+            )
+
+        credits_pre = _resolve_credits_pre(config.credits, kwargs)
+        # For verification, use pre-resolved credits or default to 1
+        credits_to_charge = credits_pre if credits_pre is not None else 1
+
         verification = config.payments.facilitator.verify_permissions(
             payment_required=payment_required,
             x402_access_token=token,

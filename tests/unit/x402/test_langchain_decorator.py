@@ -261,12 +261,17 @@ class TestLangSmithSpansIntegration:
                 config={"configurable": {"payment_token": "tok"}},
             )
 
-        # Verify span got verify metadata, settle span got settle metadata.
-        verify_handle.add_metadata.assert_called_once()
-        verify_md = verify_handle.add_metadata.call_args.args[0]
-        assert verify_md["nvm.plan_ids"] == ["plan-123"]
-        assert verify_md["nvm.payer"] == "0x1234567890abcdef"
-        assert "nvm.verify.duration_ms" in verify_md
+        # Verify span got metadata twice — once pre-verify (static fields only)
+        # and once post-verify (augmented with payer + duration). Settle span
+        # gets metadata once after the settle call.
+        assert verify_handle.add_metadata.call_count == 2
+        pre_verify_md = verify_handle.add_metadata.call_args_list[0].args[0]
+        post_verify_md = verify_handle.add_metadata.call_args_list[1].args[0]
+        assert pre_verify_md["nvm.plan_ids"] == ["plan-123"]
+        assert "nvm.payer" not in pre_verify_md
+        assert "nvm.verify.duration_ms" not in pre_verify_md
+        assert post_verify_md["nvm.payer"] == "0x1234567890abcdef"
+        assert "nvm.verify.duration_ms" in post_verify_md
 
         settle_handle.add_metadata.assert_called_once()
         settle_md = settle_handle.add_metadata.call_args.args[0]
@@ -274,9 +279,9 @@ class TestLangSmithSpansIntegration:
         assert settle_md["nvm.tx_hash"] == "0xabc123"
         assert settle_md["nvm.balance.after"] == "99"
 
-        # Parent run tree should have received metadata twice: once after verify,
-        # once after settle. Both calls' payloads should contain nvm.* keys.
-        assert parent_rt.add_metadata.call_count == 2
+        # Parent run tree gets metadata three times: pre-verify, post-verify,
+        # settle. All payloads should carry nvm.* keys.
+        assert parent_rt.add_metadata.call_count == 3
         all_parent_md = {
             k: v
             for call in parent_rt.add_metadata.call_args_list
@@ -301,3 +306,73 @@ class TestLangSmithSpansIntegration:
         assert result == "insight for x"
         mock_payments.facilitator.verify_permissions.assert_called_once()
         mock_payments.facilitator.settle_permissions.assert_called_once()
+
+    def test_failed_probe_still_emits_verify_span_with_nvm_metadata(
+        self, mock_payments
+    ):
+        """Discovery probe (no payment_token) must still produce an nvm:verify span.
+
+        The span is marked failed by the PaymentRequiredError, but it carries the
+        static nvm.* attrs (plan_ids, scheme, agent_id) so the buyer's failed
+        trace is still identifiable as a Nevermined verify failure rather than
+        an opaque LangChain crash.
+        """
+        parent_rt = MagicMock(name="parent_run_tree")
+        verify_handle = MagicMock(name="verify_handle")
+        settle_handle = MagicMock(name="settle_handle")
+        verify_opened = []
+
+        @contextmanager
+        def fake_verify_span(**kwargs):
+            verify_opened.append(kwargs)
+            yield verify_handle
+
+        @contextmanager
+        def fake_settlement_span(**kwargs):
+            yield settle_handle
+
+        @tool
+        @requires_payment(
+            payments=mock_payments,
+            plan_id="plan-123",
+            credits=1,
+            agent_id="agent-x",
+        )
+        def my_tool(topic: str, config: RunnableConfig = None) -> str:
+            """Canned response."""
+            return f"insight for {topic}"
+
+        with (
+            patch.object(decorator_module, "active_run_tree", return_value=parent_rt),
+            patch.object(decorator_module, "verify_span", fake_verify_span),
+            patch.object(decorator_module, "settlement_span", fake_settlement_span),
+        ):
+            with pytest.raises(PaymentRequiredError):
+                # No payment_token — should still open the verify span and tag
+                # the parent + span with the pre-verify nvm.* metadata.
+                my_tool.invoke({"topic": "x"}, config={"configurable": {}})
+
+        # verify_span was opened (before the token check) with the expected
+        # inputs.
+        assert len(verify_opened) == 1
+        assert verify_opened[0]["plan_ids"] == ["plan-123"]
+        assert verify_opened[0]["agent_id"] == "agent-x"
+
+        # Span got pre-verify metadata before the raise.
+        verify_handle.add_metadata.assert_called_once()
+        pre_md = verify_handle.add_metadata.call_args.args[0]
+        assert pre_md["nvm.plan_ids"] == ["plan-123"]
+        assert pre_md["nvm.agent_id"] == "agent-x"
+        # No verification ran yet, so dynamic fields are absent.
+        assert "nvm.payer" not in pre_md
+        assert "nvm.verify.duration_ms" not in pre_md
+
+        # Parent got the same metadata — so the failed trace is still searchable
+        # by nvm.plan_ids in the LangSmith UI.
+        parent_rt.add_metadata.assert_called_once_with(pre_md)
+
+        # Facilitator never invoked (we short-circuit inside the span).
+        mock_payments.facilitator.verify_permissions.assert_not_called()
+        mock_payments.facilitator.settle_permissions.assert_not_called()
+        # Settlement span never opened either.
+        settle_handle.add_metadata.assert_not_called()
