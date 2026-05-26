@@ -3,6 +3,8 @@
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from payments_py.langsmith import spans
 from payments_py.langsmith.spans import (
     active_run_tree,
@@ -225,6 +227,81 @@ def test_verify_span_yields_none_on_trace_exception():
     ):
         with verify_span(plan_ids=["plan-1"]) as span:
             assert span is None
+
+
+def test_verify_span_propagates_body_exception_to_caller():
+    """Caller-raised exceptions must propagate out, not be swallowed.
+
+    Regression test: an earlier implementation wrapped the `with _ls.trace(): yield`
+    in a broad try/except that re-yielded None on any exception, which violates
+    the @contextmanager protocol and surfaces as
+    `RuntimeError("generator didn't stop after throw()")`. The user-visible
+    symptom was that the very first `agent.invoke()` (the discovery probe in
+    the langchain tutorial) crashed with that error instead of the expected
+    PaymentRequiredError.
+    """
+    parent_rt = MagicMock(name="parent_run_tree")
+    span_handle = MagicMock(name="span_handle")
+    exit_calls: list[tuple] = []
+
+    @contextmanager
+    def fake_trace(**kwargs):
+        try:
+            yield span_handle
+        except BaseException as e:
+            exit_calls.append((type(e), str(e)))
+            raise
+
+    fake_ls = MagicMock()
+    fake_ls.trace = fake_trace
+
+    class Boom(Exception):
+        pass
+
+    with (
+        patch.object(spans, "_get_current_run_tree", return_value=parent_rt),
+        patch.object(spans, "_ls", fake_ls),
+    ):
+        with pytest.raises(Boom):
+            with verify_span(plan_ids=["plan-1"]) as span:
+                assert span is span_handle
+                raise Boom("from body")
+
+    # The inner _ls.trace context manager saw the exception (so LangSmith
+    # marks the span as failed), and the exception propagated up to the caller.
+    assert exit_calls == [(Boom, "from body")]
+
+
+def test_settlement_span_propagates_body_exception_to_caller():
+    """Mirror of test_verify_span_propagates_body_exception_to_caller for settle."""
+    parent_rt = MagicMock(name="parent_run_tree")
+    span_handle = MagicMock(name="span_handle")
+    exit_calls: list[tuple] = []
+
+    @contextmanager
+    def fake_trace(**kwargs):
+        try:
+            yield span_handle
+        except BaseException as e:
+            exit_calls.append((type(e), str(e)))
+            raise
+
+    fake_ls = MagicMock()
+    fake_ls.trace = fake_trace
+
+    class Boom(Exception):
+        pass
+
+    with (
+        patch.object(spans, "_get_current_run_tree", return_value=parent_rt),
+        patch.object(spans, "_ls", fake_ls),
+    ):
+        with pytest.raises(Boom):
+            with settlement_span(plan_ids=["plan-1"]) as span:
+                assert span is span_handle
+                raise Boom("from settle body")
+
+    assert exit_calls == [(Boom, "from settle body")]
 
 
 def test_settlement_span_yields_none_when_no_active_run():

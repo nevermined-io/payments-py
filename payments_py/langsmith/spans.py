@@ -13,7 +13,7 @@ best-effort and must not interfere with the payment flow.
 from __future__ import annotations
 
 import logging
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from typing import Any, Iterator, Optional
 
 from payments_py.x402.types import SettleResponse, VerifyResponse
@@ -122,6 +122,13 @@ def verify_span(
     Yields the underlying ``RunTree`` if LangSmith is active and a parent
     run is in scope; yields ``None`` otherwise. Always safe to call.
 
+    Exceptions raised by the caller's body propagate out unchanged -- the
+    underlying ``langsmith.trace`` context manager sees them via its
+    ``__exit__`` and records the span as failed before re-raising. Only
+    errors raised inside the trace SETUP (constructing or entering the
+    LangSmith context) are swallowed, since those are pure observability
+    concerns and must never interfere with the payment flow.
+
     Example::
 
         with verify_span(plan_ids=["plan-1"]) as span:
@@ -142,16 +149,20 @@ def verify_span(
     if agent_id:
         inputs["agent_id"] = agent_id
 
-    try:
-        with _ls.trace(  # type: ignore[union-attr]
-            name="nvm:verify",
-            run_type="tool",
-            inputs=inputs,
-        ) as span:
-            yield span
-    except Exception:
-        logger.debug("LangSmith verify_span failed (ignored)", exc_info=True)
-        yield None
+    with ExitStack() as stack:
+        try:
+            span = stack.enter_context(
+                _ls.trace(  # type: ignore[union-attr]
+                    name="nvm:verify",
+                    run_type="tool",
+                    inputs=inputs,
+                )
+            )
+        except Exception:
+            logger.debug("LangSmith verify_span setup failed (ignored)", exc_info=True)
+            yield None
+            return
+        yield span
 
 
 @contextmanager
@@ -171,13 +182,19 @@ def settlement_span(
     if agent_id:
         inputs["agent_id"] = agent_id
 
-    try:
-        with _ls.trace(  # type: ignore[union-attr]
-            name="nvm:settlement",
-            run_type="tool",
-            inputs=inputs,
-        ) as span:
-            yield span
-    except Exception:
-        logger.debug("LangSmith settlement_span failed (ignored)", exc_info=True)
-        yield None
+    with ExitStack() as stack:
+        try:
+            span = stack.enter_context(
+                _ls.trace(  # type: ignore[union-attr]
+                    name="nvm:settlement",
+                    run_type="tool",
+                    inputs=inputs,
+                )
+            )
+        except Exception:
+            logger.debug(
+                "LangSmith settlement_span setup failed (ignored)", exc_info=True
+            )
+            yield None
+            return
+        yield span
