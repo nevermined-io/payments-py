@@ -277,9 +277,27 @@ pip install "payments-py[langchain,langsmith]"
 ```bash
 export LANGSMITH_TRACING=true
 export LANGSMITH_API_KEY=<your-langsmith-api-key>
+export LANGSMITH_PROJECT=<your-project-name>  # optional
 ```
 
 No code changes are needed beyond the existing `@requires_payment` decorator — the spans are emitted automatically when LangSmith is active. If `langsmith` is not installed or `LANGSMITH_TRACING` is unset, span emission is a silent no-op.
+
+#### Regional endpoint
+
+LangSmith hosts accounts across several regions. The SDK defaults to GCP US (`https://api.smith.langchain.com`); accounts in any other region must set `LANGSMITH_ENDPOINT` or the trace POST will fail with `403 Forbidden` on `/runs/multipart`.
+
+| Region   | Endpoint                                      |
+| -------- | --------------------------------------------- |
+| GCP US   | `https://api.smith.langchain.com` *(default)* |
+| GCP EU   | `https://eu.api.smith.langchain.com`          |
+| GCP APAC | `https://apac.api.smith.langchain.com`        |
+| AWS US   | `https://aws.api.smith.langchain.com`         |
+
+```bash
+export LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+```
+
+The payment flow itself is unaffected by trace-shipping failures — verify, tool execution, and settle proceed normally. Only the LangSmith trace ingestion fails, surfaced as `langsmith.utils.LangSmithError` warnings.
 
 ### Span attributes
 
