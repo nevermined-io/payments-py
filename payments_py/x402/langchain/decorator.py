@@ -63,9 +63,20 @@ Client-side flow::
 import functools
 import inspect
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
+from payments_py.langsmith.spans import (
+    abbreviate_token,
+    active_run_tree,
+    add_metadata,
+    build_settle_metadata,
+    build_verify_metadata,
+    redact_metadata_keys,
+    settlement_span,
+    verify_span,
+)
 from payments_py.x402.helpers import build_payment_required_for_plans
 from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import (
@@ -196,6 +207,39 @@ def _store_in_configurable(config: Any, key: str, value: Any) -> None:
         configurable[key] = value
 
 
+def _attach_metadata_safely(
+    span: Any,
+    parent_rt: Any,
+    builder: Callable[..., dict],
+    label: str,
+    **builder_kwargs: Any,
+) -> None:
+    """Build metadata via ``builder`` and attach it to ``span`` + ``parent_rt``.
+
+    Wraps the build+attach sequence in a single try/except so observability
+    failures (a builder bug, an ``add_metadata`` exception) are logged at
+    debug and swallowed -- they must never block the payment flow or mask
+    a downstream ``PaymentRequiredError``. ``label`` only affects the log
+    message ("LangSmith <label> metadata attach failed (ignored)").
+
+    Pre-abbreviates any ``token`` kwarg before calling ``builder`` so the
+    raw x402 access token never reaches the frame locals visible to
+    exception enrichers (Sentry's ``logging`` integration, structlog's
+    ``ExceptionRenderer``, etc.). ``exc_info`` is deliberately omitted
+    from the log call for the same reason -- the failure label alone is
+    enough to diagnose observability bugs without dumping locals to a
+    second SaaS destination.
+    """
+    if "token" in builder_kwargs:
+        builder_kwargs["token"] = abbreviate_token(builder_kwargs["token"])
+    try:
+        md = builder(**builder_kwargs)
+        add_metadata(span, md)
+        add_metadata(parent_rt, md)
+    except Exception:
+        logger.debug("LangSmith %s metadata attach failed (ignored)", label)
+
+
 def _verify_payment(
     func: Callable,
     kwargs: dict,
@@ -216,29 +260,80 @@ def _verify_payment(
         scheme=resolved_scheme,
     )
 
-    token = _extract_payment_token(runnable_config)
-    if not token:
-        raise PaymentRequiredError(
-            "Payment required: missing payment_token in config['configurable']",
-            payment_required,
+    parent_rt = active_run_tree()
+    # LangChain auto-captures every key in config["configurable"] into the
+    # parent tool span's metadata, and child spans we create inherit that
+    # metadata at construction time. Strip the full x402 access token from
+    # the parent BEFORE opening verify_span so neither the parent nor the
+    # child carries the raw credential. The abbreviated nvm.payment_token
+    # remains available for correlation.
+    redact_metadata_keys(parent_rt, "payment_token")
+    verify_started = time.monotonic()
+    # Open the verify span BEFORE the token-presence check so failed probes
+    # (no payment_token in config) still produce a clearly-named span and
+    # have the static nvm.* attrs (plan_ids, scheme, network, agent_id)
+    # attached to both the span and the parent tool span. Without this,
+    # discovery-probe traces look like generic LangChain failures with no
+    # Nevermined-related metadata.
+    with verify_span(
+        plan_ids=config.plan_ids,
+        scheme=resolved_scheme,
+        network=config.network,
+        agent_id=config.agent_id,
+    ) as vspan:
+        # Pre-verify metadata is best-effort -- a build/attach failure here
+        # must not block the actual verify call or mask PaymentRequiredError.
+        _attach_metadata_safely(
+            vspan,
+            parent_rt,
+            build_verify_metadata,
+            "pre-verify",
+            plan_ids=config.plan_ids,
+            scheme=resolved_scheme,
+            network=config.network,
+            agent_id=config.agent_id,
         )
 
-    credits_pre = _resolve_credits_pre(config.credits, kwargs)
-    # For verification, use pre-resolved credits or default to 1
-    credits_to_charge = credits_pre if credits_pre is not None else 1
+        token = _extract_payment_token(runnable_config)
+        if not token:
+            raise PaymentRequiredError(
+                "Payment required: missing payment_token in config['configurable']",
+                payment_required,
+            )
 
-    verification = config.payments.facilitator.verify_permissions(
-        payment_required=payment_required,
-        x402_access_token=token,
-        max_amount=str(credits_to_charge),
-    )
+        credits_pre = _resolve_credits_pre(config.credits, kwargs)
+        # For verification, use pre-resolved credits or default to 1
+        credits_to_charge = credits_pre if credits_pre is not None else 1
 
-    if not verification.is_valid:
-        reason = verification.invalid_reason or "Payment verification failed"
-        raise PaymentRequiredError(
-            f"Payment verification failed: {reason}",
-            payment_required,
+        verification = config.payments.facilitator.verify_permissions(
+            payment_required=payment_required,
+            x402_access_token=token,
+            max_amount=str(credits_to_charge),
         )
+
+        # Augment metadata with verification results. Same best-effort
+        # guarantee -- observability must not mask the PaymentRequiredError
+        # that follows if the verification is invalid.
+        _attach_metadata_safely(
+            vspan,
+            parent_rt,
+            build_verify_metadata,
+            "verify",
+            plan_ids=config.plan_ids,
+            scheme=resolved_scheme,
+            network=config.network,
+            agent_id=config.agent_id,
+            verification=verification,
+            duration_ms=(time.monotonic() - verify_started) * 1000,
+            token=token,
+        )
+
+        if not verification.is_valid:
+            reason = verification.invalid_reason or "Payment verification failed"
+            raise PaymentRequiredError(
+                f"Payment verification failed: {reason}",
+                payment_required,
+            )
 
     payment_context = PaymentContext(
         token=token,
@@ -262,8 +357,7 @@ def _settle_payment(
     verified: _VerifiedPayment,
     result: Any,
     kwargs: dict,
-    payments: Any,
-    credits_cfg: Union[int, CreditsCallable],
+    config: _PaymentConfig,
     runnable_config: Any,
 ) -> None:
     """Settle credits after successful tool execution.
@@ -271,18 +365,42 @@ def _settle_payment(
     Resolves dynamic credits post-execution (if callable) and stores
     the settlement response in ``config["configurable"]["payment_settlement"]``.
     """
-    final_credits = _resolve_credits_post(credits_cfg, kwargs, result)
+    final_credits = _resolve_credits_post(config.credits, kwargs, result)
 
+    plan_ids = [a.plan_id for a in verified.payment_required.accepts if a.plan_id]
+
+    parent_rt = active_run_tree()
+    settle_started = time.monotonic()
     try:
-        settlement = payments.facilitator.settle_permissions(
-            payment_required=verified.payment_required,
-            x402_access_token=verified.token,
-            max_amount=str(final_credits),
-            agent_request_id=verified.payment_context.agent_request_id,
-        )
+        with settlement_span(
+            plan_ids=plan_ids,
+            agent_id=config.agent_id,
+        ) as sspan:
+            settlement = config.payments.facilitator.settle_permissions(
+                payment_required=verified.payment_required,
+                x402_access_token=verified.token,
+                max_amount=str(final_credits),
+                agent_request_id=verified.payment_context.agent_request_id,
+            )
 
-        _store_in_configurable(runnable_config, "payment_settlement", settlement)
-        _LAST_SETTLEMENT["value"] = settlement
+            # Persist the receipt BEFORE building metadata -- the on-chain
+            # settle already happened, so a metadata-build failure must not
+            # strand local state (`last_settlement()` would return stale or
+            # `None`, and configurable["payment_settlement"] would be missing).
+            _store_in_configurable(runnable_config, "payment_settlement", settlement)
+            _LAST_SETTLEMENT["value"] = settlement
+
+            _attach_metadata_safely(
+                sspan,
+                parent_rt,
+                build_settle_metadata,
+                "settle",
+                settlement=settlement,
+                plan_ids=plan_ids,
+                agent_id=config.agent_id,
+                duration_ms=(time.monotonic() - settle_started) * 1000,
+                token=verified.token,
+            )
 
     except Exception as settle_error:
         logger.warning("Payment settlement failed: %s", settle_error)
@@ -425,14 +543,7 @@ def _execute_with_payment(
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = func(*args, **kwargs)
-    _settle_payment(
-        verified,
-        result,
-        kwargs,
-        config.payments,
-        config.credits,
-        runnable_config,
-    )
+    _settle_payment(verified, result, kwargs, config, runnable_config)
     return result
 
 
@@ -446,12 +557,5 @@ async def _execute_with_payment_async(
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = await func(*args, **kwargs)
-    _settle_payment(
-        verified,
-        result,
-        kwargs,
-        config.payments,
-        config.credits,
-        runnable_config,
-    )
+    _settle_payment(verified, result, kwargs, config, runnable_config)
     return result

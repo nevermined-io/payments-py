@@ -257,6 +257,104 @@ receipt = last_settlement()
 
 For the full, runnable version see [`tutorials/langchain-paid-agent-py`](https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py).
 
+## Observability with LangSmith
+
+When the optional `[langsmith]` extra is installed and a LangSmith run is active in the calling context, `@requires_payment` automatically emits two child spans nested under the active tool span:
+
+- **`nvm:verify`** — opens around the verify-permissions call, with attributes describing the scheme, plan, payer, and verify duration.
+- **`nvm:settlement`** — opens around the settle-permissions call, with attributes describing credits redeemed, remaining balance, transaction hash, network, and settle duration.
+
+The same `nvm.*` metadata is also attached to the parent tool span so the trace is searchable from either level.
+
+### Install
+
+```bash
+pip install "payments-py[langchain,langsmith]"
+```
+
+### Enable
+
+```bash
+export LANGSMITH_TRACING=true
+export LANGSMITH_API_KEY=<your-langsmith-api-key>
+export LANGSMITH_PROJECT=<your-project-name>  # optional
+```
+
+No code changes are needed beyond the existing `@requires_payment` decorator — the spans are emitted automatically when LangSmith is active. If `langsmith` is not installed or `LANGSMITH_TRACING` is unset, span emission is a silent no-op.
+
+#### Regional endpoint
+
+LangSmith hosts accounts across several regions. The SDK defaults to GCP US (`https://api.smith.langchain.com`); accounts in any other region must set `LANGSMITH_ENDPOINT` or the trace POST will fail with `403 Forbidden` on `/runs/multipart`.
+
+| Region   | Endpoint                                      |
+| -------- | --------------------------------------------- |
+| GCP US   | `https://api.smith.langchain.com` *(default)* |
+| GCP EU   | `https://eu.api.smith.langchain.com`          |
+| GCP APAC | `https://apac.api.smith.langchain.com`        |
+| AWS US   | `https://aws.api.smith.langchain.com`         |
+
+```bash
+export LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+```
+
+The payment flow itself is unaffected by trace-shipping failures — verify, tool execution, and settle proceed normally. Only the LangSmith trace ingestion fails, surfaced as `langsmith.utils.LangSmithError` warnings.
+
+### Span attributes
+
+| Span             | Attribute                  | Source                                            |
+| ---------------- | -------------------------- | ------------------------------------------------- |
+| `nvm:verify`     | `nvm.plan_ids`             | configured `plan_id` / `plan_ids`                 |
+| `nvm:verify`     | `nvm.scheme`               | resolved scheme (`nvm:erc4337` or `nvm:card-delegation`) |
+| `nvm:verify`     | `nvm.network`              | CAIP-2 chain or provider name                     |
+| `nvm:verify`     | `nvm.agent_id`             | configured `agent_id`                             |
+| `nvm:verify`     | `nvm.payer`                | from `VerifyResponse.payer`                       |
+| `nvm:verify`     | `nvm.agent_request_id`     | from `VerifyResponse.agent_request_id`            |
+| `nvm:verify`     | `nvm.payment_token`        | first 16 chars + `…` + last 4 chars of the x402 access token |
+| `nvm:verify`     | `nvm.verify.duration_ms`   | measured                                          |
+| `nvm:settlement` | `nvm.credits_redeemed`     | from `SettleResponse.credits_redeemed`            |
+| `nvm:settlement` | `nvm.balance.after`        | from `SettleResponse.remaining_balance`           |
+| `nvm:settlement` | `nvm.tx_hash`              | from `SettleResponse.transaction`                 |
+| `nvm:settlement` | `nvm.network`              | from `SettleResponse.network`                     |
+| `nvm:settlement` | `nvm.payer`                | from `SettleResponse.payer`                       |
+| `nvm:settlement` | `nvm.payment_token`        | first 16 chars + `…` + last 4 chars of the x402 access token |
+| `nvm:settlement` | `nvm.settle.duration_ms`   | measured                                          |
+
+### Sensitive data in traces
+
+The `payment_token` that the buyer passes via `config["configurable"]["payment_token"]` is captured by LangChain into the parent tool span's metadata, and would normally be inherited by any child span — including the `nvm:verify` and `nvm:settlement` spans the decorator emits. The full token grants access to the protected tool until it expires, so the decorator **proactively strips `payment_token` from the parent tool span's metadata** before opening any child span. The full credential never reaches a Nevermined span attribute.
+
+For correlation across spans the decorator surfaces an abbreviated `nvm.payment_token` attribute (`eyJ4NDAyVmVyc2lv…bsig`, first 16 chars + ellipsis + last 4) on both `nvm:verify` and `nvm:settlement`. That gives you "which token was this?" without exposing the credential itself.
+
+The active redaction covers the documented LangChain-via-configurable path. If you're surfacing the token through a different channel (custom callbacks, an explicit `add_metadata({"payment_token": ...})`, raw inputs to a tool whose signature contains the token), the decorator can't see those — strip them yourself or set `export LANGSMITH_HIDE_INPUTS=true` for blanket coverage.
+
+Other `nvm.*` attributes that may be considered sensitive depending on your context:
+
+- `nvm.payer` — the payer's wallet address (public on-chain, but a stable identifier).
+- `nvm.tx_hash` — the settlement transaction id.
+- `nvm.agent_request_id` — Nevermined-internal correlation id.
+- `nvm.balance.after` — the payer's remaining credit balance after this settlement. Reveals per-payer depletion patterns to anyone with trace read access on the operator's LangSmith project. Suppress with `LANGSMITH_HIDE_OUTPUTS=true` or post-filter.
+
+None of these grant access on their own.
+
+### Manual use (non-LangChain paths)
+
+The same context managers are also exported for code that wants to emit Nevermined-flavored spans without going through `@requires_payment` (e.g. the FastAPI middleware path):
+
+```python
+from payments_py.langsmith import (
+    settlement_span,
+    verify_span,
+    build_settle_metadata,
+)
+
+with settlement_span(plan_ids=["plan-1"]) as span:
+    settlement = payments.facilitator.settle_permissions(...)
+    if span is not None:
+        span.add_metadata(build_settle_metadata(settlement, ["plan-1"]))
+```
+
+Span emission failures are caught internally — observability is best-effort and will not interfere with the payment flow.
+
 ## Related
 
 - [LangChain integration guide](/docs/integrate/add-to-your-agent/langchain) — conceptual walk-through, the two integration approaches (decorator vs. HTTP middleware), and the TypeScript variant.

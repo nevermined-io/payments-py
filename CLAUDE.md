@@ -127,6 +127,18 @@ The CI pipeline runs:
 2. **Unit & Integration** (`.github/workflows/test.yaml`) - Fast tests
 3. **E2E** - Slow tests (runs after unit/integration pass)
 
+## Release Process
+
+**Do NOT bump the version in `pyproject.toml` by hand in a feature PR.** The release is fully automated through three workflows:
+
+1. **`prepare-release.yml`** — manual trigger via Actions UI (`workflow_dispatch`). Takes a `version` input (e.g. `1.8.0`), bumps `pyproject.toml`, opens a PR from a `release/<version>` branch.
+2. **`finalize-release.yml`** — fires when the `release/*` PR is merged. Creates the `v<version>` git tag.
+3. **`release-python.yml`** — fires on `v*.*` tag push. Builds and publishes to PyPI.
+
+In addition, **`publish-mintlify-docs.yml`** fires on the same tag, runs `scripts/convert_to_mintlify.py` over `docs/api/`, and opens a PR in `nevermined-io/docs_mintlify` updating `docs/api-reference/python/*.mdx`.
+
+Feature PRs ship code, tests, and source docs (`docs/api/*.md`). The version stays where it is — the human releasing decides what number to use and runs the workflow.
+
 ## Project Structure
 
 ```
