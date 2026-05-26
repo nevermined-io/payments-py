@@ -15,6 +15,10 @@
         <link rel="canonical" href="https://nevermined-io.github.io/payments-py/dev/api/12-langchain-integration/">
       
       
+        <link rel="prev" href="../11-x402/">
+      
+      
+        <link rel="next" href="../../reference/payments/">
       
       
         
@@ -25,7 +29,7 @@
     
     
       
-        <title>LangChain Integration - Nevermined Payments Python SDK</title>
+        <title>12. LangChain Integration - Nevermined Payments Python SDK</title>
       
     
     
@@ -118,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              LangChain Integration
+              12. LangChain Integration
             
           </span>
         </div>
@@ -248,10 +252,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../01-installation/" class="md-tabs__link">
           
   
@@ -360,28 +366,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
             
   
   
@@ -399,7 +408,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -718,6 +727,381 @@
 
               
             
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. LangChain Integration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. LangChain Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requires_payment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        requires_payment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="requires_payment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decorator-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decorator order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-credits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic credits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#credits-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credits semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#paymentrequirederror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PaymentRequiredError
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PaymentRequiredError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#last_settlement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        last_settlement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="last_settlement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signature_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create_paid_react_agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create_paid_react_agent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="create_paid_react_agent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signature_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#end-to-end-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-end usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observability-with-langsmith" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observability with LangSmith
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Observability with LangSmith">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regional-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regional endpoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#span-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Span attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sensitive-data-in-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensitive data in traces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-use-non-langchain-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual use (non-LangChain paths)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -850,6 +1234,34 @@
     
   
     Environments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/langsmith/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LangSmith Spans
   
 
     
@@ -1093,6 +1505,95 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observability-with-langsmith" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observability with LangSmith
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Observability with LangSmith">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regional-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regional endpoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#span-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Span attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sensitive-data-in-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensitive data in traces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-use-non-langchain-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual use (non-LangChain paths)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1404,6 +1905,166 @@
 <a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a><span class="n">receipt</span> <span class="o">=</span> <span class="n">last_settlement</span><span class="p">()</span>
 </code></pre></div>
 <p>For the full, runnable version see <a href="https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py"><code>tutorials/langchain-paid-agent-py</code></a>.</p>
+<h2 id="observability-with-langsmith">Observability with LangSmith<a class="headerlink" href="#observability-with-langsmith" title="Permanent link">&para;</a></h2>
+<p>When the optional <code>[langsmith]</code> extra is installed and a LangSmith run is active in the calling context, <code>@requires_payment</code> automatically emits two child spans nested under the active tool span:</p>
+<ul>
+<li><strong><code>nvm:verify</code></strong> — opens around the verify-permissions call, with attributes describing the scheme, plan, payer, and verify duration.</li>
+<li><strong><code>nvm:settlement</code></strong> — opens around the settle-permissions call, with attributes describing credits redeemed, remaining balance, transaction hash, network, and settle duration.</li>
+</ul>
+<p>The same <code>nvm.*</code> metadata is also attached to the parent tool span so the trace is searchable from either level.</p>
+<h3 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;payments-py[langchain,langsmith]&quot;</span>
+</code></pre></div>
+<h3 id="enable">Enable<a class="headerlink" href="#enable" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LANGSMITH_TRACING</span><span class="o">=</span><span class="nb">true</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LANGSMITH_API_KEY</span><span class="o">=</span>&lt;your-langsmith-api-key&gt;
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LANGSMITH_PROJECT</span><span class="o">=</span>&lt;your-project-name&gt;<span class="w">  </span><span class="c1"># optional</span>
+</code></pre></div>
+<p>No code changes are needed beyond the existing <code>@requires_payment</code> decorator — the spans are emitted automatically when LangSmith is active. If <code>langsmith</code> is not installed or <code>LANGSMITH_TRACING</code> is unset, span emission is a silent no-op.</p>
+<h4 id="regional-endpoint">Regional endpoint<a class="headerlink" href="#regional-endpoint" title="Permanent link">&para;</a></h4>
+<p>LangSmith hosts accounts across several regions. The SDK defaults to GCP US (<code>https://api.smith.langchain.com</code>); accounts in any other region must set <code>LANGSMITH_ENDPOINT</code> or the trace POST will fail with <code>403 Forbidden</code> on <code>/runs/multipart</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Region</th>
+<th>Endpoint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GCP US</td>
+<td><code>https://api.smith.langchain.com</code> <em>(default)</em></td>
+</tr>
+<tr>
+<td>GCP EU</td>
+<td><code>https://eu.api.smith.langchain.com</code></td>
+</tr>
+<tr>
+<td>GCP APAC</td>
+<td><code>https://apac.api.smith.langchain.com</code></td>
+</tr>
+<tr>
+<td>AWS US</td>
+<td><code>https://aws.api.smith.langchain.com</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LANGSMITH_ENDPOINT</span><span class="o">=</span>https://eu.api.smith.langchain.com
+</code></pre></div>
+<p>The payment flow itself is unaffected by trace-shipping failures — verify, tool execution, and settle proceed normally. Only the LangSmith trace ingestion fails, surfaced as <code>langsmith.utils.LangSmithError</code> warnings.</p>
+<h3 id="span-attributes">Span attributes<a class="headerlink" href="#span-attributes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Span</th>
+<th>Attribute</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.plan_ids</code></td>
+<td>configured <code>plan_id</code> / <code>plan_ids</code></td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.scheme</code></td>
+<td>resolved scheme (<code>nvm:erc4337</code> or <code>nvm:card-delegation</code>)</td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.network</code></td>
+<td>CAIP-2 chain or provider name</td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.agent_id</code></td>
+<td>configured <code>agent_id</code></td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.payer</code></td>
+<td>from <code>VerifyResponse.payer</code></td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.agent_request_id</code></td>
+<td>from <code>VerifyResponse.agent_request_id</code></td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.payment_token</code></td>
+<td>first 16 chars + <code>…</code> + last 4 chars of the x402 access token</td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.verify.duration_ms</code></td>
+<td>measured</td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.credits_redeemed</code></td>
+<td>from <code>SettleResponse.credits_redeemed</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.balance.after</code></td>
+<td>from <code>SettleResponse.remaining_balance</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.tx_hash</code></td>
+<td>from <code>SettleResponse.transaction</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.network</code></td>
+<td>from <code>SettleResponse.network</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.payer</code></td>
+<td>from <code>SettleResponse.payer</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.payment_token</code></td>
+<td>first 16 chars + <code>…</code> + last 4 chars of the x402 access token</td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.settle.duration_ms</code></td>
+<td>measured</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sensitive-data-in-traces">Sensitive data in traces<a class="headerlink" href="#sensitive-data-in-traces" title="Permanent link">&para;</a></h3>
+<p>The <code>payment_token</code> that the buyer passes via <code>config["configurable"]["payment_token"]</code> is captured by LangChain into the parent tool span's metadata, and would normally be inherited by any child span — including the <code>nvm:verify</code> and <code>nvm:settlement</code> spans the decorator emits. The full token grants access to the protected tool until it expires, so the decorator <strong>proactively strips <code>payment_token</code> from the parent tool span's metadata</strong> before opening any child span. The full credential never reaches a Nevermined span attribute.</p>
+<p>For correlation across spans the decorator surfaces an abbreviated <code>nvm.payment_token</code> attribute (<code>eyJ4NDAyVmVyc2lv…bsig</code>, first 16 chars + ellipsis + last 4) on both <code>nvm:verify</code> and <code>nvm:settlement</code>. That gives you "which token was this?" without exposing the credential itself.</p>
+<p>The active redaction covers the documented LangChain-via-configurable path. If you're surfacing the token through a different channel (custom callbacks, an explicit <code>add_metadata({"payment_token": ...})</code>, raw inputs to a tool whose signature contains the token), the decorator can't see those — strip them yourself or set <code>export LANGSMITH_HIDE_INPUTS=true</code> for blanket coverage.</p>
+<p>Other <code>nvm.*</code> attributes that may be considered sensitive depending on your context:</p>
+<ul>
+<li><code>nvm.payer</code> — the payer's wallet address (public on-chain, but a stable identifier).</li>
+<li><code>nvm.tx_hash</code> — the settlement transaction id.</li>
+<li><code>nvm.agent_request_id</code> — Nevermined-internal correlation id.</li>
+<li><code>nvm.balance.after</code> — the payer's remaining credit balance after this settlement. Reveals per-payer depletion patterns to anyone with trace read access on the operator's LangSmith project. Suppress with <code>LANGSMITH_HIDE_OUTPUTS=true</code> or post-filter.</li>
+</ul>
+<p>None of these grant access on their own.</p>
+<h3 id="manual-use-non-langchain-paths">Manual use (non-LangChain paths)<a class="headerlink" href="#manual-use-non-langchain-paths" title="Permanent link">&para;</a></h3>
+<p>The same context managers are also exported for code that wants to emit Nevermined-flavored spans without going through <code>@requires_payment</code> (e.g. the FastAPI middleware path):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.langsmith</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="n">settlement_span</span><span class="p">,</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">verify_span</span><span class="p">,</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">build_settle_metadata</span><span class="p">,</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="p">)</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="k">with</span> <span class="n">settlement_span</span><span class="p">(</span><span class="n">plan_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;plan-1&quot;</span><span class="p">])</span> <span class="k">as</span> <span class="n">span</span><span class="p">:</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="n">settlement</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">settle_permissions</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    <span class="k">if</span> <span class="n">span</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>        <span class="n">span</span><span class="o">.</span><span class="n">add_metadata</span><span class="p">(</span><span class="n">build_settle_metadata</span><span class="p">(</span><span class="n">settlement</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;plan-1&quot;</span><span class="p">]))</span>
+</code></pre></div>
+<p>Span emission failures are caught internally — observability is best-effort and will not interfere with the payment flow.</p>
 <h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="/docs/integrate/add-to-your-agent/langchain">LangChain integration guide</a> — conceptual walk-through, the two integration approaches (decorator vs. HTTP middleware), and the TypeScript variant.</li>
