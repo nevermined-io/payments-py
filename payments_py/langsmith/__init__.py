@@ -31,6 +31,7 @@ from payments_py.langsmith.spans import (
     add_metadata,
     build_settle_metadata,
     build_verify_metadata,
+    redact_metadata_keys,
     settlement_span,
     verify_span,
 )
@@ -41,6 +42,7 @@ __all__ = [
     "add_metadata",
     "build_settle_metadata",
     "build_verify_metadata",
+    "redact_metadata_keys",
     "settlement_span",
     "verify_span",
 ]

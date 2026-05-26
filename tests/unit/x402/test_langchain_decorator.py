@@ -307,6 +307,173 @@ class TestLangSmithSpansIntegration:
         mock_payments.facilitator.verify_permissions.assert_called_once()
         mock_payments.facilitator.settle_permissions.assert_called_once()
 
+    def test_redacts_payment_token_from_parent_run_metadata(self, mock_payments):
+        """Parent run's payment_token (LangChain auto-captured) is stripped.
+
+        LangChain serializes config["configurable"] into the parent tool span's
+        metadata. The full x402 access token grants access to the protected
+        tool until it expires, so the decorator strips it from the parent run
+        before opening any nvm:* child span. The abbreviated nvm.payment_token
+        remains available via build_verify_metadata for correlation.
+        """
+        # Build a fake parent run tree that mirrors what LangChain would set up:
+        # config["configurable"] was captured into extra["metadata"].
+        parent_metadata = {
+            "payment_token": "eyJ4NDAyVmVyc2lvbi.full_secret.dont_leak",
+            "other_key": "preserve",
+        }
+        parent_rt = MagicMock(name="parent_run_tree")
+        parent_rt.extra = {"metadata": parent_metadata}
+
+        @contextmanager
+        def fake_span(**kwargs):
+            yield MagicMock()
+
+        my_tool = _make_protected_tool(mock_payments)
+
+        with (
+            patch.object(decorator_module, "active_run_tree", return_value=parent_rt),
+            patch.object(decorator_module, "verify_span", fake_span),
+            patch.object(decorator_module, "settlement_span", fake_span),
+        ):
+            my_tool.invoke(
+                {"topic": "x"},
+                config={"configurable": {"payment_token": "tok"}},
+            )
+
+        assert "payment_token" not in parent_metadata
+        assert parent_metadata.get("other_key") == "preserve"
+
+    def test_settle_metadata_failure_does_not_strand_receipt(self, mock_payments):
+        """If build_settle_metadata raises, last_settlement() must still update.
+
+        Regression: the on-chain settle has already happened. An observability
+        error after the facilitator call must not orphan the local receipt.
+        """
+        parent_rt = MagicMock(name="parent_run_tree")
+        verify_handle = MagicMock(name="verify_handle")
+        settle_handle = MagicMock(name="settle_handle")
+
+        @contextmanager
+        def fake_verify(**kwargs):
+            yield verify_handle
+
+        @contextmanager
+        def fake_settle(**kwargs):
+            yield settle_handle
+
+        my_tool = _make_protected_tool(mock_payments)
+
+        with (
+            patch.object(decorator_module, "active_run_tree", return_value=parent_rt),
+            patch.object(decorator_module, "verify_span", fake_verify),
+            patch.object(decorator_module, "settlement_span", fake_settle),
+            patch.object(
+                decorator_module,
+                "build_settle_metadata",
+                side_effect=RuntimeError("synthetic build failure"),
+            ),
+        ):
+            result = my_tool.invoke(
+                {"topic": "x"},
+                config={"configurable": {"payment_token": "tok"}},
+            )
+
+        # Tool result returned and receipt persisted despite the metadata error.
+        assert result == "insight for x"
+        assert last_settlement() is not None
+        assert last_settlement().credits_redeemed == "1"
+        assert last_settlement().transaction == "0xabc123"
+
+    def test_verify_metadata_failure_does_not_mask_payment_required(
+        self, mock_payments
+    ):
+        """If build_verify_metadata raises on the invalid path, PaymentRequiredError still propagates.
+
+        Regression: callers depend on the PaymentRequiredError contract. A
+        metadata build failure must not surface as a generic TypeError.
+        """
+        # Force the facilitator to return is_valid=False.
+        mock_payments.facilitator.verify_permissions.return_value = VerifyResponse(
+            is_valid=False,
+            invalid_reason="token expired",
+        )
+        parent_rt = MagicMock(name="parent_run_tree")
+
+        @contextmanager
+        def fake_span(**kwargs):
+            yield MagicMock()
+
+        my_tool = _make_protected_tool(mock_payments)
+
+        with (
+            patch.object(decorator_module, "active_run_tree", return_value=parent_rt),
+            patch.object(decorator_module, "verify_span", fake_span),
+            patch.object(decorator_module, "settlement_span", fake_span),
+            patch.object(
+                decorator_module,
+                "build_verify_metadata",
+                side_effect=RuntimeError("synthetic build failure"),
+            ),
+        ):
+            with pytest.raises(PaymentRequiredError) as excinfo:
+                my_tool.invoke(
+                    {"topic": "x"},
+                    config={"configurable": {"payment_token": "tok"}},
+                )
+
+        # Original contract preserved.
+        assert "token expired" in str(excinfo.value)
+        mock_payments.facilitator.settle_permissions.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_async_path_emits_verify_and_settle_spans(self, mock_payments):
+        """Async tool path mirrors the sync path -- spans emit on ainvoke().
+
+        Regression guard for a future refactor that might inline payment logic
+        into the sync wrapper and break the async path silently.
+        """
+        verify_calls: list[dict] = []
+        settle_calls: list[dict] = []
+
+        @contextmanager
+        def fake_verify_span(**kwargs):
+            verify_calls.append(kwargs)
+            yield MagicMock(name="verify_span_handle")
+
+        @contextmanager
+        def fake_settlement_span(**kwargs):
+            settle_calls.append(kwargs)
+            yield MagicMock(name="settlement_span_handle")
+
+        @tool
+        @requires_payment(
+            payments=mock_payments,
+            plan_id="plan-123",
+            credits=1,
+            agent_id="agent-x",
+        )
+        async def my_async_tool(topic: str, config: RunnableConfig = None) -> str:
+            """Canned async response."""
+            return f"async insight for {topic}"
+
+        with (
+            patch.object(decorator_module, "verify_span", fake_verify_span),
+            patch.object(decorator_module, "settlement_span", fake_settlement_span),
+        ):
+            result = await my_async_tool.ainvoke(
+                {"topic": "x"},
+                config={"configurable": {"payment_token": "tok"}},
+            )
+
+        assert result == "async insight for x"
+        assert len(verify_calls) == 1
+        assert verify_calls[0]["plan_ids"] == ["plan-123"]
+        assert verify_calls[0]["agent_id"] == "agent-x"
+        assert len(settle_calls) == 1
+        assert settle_calls[0]["plan_ids"] == ["plan-123"]
+        assert settle_calls[0]["agent_id"] == "agent-x"
+
     def test_failed_probe_still_emits_verify_span_with_nvm_metadata(
         self, mock_payments
     ):

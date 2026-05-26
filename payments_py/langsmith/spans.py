@@ -57,6 +57,34 @@ def add_metadata(run_tree: Optional[Any], metadata: dict) -> None:
         logger.debug("LangSmith add_metadata failed (ignored)", exc_info=True)
 
 
+def redact_metadata_keys(run_tree: Optional[Any], *keys: str) -> None:
+    """Remove ``keys`` from ``run_tree``'s metadata in place.
+
+    LangSmith inherits a parent run's metadata to child runs created via
+    ``ls.trace(...)``, so call this on the parent run BEFORE opening any
+    child spans whose metadata should not carry the keys. The most common
+    use is stripping ``payment_token`` from the parent tool span's
+    metadata, since LangChain auto-captures every entry in
+    ``config["configurable"]`` and the access token grants access to the
+    protected tool until it expires.
+
+    No-op when ``run_tree`` is ``None`` or no keys are provided. All
+    errors are swallowed -- observability hygiene must never disrupt the
+    payment flow.
+    """
+    if run_tree is None or not keys:
+        return
+    try:
+        extra = getattr(run_tree, "extra", None)
+        if isinstance(extra, dict):
+            metadata = extra.get("metadata")
+            if isinstance(metadata, dict):
+                for key in keys:
+                    metadata.pop(key, None)
+    except Exception:
+        logger.debug("LangSmith redact_metadata_keys failed (ignored)", exc_info=True)
+
+
 def abbreviate_token(token: Optional[str]) -> Optional[str]:
     """Return a short ``<first 16>…<last 4>`` form of a payment token.
 

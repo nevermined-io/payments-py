@@ -321,16 +321,19 @@ The payment flow itself is unaffected by trace-shipping failures — verify, too
 
 ### Sensitive data in traces
 
-The `payment_token` that the buyer passes via `config["configurable"]["payment_token"]` is captured by LangChain as part of the run's configurable dict and **surfaced in full in the run's metadata in the LangSmith UI**. The token grants access to the protected tool until it expires — treat a LangSmith trace with the same trust level you'd treat a session log that contains the token.
+The `payment_token` that the buyer passes via `config["configurable"]["payment_token"]` is captured by LangChain into the parent tool span's metadata, and would normally be inherited by any child span — including the `nvm:verify` and `nvm:settlement` spans the decorator emits. The full token grants access to the protected tool until it expires, so the decorator **proactively strips `payment_token` from the parent tool span's metadata** before opening any child span. The full credential never reaches a Nevermined span attribute.
 
-For correlation across spans the decorator attaches an abbreviated `nvm.payment_token` attribute (`eyJ4NDAyVmVyc2lv…bsig`) to both `nvm:verify` and `nvm:settlement`. That gives you "which token was this?" without exposing the full credential.
+For correlation across spans the decorator surfaces an abbreviated `nvm.payment_token` attribute (`eyJ4NDAyVmVyc2lv…bsig`, first 16 chars + ellipsis + last 4) on both `nvm:verify` and `nvm:settlement`. That gives you "which token was this?" without exposing the credential itself.
 
-If your LangSmith workspace has untrusted readers, redact the full token. Either:
+The active redaction covers the documented LangChain-via-configurable path. If you're surfacing the token through a different channel (custom callbacks, an explicit `add_metadata({"payment_token": ...})`, raw inputs to a tool whose signature contains the token), the decorator can't see those — strip them yourself or set `export LANGSMITH_HIDE_INPUTS=true` for blanket coverage.
 
-- Set `export LANGSMITH_HIDE_INPUTS=true` to globally suppress the configurable dict from every run's metadata (heavy hammer — affects every traced run, not just paid ones).
-- Or strip `payment_token` from the configurable dict after `agent.invoke()` returns / before logging the trace elsewhere.
+Other `nvm.*` attributes that may be considered sensitive depending on your context:
 
-The abbreviated `nvm.payment_token` attribute remains visible in either case.
+- `nvm.payer` — the payer's wallet address (public on-chain, but a stable identifier).
+- `nvm.tx_hash` — the settlement transaction id.
+- `nvm.agent_request_id` — Nevermined-internal correlation id.
+
+None of these grant access on their own.
 
 ### Manual use (non-LangChain paths)
 

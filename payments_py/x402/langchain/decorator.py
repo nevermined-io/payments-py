@@ -72,6 +72,7 @@ from payments_py.langsmith.spans import (
     add_metadata,
     build_settle_metadata,
     build_verify_metadata,
+    redact_metadata_keys,
     settlement_span,
     verify_span,
 )
@@ -227,6 +228,13 @@ def _verify_payment(
     )
 
     parent_rt = active_run_tree()
+    # LangChain auto-captures every key in config["configurable"] into the
+    # parent tool span's metadata, and child spans we create inherit that
+    # metadata at construction time. Strip the full x402 access token from
+    # the parent BEFORE opening verify_span so neither the parent nor the
+    # child carries the raw credential. The abbreviated nvm.payment_token
+    # remains available for correlation.
+    redact_metadata_keys(parent_rt, "payment_token")
     verify_started = time.monotonic()
     # Open the verify span BEFORE the token-presence check so failed probes
     # (no payment_token in config) still produce a clearly-named span and
@@ -240,14 +248,22 @@ def _verify_payment(
         network=config.network,
         agent_id=config.agent_id,
     ) as vspan:
-        pre_verify_md = build_verify_metadata(
-            plan_ids=config.plan_ids,
-            scheme=resolved_scheme,
-            network=config.network,
-            agent_id=config.agent_id,
-        )
-        add_metadata(vspan, pre_verify_md)
-        add_metadata(parent_rt, pre_verify_md)
+        # Pre-verify metadata is best-effort -- a build/attach failure here
+        # must not block the actual verify call or mask PaymentRequiredError.
+        try:
+            pre_verify_md = build_verify_metadata(
+                plan_ids=config.plan_ids,
+                scheme=resolved_scheme,
+                network=config.network,
+                agent_id=config.agent_id,
+            )
+            add_metadata(vspan, pre_verify_md)
+            add_metadata(parent_rt, pre_verify_md)
+        except Exception:
+            logger.debug(
+                "LangSmith pre-verify metadata attach failed (ignored)",
+                exc_info=True,
+            )
 
         token = _extract_payment_token(runnable_config)
         if not token:
@@ -265,17 +281,26 @@ def _verify_payment(
             x402_access_token=token,
             max_amount=str(credits_to_charge),
         )
-        verify_md = build_verify_metadata(
-            plan_ids=config.plan_ids,
-            scheme=resolved_scheme,
-            network=config.network,
-            agent_id=config.agent_id,
-            verification=verification,
-            duration_ms=(time.monotonic() - verify_started) * 1000,
-            token=token,
-        )
-        add_metadata(vspan, verify_md)
-        add_metadata(parent_rt, verify_md)
+
+        # Augment metadata with verification results. Same best-effort
+        # guarantee -- observability must not mask the PaymentRequiredError
+        # that follows if the verification is invalid.
+        try:
+            verify_md = build_verify_metadata(
+                plan_ids=config.plan_ids,
+                scheme=resolved_scheme,
+                network=config.network,
+                agent_id=config.agent_id,
+                verification=verification,
+                duration_ms=(time.monotonic() - verify_started) * 1000,
+                token=token,
+            )
+            add_metadata(vspan, verify_md)
+            add_metadata(parent_rt, verify_md)
+        except Exception:
+            logger.debug(
+                "LangSmith verify metadata attach failed (ignored)", exc_info=True
+            )
 
         if not verification.is_valid:
             reason = verification.invalid_reason or "Payment verification failed"
@@ -334,18 +359,28 @@ def _settle_payment(
                 agent_request_id=verified.payment_context.agent_request_id,
             )
 
-            settle_md = build_settle_metadata(
-                settlement=settlement,
-                plan_ids=plan_ids,
-                agent_id=verified.agent_id,
-                duration_ms=(time.monotonic() - settle_started) * 1000,
-                token=verified.token,
-            )
-            add_metadata(sspan, settle_md)
-            add_metadata(parent_rt, settle_md)
-
+            # Persist the receipt BEFORE building metadata -- the on-chain
+            # settle already happened, so a metadata-build failure must not
+            # strand local state (`last_settlement()` would return stale or
+            # `None`, and configurable["payment_settlement"] would be missing).
             _store_in_configurable(runnable_config, "payment_settlement", settlement)
             _LAST_SETTLEMENT["value"] = settlement
+
+            try:
+                settle_md = build_settle_metadata(
+                    settlement=settlement,
+                    plan_ids=plan_ids,
+                    agent_id=verified.agent_id,
+                    duration_ms=(time.monotonic() - settle_started) * 1000,
+                    token=verified.token,
+                )
+                add_metadata(sspan, settle_md)
+                add_metadata(parent_rt, settle_md)
+            except Exception:
+                logger.debug(
+                    "LangSmith settle metadata attach failed (ignored)",
+                    exc_info=True,
+                )
 
     except Exception as settle_error:
         logger.warning("Payment settlement failed: %s", settle_error)

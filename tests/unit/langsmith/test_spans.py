@@ -12,6 +12,7 @@ from payments_py.langsmith.spans import (
     add_metadata,
     build_settle_metadata,
     build_verify_metadata,
+    redact_metadata_keys,
     settlement_span,
     verify_span,
 )
@@ -224,6 +225,49 @@ def test_add_metadata_swallows_run_tree_exception():
     rt = MagicMock()
     rt.add_metadata.side_effect = RuntimeError("boom")
     add_metadata(rt, {"k": "v"})  # must not raise
+
+
+# --------------------------------------------------------------------------- #
+# redact_metadata_keys
+# --------------------------------------------------------------------------- #
+
+
+def test_redact_metadata_keys_removes_keys_in_place():
+    metadata = {"payment_token": "eyJfull", "other": "keep", "nvm.payer": "0x"}
+    rt = type("FakeRT", (), {"extra": {"metadata": metadata}})()
+    redact_metadata_keys(rt, "payment_token")
+    assert "payment_token" not in metadata
+    assert metadata == {"other": "keep", "nvm.payer": "0x"}
+
+
+def test_redact_metadata_keys_handles_multiple_keys():
+    metadata = {"a": 1, "b": 2, "c": 3}
+    rt = type("FakeRT", (), {"extra": {"metadata": metadata}})()
+    redact_metadata_keys(rt, "a", "c", "missing")
+    assert metadata == {"b": 2}
+
+
+def test_redact_metadata_keys_no_op_when_run_tree_is_none():
+    redact_metadata_keys(None, "anything")  # must not raise
+
+
+def test_redact_metadata_keys_no_op_when_no_keys():
+    metadata = {"payment_token": "eyJfull"}
+    rt = type("FakeRT", (), {"extra": {"metadata": metadata}})()
+    redact_metadata_keys(rt)
+    assert metadata == {"payment_token": "eyJfull"}
+
+
+def test_redact_metadata_keys_swallows_exceptions():
+    # extra is not a dict -- the helper should silently handle it.
+    rt = MagicMock()
+    rt.extra = None
+    redact_metadata_keys(rt, "payment_token")  # must not raise
+
+
+def test_redact_metadata_keys_handles_missing_metadata_subdict():
+    rt = type("FakeRT", (), {"extra": {}})()
+    redact_metadata_keys(rt, "payment_token")  # must not raise
 
 
 # --------------------------------------------------------------------------- #
