@@ -332,6 +332,7 @@ Other `nvm.*` attributes that may be considered sensitive depending on your cont
 - `nvm.payer` — the payer's wallet address (public on-chain, but a stable identifier).
 - `nvm.tx_hash` — the settlement transaction id.
 - `nvm.agent_request_id` — Nevermined-internal correlation id.
+- `nvm.balance.after` — the payer's remaining credit balance after this settlement. Reveals per-payer depletion patterns to anyone with trace read access on the operator's LangSmith project. Suppress with `LANGSMITH_HIDE_OUTPUTS=true` or post-filter.
 
 None of these grant access on their own.
 

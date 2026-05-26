@@ -68,6 +68,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 from payments_py.langsmith.spans import (
+    abbreviate_token,
     active_run_tree,
     add_metadata,
     build_settle_metadata,
@@ -155,7 +156,6 @@ class _VerifiedPayment:
     payment_required: X402PaymentRequired
     credits_to_charge: int
     payment_context: PaymentContext
-    agent_id: Optional[str] = None
 
 
 def _resolve_credits_pre(
@@ -221,15 +221,23 @@ def _attach_metadata_safely(
     debug and swallowed -- they must never block the payment flow or mask
     a downstream ``PaymentRequiredError``. ``label`` only affects the log
     message ("LangSmith <label> metadata attach failed (ignored)").
+
+    Pre-abbreviates any ``token`` kwarg before calling ``builder`` so the
+    raw x402 access token never reaches the frame locals visible to
+    exception enrichers (Sentry's ``logging`` integration, structlog's
+    ``ExceptionRenderer``, etc.). ``exc_info`` is deliberately omitted
+    from the log call for the same reason -- the failure label alone is
+    enough to diagnose observability bugs without dumping locals to a
+    second SaaS destination.
     """
+    if "token" in builder_kwargs:
+        builder_kwargs["token"] = abbreviate_token(builder_kwargs["token"])
     try:
         md = builder(**builder_kwargs)
         add_metadata(span, md)
         add_metadata(parent_rt, md)
     except Exception:
-        logger.debug(
-            "LangSmith %s metadata attach failed (ignored)", label, exc_info=True
-        )
+        logger.debug("LangSmith %s metadata attach failed (ignored)", label)
 
 
 def _verify_payment(
@@ -342,7 +350,6 @@ def _verify_payment(
         payment_required=payment_required,
         credits_to_charge=credits_to_charge,
         payment_context=payment_context,
-        agent_id=config.agent_id,
     )
 
 
@@ -350,8 +357,7 @@ def _settle_payment(
     verified: _VerifiedPayment,
     result: Any,
     kwargs: dict,
-    payments: Any,
-    credits_cfg: Union[int, CreditsCallable],
+    config: _PaymentConfig,
     runnable_config: Any,
 ) -> None:
     """Settle credits after successful tool execution.
@@ -359,7 +365,7 @@ def _settle_payment(
     Resolves dynamic credits post-execution (if callable) and stores
     the settlement response in ``config["configurable"]["payment_settlement"]``.
     """
-    final_credits = _resolve_credits_post(credits_cfg, kwargs, result)
+    final_credits = _resolve_credits_post(config.credits, kwargs, result)
 
     plan_ids = [a.plan_id for a in verified.payment_required.accepts if a.plan_id]
 
@@ -368,9 +374,9 @@ def _settle_payment(
     try:
         with settlement_span(
             plan_ids=plan_ids,
-            agent_id=verified.agent_id,
+            agent_id=config.agent_id,
         ) as sspan:
-            settlement = payments.facilitator.settle_permissions(
+            settlement = config.payments.facilitator.settle_permissions(
                 payment_required=verified.payment_required,
                 x402_access_token=verified.token,
                 max_amount=str(final_credits),
@@ -391,7 +397,7 @@ def _settle_payment(
                 "settle",
                 settlement=settlement,
                 plan_ids=plan_ids,
-                agent_id=verified.agent_id,
+                agent_id=config.agent_id,
                 duration_ms=(time.monotonic() - settle_started) * 1000,
                 token=verified.token,
             )
@@ -537,14 +543,7 @@ def _execute_with_payment(
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = func(*args, **kwargs)
-    _settle_payment(
-        verified,
-        result,
-        kwargs,
-        config.payments,
-        config.credits,
-        runnable_config,
-    )
+    _settle_payment(verified, result, kwargs, config, runnable_config)
     return result
 
 
@@ -558,12 +557,5 @@ async def _execute_with_payment_async(
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = await func(*args, **kwargs)
-    _settle_payment(
-        verified,
-        result,
-        kwargs,
-        config.payments,
-        config.credits,
-        runnable_config,
-    )
+    _settle_payment(verified, result, kwargs, config, runnable_config)
     return result

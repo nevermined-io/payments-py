@@ -267,17 +267,34 @@ class TestLangSmithSpansIntegration:
         assert verify_handle.add_metadata.call_count == 2
         pre_verify_md = verify_handle.add_metadata.call_args_list[0].args[0]
         post_verify_md = verify_handle.add_metadata.call_args_list[1].args[0]
+
+        # Pre-verify carries the static attrs only (no verification yet).
         assert pre_verify_md["nvm.plan_ids"] == ["plan-123"]
         assert "nvm.payer" not in pre_verify_md
         assert "nvm.verify.duration_ms" not in pre_verify_md
+        assert "nvm.payment_token" not in pre_verify_md
+
+        # Post-verify pins every documented attribute from the verify-span row
+        # of the docs/api/12-langchain-integration.md attribute table.
+        # A future refactor that drops one of these from the decorator wiring
+        # will fail this test loudly instead of silently lying in docs.
+        assert post_verify_md["nvm.plan_ids"] == ["plan-123"]
         assert post_verify_md["nvm.payer"] == "0x1234567890abcdef"
+        assert post_verify_md["nvm.agent_request_id"] == "test-request-id-123"
+        assert post_verify_md["nvm.payment_token"] == "tok"  # ≤20 chars → verbatim
         assert "nvm.verify.duration_ms" in post_verify_md
 
+        # Settle span pins every documented attribute from the settle-span row.
         settle_handle.add_metadata.assert_called_once()
         settle_md = settle_handle.add_metadata.call_args.args[0]
+        assert settle_md["nvm.plan_ids"] == ["plan-123"]
         assert settle_md["nvm.credits_redeemed"] == "1"
-        assert settle_md["nvm.tx_hash"] == "0xabc123"
         assert settle_md["nvm.balance.after"] == "99"
+        assert settle_md["nvm.tx_hash"] == "0xabc123"
+        assert settle_md["nvm.network"] == "eip155:84532"
+        assert settle_md["nvm.payer"] == "0x1234567890abcdef"
+        assert settle_md["nvm.payment_token"] == "tok"
+        assert "nvm.settle.duration_ms" in settle_md
 
         # Parent run tree gets metadata three times: pre-verify, post-verify,
         # settle. All payloads should carry nvm.* keys.
@@ -425,6 +442,75 @@ class TestLangSmithSpansIntegration:
         # Original contract preserved.
         assert "token expired" in str(excinfo.value)
         mock_payments.facilitator.settle_permissions.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_async_path_raises_payment_required_when_no_token(
+        self, mock_payments
+    ):
+        """Async mirror of test_raises_payment_required_when_no_token.
+
+        Pins the no-token discovery-probe contract on the async path. Without
+        this test, a future async wrapper rewrite (e.g. wrapping
+        ``_verify_payment`` in an ``asyncio.shield`` or thread-pool offload,
+        or moving the parent_rt redact into a sync-only path) would silently
+        regress async failure semantics.
+        """
+
+        @tool
+        @requires_payment(payments=mock_payments, plan_id="plan-123", credits=1)
+        async def my_async_tool(topic: str, config: RunnableConfig = None) -> str:
+            """Canned async response."""
+            return f"result for {topic}"
+
+        with pytest.raises(PaymentRequiredError) as excinfo:
+            await my_async_tool.ainvoke({"topic": "x"}, config={"configurable": {}})
+
+        assert excinfo.value.payment_required is not None
+        accepts = excinfo.value.payment_required.accepts
+        assert accepts[0].plan_id == "plan-123"
+        mock_payments.facilitator.verify_permissions.assert_not_called()
+        mock_payments.facilitator.settle_permissions.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_async_path_redacts_payment_token_from_parent_run_metadata(
+        self, mock_payments
+    ):
+        """Async mirror of test_redacts_payment_token_from_parent_run_metadata.
+
+        The redact path lives in _verify_payment which both sync and async
+        wrappers call, but pinning it on the async path too prevents a future
+        change that bypasses _verify_payment in the async wrapper from
+        silently losing the credential scrubbing.
+        """
+        parent_metadata = {
+            "payment_token": "eyJ4NDAyVmVyc2lvbi.full_secret.dont_leak",
+            "other_key": "preserve",
+        }
+        parent_rt = MagicMock(name="parent_run_tree")
+        parent_rt.extra = {"metadata": parent_metadata}
+
+        @contextmanager
+        def fake_span(**kwargs):
+            yield MagicMock()
+
+        @tool
+        @requires_payment(payments=mock_payments, plan_id="plan-123", credits=1)
+        async def my_async_tool(topic: str, config: RunnableConfig = None) -> str:
+            """Canned async response."""
+            return f"result for {topic}"
+
+        with (
+            patch.object(decorator_module, "active_run_tree", return_value=parent_rt),
+            patch.object(decorator_module, "verify_span", fake_span),
+            patch.object(decorator_module, "settlement_span", fake_span),
+        ):
+            await my_async_tool.ainvoke(
+                {"topic": "x"},
+                config={"configurable": {"payment_token": "tok"}},
+            )
+
+        assert "payment_token" not in parent_metadata
+        assert parent_metadata.get("other_key") == "preserve"
 
     @pytest.mark.asyncio
     async def test_async_path_emits_verify_and_settle_spans(self, mock_payments):

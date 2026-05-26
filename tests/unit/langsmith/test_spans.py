@@ -327,6 +327,19 @@ def test_verify_span_yields_none_on_trace_exception():
             assert span is None
 
 
+def test_settlement_span_yields_none_on_trace_exception():
+    """Parity test for verify_span. Both currently delegate to _open_nvm_span;
+    this pins the contract so a future split-out can't regress only one path."""
+    fake_ls = MagicMock()
+    fake_ls.trace.side_effect = RuntimeError("trace failed")
+    with (
+        patch.object(spans, "_get_current_run_tree", return_value=MagicMock()),
+        patch.object(spans, "_ls", fake_ls),
+    ):
+        with settlement_span(plan_ids=["plan-1"]) as span:
+            assert span is None
+
+
 def test_verify_span_propagates_body_exception_to_caller():
     """Caller-raised exceptions must propagate out, not be swallowed.
 
