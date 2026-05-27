@@ -1390,7 +1390,7 @@
 
 <h1 id="langsmith-deployment-middleware">LangSmith Deployment Middleware<a class="headerlink" href="#langsmith-deployment-middleware" title="Permanent link">&para;</a></h1>
 <p>A Starlette ASGI middleware (<code>PaymentMiddleware</code>) that gates a LangGraph agent deployed to <strong>LangSmith Deployment</strong> (formerly LangGraph Platform) with the Nevermined x402 payment flow. Use the <code>build_payment_app</code> factory for one-line wiring via the <code>http.app</code> field in <code>langgraph.json</code>.</p>
-<p>For tool-time gating inside an agent (<code>@requires_payment</code> decorator), see <a href="../12-langchain-integration/">chapter 12</a>. The two integrations are complementary — chapter 12 is for protecting tools the agent calls; this chapter is for protecting the agent's HTTP entry point.</p>
+<p>For tool-time gating inside an agent (<code>@requires_payment</code> decorator), see <a href="../12-langchain-integration/">LangChain Integration</a>. The two integrations are complementary — that page is for protecting tools the agent calls; this page is for protecting the agent's HTTP entry point.</p>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>payments-py<span class="o">[</span>langsmith<span class="o">]</span>
 </code></pre></div>
@@ -1546,7 +1546,7 @@
 <a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="p">)</span>
 </code></pre></div>
 <h2 id="observability">Observability<a class="headerlink" href="#observability" title="Permanent link">&para;</a></h2>
-<p>When <code>LANGSMITH_TRACING=true</code> is set, the middleware opens a top-level <code>nvm:x402-request</code> trace per gated request, with <code>nvm:verify</code> and <code>nvm:settlement</code> child spans nested under it. Both child spans carry the <code>nvm.*</code> metadata from <a href="../12-langchain-integration/#observability">chapter 12 §Observability</a> (plan_ids, scheme, network, payer, credits_redeemed, balance.after, tx_hash, payment_token abbreviated, verify/settle durations). The same metadata is also attached to the parent trace.</p>
+<p>When <code>LANGSMITH_TRACING=true</code> is set, the middleware opens a top-level <code>nvm:x402-request</code> trace per gated request, with <code>nvm:verify</code> and <code>nvm:settlement</code> child spans nested under it. Both child spans carry the same <code>nvm.*</code> metadata the decorator emits (plan_ids, scheme, network, payer, credits_redeemed, balance.after, tx_hash, payment_token abbreviated, verify/settle durations) — see the Observability section in <a href="../12-langchain-integration/">LangChain Integration</a>. The same metadata is also attached to the parent trace.</p>
 <p>The graph's own LangGraph-emitted trace appears as a sibling top-level trace, not a child of <code>nvm:x402-request</code> — <code>langgraph-api</code> initiates the graph trace at the graph-invocation boundary, independent of our middleware's trace context.</p>
 <p>Verification failures (missing token, invalid signature, insufficient credits) raise <code>PaymentRequiredError</code> inside the <code>verify_span</code> so LangSmith marks the parent + child as <strong>failed</strong> via the canonical context-manager exit path. Settle failures after a successful 2xx mark the settle span as failed but leave the parent trace successful (matching the buyer-visible outcome).</p>
 <h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
@@ -1557,9 +1557,9 @@
 </ul>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../11-x402/">Chapter 11 — x402 Protocol</a> for envelope and header semantics.</li>
-<li><a href="../12-langchain-integration/">Chapter 12 — LangChain Integration</a> for the <code>@requires_payment</code> decorator (tool-time gating).</li>
-<li><a href="../../reference/langsmith/"><code>payments_py.langsmith.spans</code></a> for the observability helpers used internally.</li>
+<li><a href="../11-x402/">x402 Protocol</a> for envelope and header semantics.</li>
+<li><a href="../12-langchain-integration/">LangChain Integration</a> for the <code>@requires_payment</code> decorator (tool-time gating).</li>
+<li><code>payments_py.langsmith.spans</code> for the observability helpers used internally (verify_span, settlement_span, attach_metadata_safely).</li>
 </ul>
 
 
