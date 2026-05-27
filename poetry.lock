@@ -4464,10 +4464,10 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [extras]
 fastapi = ["fastapi", "starlette"]
 langchain = ["langchain-core"]
-langsmith = ["langsmith"]
+langsmith = ["fastapi", "langsmith", "starlette"]
 strands = ["strands-agents"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "31a4f1a7ae255dba32565786f8577af04ecb04fa692c96c0ca8a7e1be881a83f"
+content-hash = "46e0eaa0ff5f06bafcbccc29e3ca3caf24dff099d50454d01c1b34055231c392"
