@@ -32,12 +32,14 @@ import base64
 import contextlib
 import inspect
 import logging
+import posixpath
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Union
 
 from fastapi import FastAPI
+from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -181,6 +183,23 @@ def _x402_parent_trace(method: str, path: str, plan_id: str) -> Iterator[Optiona
         yield parent
 
 
+def _normalise_path(raw_path: str) -> str:
+    """Dot-normalise the request path so traversal-encoded URLs (e.g.
+    ``/threads/abc/../abc/runs/wait``) cannot skip route matching by
+    inflating the segment count. ``request.url.path`` comes from
+    ``scope["path"]`` which Starlette/uvicorn (httptools) does NOT
+    normalise by default; this is defense-in-depth against any future
+    proxy that DOES normalise (CDN, nginx, Cloud Run / Lambda gateway)
+    where the request reaching the agent would have fewer segments
+    than what the middleware sees. Trailing slash is preserved so
+    ``/runs/`` stays distinct from ``/runs``.
+    """
+    normalised = posixpath.normpath(raw_path)
+    if raw_path.endswith("/") and not normalised.endswith("/"):
+        normalised += "/"
+    return normalised
+
+
 def _send_payment_required(
     payment_required: X402PaymentRequired, message: str
 ) -> JSONResponse:
@@ -190,7 +209,14 @@ def _send_payment_required(
     return JSONResponse(
         status_code=402,
         content={"error": "Payment Required", "message": message},
-        headers={X402_HEADERS["PAYMENT_REQUIRED"]: envelope_b64},
+        headers={
+            X402_HEADERS["PAYMENT_REQUIRED"]: envelope_b64,
+            # Receipt + envelope carry per-buyer financial metadata
+            # (remaining_balance, payer wallet); prevent any CDN in front
+            # of LangSmith Deployment from caching them across buyers.
+            "Cache-Control": "no-store",
+            "Pragma": "no-cache",
+        },
     )
 
 
@@ -238,7 +264,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         method = request.method.upper()
-        path = request.url.path
+        path = _normalise_path(request.url.path)
 
         route_config = self._resolve_route_config(method, path)
         if not route_config:
@@ -258,7 +284,9 @@ class PaymentMiddleware(BaseHTTPMiddleware):
 
         payment_required = build_payment_required(
             plan_id=route_config.plan_id,
-            endpoint=str(request.url.path),
+            # Use the normalised path so the envelope reflects the canonical
+            # resource the middleware actually matched against.
+            endpoint=path,
             agent_id=route_config.agent_id,
             http_verb=method,
             network=resolved_network,
@@ -371,6 +399,18 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     agent_request=verification.agent_request,
                 )
 
+                # Strip payment-signature before call_next so the bearer
+                # token does not leak to downstream observability layers
+                # that auto-capture request headers (Sentry's
+                # RequestIntegration, OpenTelemetry HTTP semconv,
+                # structlog ASGI processors). Their default denylists
+                # cover Authorization / Cookie but NOT payment-signature.
+                # The token already lives on request.state.payment_context
+                # for any handler that needs it.
+                mutable_request_headers = MutableHeaders(scope=request.scope)
+                if X402_HEADERS["PAYMENT_SIGNATURE"] in mutable_request_headers:
+                    del mutable_request_headers[X402_HEADERS["PAYMENT_SIGNATURE"]]
+
                 # Agent runs here. Exceptions propagate naturally - the buyer
                 # is not charged for failed runs (we skip settle on non-2xx
                 # below). The parent trace will also see the exception via
@@ -425,6 +465,20 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     settlement.model_dump_json(by_alias=True).encode()
                 ).decode()
 
+                # Warn loudly if the downstream response looks like SSE -
+                # the buffering loop below collapses streaming into a
+                # single delivered-at-the-end response and pins the body
+                # in worker memory. Documented in the module docstring but
+                # silent in logs without this signal.
+                if "text/event-stream" in response.headers.get("content-type", ""):
+                    logger.warning(
+                        "PaymentMiddleware is buffering a text/event-stream response "
+                        "for path=%s. Streaming is disabled by this middleware - "
+                        "gate /runs/wait instead, or omit this route from the "
+                        "middleware's routes dict to let it pass through ungated.",
+                        path,
+                    )
+
                 body = b""
                 async for chunk in response.body_iterator:
                     body += chunk
@@ -432,10 +486,27 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                 new_response = Response(
                     content=body,
                     status_code=response.status_code,
-                    headers=dict(response.headers),
                     media_type=response.media_type,
                 )
-                new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = receipt_b64
+                # Preserve multi-value headers from the original response
+                # via MutableHeaders.append (dict(response.headers) silently
+                # keeps only the first value of repeated keys like
+                # Set-Cookie). Skip content-length / transfer-encoding so
+                # the Response constructor's freshly recomputed
+                # content-length stays in place and we drop chunked
+                # encoding we no longer use.
+                new_headers = new_response.headers
+                for key, value in response.headers.items():
+                    if key.lower() in ("content-length", "transfer-encoding"):
+                        continue
+                    new_headers.append(key, value)
+                new_headers.append(X402_HEADERS["PAYMENT_RESPONSE"], receipt_b64)
+                # Force no-store so any CDN in front of LangSmith
+                # Deployment cannot cache a buyer's settlement receipt
+                # (remaining_balance + payer wallet) and serve it to a
+                # later requester.
+                new_headers["Cache-Control"] = "no-store"
+                new_headers["Pragma"] = "no-cache"
                 return new_response
         except PaymentRequiredError as rejection:
             # Verify span + parent trace both saw the exception and are

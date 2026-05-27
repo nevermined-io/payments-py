@@ -254,6 +254,121 @@ class TestPaymentMiddleware:
         # No payment-response header because settle never produced a receipt
         assert X402_HEADERS["PAYMENT_RESPONSE"] not in response.headers
 
+    def test_multi_chunk_body_is_buffered_correctly(self, valid_token, mock_payments):
+        """A multi-chunk body_iterator must be concatenated in full.
+
+        Regression guard against a future refactor that breaks
+        ``body += chunk`` (e.g. last-chunk-only assignment, missing
+        ``async for``). All other tests use single-chunk JSONResponse so
+        they would not catch the partial-buffer case.
+        """
+        from starlette.responses import StreamingResponse
+
+        async def multi_chunk():
+            yield b'{"response":'
+            yield b'"chunked answer"}'
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"GET /stream": {"plan_id": "test-plan-123", "credits": 1}},
+        )
+
+        @app.get("/stream")
+        async def stream_route():
+            return StreamingResponse(multi_chunk(), media_type="application/json")
+
+        client = TestClient(app)
+        response = client.get(
+            "/stream",
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"response": "chunked answer"}
+        assert X402_HEADERS["PAYMENT_RESPONSE"] in response.headers
+
+    def test_payment_context_available_in_handler(self, valid_token, mock_payments):
+        """``request.state.payment_context`` must be reachable from the
+        downstream handler - that is the primary surface for LangGraph
+        code that needs ``agent_request_id`` for observability or
+        ``credits_to_settle`` for dynamic pricing.
+        """
+        captured: dict = {}
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"GET /ctx": {"plan_id": "test-plan-123", "credits": 3}},
+        )
+
+        @app.get("/ctx")
+        async def ctx_route(request: Request):
+            ctx = request.state.payment_context
+            captured["verified"] = ctx.verified
+            captured["credits_to_settle"] = ctx.credits_to_settle
+            captured["agent_request_id"] = ctx.agent_request_id
+            return JSONResponse({"ok": True})
+
+        TestClient(app).get(
+            "/ctx",
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
+        )
+
+        assert captured["verified"] is True
+        assert captured["credits_to_settle"] == 3
+        assert captured["agent_request_id"] == "test-request-id-123"
+
+    def test_payment_signature_stripped_before_handler(
+        self, valid_token, mock_payments
+    ):
+        """The payment-signature bearer token must NOT reach the handler.
+
+        Sentry/OTEL/structlog auto-capture request headers and their
+        default denylists do not cover payment-signature; leaving the
+        header in scope would exfiltrate the x402 token to whichever
+        observability tool the deployer wires in.
+        """
+        seen_header: dict = {}
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"GET /seen": {"plan_id": "test-plan-123", "credits": 1}},
+        )
+
+        @app.get("/seen")
+        async def seen(request: Request):
+            seen_header["payment-signature"] = request.headers.get("payment-signature")
+            return JSONResponse({"ok": True})
+
+        TestClient(app).get(
+            "/seen",
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
+        )
+
+        assert seen_header["payment-signature"] is None
+
+    def test_no_store_cache_headers_on_settle_and_402(self, client, valid_token):
+        """Receipt + envelope carry per-buyer financial metadata; both
+        response paths must be Cache-Control: no-store so any CDN in
+        front cannot leak them across buyers.
+        """
+        settled = client.post(
+            "/ask",
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
+            json={"query": "hi"},
+        )
+        assert settled.status_code == 200
+        assert settled.headers.get("cache-control") == "no-store"
+
+        unsigned = client.post("/ask", json={"query": "hi"})
+        assert unsigned.status_code == 402
+        assert unsigned.headers.get("cache-control") == "no-store"
+
 
 class TestUnmatchedRoutesPassThrough:
     def test_unmatched_route_passes_through_even_with_nvm_env_vars_set(
