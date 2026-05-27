@@ -63,8 +63,11 @@ import asyncio
 import base64
 import inspect
 import json
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Optional, Union
+
+logger = logging.getLogger("payments_py.x402.fastapi.middleware")
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -281,6 +284,12 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                 f"Missing x402 payment token. Send token in {X402_HEADERS['PAYMENT_SIGNATURE']} header.",
             )
 
+        # Verify phase. Failures here are payment-level - return 402.
+        # Agent failures (in call_next below) are deliberately NOT caught
+        # here so they propagate to Starlette's exception handler as 5xx
+        # as intended. Backported from the Sprint 3 langsmith middleware
+        # fix - the previous outer try/except covered call_next too and
+        # silently converted agent exceptions to 402.
         try:
             # Calculate credits (supports both static and dynamic)
             credits_to_charge = await _resolve_credits(route_config.credits, request)
@@ -295,89 +304,6 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                 x402_access_token=token,
                 max_amount=str(credits_to_charge),
             )
-
-            if not verification.is_valid:
-                error = Exception(
-                    verification.invalid_reason or "Payment verification failed"
-                )
-                if self.options.on_payment_error:
-                    custom_response = await self.options.on_payment_error(
-                        error, request
-                    )
-                    if custom_response:
-                        return custom_response
-                return _send_payment_required(
-                    payment_required,
-                    verification.invalid_reason
-                    or "Insufficient credits or invalid token",
-                )
-
-            # Hook: after verification
-            if self.options.on_after_verify:
-                await self.options.on_after_verify(request, verification)
-
-            # Store payment context for settlement and route handler access
-            payment_context = PaymentContext(
-                token=token,
-                payment_required=payment_required,
-                credits_to_settle=credits_to_charge,
-                verified=True,
-                agent_request_id=verification.agent_request_id,
-                agent_request=verification.agent_request,
-            )
-            request.state.payment_context = payment_context
-
-            # Call the actual route handler
-            response = await call_next(request)
-
-            # Only settle if response is successful (2xx)
-            if 200 <= response.status_code < 300:
-                try:
-                    # Settle credits (pass agentRequestId for observability updates)
-                    settlement = self.payments.facilitator.settle_permissions(
-                        payment_required=payment_required,
-                        x402_access_token=token,
-                        max_amount=str(credits_to_charge),
-                        agent_request_id=payment_context.agent_request_id,
-                    )
-
-                    # Add settlement response header (base64-encoded per x402 spec)
-                    settlement_json = settlement.model_dump_json(by_alias=True)
-                    settlement_base64 = base64.b64encode(
-                        settlement_json.encode()
-                    ).decode()
-
-                    # Create a new response with the header added
-                    # We need to read the body and create a new response
-                    body = b""
-                    async for chunk in response.body_iterator:
-                        body += chunk
-
-                    new_response = Response(
-                        content=body,
-                        status_code=response.status_code,
-                        headers=dict(response.headers),
-                        media_type=response.media_type,
-                    )
-                    new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = (
-                        settlement_base64
-                    )
-
-                    # Hook: after settlement
-                    if self.options.on_after_settle:
-                        await self.options.on_after_settle(
-                            request, credits_to_charge, settlement
-                        )
-
-                    return new_response
-
-                except Exception as settle_error:
-                    # Log but don't fail the response if settlement fails
-                    print(f"Payment settlement failed: {settle_error}")
-                    return response
-
-            return response
-
         except Exception as error:
             if self.options.on_payment_error:
                 custom_response = await self.options.on_payment_error(error, request)
@@ -387,6 +313,86 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                 payment_required,
                 str(error) if str(error) else "Payment verification failed",
             )
+
+        if not verification.is_valid:
+            error = Exception(
+                verification.invalid_reason or "Payment verification failed"
+            )
+            if self.options.on_payment_error:
+                custom_response = await self.options.on_payment_error(error, request)
+                if custom_response:
+                    return custom_response
+            return _send_payment_required(
+                payment_required,
+                verification.invalid_reason or "Insufficient credits or invalid token",
+            )
+
+        # Hook: after verification
+        if self.options.on_after_verify:
+            await self.options.on_after_verify(request, verification)
+
+        # Store payment context for settlement and route handler access
+        payment_context = PaymentContext(
+            token=token,
+            payment_required=payment_required,
+            credits_to_settle=credits_to_charge,
+            verified=True,
+            agent_request_id=verification.agent_request_id,
+            agent_request=verification.agent_request,
+        )
+        request.state.payment_context = payment_context
+
+        # Agent runs here. Exceptions propagate naturally to Starlette as
+        # 5xx - the buyer is not charged for failed runs (we skip settle
+        # on non-2xx below).
+        response = await call_next(request)
+
+        # Only settle if response is successful (2xx).
+        if not 200 <= response.status_code < 300:
+            return response
+
+        # Settle phase. Failures here are caught locally so the buyer-
+        # visible response stays at the original 2xx - the agent already
+        # delivered the value; an internal settle reconciliation failure
+        # is not their problem.
+        try:
+            settlement = self.payments.facilitator.settle_permissions(
+                payment_required=payment_required,
+                x402_access_token=token,
+                max_amount=str(credits_to_charge),
+                agent_request_id=payment_context.agent_request_id,
+            )
+
+            # Add settlement response header (base64-encoded per x402 spec)
+            settlement_json = settlement.model_dump_json(by_alias=True)
+            settlement_base64 = base64.b64encode(settlement_json.encode()).decode()
+
+            # Create a new response with the header added
+            # We need to read the body and create a new response
+            body = b""
+            async for chunk in response.body_iterator:
+                body += chunk
+
+            new_response = Response(
+                content=body,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                media_type=response.media_type,
+            )
+            new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = settlement_base64
+
+            # Hook: after settlement
+            if self.options.on_after_settle:
+                await self.options.on_after_settle(
+                    request, credits_to_charge, settlement
+                )
+
+            return new_response
+
+        except Exception as settle_error:
+            # Log but don't fail the response if settlement fails
+            logger.error("x402 settlement failed: %s", settle_error)
+            return response
 
 
 def payment_middleware(
