@@ -67,8 +67,6 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
-logger = logging.getLogger("payments_py.x402.fastapi.middleware")
-
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -82,6 +80,8 @@ from payments_py.x402.types import (
     VerifyResponse,
     X402PaymentRequired,
 )
+
+logger = logging.getLogger("payments_py.x402.fastapi.middleware")
 
 # x402 HTTP Transport header names (v2 spec)
 # @see https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md
