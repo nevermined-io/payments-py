@@ -38,7 +38,7 @@ langsmith = {version = ">=0.1.40,<1.0.0", optional = true}
 fastapi = ["fastapi", "starlette"]
 strands = ["strands-agents"]
 langchain = ["langchain-core"]
-langsmith = ["langsmith"]
+langsmith = ["langsmith", "fastapi", "starlette"]
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.1.1"

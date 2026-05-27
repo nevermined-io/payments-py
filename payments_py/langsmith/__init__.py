@@ -25,6 +25,12 @@ LangSmith traces::
             span.add_metadata(build_settle_metadata(settlement, ["plan-1"]))
 """
 
+from payments_py.langsmith.middleware import (
+    PaymentMiddleware,
+    RouteConfig,
+    X402_HEADERS,
+    build_payment_app,
+)
 from payments_py.langsmith.spans import (
     abbreviate_token,
     active_run_tree,
@@ -37,9 +43,13 @@ from payments_py.langsmith.spans import (
 )
 
 __all__ = [
+    "PaymentMiddleware",
+    "RouteConfig",
+    "X402_HEADERS",
     "abbreviate_token",
     "active_run_tree",
     "add_metadata",
+    "build_payment_app",
     "build_settle_metadata",
     "build_verify_metadata",
     "redact_metadata_keys",
