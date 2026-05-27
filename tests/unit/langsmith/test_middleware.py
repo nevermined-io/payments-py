@@ -207,35 +207,26 @@ class TestPaymentMiddleware:
         assert response.status_code == 200
         assert response.json()["item_id"] == "item-456"
 
-    def test_non_2xx_response_skips_settle(self, client, valid_token, mock_payments):
+    def test_non_2xx_response_skips_settle(self, valid_token, mock_payments):
         """Agent raises -> response is 5xx -> settle NEVER called.
 
         Buyers are not charged for failed runs. Verify was already paid via
         the verify_permissions call so the buyer's balance lock was set, but
         the actual settle_permissions burn must NOT fire.
         """
-        # Route /explode raises; need to register it in routes
-        mock_payments_local = mock_payments
-        app = FastAPI()
-        app.add_middleware(
-            PaymentMiddleware,
-            payments=mock_payments_local,
+        app = _build_test_app(
+            mock_payments,
             routes={"POST /explode": {"plan_id": "test-plan-123", "credits": 1}},
         )
-
-        @app.post("/explode")
-        async def explode():
-            raise RuntimeError("agent blew up")
-
-        client_local = TestClient(app, raise_server_exceptions=False)
-        response = client_local.post(
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post(
             "/explode",
             headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
         )
 
         assert response.status_code == 500
-        mock_payments_local.facilitator.verify_permissions.assert_called_once()
-        mock_payments_local.facilitator.settle_permissions.assert_not_called()
+        mock_payments.facilitator.verify_permissions.assert_called_once()
+        mock_payments.facilitator.settle_permissions.assert_not_called()
 
     def test_settle_failure_still_returns_200(
         self, client, valid_token, mock_payments, caplog

@@ -98,8 +98,7 @@ class RouteConfig:
 
 
 def _extract_token(request: Request) -> Optional[str]:
-    header_value = request.headers.get(X402_HEADERS["PAYMENT_SIGNATURE"])
-    return header_value if header_value and isinstance(header_value, str) else None
+    return request.headers.get(X402_HEADERS["PAYMENT_SIGNATURE"]) or None
 
 
 def _match_route(
@@ -125,17 +124,12 @@ def _match_route(
         path_parts = path.split("/")
         if len(route_parts) != len(path_parts):
             continue
-        matches = True
-        for i, segment in enumerate(route_parts):
-            is_param = segment.startswith(":") or (
-                segment.startswith("{") and segment.endswith("}")
-            )
-            if is_param:
-                continue
-            if segment != path_parts[i]:
-                matches = False
-                break
-        if matches:
+        if all(
+            seg.startswith(":")
+            or (seg.startswith("{") and seg.endswith("}"))
+            or seg == path_seg
+            for seg, path_seg in zip(route_parts, path_parts)
+        ):
             return config
     return None
 
@@ -190,12 +184,13 @@ def _x402_parent_trace(method: str, path: str, plan_id: str) -> Iterator[Optiona
 def _send_payment_required(
     payment_required: X402PaymentRequired, message: str
 ) -> JSONResponse:
-    payment_required_json = payment_required.model_dump_json(by_alias=True)
-    payment_required_base64 = base64.b64encode(payment_required_json.encode()).decode()
+    envelope_b64 = base64.b64encode(
+        payment_required.model_dump_json(by_alias=True).encode()
+    ).decode()
     return JSONResponse(
         status_code=402,
         content={"error": "Payment Required", "message": message},
-        headers={X402_HEADERS["PAYMENT_REQUIRED"]: payment_required_base64},
+        headers={X402_HEADERS["PAYMENT_REQUIRED"]: envelope_b64},
     )
 
 
@@ -231,11 +226,10 @@ class PaymentMiddleware(BaseHTTPMiddleware):
     ):
         super().__init__(app)
         self.payments = payments
-        self.routes: Dict[str, RouteConfig] = {}
-        for key, value in (routes or {}).items():
-            self.routes[key] = (
-                value if isinstance(value, RouteConfig) else RouteConfig(**value)
-            )
+        self.routes: Dict[str, RouteConfig] = {
+            key: (value if isinstance(value, RouteConfig) else RouteConfig(**value))
+            for key, value in (routes or {}).items()
+        }
 
     def _resolve_route_config(self, method: str, path: str) -> Optional[RouteConfig]:
         return _match_route(method, path, self.routes)
@@ -427,8 +421,9 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     )
                     return response
 
-                settlement_json = settlement.model_dump_json(by_alias=True)
-                settlement_base64 = base64.b64encode(settlement_json.encode()).decode()
+                receipt_b64 = base64.b64encode(
+                    settlement.model_dump_json(by_alias=True).encode()
+                ).decode()
 
                 body = b""
                 async for chunk in response.body_iterator:
@@ -440,9 +435,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     headers=dict(response.headers),
                     media_type=response.media_type,
                 )
-                new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = (
-                    settlement_base64
-                )
+                new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = receipt_b64
                 return new_response
         except PaymentRequiredError as rejection:
             # Verify span + parent trace both saw the exception and are

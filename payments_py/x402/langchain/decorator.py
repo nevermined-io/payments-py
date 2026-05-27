@@ -68,10 +68,8 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 from payments_py.langsmith.spans import (
-    abbreviate_token,
     active_run_tree,
-    add_metadata,
-    attach_metadata_safely as _attach_metadata_safely,
+    attach_metadata_safely,
     build_settle_metadata,
     build_verify_metadata,
     redact_metadata_keys,
@@ -238,7 +236,7 @@ def _verify_payment(
     ) as vspan:
         # Pre-verify metadata is best-effort -- a build/attach failure here
         # must not block the actual verify call or mask PaymentRequiredError.
-        _attach_metadata_safely(
+        attach_metadata_safely(
             vspan,
             parent_rt,
             build_verify_metadata,
@@ -269,7 +267,7 @@ def _verify_payment(
         # Augment metadata with verification results. Same best-effort
         # guarantee -- observability must not mask the PaymentRequiredError
         # that follows if the verification is invalid.
-        _attach_metadata_safely(
+        attach_metadata_safely(
             vspan,
             parent_rt,
             build_verify_metadata,
@@ -345,7 +343,7 @@ def _settle_payment(
             _store_in_configurable(runnable_config, "payment_settlement", settlement)
             _LAST_SETTLEMENT["value"] = settlement
 
-            _attach_metadata_safely(
+            attach_metadata_safely(
                 sspan,
                 parent_rt,
                 build_settle_metadata,
