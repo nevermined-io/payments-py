@@ -2,7 +2,7 @@
 
 A Starlette ASGI middleware (`PaymentMiddleware`) that gates a LangGraph agent deployed to **LangSmith Deployment** (formerly LangGraph Platform) with the Nevermined x402 payment flow. Use the `build_payment_app` factory for one-line wiring via the `http.app` field in `langgraph.json`.
 
-For tool-time gating inside an agent (`@requires_payment` decorator), see [chapter 12](./12-langchain-integration.md). The two integrations are complementary — chapter 12 is for protecting tools the agent calls; this chapter is for protecting the agent's HTTP entry point.
+For tool-time gating inside an agent (`@requires_payment` decorator), see [LangChain Integration](./12-langchain-integration.md). The two integrations are complementary — that page is for protecting tools the agent calls; this page is for protecting the agent's HTTP entry point.
 
 ## Installation
 
@@ -154,7 +154,7 @@ app = FastAPI(
 
 ## Observability
 
-When `LANGSMITH_TRACING=true` is set, the middleware opens a top-level `nvm:x402-request` trace per gated request, with `nvm:verify` and `nvm:settlement` child spans nested under it. Both child spans carry the `nvm.*` metadata from [chapter 12 §Observability](./12-langchain-integration.md#observability) (plan_ids, scheme, network, payer, credits_redeemed, balance.after, tx_hash, payment_token abbreviated, verify/settle durations). The same metadata is also attached to the parent trace.
+When `LANGSMITH_TRACING=true` is set, the middleware opens a top-level `nvm:x402-request` trace per gated request, with `nvm:verify` and `nvm:settlement` child spans nested under it. Both child spans carry the same `nvm.*` metadata the decorator emits (plan_ids, scheme, network, payer, credits_redeemed, balance.after, tx_hash, payment_token abbreviated, verify/settle durations) — see the Observability section in [LangChain Integration](./12-langchain-integration.md). The same metadata is also attached to the parent trace.
 
 The graph's own LangGraph-emitted trace appears as a sibling top-level trace, not a child of `nvm:x402-request` — `langgraph-api` initiates the graph trace at the graph-invocation boundary, independent of our middleware's trace context.
 
@@ -168,6 +168,6 @@ Verification failures (missing token, invalid signature, insufficient credits) r
 
 ## See also
 
-- [Chapter 11 — x402 Protocol](./11-x402.md) for envelope and header semantics.
-- [Chapter 12 — LangChain Integration](./12-langchain-integration.md) for the `@requires_payment` decorator (tool-time gating).
-- [`payments_py.langsmith.spans`](../reference/langsmith.md) for the observability helpers used internally.
+- [x402 Protocol](./11-x402.md) for envelope and header semantics.
+- [LangChain Integration](./12-langchain-integration.md) for the `@requires_payment` decorator (tool-time gating).
+- `payments_py.langsmith.spans` for the observability helpers used internally (verify_span, settlement_span, attach_metadata_safely).

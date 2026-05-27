@@ -4,7 +4,7 @@ This guide covers the LangChain and LangGraph integration shipped in the `[langc
 
 For the conceptual walk-through (two integration approaches, the discovery-first flow, dynamic credits patterns), see the [LangChain integration guide](/docs/integrate/add-to-your-agent/langchain). For a runnable end-to-end demo, see the [`langchain-paid-agent-py`](https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py) tutorial.
 
-> Looking to gate a **LangSmith Deployment** entry point (`/threads/{id}/runs/wait` etc.) rather than individual tools? See [chapter 13 — LangSmith Deployment Middleware](./13-langsmith-deployment.md). The two integrations are complementary: chapter 12 protects tools the agent calls; chapter 13 protects the agent's HTTP entry point.
+> Looking to gate a **LangSmith Deployment** entry point (`/threads/{id}/runs/wait` etc.) rather than individual tools? See [LangSmith Deployment Middleware](./13-langsmith-deployment.md). The two integrations are complementary: the decorator covered here protects tools the agent calls; the LangSmith Deployment middleware protects the agent's HTTP entry point.
 
 ## Installation
 
