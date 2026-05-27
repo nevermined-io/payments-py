@@ -18,7 +18,7 @@
         <link rel="prev" href="../11-x402/">
       
       
-        <link rel="next" href="../../reference/payments/">
+        <link rel="next" href="../13-langsmith-deployment/">
       
       
         
@@ -1102,6 +1102,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../13-langsmith-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. LangSmith Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1631,6 +1659,9 @@
 <h1 id="langchain-integration">LangChain Integration<a class="headerlink" href="#langchain-integration" title="Permanent link">&para;</a></h1>
 <p>This guide covers the LangChain and LangGraph integration shipped in the <code>[langchain]</code> optional extra of <code>payments-py</code>. The module <code>payments_py.x402.langchain</code> provides the decorator, helpers, and exceptions for monetizing LangChain tools with the x402 protocol.</p>
 <p>For the conceptual walk-through (two integration approaches, the discovery-first flow, dynamic credits patterns), see the <a href="/docs/integrate/add-to-your-agent/langchain">LangChain integration guide</a>. For a runnable end-to-end demo, see the <a href="https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py"><code>langchain-paid-agent-py</code></a> tutorial.</p>
+<blockquote>
+<p>Looking to gate a <strong>LangSmith Deployment</strong> entry point (<code>/threads/{id}/runs/wait</code> etc.) rather than individual tools? See <a href="../13-langsmith-deployment/">chapter 13 — LangSmith Deployment Middleware</a>. The two integrations are complementary: chapter 12 protects tools the agent calls; chapter 13 protects the agent's HTTP entry point.</p>
+</blockquote>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>payments-py<span class="o">[</span>langchain<span class="o">]</span><span class="w"> </span>langgraph<span class="w"> </span>langchain-openai
 </code></pre></div>
