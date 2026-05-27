@@ -190,6 +190,21 @@ def _attach_to_span_and_parent(
     add_metadata(parent_run, metadata)
 
 
+class _X402Rejection(Exception):
+    """Internal control-flow exception raised inside verify_span when payment
+    verification doesn't pass, so the span (and its parent trace) propagate
+    failed status to LangSmith via the canonical context-manager __exit__
+    path. Always caught at the dispatch level and converted to a 402 response.
+
+    Without this, returning from inside the with block exits the span normally
+    and LangSmith records the run as success even though the buyer got a 402.
+    """
+
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
 def _send_payment_required(
     payment_required: X402PaymentRequired, message: str
 ) -> JSONResponse:
@@ -283,49 +298,71 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         # Parent trace - opened around the full payment lifecycle. Verify
         # and settle child spans nest under it. The graph's own trace
         # (when LANGSMITH_TRACING is enabled) appears as a sibling.
-        with _x402_parent_trace(method, path, route_config.plan_id) as parent_rt:
-            # Verify phase - opened BEFORE the token check so failed
-            # discovery probes (no token) still emit an identifiable
-            # nvm:verify run with static nvm.* metadata.
-            verify_start = time.monotonic()
-            with verify_span(
-                plan_ids=plan_ids,
-                scheme=resolved_scheme,
-                network=resolved_network,
-                agent_id=route_config.agent_id,
-            ) as verify_run:
-                if not token:
-                    _attach_to_span_and_parent(
-                        verify_run,
-                        parent_rt,
-                        build_verify_metadata(
-                            plan_ids=plan_ids,
-                            scheme=resolved_scheme,
-                            network=resolved_network,
-                            agent_id=route_config.agent_id,
-                        ),
-                    )
-                    return _send_payment_required(
-                        payment_required,
-                        f"Missing x402 payment token. Send token in {X402_HEADERS['PAYMENT_SIGNATURE']} header.",
-                    )
+        try:
+            with _x402_parent_trace(method, path, route_config.plan_id) as parent_rt:
+                # Verify phase - opened BEFORE the token check so failed
+                # discovery probes (no token) still emit an identifiable
+                # nvm:verify run with static nvm.* metadata. Verification
+                # failures raise _X402Rejection from inside the span so
+                # LangSmith marks the run as failed via the standard __exit__
+                # propagation path; the exception is caught below the parent
+                # trace and converted to a 402 response.
+                verify_start = time.monotonic()
+                with verify_span(
+                    plan_ids=plan_ids,
+                    scheme=resolved_scheme,
+                    network=resolved_network,
+                    agent_id=route_config.agent_id,
+                ) as verify_run:
+                    if not token:
+                        _attach_to_span_and_parent(
+                            verify_run,
+                            parent_rt,
+                            build_verify_metadata(
+                                plan_ids=plan_ids,
+                                scheme=resolved_scheme,
+                                network=resolved_network,
+                                agent_id=route_config.agent_id,
+                            ),
+                        )
+                        raise _X402Rejection(
+                            f"Missing x402 payment token. Send token in {X402_HEADERS['PAYMENT_SIGNATURE']} header."
+                        )
 
-                try:
-                    credits_to_charge = await _resolve_credits(
-                        route_config.credits, request
-                    )
-                    verification = await asyncio.to_thread(
-                        self.payments.facilitator.verify_permissions,
-                        payment_required=payment_required,
-                        x402_access_token=token,
-                        max_amount=str(credits_to_charge),
-                    )
-                except Exception as error:
-                    logger.error(
-                        "x402 verify failed for plan_id=%s: %s",
-                        route_config.plan_id,
-                        error,
-                    )
+                    try:
+                        credits_to_charge = await _resolve_credits(
+                            route_config.credits, request
+                        )
+                        verification = await asyncio.to_thread(
+                            self.payments.facilitator.verify_permissions,
+                            payment_required=payment_required,
+                            x402_access_token=token,
+                            max_amount=str(credits_to_charge),
+                        )
+                    except _X402Rejection:
+                        raise
+                    except Exception as error:
+                        logger.error(
+                            "x402 verify failed for plan_id=%s: %s",
+                            route_config.plan_id,
+                            error,
+                        )
+                        _attach_to_span_and_parent(
+                            verify_run,
+                            parent_rt,
+                            build_verify_metadata(
+                                plan_ids=plan_ids,
+                                scheme=resolved_scheme,
+                                network=resolved_network,
+                                agent_id=route_config.agent_id,
+                                token=token,
+                            ),
+                        )
+                        raise _X402Rejection(
+                            str(error) or "Payment verification failed"
+                        )
+
+                    verify_duration_ms = (time.monotonic() - verify_start) * 1000
                     _attach_to_span_and_parent(
                         verify_run,
                         parent_rt,
@@ -334,68 +371,72 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                             scheme=resolved_scheme,
                             network=resolved_network,
                             agent_id=route_config.agent_id,
+                            verification=(
+                                verification if verification.is_valid else None
+                            ),
+                            duration_ms=verify_duration_ms,
                             token=token,
                         ),
                     )
-                    return _send_payment_required(
-                        payment_required,
-                        str(error) or "Payment verification failed",
-                    )
 
-                verify_duration_ms = (time.monotonic() - verify_start) * 1000
-                _attach_to_span_and_parent(
-                    verify_run,
-                    parent_rt,
-                    build_verify_metadata(
-                        plan_ids=plan_ids,
-                        scheme=resolved_scheme,
-                        network=resolved_network,
-                        agent_id=route_config.agent_id,
-                        verification=verification if verification.is_valid else None,
-                        duration_ms=verify_duration_ms,
-                        token=token,
-                    ),
+                    if not verification.is_valid:
+                        raise _X402Rejection(
+                            verification.invalid_reason
+                            or "Insufficient credits or invalid token"
+                        )
+
+                request.state.payment_context = PaymentContext(
+                    token=token,
+                    payment_required=payment_required,
+                    credits_to_settle=credits_to_charge,
+                    verified=True,
+                    agent_request_id=verification.agent_request_id,
+                    agent_request=verification.agent_request,
                 )
 
-            if not verification.is_valid:
-                return _send_payment_required(
-                    payment_required,
-                    verification.invalid_reason
-                    or "Insufficient credits or invalid token",
-                )
+                # Agent runs here. Exceptions propagate naturally - the buyer
+                # is not charged for failed runs (we skip settle on non-2xx
+                # below). The parent trace will also see the exception via
+                # __exit__ and be marked failed in LangSmith.
+                response = await call_next(request)
 
-            request.state.payment_context = PaymentContext(
-                token=token,
-                payment_required=payment_required,
-                credits_to_settle=credits_to_charge,
-                verified=True,
-                agent_request_id=verification.agent_request_id,
-                agent_request=verification.agent_request,
-            )
+                if not 200 <= response.status_code < 300:
+                    return response
 
-            # Agent runs here. Exceptions propagate naturally - the buyer is
-            # not charged for failed runs (we skip settle on non-2xx below).
-            response = await call_next(request)
-
-            if not 200 <= response.status_code < 300:
-                return response
-
-            # Settle phase. Failures here are logged but do not surface to
-            # the client - the buyer already received the value.
-            settle_start = time.monotonic()
-            with settlement_span(
-                plan_ids=plan_ids,
-                agent_id=route_config.agent_id,
-            ) as settle_run:
+                # Settle phase. Settlement failures raise from inside the
+                # settle span (so LangSmith marks it failed) but are caught
+                # IMMEDIATELY OUTSIDE the span - the parent trace stays
+                # success because the buyer-visible outcome is still a 200
+                # with value delivered.
+                settle_start = time.monotonic()
                 try:
-                    settlement = await asyncio.to_thread(
-                        self.payments.facilitator.settle_permissions,
-                        payment_required=payment_required,
-                        x402_access_token=token,
-                        max_amount=str(credits_to_charge),
-                        agent_request_id=verification.agent_request_id,
-                    )
+                    with settlement_span(
+                        plan_ids=plan_ids,
+                        agent_id=route_config.agent_id,
+                    ) as settle_run:
+                        settlement = await asyncio.to_thread(
+                            self.payments.facilitator.settle_permissions,
+                            payment_required=payment_required,
+                            x402_access_token=token,
+                            max_amount=str(credits_to_charge),
+                            agent_request_id=verification.agent_request_id,
+                        )
+                        settle_duration_ms = (time.monotonic() - settle_start) * 1000
+                        _attach_to_span_and_parent(
+                            settle_run,
+                            parent_rt,
+                            build_settle_metadata(
+                                settlement=settlement,
+                                plan_ids=plan_ids,
+                                agent_id=route_config.agent_id,
+                                duration_ms=settle_duration_ms,
+                                token=token,
+                            ),
+                        )
                 except Exception as settle_error:
+                    # Settle span saw the exception in its __exit__ and is
+                    # marked failed in LangSmith. Suppress here so the parent
+                    # trace stays success - buyer received value at 200.
                     logger.error(
                         "x402 settlement failed for plan_id=%s after 2xx response: %s",
                         route_config.plan_id,
@@ -403,34 +444,27 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     )
                     return response
 
-                settle_duration_ms = (time.monotonic() - settle_start) * 1000
-                _attach_to_span_and_parent(
-                    settle_run,
-                    parent_rt,
-                    build_settle_metadata(
-                        settlement=settlement,
-                        plan_ids=plan_ids,
-                        agent_id=route_config.agent_id,
-                        duration_ms=settle_duration_ms,
-                        token=token,
-                    ),
+                settlement_json = settlement.model_dump_json(by_alias=True)
+                settlement_base64 = base64.b64encode(settlement_json.encode()).decode()
+
+                body = b""
+                async for chunk in response.body_iterator:
+                    body += chunk
+
+                new_response = Response(
+                    content=body,
+                    status_code=response.status_code,
+                    headers=dict(response.headers),
+                    media_type=response.media_type,
                 )
-
-            settlement_json = settlement.model_dump_json(by_alias=True)
-            settlement_base64 = base64.b64encode(settlement_json.encode()).decode()
-
-            body = b""
-            async for chunk in response.body_iterator:
-                body += chunk
-
-            new_response = Response(
-                content=body,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type=response.media_type,
-            )
-            new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = settlement_base64
-            return new_response
+                new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = (
+                    settlement_base64
+                )
+                return new_response
+        except _X402Rejection as rejection:
+            # Verify span + parent trace both saw the exception and are
+            # marked failed in LangSmith. Convert to a 402 response.
+            return _send_payment_required(payment_required, rejection.message)
 
 
 def build_payment_app(
