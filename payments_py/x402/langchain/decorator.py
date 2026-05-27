@@ -81,6 +81,7 @@ from payments_py.x402.helpers import build_payment_required_for_plans
 from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import (
     PaymentContext,
+    PaymentRequiredError,
     SettleResponse,
     X402PaymentRequired,
 )
@@ -120,20 +121,6 @@ def last_settlement() -> Optional[SettleResponse]:
        per-call isolation.
     """
     return _LAST_SETTLEMENT["value"]
-
-
-class PaymentRequiredError(Exception):
-    """Raised when payment verification fails.
-
-    Carries the ``X402PaymentRequired`` object so callers can inspect
-    accepted plans and acquire the correct payment token.
-    """
-
-    def __init__(
-        self, message: str, payment_required: Optional[X402PaymentRequired] = None
-    ):
-        super().__init__(message)
-        self.payment_required = payment_required
 
 
 @dataclass

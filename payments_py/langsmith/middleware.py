@@ -50,7 +50,11 @@ from payments_py.langsmith.spans import (
 )
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
-from payments_py.x402.types import PaymentContext, X402PaymentRequired
+from payments_py.x402.types import (
+    PaymentContext,
+    PaymentRequiredError,
+    X402PaymentRequired,
+)
 
 # LangSmith is a dep of the [langsmith] extra. The sentinel handles the
 # (unusual) case where this module is imported via a different extra and
@@ -190,21 +194,6 @@ def _attach_to_span_and_parent(
     add_metadata(parent_run, metadata)
 
 
-class _X402Rejection(Exception):
-    """Internal control-flow exception raised inside verify_span when payment
-    verification doesn't pass, so the span (and its parent trace) propagate
-    failed status to LangSmith via the canonical context-manager __exit__
-    path. Always caught at the dispatch level and converted to a 402 response.
-
-    Without this, returning from inside the with block exits the span normally
-    and LangSmith records the run as success even though the buyer got a 402.
-    """
-
-    def __init__(self, message: str):
-        super().__init__(message)
-        self.message = message
-
-
 def _send_payment_required(
     payment_required: X402PaymentRequired, message: str
 ) -> JSONResponse:
@@ -303,7 +292,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                 # Verify phase - opened BEFORE the token check so failed
                 # discovery probes (no token) still emit an identifiable
                 # nvm:verify run with static nvm.* metadata. Verification
-                # failures raise _X402Rejection from inside the span so
+                # failures raise PaymentRequiredError from inside the span so
                 # LangSmith marks the run as failed via the standard __exit__
                 # propagation path; the exception is caught below the parent
                 # trace and converted to a 402 response.
@@ -325,8 +314,9 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                                 agent_id=route_config.agent_id,
                             ),
                         )
-                        raise _X402Rejection(
-                            f"Missing x402 payment token. Send token in {X402_HEADERS['PAYMENT_SIGNATURE']} header."
+                        raise PaymentRequiredError(
+                            f"Missing x402 payment token. Send token in {X402_HEADERS['PAYMENT_SIGNATURE']} header.",
+                            payment_required=payment_required,
                         )
 
                     try:
@@ -339,7 +329,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                             x402_access_token=token,
                             max_amount=str(credits_to_charge),
                         )
-                    except _X402Rejection:
+                    except PaymentRequiredError:
                         raise
                     except Exception as error:
                         logger.error(
@@ -358,8 +348,9 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                                 token=token,
                             ),
                         )
-                        raise _X402Rejection(
-                            str(error) or "Payment verification failed"
+                        raise PaymentRequiredError(
+                            str(error) or "Payment verification failed",
+                            payment_required=payment_required,
                         )
 
                     verify_duration_ms = (time.monotonic() - verify_start) * 1000
@@ -380,9 +371,10 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     )
 
                     if not verification.is_valid:
-                        raise _X402Rejection(
+                        raise PaymentRequiredError(
                             verification.invalid_reason
-                            or "Insufficient credits or invalid token"
+                            or "Insufficient credits or invalid token",
+                            payment_required=payment_required,
                         )
 
                 request.state.payment_context = PaymentContext(
@@ -461,7 +453,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     settlement_base64
                 )
                 return new_response
-        except _X402Rejection as rejection:
+        except PaymentRequiredError as rejection:
             # Verify span + parent trace both saw the exception and are
             # marked failed in LangSmith. Convert to a 402 response.
             return _send_payment_required(payment_required, rejection.message)

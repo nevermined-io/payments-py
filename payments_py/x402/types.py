@@ -393,3 +393,25 @@ class X402TokenOptions(BaseModel):
         populate_by_name=True,
         from_attributes=True,
     )
+
+
+class PaymentRequiredError(Exception):
+    """Raised when x402 payment verification fails.
+
+    Carries the ``X402PaymentRequired`` envelope so callers can inspect
+    accepted plans and acquire the correct payment token.
+
+    Lives in ``payments_py.x402.types`` (not in any extra-specific module)
+    so it can be raised and caught from any integration path - LangChain
+    decorator, LangSmith Deployment middleware, FastAPI middleware - without
+    pulling in unrelated extras at import time. The langchain extra
+    re-exports it as ``payments_py.x402.langchain.PaymentRequiredError``
+    for backwards compatibility.
+    """
+
+    def __init__(
+        self, message: str, payment_required: Optional[X402PaymentRequired] = None
+    ):
+        super().__init__(message)
+        self.message = message
+        self.payment_required = payment_required
