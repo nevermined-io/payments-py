@@ -27,6 +27,7 @@ non-streaming endpoints, or omit it for paths where streaming matters
 more than payment gating.
 """
 
+import asyncio
 import base64
 import inspect
 import logging
@@ -187,11 +188,16 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         if not route_config:
             return await call_next(request)
 
-        resolved_scheme = resolve_scheme(
-            self.payments, route_config.plan_id, route_config.scheme
+        # resolve_scheme + resolve_network hit `payments.plans.get_plan`
+        # internally (sync HTTP). Run them in a thread so we don't block the
+        # event loop - langgraph dev's blocking-call detector treats sync
+        # I/O in the dispatch task as a fatal warning and the SDK's
+        # except-Exception path silently falls back to defaults.
+        resolved_scheme = await asyncio.to_thread(
+            resolve_scheme, self.payments, route_config.plan_id, route_config.scheme
         )
-        resolved_network = resolve_network(
-            self.payments, route_config.plan_id, route_config.network
+        resolved_network = await asyncio.to_thread(
+            resolve_network, self.payments, route_config.plan_id, route_config.network
         )
 
         payment_required = build_payment_required(
@@ -219,7 +225,8 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         try:
             credits_to_charge = await _resolve_credits(route_config.credits, request)
 
-            verification = self.payments.facilitator.verify_permissions(
+            verification = await asyncio.to_thread(
+                self.payments.facilitator.verify_permissions,
                 payment_required=payment_required,
                 x402_access_token=token,
                 max_amount=str(credits_to_charge),
@@ -260,7 +267,8 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         # Settle phase. Failures here are logged but do not surface to the
         # client - the buyer already received the value.
         try:
-            settlement = self.payments.facilitator.settle_permissions(
+            settlement = await asyncio.to_thread(
+                self.payments.facilitator.settle_permissions,
                 payment_required=payment_required,
                 x402_access_token=token,
                 max_amount=str(credits_to_charge),
