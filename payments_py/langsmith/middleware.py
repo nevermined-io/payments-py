@@ -504,10 +504,21 @@ def build_payment_app(
     """Build a FastAPI app pre-wired with PaymentMiddleware for LangSmith Deployment.
 
     This is the recommended entry point. The returned FastAPI instance is
-    intended to be mounted via the http.app field of langgraph.json. FastAPI
-    is recommended over a plain Starlette app because langgraph-api 0.5.42
-    has an OpenAPI generation bug that crashes the server on plain Starlette
-    http.app wrappers - FastAPI takes a clean path through app.openapi().
+    intended to be mounted via the http.app field of langgraph.json.
+
+    Why a FastAPI wrapper. ``langgraph-api`` 0.5.x crashed on plain
+    Starlette ``http.app`` wrappers because its ``update_openapi_spec``
+    fell through to Starlette's ``SchemaGenerator``, which YAML-parses
+    every endpoint docstring (``api/mcp.py`` and an a2a docstring both
+    had YAML-unsafe colons that tripped the parser). FastAPI dodges this
+    via ``app.openapi()``. The specific tripper docstrings were
+    rewritten in newer ``langgraph-api`` versions, but the code-path
+    structure is unchanged and we have not empirically validated that
+    no OTHER docstring would trip it; this factory remains the
+    recommended path until that spike lands. The middleware class
+    itself (``PaymentMiddleware``) is a Starlette ``BaseHTTPMiddleware``
+    subclass and works on both Starlette and FastAPI — only the outer
+    app wrapper matters for the upstream bug.
 
     Args:
         payments: A configured payments_py.Payments instance.
