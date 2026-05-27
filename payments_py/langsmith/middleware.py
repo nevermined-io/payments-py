@@ -30,7 +30,6 @@ more than payment gating.
 import base64
 import inspect
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
@@ -52,11 +51,6 @@ X402_HEADERS = {
     "PAYMENT_REQUIRED": "payment-required",
     "PAYMENT_RESPONSE": "payment-response",
 }
-
-# Env-var names that act as a single-plan fallback when no routes match.
-ENV_PLAN_ID = "NVM_PLAN_ID"
-ENV_CREDITS_PER_INVOKE = "NVM_CREDITS_PER_INVOKE"
-ENV_AGENT_ID = "NVM_AGENT_ID"
 
 
 @dataclass
@@ -119,32 +113,6 @@ def _match_route(
     return None
 
 
-def _env_var_fallback() -> Optional[RouteConfig]:
-    """Build a RouteConfig from env vars for single-plan deployments.
-
-    Returns None if NVM_PLAN_ID is unset. NVM_CREDITS_PER_INVOKE defaults
-    to 1 if missing or non-numeric. NVM_AGENT_ID is optional.
-    """
-    plan_id = os.environ.get(ENV_PLAN_ID)
-    if not plan_id:
-        return None
-    credits_raw = os.environ.get(ENV_CREDITS_PER_INVOKE, "1")
-    try:
-        credits = int(credits_raw)
-    except ValueError:
-        logger.warning(
-            "%s=%r is not an integer; defaulting to 1",
-            ENV_CREDITS_PER_INVOKE,
-            credits_raw,
-        )
-        credits = 1
-    return RouteConfig(
-        plan_id=plan_id,
-        credits=credits,
-        agent_id=os.environ.get(ENV_AGENT_ID),
-    )
-
-
 async def _resolve_credits(
     credits: Union[int, CreditsCallable], request: Request
 ) -> int:
@@ -174,8 +142,8 @@ class PaymentMiddleware(BaseHTTPMiddleware):
     Lifecycle for each request:
 
     1. Resolve a RouteConfig from the configured routes table (exact or
-       parameterized match) or, failing that, from the env-var fallback.
-       If neither resolves, the request passes through ungated.
+       parameterized match). If no route matches, the request passes
+       through ungated.
     2. Build the x402 PaymentRequired envelope from the resolved config.
     3. Extract the payment-signature header. If missing, return 402 with the
        envelope in the payment-required response header.
@@ -205,15 +173,9 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             self.routes[key] = (
                 value if isinstance(value, RouteConfig) else RouteConfig(**value)
             )
-        # Env-var fallback is for single-plan deployments where users want
-        # to gate every path with one config without writing a routes dict.
-        # When routes is non-empty, the user has explicitly opted into per-
-        # route gating - the env vars must not act as a catch-all on
-        # unmatched paths (would silently gate /threads, /assistants, etc.).
-        self._env_fallback = _env_var_fallback() if not self.routes else None
 
     def _resolve_route_config(self, method: str, path: str) -> Optional[RouteConfig]:
-        return _match_route(method, path, self.routes) or self._env_fallback
+        return _match_route(method, path, self.routes)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -343,9 +305,8 @@ def build_payment_app(
 
     Args:
         payments: A configured payments_py.Payments instance.
-        routes: Optional map of "METHOD /path" to RouteConfig (or dict).
-            When empty, the middleware falls back to env vars (NVM_PLAN_ID,
-            NVM_CREDITS_PER_INVOKE, NVM_AGENT_ID) for single-plan deployments.
+        routes: Map of "METHOD /path" to RouteConfig (or dict). Routes
+            that do not match an incoming request pass through ungated.
 
     Returns:
         A FastAPI app instance with PaymentMiddleware applied globally.

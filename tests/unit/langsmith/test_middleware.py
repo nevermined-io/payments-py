@@ -264,18 +264,15 @@ class TestPaymentMiddleware:
         assert X402_HEADERS["PAYMENT_RESPONSE"] not in response.headers
 
 
-class TestEnvVarFallback:
-    def test_env_vars_ignored_when_explicit_routes_configured(
+class TestUnmatchedRoutesPassThrough:
+    def test_unmatched_route_passes_through_even_with_nvm_env_vars_set(
         self, mock_payments, monkeypatch
     ):
-        """Regression: explicit routes + NVM_PLAN_ID set in env -> unmatched
-        paths MUST pass through ungated. The env-var fallback is only meant
-        for single-plan deployments where users have not passed an explicit
-        routes dict. When both are present, the explicit routes win and env
-        vars must NOT act as a catch-all on unmatched paths (otherwise
-        /threads, /assistants, etc. silently get gated by the env plan).
+        """Setting NVM_* env vars in the user's environment must not gate
+        paths the middleware has no route config for. The middleware does
+        not read env vars - it only looks at the explicit routes dict.
         """
-        monkeypatch.setenv("NVM_PLAN_ID", "env-plan-should-not-be-used")
+        monkeypatch.setenv("NVM_PLAN_ID", "irrelevant-env-plan")
         monkeypatch.setenv("NVM_CREDITS_PER_INVOKE", "99")
 
         app = FastAPI()
@@ -290,83 +287,9 @@ class TestEnvVarFallback:
             return JSONResponse({"hit": True})
 
         client = TestClient(app)
-        # Unmatched path -> should pass through (NOT return 402 from env-fallback)
         response = client.get("/ungated")
         assert response.status_code == 200
         mock_payments.facilitator.verify_permissions.assert_not_called()
-
-    def test_env_vars_gate_all_paths_when_no_routes(
-        self, mock_payments, monkeypatch, valid_token
-    ):
-        """NVM_PLAN_ID set + empty routes dict -> every path gets gated."""
-        monkeypatch.setenv("NVM_PLAN_ID", "env-plan")
-        monkeypatch.setenv("NVM_CREDITS_PER_INVOKE", "7")
-        monkeypatch.setenv("NVM_AGENT_ID", "env-agent")
-
-        app = FastAPI()
-        app.add_middleware(PaymentMiddleware, payments=mock_payments, routes={})
-
-        @app.get("/anything")
-        async def anything():
-            return JSONResponse({"hit": True})
-
-        client = TestClient(app)
-        # Without token -> 402 even on a path with no explicit route config
-        no_token = client.get("/anything")
-        assert no_token.status_code == 402
-
-        # With token -> 200, and verify was called with credits=7
-        with_token = client.get(
-            "/anything",
-            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
-        )
-        assert with_token.status_code == 200
-        verify_call = mock_payments.facilitator.verify_permissions.call_args
-        assert verify_call.kwargs["max_amount"] == "7"
-
-    def test_env_vars_disabled_when_plan_id_missing(self, mock_payments, monkeypatch):
-        """No NVM_PLAN_ID -> middleware passes through ungated."""
-        monkeypatch.delenv("NVM_PLAN_ID", raising=False)
-        monkeypatch.delenv("NVM_CREDITS_PER_INVOKE", raising=False)
-        monkeypatch.delenv("NVM_AGENT_ID", raising=False)
-
-        app = FastAPI()
-        app.add_middleware(PaymentMiddleware, payments=mock_payments, routes={})
-
-        @app.get("/anything")
-        async def anything():
-            return JSONResponse({"hit": True})
-
-        client = TestClient(app)
-        response = client.get("/anything")
-
-        assert response.status_code == 200
-        mock_payments.facilitator.verify_permissions.assert_not_called()
-
-    def test_credits_per_invoke_defaults_to_1_on_invalid_value(
-        self, mock_payments, monkeypatch, valid_token, caplog
-    ):
-        monkeypatch.setenv("NVM_PLAN_ID", "env-plan")
-        monkeypatch.setenv("NVM_CREDITS_PER_INVOKE", "not-an-int")
-
-        app = FastAPI()
-        app.add_middleware(PaymentMiddleware, payments=mock_payments, routes={})
-
-        @app.get("/x")
-        async def x():
-            return JSONResponse({"ok": True})
-
-        with caplog.at_level("WARNING"):
-            client = TestClient(app)
-            response = client.get(
-                "/x",
-                headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
-            )
-
-        assert response.status_code == 200
-        verify_call = mock_payments.facilitator.verify_permissions.call_args
-        assert verify_call.kwargs["max_amount"] == "1"
-        assert any("not an integer" in rec.message for rec in caplog.records)
 
 
 class TestRouteConfig:
