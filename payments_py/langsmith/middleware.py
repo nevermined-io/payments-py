@@ -205,7 +205,12 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             self.routes[key] = (
                 value if isinstance(value, RouteConfig) else RouteConfig(**value)
             )
-        self._env_fallback = _env_var_fallback()
+        # Env-var fallback is for single-plan deployments where users want
+        # to gate every path with one config without writing a routes dict.
+        # When routes is non-empty, the user has explicitly opted into per-
+        # route gating - the env vars must not act as a catch-all on
+        # unmatched paths (would silently gate /threads, /assistants, etc.).
+        self._env_fallback = _env_var_fallback() if not self.routes else None
 
     def _resolve_route_config(self, method: str, path: str) -> Optional[RouteConfig]:
         return _match_route(method, path, self.routes) or self._env_fallback

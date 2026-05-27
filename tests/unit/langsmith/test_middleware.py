@@ -265,6 +265,36 @@ class TestPaymentMiddleware:
 
 
 class TestEnvVarFallback:
+    def test_env_vars_ignored_when_explicit_routes_configured(
+        self, mock_payments, monkeypatch
+    ):
+        """Regression: explicit routes + NVM_PLAN_ID set in env -> unmatched
+        paths MUST pass through ungated. The env-var fallback is only meant
+        for single-plan deployments where users have not passed an explicit
+        routes dict. When both are present, the explicit routes win and env
+        vars must NOT act as a catch-all on unmatched paths (otherwise
+        /threads, /assistants, etc. silently get gated by the env plan).
+        """
+        monkeypatch.setenv("NVM_PLAN_ID", "env-plan-should-not-be-used")
+        monkeypatch.setenv("NVM_CREDITS_PER_INVOKE", "99")
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /gated": {"plan_id": "explicit-plan", "credits": 1}},
+        )
+
+        @app.get("/ungated")
+        async def ungated():
+            return JSONResponse({"hit": True})
+
+        client = TestClient(app)
+        # Unmatched path -> should pass through (NOT return 402 from env-fallback)
+        response = client.get("/ungated")
+        assert response.status_code == 200
+        mock_payments.facilitator.verify_permissions.assert_not_called()
+
     def test_env_vars_gate_all_paths_when_no_routes(
         self, mock_payments, monkeypatch, valid_token
     ):
