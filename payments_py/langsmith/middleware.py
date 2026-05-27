@@ -54,8 +54,10 @@ from payments_py.langsmith.spans import (
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
 from payments_py.x402.types import (
+    CreditsCallable,
     PaymentContext,
     PaymentRequiredError,
+    RouteConfig,
     X402PaymentRequired,
 )
 
@@ -72,31 +74,12 @@ except ImportError:  # pragma: no cover
 
 logger = logging.getLogger("payments_py.langsmith.middleware")
 
-CreditsCallable = Callable[[Request], Union[int, Awaitable[int]]]
-
 # x402 v2 HTTP transport header names.
 X402_HEADERS = {
     "PAYMENT_SIGNATURE": "payment-signature",
     "PAYMENT_REQUIRED": "payment-required",
     "PAYMENT_RESPONSE": "payment-response",
 }
-
-
-@dataclass
-class RouteConfig:
-    """Configuration for a protected route under LangSmith Deployment.
-
-    Copied from payments_py.x402.fastapi.RouteConfig so the two extras can
-    evolve independently. Field semantics are identical.
-    """
-
-    plan_id: str
-    credits: Union[int, CreditsCallable] = 1
-    agent_id: Optional[str] = None
-    network: Optional[str] = None
-    scheme: Optional[str] = None
-    description: Optional[str] = None
-    mime_type: Optional[str] = None
 
 
 def _extract_token(request: Request) -> Optional[str]:

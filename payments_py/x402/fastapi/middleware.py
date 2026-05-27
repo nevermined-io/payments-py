@@ -72,11 +72,13 @@ from starlette.responses import JSONResponse, Response
 
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
-from payments_py.x402.types import PaymentContext, VerifyResponse, X402PaymentRequired
-
-# Type alias for dynamic credits function
-# Can be sync or async, takes Request and returns int
-CreditsCallable = Callable[[Request], Union[int, Awaitable[int]]]
+from payments_py.x402.types import (
+    CreditsCallable,
+    PaymentContext,
+    RouteConfig,
+    VerifyResponse,
+    X402PaymentRequired,
+)
 
 # x402 HTTP Transport header names (v2 spec)
 # @see https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md
@@ -88,45 +90,6 @@ X402_HEADERS = {
     # Server sends settlement receipt in this header (base64-encoded)
     "PAYMENT_RESPONSE": "payment-response",
 }
-
-
-@dataclass
-class RouteConfig:
-    """
-    Configuration for a protected route.
-
-    Example with fixed credits:
-        RouteConfig(plan_id="123", credits=5)
-
-    Example with dynamic credits:
-        RouteConfig(
-            plan_id="123",
-            credits=lambda req: calculate_credits(req)
-        )
-
-    Example with async dynamic credits:
-        async def calc_credits(request: Request) -> int:
-            body = await request.json()
-            return len(body.get("messages", [])) * 2
-
-        RouteConfig(plan_id="123", credits=calc_credits)
-    """
-
-    # The Nevermined plan ID that protects this route
-    plan_id: str
-    # Number of credits to charge for this route (default: 1)
-    # Can be a static int or a callable (sync/async) that takes Request and returns int
-    credits: Union[int, CreditsCallable] = 1
-    # Optional agent ID
-    agent_id: Optional[str] = None
-    # Network identifier. Auto-derived from scheme if None.
-    network: Optional[str] = None
-    # x402 scheme. Auto-resolved from plan metadata when None.
-    scheme: Optional[str] = None
-    # Human-readable description of the protected resource
-    description: Optional[str] = None
-    # Expected response MIME type (e.g., "application/json")
-    mime_type: Optional[str] = None
 
 
 # Type for hook callbacks
