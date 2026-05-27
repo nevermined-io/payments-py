@@ -68,9 +68,8 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 from payments_py.langsmith.spans import (
-    abbreviate_token,
     active_run_tree,
-    add_metadata,
+    attach_metadata_safely,
     build_settle_metadata,
     build_verify_metadata,
     redact_metadata_keys,
@@ -81,6 +80,7 @@ from payments_py.x402.helpers import build_payment_required_for_plans
 from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import (
     PaymentContext,
+    PaymentRequiredError,
     SettleResponse,
     X402PaymentRequired,
 )
@@ -120,20 +120,6 @@ def last_settlement() -> Optional[SettleResponse]:
        per-call isolation.
     """
     return _LAST_SETTLEMENT["value"]
-
-
-class PaymentRequiredError(Exception):
-    """Raised when payment verification fails.
-
-    Carries the ``X402PaymentRequired`` object so callers can inspect
-    accepted plans and acquire the correct payment token.
-    """
-
-    def __init__(
-        self, message: str, payment_required: Optional[X402PaymentRequired] = None
-    ):
-        super().__init__(message)
-        self.payment_required = payment_required
 
 
 @dataclass
@@ -207,39 +193,6 @@ def _store_in_configurable(config: Any, key: str, value: Any) -> None:
         configurable[key] = value
 
 
-def _attach_metadata_safely(
-    span: Any,
-    parent_rt: Any,
-    builder: Callable[..., dict],
-    label: str,
-    **builder_kwargs: Any,
-) -> None:
-    """Build metadata via ``builder`` and attach it to ``span`` + ``parent_rt``.
-
-    Wraps the build+attach sequence in a single try/except so observability
-    failures (a builder bug, an ``add_metadata`` exception) are logged at
-    debug and swallowed -- they must never block the payment flow or mask
-    a downstream ``PaymentRequiredError``. ``label`` only affects the log
-    message ("LangSmith <label> metadata attach failed (ignored)").
-
-    Pre-abbreviates any ``token`` kwarg before calling ``builder`` so the
-    raw x402 access token never reaches the frame locals visible to
-    exception enrichers (Sentry's ``logging`` integration, structlog's
-    ``ExceptionRenderer``, etc.). ``exc_info`` is deliberately omitted
-    from the log call for the same reason -- the failure label alone is
-    enough to diagnose observability bugs without dumping locals to a
-    second SaaS destination.
-    """
-    if "token" in builder_kwargs:
-        builder_kwargs["token"] = abbreviate_token(builder_kwargs["token"])
-    try:
-        md = builder(**builder_kwargs)
-        add_metadata(span, md)
-        add_metadata(parent_rt, md)
-    except Exception:
-        logger.debug("LangSmith %s metadata attach failed (ignored)", label)
-
-
 def _verify_payment(
     func: Callable,
     kwargs: dict,
@@ -283,7 +236,7 @@ def _verify_payment(
     ) as vspan:
         # Pre-verify metadata is best-effort -- a build/attach failure here
         # must not block the actual verify call or mask PaymentRequiredError.
-        _attach_metadata_safely(
+        attach_metadata_safely(
             vspan,
             parent_rt,
             build_verify_metadata,
@@ -314,7 +267,7 @@ def _verify_payment(
         # Augment metadata with verification results. Same best-effort
         # guarantee -- observability must not mask the PaymentRequiredError
         # that follows if the verification is invalid.
-        _attach_metadata_safely(
+        attach_metadata_safely(
             vspan,
             parent_rt,
             build_verify_metadata,
@@ -390,7 +343,7 @@ def _settle_payment(
             _store_in_configurable(runnable_config, "payment_settlement", settlement)
             _LAST_SETTLEMENT["value"] = settlement
 
-            _attach_metadata_safely(
+            attach_metadata_safely(
                 sspan,
                 parent_rt,
                 build_settle_metadata,

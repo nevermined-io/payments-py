@@ -6,11 +6,27 @@ and responses used in payment verification and settlement.
 """
 
 from dataclasses import dataclass
-from typing import Literal, Optional, Any, List
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    List,
+    Literal,
+    Optional,
+    Union,
+)
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 from .networks import SupportedNetworks
 from .schemes import SupportedSchemes, X402SchemeType
+
+if TYPE_CHECKING:
+    # Imported under TYPE_CHECKING so this module remains importable in
+    # installations without the [fastapi]/[langsmith] extras (those are
+    # the only consumers of CreditsCallable + RouteConfig). At runtime
+    # the dataclass field's type annotation is not evaluated.
+    from starlette.requests import Request
 
 # Card-delegation providers exposed by the SDK. Kept symmetric with the
 # output side (``PaymentMethodSummary.provider``). If the backend surfaces
@@ -393,3 +409,79 @@ class X402TokenOptions(BaseModel):
         populate_by_name=True,
         from_attributes=True,
     )
+
+
+# Sync or async callable that resolves credits dynamically from a request.
+# Shared between the FastAPI middleware and the LangSmith Deployment
+# middleware (both gate HTTP requests with the same Request shape). The
+# LangChain decorator uses a different signature (Callable[..., int] with
+# {"args": kwargs, "result": ...}) and intentionally keeps its own alias.
+CreditsCallable = Callable[["Request"], Union[int, Awaitable[int]]]
+
+
+@dataclass
+class RouteConfig:
+    """Configuration for a payment-protected route.
+
+    Shared canonical definition for the FastAPI middleware
+    (``payments_py.x402.fastapi.RouteConfig``) and the LangSmith Deployment
+    middleware (``payments_py.langsmith.RouteConfig``). Both extras
+    re-export this class for backwards compatibility.
+
+    Example with fixed credits::
+
+        RouteConfig(plan_id="123", credits=5)
+
+    Example with dynamic credits::
+
+        RouteConfig(
+            plan_id="123",
+            credits=lambda req: calculate_credits(req),
+        )
+
+    Example with async dynamic credits::
+
+        async def calc_credits(request):
+            body = await request.json()
+            return len(body.get("messages", [])) * 2
+
+        RouteConfig(plan_id="123", credits=calc_credits)
+    """
+
+    # The Nevermined plan ID that protects this route
+    plan_id: str
+    # Number of credits to charge for this route (default: 1)
+    # Can be a static int or a callable (sync/async) that takes Request and returns int
+    credits: Union[int, "CreditsCallable"] = 1
+    # Optional agent ID surfaced in the envelope for per-agent reconciliation
+    agent_id: Optional[str] = None
+    # Network identifier. Auto-derived from scheme if None.
+    network: Optional[str] = None
+    # x402 scheme. Auto-resolved from plan metadata when None.
+    scheme: Optional[str] = None
+    # Human-readable description of the protected resource
+    description: Optional[str] = None
+    # Expected response MIME type (e.g., "application/json")
+    mime_type: Optional[str] = None
+
+
+class PaymentRequiredError(Exception):
+    """Raised when x402 payment verification fails.
+
+    Carries the ``X402PaymentRequired`` envelope so callers can inspect
+    accepted plans and acquire the correct payment token.
+
+    Lives in ``payments_py.x402.types`` (not in any extra-specific module)
+    so it can be raised and caught from any integration path - LangChain
+    decorator, LangSmith Deployment middleware, FastAPI middleware - without
+    pulling in unrelated extras at import time. The langchain extra
+    re-exports it as ``payments_py.x402.langchain.PaymentRequiredError``
+    for backwards compatibility.
+    """
+
+    def __init__(
+        self, message: str, payment_required: Optional[X402PaymentRequired] = None
+    ):
+        super().__init__(message)
+        self.message = message
+        self.payment_required = payment_required

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import ExitStack, contextmanager
-from typing import Any, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from payments_py.x402.types import SettleResponse, VerifyResponse
 
@@ -55,6 +55,39 @@ def add_metadata(run_tree: Optional[Any], metadata: dict) -> None:
         run_tree.add_metadata(metadata)
     except Exception:
         logger.debug("LangSmith add_metadata failed (ignored)", exc_info=True)
+
+
+def attach_metadata_safely(
+    span: Optional[Any],
+    parent_rt: Optional[Any],
+    builder: Callable[..., dict],
+    label: str,
+    **builder_kwargs: Any,
+) -> None:
+    """Build metadata via ``builder`` and attach it to ``span`` + ``parent_rt``.
+
+    Wraps the build+attach sequence in a single try/except so observability
+    failures (a builder bug, an ``add_metadata`` exception) are logged at
+    debug and swallowed — they must never block the payment flow or mask a
+    downstream ``PaymentRequiredError``. Critically: a builder exception is
+    NOT allowed to abort the surrounding lifecycle, so a failure in
+    ``build_settle_metadata`` cannot prevent the ``payment-response``
+    settlement header from being attached to the response.
+
+    Pre-abbreviates any ``token`` kwarg before calling ``builder`` so the
+    raw x402 access token never reaches the frame locals visible to
+    exception enrichers (Sentry's ``logging`` integration, structlog's
+    ``ExceptionRenderer``, etc.). ``exc_info`` is deliberately omitted
+    from the log call for the same reason.
+    """
+    if "token" in builder_kwargs:
+        builder_kwargs["token"] = abbreviate_token(builder_kwargs["token"])
+    try:
+        md = builder(**builder_kwargs)
+        add_metadata(span, md)
+        add_metadata(parent_rt, md)
+    except Exception:
+        logger.debug("LangSmith %s metadata attach failed (ignored)", label)
 
 
 def redact_metadata_keys(run_tree: Optional[Any], *keys: str) -> None:
