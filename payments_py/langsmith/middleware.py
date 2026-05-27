@@ -29,18 +29,39 @@ more than payment gating.
 
 import asyncio
 import base64
+import contextlib
 import inspect
 import logging
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Union
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from payments_py.langsmith.spans import (
+    add_metadata,
+    build_settle_metadata,
+    build_verify_metadata,
+    settlement_span,
+    verify_span,
+)
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
 from payments_py.x402.types import PaymentContext, X402PaymentRequired
+
+# LangSmith is a dep of the [langsmith] extra. The sentinel handles the
+# (unusual) case where this module is imported via a different extra and
+# langsmith isn't present - the parent trace becomes a no-op.
+try:
+    import langsmith as _ls
+
+    _LANGSMITH_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _ls = None  # type: ignore[assignment]
+    _LANGSMITH_AVAILABLE = False
 
 logger = logging.getLogger("payments_py.langsmith.middleware")
 
@@ -123,6 +144,50 @@ async def _resolve_credits(
     if inspect.isawaitable(result):
         return await result
     return result
+
+
+@contextmanager
+def _x402_parent_trace(method: str, path: str, plan_id: str) -> Iterator[Optional[Any]]:
+    """Open a top-level LangSmith trace for the x402 lifecycle.
+
+    Yields the underlying RunTree if LangSmith is available and tracing is
+    configured, else None. Trace setup errors are swallowed so they cannot
+    break the payment flow. Mirrors the ExitStack pattern in
+    payments_py.langsmith.spans._open_nvm_span.
+
+    The graph's own trace (emitted by the langgraph runtime when
+    LANGSMITH_TRACING is enabled) does NOT nest under this parent - the
+    langgraph-api layer initiates its own top-level trace at the
+    graph-invocation boundary. They appear as sibling top-level traces.
+    """
+    if not _LANGSMITH_AVAILABLE:
+        yield None
+        return
+    with contextlib.ExitStack() as stack:
+        try:
+            parent = stack.enter_context(
+                _ls.trace(  # type: ignore[union-attr]
+                    name="nvm:x402-request",
+                    run_type="chain",
+                    inputs={"method": method, "path": path, "plan_id": plan_id},
+                )
+            )
+        except Exception:
+            logger.debug(
+                "nvm:x402-request parent trace setup failed (ignored)",
+                exc_info=True,
+            )
+            yield None
+            return
+        yield parent
+
+
+def _attach_to_span_and_parent(
+    span_run: Optional[Any], parent_run: Optional[Any], metadata: dict
+) -> None:
+    """Attach the same metadata dict to both the nvm child span and the parent trace."""
+    add_metadata(span_run, metadata)
+    add_metadata(parent_run, metadata)
 
 
 def _send_payment_required(
@@ -212,91 +277,160 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             environment=getattr(self.payments, "environment_name", None),
         )
 
+        plan_ids = [route_config.plan_id]
         token = _extract_token(request)
-        if not token:
-            return _send_payment_required(
-                payment_required,
-                f"Missing x402 payment token. Send token in {X402_HEADERS['PAYMENT_SIGNATURE']} header.",
-            )
 
-        # Verify phase. Failures here are payment-level - return 402.
-        # Agent failures (in call_next below) are deliberately NOT caught here
-        # so they propagate to Starlette's exception handler as 5xx.
-        try:
-            credits_to_charge = await _resolve_credits(route_config.credits, request)
+        # Parent trace - opened around the full payment lifecycle. Verify
+        # and settle child spans nest under it. The graph's own trace
+        # (when LANGSMITH_TRACING is enabled) appears as a sibling.
+        with _x402_parent_trace(method, path, route_config.plan_id) as parent_rt:
+            # Verify phase - opened BEFORE the token check so failed
+            # discovery probes (no token) still emit an identifiable
+            # nvm:verify run with static nvm.* metadata.
+            verify_start = time.monotonic()
+            with verify_span(
+                plan_ids=plan_ids,
+                scheme=resolved_scheme,
+                network=resolved_network,
+                agent_id=route_config.agent_id,
+            ) as verify_run:
+                if not token:
+                    _attach_to_span_and_parent(
+                        verify_run,
+                        parent_rt,
+                        build_verify_metadata(
+                            plan_ids=plan_ids,
+                            scheme=resolved_scheme,
+                            network=resolved_network,
+                            agent_id=route_config.agent_id,
+                        ),
+                    )
+                    return _send_payment_required(
+                        payment_required,
+                        f"Missing x402 payment token. Send token in {X402_HEADERS['PAYMENT_SIGNATURE']} header.",
+                    )
 
-            verification = await asyncio.to_thread(
-                self.payments.facilitator.verify_permissions,
+                try:
+                    credits_to_charge = await _resolve_credits(
+                        route_config.credits, request
+                    )
+                    verification = await asyncio.to_thread(
+                        self.payments.facilitator.verify_permissions,
+                        payment_required=payment_required,
+                        x402_access_token=token,
+                        max_amount=str(credits_to_charge),
+                    )
+                except Exception as error:
+                    logger.error(
+                        "x402 verify failed for plan_id=%s: %s",
+                        route_config.plan_id,
+                        error,
+                    )
+                    _attach_to_span_and_parent(
+                        verify_run,
+                        parent_rt,
+                        build_verify_metadata(
+                            plan_ids=plan_ids,
+                            scheme=resolved_scheme,
+                            network=resolved_network,
+                            agent_id=route_config.agent_id,
+                            token=token,
+                        ),
+                    )
+                    return _send_payment_required(
+                        payment_required,
+                        str(error) or "Payment verification failed",
+                    )
+
+                verify_duration_ms = (time.monotonic() - verify_start) * 1000
+                _attach_to_span_and_parent(
+                    verify_run,
+                    parent_rt,
+                    build_verify_metadata(
+                        plan_ids=plan_ids,
+                        scheme=resolved_scheme,
+                        network=resolved_network,
+                        agent_id=route_config.agent_id,
+                        verification=verification if verification.is_valid else None,
+                        duration_ms=verify_duration_ms,
+                        token=token,
+                    ),
+                )
+
+            if not verification.is_valid:
+                return _send_payment_required(
+                    payment_required,
+                    verification.invalid_reason
+                    or "Insufficient credits or invalid token",
+                )
+
+            request.state.payment_context = PaymentContext(
+                token=token,
                 payment_required=payment_required,
-                x402_access_token=token,
-                max_amount=str(credits_to_charge),
-            )
-        except Exception as error:
-            logger.error(
-                "x402 verify failed for plan_id=%s: %s",
-                route_config.plan_id,
-                error,
-            )
-            return _send_payment_required(
-                payment_required,
-                str(error) or "Payment verification failed",
-            )
-
-        if not verification.is_valid:
-            return _send_payment_required(
-                payment_required,
-                verification.invalid_reason or "Insufficient credits or invalid token",
-            )
-
-        request.state.payment_context = PaymentContext(
-            token=token,
-            payment_required=payment_required,
-            credits_to_settle=credits_to_charge,
-            verified=True,
-            agent_request_id=verification.agent_request_id,
-            agent_request=verification.agent_request,
-        )
-
-        # Agent runs here. Exceptions propagate naturally - the buyer is not
-        # charged for failed runs (we skip settle on non-2xx below).
-        response = await call_next(request)
-
-        if not 200 <= response.status_code < 300:
-            return response
-
-        # Settle phase. Failures here are logged but do not surface to the
-        # client - the buyer already received the value.
-        try:
-            settlement = await asyncio.to_thread(
-                self.payments.facilitator.settle_permissions,
-                payment_required=payment_required,
-                x402_access_token=token,
-                max_amount=str(credits_to_charge),
+                credits_to_settle=credits_to_charge,
+                verified=True,
                 agent_request_id=verification.agent_request_id,
+                agent_request=verification.agent_request,
             )
-        except Exception as settle_error:
-            logger.error(
-                "x402 settlement failed for plan_id=%s after 2xx response: %s",
-                route_config.plan_id,
-                settle_error,
+
+            # Agent runs here. Exceptions propagate naturally - the buyer is
+            # not charged for failed runs (we skip settle on non-2xx below).
+            response = await call_next(request)
+
+            if not 200 <= response.status_code < 300:
+                return response
+
+            # Settle phase. Failures here are logged but do not surface to
+            # the client - the buyer already received the value.
+            settle_start = time.monotonic()
+            with settlement_span(
+                plan_ids=plan_ids,
+                agent_id=route_config.agent_id,
+            ) as settle_run:
+                try:
+                    settlement = await asyncio.to_thread(
+                        self.payments.facilitator.settle_permissions,
+                        payment_required=payment_required,
+                        x402_access_token=token,
+                        max_amount=str(credits_to_charge),
+                        agent_request_id=verification.agent_request_id,
+                    )
+                except Exception as settle_error:
+                    logger.error(
+                        "x402 settlement failed for plan_id=%s after 2xx response: %s",
+                        route_config.plan_id,
+                        settle_error,
+                    )
+                    return response
+
+                settle_duration_ms = (time.monotonic() - settle_start) * 1000
+                _attach_to_span_and_parent(
+                    settle_run,
+                    parent_rt,
+                    build_settle_metadata(
+                        settlement=settlement,
+                        plan_ids=plan_ids,
+                        agent_id=route_config.agent_id,
+                        duration_ms=settle_duration_ms,
+                        token=token,
+                    ),
+                )
+
+            settlement_json = settlement.model_dump_json(by_alias=True)
+            settlement_base64 = base64.b64encode(settlement_json.encode()).decode()
+
+            body = b""
+            async for chunk in response.body_iterator:
+                body += chunk
+
+            new_response = Response(
+                content=body,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                media_type=response.media_type,
             )
-            return response
-
-        settlement_json = settlement.model_dump_json(by_alias=True)
-        settlement_base64 = base64.b64encode(settlement_json.encode()).decode()
-
-        body = b""
-        async for chunk in response.body_iterator:
-            body += chunk
-
-        new_response = Response(
-            content=body,
-            status_code=response.status_code,
-            headers=dict(response.headers),
-            media_type=response.media_type,
-        )
-        new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = settlement_base64
-        return new_response
+            new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = settlement_base64
+            return new_response
 
 
 def build_payment_app(
