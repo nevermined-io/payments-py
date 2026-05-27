@@ -71,6 +71,7 @@ from payments_py.langsmith.spans import (
     abbreviate_token,
     active_run_tree,
     add_metadata,
+    attach_metadata_safely as _attach_metadata_safely,
     build_settle_metadata,
     build_verify_metadata,
     redact_metadata_keys,
@@ -192,39 +193,6 @@ def _store_in_configurable(config: Any, key: str, value: Any) -> None:
         configurable = getattr(config, "configurable", None)
     if isinstance(configurable, dict):
         configurable[key] = value
-
-
-def _attach_metadata_safely(
-    span: Any,
-    parent_rt: Any,
-    builder: Callable[..., dict],
-    label: str,
-    **builder_kwargs: Any,
-) -> None:
-    """Build metadata via ``builder`` and attach it to ``span`` + ``parent_rt``.
-
-    Wraps the build+attach sequence in a single try/except so observability
-    failures (a builder bug, an ``add_metadata`` exception) are logged at
-    debug and swallowed -- they must never block the payment flow or mask
-    a downstream ``PaymentRequiredError``. ``label`` only affects the log
-    message ("LangSmith <label> metadata attach failed (ignored)").
-
-    Pre-abbreviates any ``token`` kwarg before calling ``builder`` so the
-    raw x402 access token never reaches the frame locals visible to
-    exception enrichers (Sentry's ``logging`` integration, structlog's
-    ``ExceptionRenderer``, etc.). ``exc_info`` is deliberately omitted
-    from the log call for the same reason -- the failure label alone is
-    enough to diagnose observability bugs without dumping locals to a
-    second SaaS destination.
-    """
-    if "token" in builder_kwargs:
-        builder_kwargs["token"] = abbreviate_token(builder_kwargs["token"])
-    try:
-        md = builder(**builder_kwargs)
-        add_metadata(span, md)
-        add_metadata(parent_rt, md)
-    except Exception:
-        logger.debug("LangSmith %s metadata attach failed (ignored)", label)
 
 
 def _verify_payment(

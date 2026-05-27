@@ -37,12 +37,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Union
 
+from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from payments_py.langsmith.spans import (
-    add_metadata,
+    attach_metadata_safely,
     build_settle_metadata,
     build_verify_metadata,
     settlement_span,
@@ -186,14 +187,6 @@ def _x402_parent_trace(method: str, path: str, plan_id: str) -> Iterator[Optiona
         yield parent
 
 
-def _attach_to_span_and_parent(
-    span_run: Optional[Any], parent_run: Optional[Any], metadata: dict
-) -> None:
-    """Attach the same metadata dict to both the nvm child span and the parent trace."""
-    add_metadata(span_run, metadata)
-    add_metadata(parent_run, metadata)
-
-
 def _send_payment_required(
     payment_required: X402PaymentRequired, message: str
 ) -> JSONResponse:
@@ -304,15 +297,15 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     agent_id=route_config.agent_id,
                 ) as verify_run:
                     if not token:
-                        _attach_to_span_and_parent(
+                        attach_metadata_safely(
                             verify_run,
                             parent_rt,
-                            build_verify_metadata(
-                                plan_ids=plan_ids,
-                                scheme=resolved_scheme,
-                                network=resolved_network,
-                                agent_id=route_config.agent_id,
-                            ),
+                            build_verify_metadata,
+                            "verify",
+                            plan_ids=plan_ids,
+                            scheme=resolved_scheme,
+                            network=resolved_network,
+                            agent_id=route_config.agent_id,
                         )
                         raise PaymentRequiredError(
                             f"Missing x402 payment token. Send token in {X402_HEADERS['PAYMENT_SIGNATURE']} header.",
@@ -337,16 +330,16 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                             route_config.plan_id,
                             error,
                         )
-                        _attach_to_span_and_parent(
+                        attach_metadata_safely(
                             verify_run,
                             parent_rt,
-                            build_verify_metadata(
-                                plan_ids=plan_ids,
-                                scheme=resolved_scheme,
-                                network=resolved_network,
-                                agent_id=route_config.agent_id,
-                                token=token,
-                            ),
+                            build_verify_metadata,
+                            "verify",
+                            plan_ids=plan_ids,
+                            scheme=resolved_scheme,
+                            network=resolved_network,
+                            agent_id=route_config.agent_id,
+                            token=token,
                         )
                         raise PaymentRequiredError(
                             str(error) or "Payment verification failed",
@@ -354,20 +347,18 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                         )
 
                     verify_duration_ms = (time.monotonic() - verify_start) * 1000
-                    _attach_to_span_and_parent(
+                    attach_metadata_safely(
                         verify_run,
                         parent_rt,
-                        build_verify_metadata(
-                            plan_ids=plan_ids,
-                            scheme=resolved_scheme,
-                            network=resolved_network,
-                            agent_id=route_config.agent_id,
-                            verification=(
-                                verification if verification.is_valid else None
-                            ),
-                            duration_ms=verify_duration_ms,
-                            token=token,
-                        ),
+                        build_verify_metadata,
+                        "verify",
+                        plan_ids=plan_ids,
+                        scheme=resolved_scheme,
+                        network=resolved_network,
+                        agent_id=route_config.agent_id,
+                        verification=(verification if verification.is_valid else None),
+                        duration_ms=verify_duration_ms,
+                        token=token,
                     )
 
                     if not verification.is_valid:
@@ -414,16 +405,16 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                             agent_request_id=verification.agent_request_id,
                         )
                         settle_duration_ms = (time.monotonic() - settle_start) * 1000
-                        _attach_to_span_and_parent(
+                        attach_metadata_safely(
                             settle_run,
                             parent_rt,
-                            build_settle_metadata(
-                                settlement=settlement,
-                                plan_ids=plan_ids,
-                                agent_id=route_config.agent_id,
-                                duration_ms=settle_duration_ms,
-                                token=token,
-                            ),
+                            build_settle_metadata,
+                            "settle",
+                            settlement=settlement,
+                            plan_ids=plan_ids,
+                            agent_id=route_config.agent_id,
+                            duration_ms=settle_duration_ms,
+                            token=token,
                         )
                 except Exception as settle_error:
                     # Settle span saw the exception in its __exit__ and is
@@ -496,8 +487,6 @@ def build_payment_app(
         # langgraph.json
         # { "http": { "app": "./nvm_app.py:app" } }
     """
-    from fastapi import FastAPI
-
     app = FastAPI()
     app.add_middleware(PaymentMiddleware, payments=payments, routes=routes or {})
     return app
