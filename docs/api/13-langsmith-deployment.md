@@ -170,4 +170,4 @@ Verification failures (missing token, invalid signature, insufficient credits) r
 
 - [x402 Protocol](./11-x402.md) for envelope and header semantics.
 - [LangChain Integration](./12-langchain-integration.md) for the `@requires_payment` decorator (tool-time gating).
-- [`payments_py.langsmith.spans`](../reference/langsmith.md) for the observability helpers used internally.
+- `payments_py.langsmith.spans` for the observability helpers used internally (verify_span, settlement_span, attach_metadata_safely).
