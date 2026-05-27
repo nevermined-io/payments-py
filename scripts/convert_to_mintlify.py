@@ -74,6 +74,11 @@ FILE_MAPPING = {
         "icon": "link-simple",
         "description": "Decorator, helpers, and exceptions for protecting LangChain and LangGraph tools",
     },
+    "13-langsmith-deployment.md": {
+        "target": "langsmith-deployment-module.mdx",
+        "icon": "graduation-cap",
+        "description": "Starlette middleware for gating a LangGraph agent deployed to LangSmith Deployment with x402",
+    },
 }
 
 # Link mapping for internal references
@@ -90,6 +95,7 @@ LINK_MAPPING = {
     "10-a2a-integration.md": "/docs/api-reference/python/a2a-module",
     "11-x402.md": "/docs/api-reference/python/x402-module",
     "12-langchain-integration.md": "/docs/api-reference/python/langchain-module",
+    "13-langsmith-deployment.md": "/docs/api-reference/python/langsmith-deployment-module",
 }
 
 
