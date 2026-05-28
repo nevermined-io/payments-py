@@ -391,6 +391,7 @@ Example discovery response:
 ```json
 {
   "x402Version": 2,
+  "stability": "experimental",
   "transport": "mcp-streamable-http",
   "resource": "https://agent.example.com/mcp",
   "mcpEndpoint": "https://agent.example.com/mcp",
@@ -399,7 +400,6 @@ Example discovery response:
   "paymentRequiredHeader": "payment-required",
   "paymentResponseHeader": "payment-response",
   "paymentSignatureHeader": "payment-signature",
-  "authorizationHeader": "Authorization: Bearer <x402 access token>",
   "statusCodes": {
     "mcpOAuthMissingCredentials": 401,
     "standardX402MissingPayment": 402
@@ -412,6 +412,8 @@ This lets:
 - MCP-native clients follow OAuth 2.1 and send `Authorization: Bearer <token>`.
 - x402-aware clients discover the payment headers and endpoint before calling `/mcp`.
 - Browser-based agents read payment challenge/response headers because CORS allows and exposes `payment-signature`, `payment-required`, and `payment-response`.
+
+The x402 discovery shape is marked `experimental` and may evolve as MCP transport support aligns with the x402 v2 MCP transport specification.
 
 ## Next Steps
 

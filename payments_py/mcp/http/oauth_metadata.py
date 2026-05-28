@@ -27,6 +27,7 @@ from ..types.http_types import (
     OidcConfiguration,
     ProtectedResourceMetadata,
     ServerInfoResponse,
+    X402PaymentDiscoveryMetadata,
 )
 
 # =============================================================================
@@ -116,6 +117,8 @@ _DEFAULT_SCOPES: List[str] = [
     "mcp:tools",
 ]
 
+X402_VERSION = 2
+
 
 # =============================================================================
 # METADATA BUILDERS
@@ -196,7 +199,9 @@ def build_mcp_protected_resource_metadata(
     }
 
 
-def build_x402_payment_discovery_metadata(config: OAuthConfig) -> Dict[str, object]:
+def build_x402_payment_discovery_metadata(
+    config: OAuthConfig,
+) -> X402PaymentDiscoveryMetadata:
     """Build x402 discovery metadata for an MCP server.
 
     MCP clients must keep the OAuth 2.1 ``401`` + ``WWW-Authenticate`` flow,
@@ -207,7 +212,7 @@ def build_x402_payment_discovery_metadata(config: OAuthConfig) -> Dict[str, obje
     with both ecosystems.
 
     Args:
-        config: OAuth configuration including baseUrl and tools list.
+        config: OAuth configuration including baseUrl.
 
     Returns:
         x402 payment discovery metadata response dict.
@@ -217,7 +222,6 @@ def build_x402_payment_discovery_metadata(config: OAuthConfig) -> Dict[str, obje
         ...     "baseUrl": "http://localhost:5001",
         ...     "agentId": "agent_123",
         ...     "environment": "staging_sandbox",
-        ...     "tools": ["hello_world"],
         ... })
         >>> metadata["paymentRequiredHeader"]
         'payment-required'
@@ -225,7 +229,8 @@ def build_x402_payment_discovery_metadata(config: OAuthConfig) -> Dict[str, obje
     base_url = config["baseUrl"].rstrip("/")
 
     return {
-        "x402Version": 2,
+        "x402Version": X402_VERSION,
+        "stability": "experimental",
         "resource": f"{base_url}/mcp",
         "transport": "mcp-streamable-http",
         "mcpEndpoint": f"{base_url}/mcp",
@@ -238,19 +243,16 @@ def build_x402_payment_discovery_metadata(config: OAuthConfig) -> Dict[str, obje
         "paymentRequiredHeader": "payment-required",
         "paymentResponseHeader": "payment-response",
         "paymentSignatureHeader": "payment-signature",
-        "authorizationHeader": "Authorization: Bearer <x402 access token>",
         "statusCodes": {
             "mcpOAuthMissingCredentials": 401,
             "standardX402MissingPayment": 402,
         },
         "clientHints": [
             "MCP-native clients should follow OAuth discovery and send Authorization: Bearer.",
+            "Send the resulting bearer token in the Authorization header.",
             "x402-native clients can read this document before calling /mcp.",
             "Do not replace MCP's 401 challenge with 402 on the streamable HTTP endpoint.",
         ],
-        "tools": config.get("tools") or [],
-        "resources": config.get("resources") or [],
-        "prompts": config.get("prompts") or [],
     }
 
 

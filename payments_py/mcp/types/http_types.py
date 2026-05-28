@@ -238,6 +238,38 @@ class McpProtectedResourceMetadata(TypedDict, total=False):
     mcp_capabilities: Optional[Dict[str, Any]]
 
 
+class X402PaymentDiscoveryMetadata(TypedDict, total=False):
+    """x402 discovery metadata for MCP payment-aware clients.
+
+    Attributes:
+        x402Version: x402 protocol version advertised by the discovery document.
+        stability: Stability marker for the experimental discovery shape.
+        resource: MCP protected resource URL.
+        transport: MCP transport this payment metadata applies to.
+        mcpEndpoint: MCP endpoint URL.
+        oauthProtectedResourceMetadata: MCP OAuth protected resource metadata URL.
+        authorizationServerMetadata: OAuth authorization server metadata URL.
+        paymentRequiredHeader: Header name for payment challenge data.
+        paymentResponseHeader: Header name for payment settlement response data.
+        paymentSignatureHeader: Header name for payment signature data.
+        statusCodes: HTTP status-code mapping for OAuth and x402 flows.
+        clientHints: Human-readable client integration hints.
+    """
+
+    x402Version: int
+    stability: str
+    resource: str
+    transport: str
+    mcpEndpoint: str
+    oauthProtectedResourceMetadata: str
+    authorizationServerMetadata: str
+    paymentRequiredHeader: str
+    paymentResponseHeader: str
+    paymentSignatureHeader: str
+    statusCodes: Dict[str, int]
+    clientHints: List[str]
+
+
 class AuthorizationServerMetadata(TypedDict, total=False):
     """OAuth Authorization Server Metadata (RFC 8414).
 

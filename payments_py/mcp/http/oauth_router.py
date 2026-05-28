@@ -315,6 +315,7 @@ def create_cors_middleware(origins: Union[str, List[str]] = "*") -> Dict[str, An
         ],
         "expose_headers": [
             "mcp-session-id",
+            "payment-signature",
             "payment-required",
             "payment-response",
         ],

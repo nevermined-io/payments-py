@@ -316,15 +316,13 @@ class TestMcpOAuthDiscoveryEndpoints:
 
             data = response.json()
             assert data["x402Version"] == 2
+            assert data["stability"] == "experimental"
             assert data["transport"] == "mcp-streamable-http"
             assert data["resource"] == f"{base_url}/mcp"
             assert data["mcpEndpoint"] == f"{base_url}/mcp"
             assert data["paymentRequiredHeader"] == "payment-required"
             assert data["paymentSignatureHeader"] == "payment-signature"
             assert data["paymentResponseHeader"] == "payment-response"
-            assert data["authorizationHeader"] == (
-                "Authorization: Bearer <x402 access token>"
-            )
             assert data["statusCodes"] == {
                 "mcpOAuthMissingCredentials": 401,
                 "standardX402MissingPayment": 402,
@@ -332,7 +330,10 @@ class TestMcpOAuthDiscoveryEndpoints:
             assert data["oauthProtectedResourceMetadata"] == (
                 f"{base_url}/.well-known/oauth-protected-resource/mcp"
             )
-            assert "weather" in data["tools"]
+            assert "tools" not in data
+            assert "resources" not in data
+            assert "prompts" not in data
+            assert "authorizationHeader" not in data
         finally:
             await server_data["result"]["stop"]()
             await asyncio.sleep(0.3)
