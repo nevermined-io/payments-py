@@ -193,6 +193,41 @@ class TestPaymentMiddleware:
         assert response.status_code == 200
         assert response.json()["item_id"] == "item-456"
 
+    def test_agent_failure_propagates_as_5xx(self, mock_payments, valid_token):
+        """Regression: handler raises -> response is 5xx, NOT 402.
+
+        Buyers are not charged for failed runs. Verify already happened
+        (so the buyer's balance lock was set in the facilitator) but
+        settle_permissions MUST NOT fire on a non-2xx response.
+
+        Before the Sprint 3 backport, the outer try/except in dispatch
+        wrapped ``await call_next(request)`` and silently converted any
+        handler exception into a 402 - so a buyer hitting a broken
+        endpoint would see 'Payment Required' and assume their token was
+        bad. The fix splits the try/except so call_next is outside the
+        verify-error catch.
+        """
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /explode": {"plan_id": "test-plan-123", "credits": 1}},
+        )
+
+        @app.post("/explode")
+        async def explode():
+            raise RuntimeError("agent blew up")
+
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post(
+            "/explode",
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token},
+        )
+
+        assert response.status_code == 500
+        mock_payments.facilitator.verify_permissions.assert_called_once()
+        mock_payments.facilitator.settle_permissions.assert_not_called()
+
 
 class TestRouteConfig:
     """Tests for RouteConfig dataclass."""

@@ -63,13 +63,25 @@ Client-side flow::
 import functools
 import inspect
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
+from payments_py.langsmith.spans import (
+    active_run_tree,
+    attach_metadata_safely,
+    build_settle_metadata,
+    build_verify_metadata,
+    redact_metadata_keys,
+    settlement_span,
+    verify_span,
+)
 from payments_py.x402.helpers import build_payment_required_for_plans
 from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.types import (
     PaymentContext,
+    PaymentRequiredError,
+    SettleResponse,
     X402PaymentRequired,
 )
 
@@ -78,18 +90,36 @@ logger = logging.getLogger(__name__)
 CreditsCallable = Callable[..., int]
 
 
-class PaymentRequiredError(Exception):
-    """Raised when payment verification fails.
+# Module-level holder for the most recent settlement receipt. LangGraph runs
+# tools inside worker contexts that do not propagate ContextVar mutations back
+# to the caller, and it copies ``RunnableConfig.configurable`` per node, so
+# neither of those channels surfaces the receipt to the buyer's outer scope.
+# A module-level slot is the simplest reliable signal. It is intentionally
+# single-tenant — if the same process runs multiple concurrent settlements,
+# the last writer wins. For multi-tenant use cases, surface the receipt via
+# a callback or via observability (see Sprint 1 of the LangChain epic).
+_LAST_SETTLEMENT: dict[str, Optional[SettleResponse]] = {"value": None}
 
-    Carries the ``X402PaymentRequired`` object so callers can inspect
-    accepted plans and acquire the correct payment token.
+
+def last_settlement() -> Optional[SettleResponse]:
+    """Return the most recent ``SettleResponse`` produced by ``@requires_payment``.
+
+    Use this after invoking a LangChain/LangGraph runnable whose tool is
+    decorated with :func:`requires_payment` to recover the settlement
+    receipt (``credits_redeemed``, ``remaining_balance``, ``transaction``,
+    ``network``, ``payer``) without threading it back through the
+    runnable config (which LangGraph copies per node).
+
+    Returns ``None`` if no settlement has happened yet in this process, or
+    if the most recent invocation raised before reaching the settle phase.
+
+    .. note::
+       This accessor reads from a module-level slot. In multi-tenant
+       processes (e.g. a server handling concurrent settlements), the value
+       reflects whichever invocation settled most recently — there is no
+       per-call isolation.
     """
-
-    def __init__(
-        self, message: str, payment_required: Optional[X402PaymentRequired] = None
-    ):
-        super().__init__(message)
-        self.payment_required = payment_required
+    return _LAST_SETTLEMENT["value"]
 
 
 @dataclass
@@ -183,29 +213,80 @@ def _verify_payment(
         scheme=resolved_scheme,
     )
 
-    token = _extract_payment_token(runnable_config)
-    if not token:
-        raise PaymentRequiredError(
-            "Payment required: missing payment_token in config['configurable']",
-            payment_required,
+    parent_rt = active_run_tree()
+    # LangChain auto-captures every key in config["configurable"] into the
+    # parent tool span's metadata, and child spans we create inherit that
+    # metadata at construction time. Strip the full x402 access token from
+    # the parent BEFORE opening verify_span so neither the parent nor the
+    # child carries the raw credential. The abbreviated nvm.payment_token
+    # remains available for correlation.
+    redact_metadata_keys(parent_rt, "payment_token")
+    verify_started = time.monotonic()
+    # Open the verify span BEFORE the token-presence check so failed probes
+    # (no payment_token in config) still produce a clearly-named span and
+    # have the static nvm.* attrs (plan_ids, scheme, network, agent_id)
+    # attached to both the span and the parent tool span. Without this,
+    # discovery-probe traces look like generic LangChain failures with no
+    # Nevermined-related metadata.
+    with verify_span(
+        plan_ids=config.plan_ids,
+        scheme=resolved_scheme,
+        network=config.network,
+        agent_id=config.agent_id,
+    ) as vspan:
+        # Pre-verify metadata is best-effort -- a build/attach failure here
+        # must not block the actual verify call or mask PaymentRequiredError.
+        attach_metadata_safely(
+            vspan,
+            parent_rt,
+            build_verify_metadata,
+            "pre-verify",
+            plan_ids=config.plan_ids,
+            scheme=resolved_scheme,
+            network=config.network,
+            agent_id=config.agent_id,
         )
 
-    credits_pre = _resolve_credits_pre(config.credits, kwargs)
-    # For verification, use pre-resolved credits or default to 1
-    credits_to_charge = credits_pre if credits_pre is not None else 1
+        token = _extract_payment_token(runnable_config)
+        if not token:
+            raise PaymentRequiredError(
+                "Payment required: missing payment_token in config['configurable']",
+                payment_required,
+            )
 
-    verification = config.payments.facilitator.verify_permissions(
-        payment_required=payment_required,
-        x402_access_token=token,
-        max_amount=str(credits_to_charge),
-    )
+        credits_pre = _resolve_credits_pre(config.credits, kwargs)
+        # For verification, use pre-resolved credits or default to 1
+        credits_to_charge = credits_pre if credits_pre is not None else 1
 
-    if not verification.is_valid:
-        reason = verification.invalid_reason or "Payment verification failed"
-        raise PaymentRequiredError(
-            f"Payment verification failed: {reason}",
-            payment_required,
+        verification = config.payments.facilitator.verify_permissions(
+            payment_required=payment_required,
+            x402_access_token=token,
+            max_amount=str(credits_to_charge),
         )
+
+        # Augment metadata with verification results. Same best-effort
+        # guarantee -- observability must not mask the PaymentRequiredError
+        # that follows if the verification is invalid.
+        attach_metadata_safely(
+            vspan,
+            parent_rt,
+            build_verify_metadata,
+            "verify",
+            plan_ids=config.plan_ids,
+            scheme=resolved_scheme,
+            network=config.network,
+            agent_id=config.agent_id,
+            verification=verification,
+            duration_ms=(time.monotonic() - verify_started) * 1000,
+            token=token,
+        )
+
+        if not verification.is_valid:
+            reason = verification.invalid_reason or "Payment verification failed"
+            raise PaymentRequiredError(
+                f"Payment verification failed: {reason}",
+                payment_required,
+            )
 
     payment_context = PaymentContext(
         token=token,
@@ -229,8 +310,7 @@ def _settle_payment(
     verified: _VerifiedPayment,
     result: Any,
     kwargs: dict,
-    payments: Any,
-    credits_cfg: Union[int, CreditsCallable],
+    config: _PaymentConfig,
     runnable_config: Any,
 ) -> None:
     """Settle credits after successful tool execution.
@@ -238,17 +318,42 @@ def _settle_payment(
     Resolves dynamic credits post-execution (if callable) and stores
     the settlement response in ``config["configurable"]["payment_settlement"]``.
     """
-    final_credits = _resolve_credits_post(credits_cfg, kwargs, result)
+    final_credits = _resolve_credits_post(config.credits, kwargs, result)
 
+    plan_ids = [a.plan_id for a in verified.payment_required.accepts if a.plan_id]
+
+    parent_rt = active_run_tree()
+    settle_started = time.monotonic()
     try:
-        settlement = payments.facilitator.settle_permissions(
-            payment_required=verified.payment_required,
-            x402_access_token=verified.token,
-            max_amount=str(final_credits),
-            agent_request_id=verified.payment_context.agent_request_id,
-        )
+        with settlement_span(
+            plan_ids=plan_ids,
+            agent_id=config.agent_id,
+        ) as sspan:
+            settlement = config.payments.facilitator.settle_permissions(
+                payment_required=verified.payment_required,
+                x402_access_token=verified.token,
+                max_amount=str(final_credits),
+                agent_request_id=verified.payment_context.agent_request_id,
+            )
 
-        _store_in_configurable(runnable_config, "payment_settlement", settlement)
+            # Persist the receipt BEFORE building metadata -- the on-chain
+            # settle already happened, so a metadata-build failure must not
+            # strand local state (`last_settlement()` would return stale or
+            # `None`, and configurable["payment_settlement"] would be missing).
+            _store_in_configurable(runnable_config, "payment_settlement", settlement)
+            _LAST_SETTLEMENT["value"] = settlement
+
+            attach_metadata_safely(
+                sspan,
+                parent_rt,
+                build_settle_metadata,
+                "settle",
+                settlement=settlement,
+                plan_ids=plan_ids,
+                agent_id=config.agent_id,
+                duration_ms=(time.monotonic() - settle_started) * 1000,
+                token=verified.token,
+            )
 
     except Exception as settle_error:
         logger.warning("Payment settlement failed: %s", settle_error)
@@ -288,6 +393,17 @@ def requires_payment(
 
             When callable, ``ctx`` is ``{"args": <tool kwargs>, "result": <tool return>}``.
             Credits are resolved **after** execution so the result is available.
+
+            .. note::
+               This argument is sent as ``max_amount`` to the facilitator. The
+               actual amount redeemed depends on the plan's server-side credit
+               configuration:
+
+               - **Fixed plans** (``plan.credits.minAmount == plan.credits.maxAmount``)
+                 always burn ``plan.credits.maxAmount`` — this argument is then
+                 effectively a no-op (see nevermined-io/nvm-monorepo#1568).
+               - **Range plans** clamp this argument into
+                 ``[plan.credits.minAmount, plan.credits.maxAmount]``.
         agent_id: Optional agent identifier
         network: Blockchain network in CAIP-2 format (default: Base Sepolia)
         scheme: x402 payment scheme (auto-detected from plan if None)
@@ -380,14 +496,7 @@ def _execute_with_payment(
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = func(*args, **kwargs)
-    _settle_payment(
-        verified,
-        result,
-        kwargs,
-        config.payments,
-        config.credits,
-        runnable_config,
-    )
+    _settle_payment(verified, result, kwargs, config, runnable_config)
     return result
 
 
@@ -401,12 +510,5 @@ async def _execute_with_payment_async(
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = await func(*args, **kwargs)
-    _settle_payment(
-        verified,
-        result,
-        kwargs,
-        config.payments,
-        config.credits,
-        runnable_config,
-    )
+    _settle_payment(verified, result, kwargs, config, runnable_config)
     return result

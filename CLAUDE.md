@@ -18,20 +18,29 @@ poetry run black .          # Format code
 
 ### Always Format Before Committing
 
-**CRITICAL:** Always run `poetry run black .` before every `git commit`. The CI lint job will fail if any files are not formatted. This applies to ALL Python files — source, tests, and scripts.
+**CRITICAL:** Code must be black-formatted before commit. The CI lint job will fail otherwise. This applies to ALL Python files — source, tests, and scripts.
+
+The repo ships a [`pre-commit`](https://pre-commit.com) config (`.pre-commit-config.yaml`) that runs black automatically on every `git commit`. Enable it once per clone:
 
 ```bash
-poetry run black .              # Format all code (REQUIRED before commit)
-poetry build                    # Build must succeed
+poetry install
+poetry run pre-commit install
 ```
 
-Both commands must succeed before considering the changes complete.
-
-To verify formatting without making changes (CI check):
+After that, `git commit` runs black on staged files; if any file would be reformatted the commit aborts so you re-stage and commit the formatted code. Verify without staging:
 
 ```bash
-poetry run black --check .      # Check formatting only
+poetry run pre-commit run --all-files
 ```
+
+To format manually (matches what the hook does):
+
+```bash
+poetry run black .
+poetry run black --check .      # CI check; no changes
+```
+
+If you skip `pre-commit install`, CI still catches unformatted code via `pre-commit run --all-files`, but the round-trip is wasteful — install it once.
 
 ### Update Documentation When Changing Public APIs
 
@@ -117,6 +126,18 @@ The CI pipeline runs:
 1. **Lint** (`.github/workflows/lint.yml`) - Black formatting check
 2. **Unit & Integration** (`.github/workflows/test.yaml`) - Fast tests
 3. **E2E** - Slow tests (runs after unit/integration pass)
+
+## Release Process
+
+**Do NOT bump the version in `pyproject.toml` by hand in a feature PR.** The release is fully automated through three workflows:
+
+1. **`prepare-release.yml`** — manual trigger via Actions UI (`workflow_dispatch`). Takes a `version` input (e.g. `1.8.0`), bumps `pyproject.toml`, opens a PR from a `release/<version>` branch.
+2. **`finalize-release.yml`** — fires when the `release/*` PR is merged. Creates the `v<version>` git tag.
+3. **`release-python.yml`** — fires on `v*.*` tag push. Builds and publishes to PyPI.
+
+In addition, **`publish-mintlify-docs.yml`** fires on the same tag, runs `scripts/convert_to_mintlify.py` over `docs/api/`, and opens a PR in `nevermined-io/docs_mintlify` updating `docs/api-reference/python/*.mdx`.
+
+Feature PRs ship code, tests, and source docs (`docs/api/*.md`). The version stays where it is — the human releasing decides what number to use and runs the workflow.
 
 ## Project Structure
 

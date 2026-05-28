@@ -12,6 +12,17 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
+# Adding a new chapter requires FOUR edits, not one:
+#   1. Create the source file under `docs/api/<NN>-<slug>.md`.
+#   2. Add an entry to FILE_MAPPING below with `target`, `icon`, and `description`.
+#   3. Add an entry to LINK_MAPPING further down so cross-references convert
+#      to clean Mintlify URLs (the chapter 12 -> chapter 13 link will
+#      otherwise ship to Mintlify with a `.md` suffix visible to readers).
+#   4. Add an entry to `mkdocs.yml`'s nav array so the chapter is reachable
+#      on the published mkdocs site.
+# Missing any of (2)-(4) silently no-ops on the next mintlify sync — the
+# chapter exists upstream but never reaches docs_mintlify. PR #202 was the
+# v1.9.0 retroactive fix for chapter 13 missing exactly this set of edits.
 # Mapping of source files to target names and metadata
 FILE_MAPPING = {
     "01-installation.md": {
@@ -69,6 +80,16 @@ FILE_MAPPING = {
         "icon": "lock",
         "description": "Use x402 protocol for payment verification and settlement",
     },
+    "12-langchain-integration.md": {
+        "target": "langchain-module.mdx",
+        "icon": "link-simple",
+        "description": "Decorator, helpers, and exceptions for protecting LangChain and LangGraph tools",
+    },
+    "13-langsmith-deployment.md": {
+        "target": "langsmith-deployment-module.mdx",
+        "icon": "graduation-cap",
+        "description": "Starlette middleware for gating a LangGraph agent deployed to LangSmith Deployment with x402",
+    },
 }
 
 # Link mapping for internal references
@@ -84,6 +105,8 @@ LINK_MAPPING = {
     "09-mcp-integration.md": "/docs/api-reference/python/mcp-module",
     "10-a2a-integration.md": "/docs/api-reference/python/a2a-module",
     "11-x402.md": "/docs/api-reference/python/x402-module",
+    "12-langchain-integration.md": "/docs/api-reference/python/langchain-module",
+    "13-langsmith-deployment.md": "/docs/api-reference/python/langsmith-deployment-module",
 }
 
 

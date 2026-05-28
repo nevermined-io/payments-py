@@ -13,6 +13,23 @@ Address = str
 class PaymentOptions(BaseModel):
     """
     Options for initializing the Payments class.
+
+    Args:
+        environment: Nevermined environment (e.g. ``"sandbox"``, ``"live"``).
+        nvm_api_key: NVM API key used to authenticate against the backend.
+        return_url: Optional URL to return to after login (browser flows).
+        app_id: Optional application identifier stamped on registered assets.
+        version: Optional SDK version reported to the backend.
+        headers: Optional default headers to merge into every request.
+        organization_id: Optional organization id (e.g. ``"org-..."``) used
+            as the active workspace for every authenticated backend call.
+            When set, the SDK forwards it as the ``X-Current-Org-Id``
+            request header so the backend scopes published agents, plans,
+            and other workspace-aware resources to this organization.
+            If omitted, the backend falls back to the API key's org tag
+            or the caller's most-recent active membership (see
+            ``CurrentOrgContextGuard`` in nvm-monorepo). Override per-call
+            via the ``organization_id`` argument on publish methods.
     """
 
     environment: str
@@ -21,6 +38,7 @@ class PaymentOptions(BaseModel):
     app_id: Optional[str] = None
     version: Optional[str] = None
     headers: Optional[Dict[str, str]] = None
+    organization_id: Optional[str] = None
 
 
 class Endpoint(BaseModel):
@@ -323,6 +341,24 @@ class PlanCreditsConfig(BaseModel):
     max_amount: int
     nft_address: Optional[str] = None
 
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        """Serialize uint256-typed fields as decimal strings.
+
+        The Nevermined backend tightened uint256 validation on plan and
+        agent-and-plan registration. JSON numbers are rejected for fields
+        that map to Solidity ``uint256`` (``durationSecs``, ``amount``,
+        ``minAmount``, ``maxAmount``) because numbers larger than
+        ``Number.MAX_SAFE_INTEGER`` lose precision in transit. The
+        TypeScript SDK gets this for free via the ``BigInt``
+        ``jsonReplacer``; Python emits the same wire shape by
+        stringifying here.
+        """
+        d = super().model_dump(**kwargs)
+        for field in ("duration_secs", "amount", "min_amount", "max_amount"):
+            if field in d and d[field] is not None:
+                d[field] = str(d[field])
+        return d
+
 
 class PlanBalance(BaseModel):
     """
@@ -411,3 +447,242 @@ class NvmAPIResult(BaseModel):
     http_status: Optional[int] = None
     data: Optional[Dict[str, Any]] = None
     when: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Organizations
+# ---------------------------------------------------------------------------
+
+
+class OrganizationMemberRole(str, Enum):
+    """Role of a member inside an organization.
+
+    Mirrors ``OrganizationMemberRole`` from ``@nevermined-io/commons`` in the
+    nvm-monorepo backend. ``CLIENT`` is retained for backwards compatibility
+    with historical rows; new memberships only use ``ADMIN`` or ``MEMBER``.
+    """
+
+    ADMIN = "Admin"
+    MEMBER = "Member"
+    CLIENT = "Client"
+
+
+class OrganizationType(str, Enum):
+    """Tier of an organization. Mirrors the backend ``OrganizationType`` enum
+    (``libs/commons/src/lib/types/types.ts`` in nvm-monorepo).
+
+    No ``Free`` member — the backend never emits it (legacy bucket replaced
+    by ``Lapsed``). ``Other`` is the legacy pre-tiered-pricing bucket and
+    is still returned for orgs that pre-date the tier system.
+    """
+
+    PREMIUM = "Premium"
+    ENTERPRISE = "Enterprise"
+    LAPSED = "Lapsed"
+    OTHER = "Other"
+
+
+class MyMembership(BaseModel):
+    """A single organization the authenticated user is an active member of.
+
+    Returned by :meth:`OrganizationsAPI.get_my_memberships` and used by
+    clients to power workspace pickers and "where will this publish?" UX.
+
+    Shape mirrors ``MyMembershipDto`` in the Nevermined backend
+    (``apps/api/src/organizations/dto/my-membership.dto.ts``).
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    org_id: str = Field(alias="orgId")
+    org_name: str = Field(alias="orgName")
+    role: OrganizationMemberRole
+    # ``Union[OrganizationType, str]`` for forward-compat: if the backend
+    # introduces a new tier before the SDK ships an enum update,
+    # ``model_validate`` falls through to a bare string instead of raising.
+    # Matches the same shape used by ``OrganizationActivityEvent.event_type``.
+    org_type: Union[OrganizationType, str] = Field(alias="orgType")
+    is_admin: bool = Field(alias="isAdmin")
+    # `True` when the org has at least one ``organizationSubscription`` row —
+    # the org has previously been associated with a paid tier (active,
+    # past_due, trialing, lapsed, or canceled). Combined with
+    # ``org_type == Lapsed`` it distinguishes "subscription expired" from
+    # "free org that never subscribed".
+    has_subscription_history: bool = Field(
+        default=False, alias="hasSubscriptionHistory"
+    )
+
+
+class OrganizationActivityEventType(str, Enum):
+    """Known event types emitted into the organization activity feed.
+
+    The SDK accepts unknown strings as well — when the backend introduces
+    a new event type, ``OrganizationActivityEvent.event_type`` stays a
+    plain ``str`` so consumers don't break on first-encounter.
+    """
+
+    # Membership lifecycle
+    MEMBER_INVITED = "member.invited"
+    MEMBER_JOINED = "member.joined"
+    MEMBER_ROLE_CHANGED = "member.role_changed"
+    MEMBER_DEACTIVATED = "member.deactivated"
+    MEMBER_REACTIVATED = "member.reactivated"
+    MEMBER_REMOVED = "member.removed"
+    INVITATION_REVOKED = "invitation.revoked"
+    INVITATION_EXPIRED = "invitation.expired"
+    # Resource lifecycle
+    AGENT_CREATED = "agent.created"
+    PLAN_CREATED = "plan.created"
+    PLAN_PURCHASED = "plan.purchased"
+    # Customer lifecycle
+    CUSTOMER_ADDED = "customer.added"
+    CUSTOMER_BLOCKED = "customer.blocked"
+    CUSTOMER_UNBLOCKED = "customer.unblocked"
+    # Subscription lifecycle
+    SUBSCRIPTION_UPGRADED = "subscription.upgraded"
+    SUBSCRIPTION_DOWNGRADED = "subscription.downgraded"
+    SUBSCRIPTION_CANCELED = "subscription.canceled"
+    SUBSCRIPTION_LAPSED = "subscription.lapsed"
+    # Webhook delivery
+    WEBHOOK_DELIVERED = "webhook.delivered"
+    WEBHOOK_FAILED = "webhook.failed"
+
+
+class OrganizationActivityEventSubject(BaseModel):
+    """Resource an activity event is about.
+
+    ``kind`` describes the resource type (``plan``, ``agent``, ``member``,
+    ``subscription``, ``invitation``, ``customer``, ``webhook``) and ``id``
+    is the resource identifier. Extras vary by kind — invitations include
+    ``role`` + ``email``, members include ``role`` + ``userId``,
+    subscriptions include ``tier``. The model accepts unknown keys for
+    forward-compatibility.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    kind: str
+    id: str
+
+
+class OrganizationActivityEvent(BaseModel):
+    """A single event emitted into the organization activity feed.
+
+    Shape mirrors ``OrganizationActivityEventResponseDto`` in the backend.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    event_type: str = Field(alias="eventType")
+    actor_user_id: Optional[str] = Field(default=None, alias="actorUserId")
+    subject: OrganizationActivityEventSubject
+    metadata: Optional[Dict[str, Any]] = None
+    occurred_at: str = Field(alias="occurredAt")
+
+
+class OrganizationActivityPage(BaseModel):
+    """Paginated page of activity events.
+
+    The backend only echoes ``items`` and ``total``; ``page`` and ``limit``
+    are not in the response.
+    """
+
+    items: List[OrganizationActivityEvent] = Field(default_factory=list)
+    total: int = 0
+
+
+class OrganizationActivityFilters(BaseModel):
+    """Optional filters accepted by :meth:`OrganizationsAPI.get_organization_activity`.
+
+    ``event_type`` accepts a single value or a list (sent to the backend
+    as a comma-separated list). ``limit`` is the page size (backend cap
+    is 200); the legacy ``offset`` name is not supported by this endpoint.
+    """
+
+    event_type: Optional[
+        Union[
+            OrganizationActivityEventType,
+            str,
+            List[Union[OrganizationActivityEventType, str]],
+        ]
+    ] = None
+    actor_user_id: Optional[str] = None
+    from_: Optional[str] = Field(default=None, alias="from")
+    to: Optional[str] = None
+    page: Optional[int] = None
+    limit: Optional[int] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class OrganizationMember(BaseModel):
+    """A single row from an organization's member list.
+
+    Returned by :meth:`OrganizationsAPI.get_members`. Mirrors the
+    ``OrganizationMember`` entity in the Nevermined backend.
+
+    ``extra="allow"`` keeps any new backend-emitted fields accessible on
+    the model without an SDK upgrade, matching the forward-compat
+    treatment of :class:`OrganizationActivityEventSubject`.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    id: str
+    user_id: str = Field(alias="userId")
+    org_id: str = Field(alias="orgId")
+    user_address: str = Field(alias="userAddress")
+    role: OrganizationMemberRole
+    is_active: bool = Field(alias="isActive")
+    created_at: str = Field(alias="createdAt")
+    updated_at: str = Field(alias="updatedAt")
+
+
+class OrganizationMembersResponse(BaseModel):
+    """Paginated members response used by :meth:`OrganizationsAPI.get_members`.
+
+    The backend returns ``totalResults`` on the wire; the SDK normalizes
+    it to ``total`` so both Python and TypeScript clients see the same
+    shape.
+    """
+
+    members: List[OrganizationMember] = Field(default_factory=list)
+    total: int = 0
+
+
+class CreateUserResponse(BaseModel):
+    """Result of :meth:`OrganizationsAPI.create_member`.
+
+    The backend response carries the freshly minted wallet under
+    ``walletResult``; the SDK flattens those fields and exposes the
+    wallet hash as ``nvm_api_key`` for parity with the TS SDK.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    nvm_api_key: str = Field(alias="nvmApiKey")
+    user_id: str = Field(alias="userId")
+    user_wallet: str = Field(alias="userWallet")
+    already_member: bool = Field(default=False, alias="alreadyMember")
+
+
+class StripeAccountConnectResult(BaseModel):
+    """Result of :meth:`OrganizationsAPI.connect_stripe_account`.
+
+    Named ``StripeAccountConnectResult`` rather than ``StripeCheckoutResult``
+    to disambiguate the Stripe Connect onboarding flow from the
+    plan-purchase checkout flow that ``payments.plans`` uses.
+
+    Mirrors the TS ``StripeCheckoutResult`` in
+    ``src/api/organizations-api/types.ts``.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    stripe_account_id: str = Field(alias="stripeAccountId")
+    stripe_account_link: str = Field(alias="stripeAccountLink")
+    user_id: str = Field(alias="userId")
+    user_country_code: str = Field(alias="userCountryCode")
+    link_created_at: int = Field(alias="linkCreatedAt")
+    link_expires_at: int = Field(alias="linkExpiresAt")

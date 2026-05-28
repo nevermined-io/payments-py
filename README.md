@@ -34,6 +34,21 @@ payments = Payments.get_instance(
 )
 ```
 
+### Optional integrations
+
+The core SDK has no integration dependencies. Add one or more of the following extras when installing:
+
+| Extra | Pulls in | Purpose |
+| --- | --- | --- |
+| `fastapi` | `fastapi`, `starlette` | `payments_py.x402.fastapi.PaymentMiddleware` for HTTP route-level payment gating |
+| `strands` | `strands-agents` | Strands `@requires_payment` decorator |
+| `langchain` | `langchain-core` | LangChain `@requires_payment` decorator + `create_paid_react_agent` |
+| `langsmith` | `langsmith` | Auto-emit `nvm:verify` and `nvm:settlement` spans into LangSmith traces when `LANGSMITH_TRACING=true` |
+
+```bash
+pip install "payments-py[langchain,langsmith]"
+```
+
 ## A2A Integration (Agents-to-Agents)
 
 The Python SDK can both start an A2A server (FastAPI-based) and act as an A2A client.
@@ -210,4 +225,51 @@ balance = payments.plans.get_plan_balance(plan_id)
 # Get x402 access token (for agent-to-agent authentication)
 access = payments.x402.get_x402_access_token(plan_id, agent_id)
 token = access["accessToken"]
+```
+
+## Development
+
+### Setup
+
+```bash
+poetry install
+poetry run pre-commit install
+```
+
+The second command wires a git hook (lives at `.git/hooks/pre-commit`) that runs [black](https://black.readthedocs.io) on staged Python files before every commit. CI enforces the same rules, so skipping the local hook just defers the failure to push time.
+
+If you'd rather have pre-commit hooks wired automatically on every fresh clone of any repo, set up a global git template once on your machine:
+
+```bash
+pipx install pre-commit
+git config --global init.templateDir ~/.git-template
+pre-commit init-templatedir ~/.git-template
+```
+
+After that, `git clone` of any repo with a `.pre-commit-config.yaml` (this one, for instance) auto-installs its hooks — no per-repo `pre-commit install` step needed.
+
+### Running the formatter manually
+
+```bash
+poetry run black .              # format everything
+poetry run black --check .      # CI-style check, no changes
+```
+
+### Running tests
+
+```bash
+poetry install --extras "strands langchain"   # install all optional extras
+poetry run pytest -m "not slow"               # full unit + integration suite
+poetry run pytest tests/unit/x402/            # one directory
+```
+
+### Custom CA bundle (self-signed-cert environments)
+
+The SDK uses `requests`' default TLS verification against the system trust store. Public Nevermined backends (sandbox, live) serve real certs, so no configuration is needed.
+
+If you're pointing the SDK at a dev environment that serves a self-signed certificate (e.g. a local Caddy with its own CA), export `REQUESTS_CA_BUNDLE` before running — `requests` reads it directly, no SDK change required:
+
+```bash
+export REQUESTS_CA_BUNDLE=/path/to/your-ca.pem
+poetry run python your_script.py
 ```
