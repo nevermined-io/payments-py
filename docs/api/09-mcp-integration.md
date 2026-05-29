@@ -369,9 +369,51 @@ The MCP server exposes:
 
 - `/.well-known/oauth-authorization-server` - OAuth 2.1 discovery
 - `/.well-known/oauth-protected-resource` - Resource metadata
+- `/.well-known/oauth-protected-resource/mcp` - MCP-specific protected resource metadata
+- `/.well-known/x402-payment` - x402 payment discovery for MCP-aware payment clients
 - `/register` - Client registration
 - `/mcp` - MCP protocol endpoint (POST/GET/DELETE)
 - `/health` - Health check
+
+## MCP OAuth and x402 Discovery
+
+MCP and standard x402 use different HTTP challenge shapes:
+
+| Client type | Missing credentials response | Discovery mechanism |
+|-------------|------------------------------|---------------------|
+| MCP client | `401 Unauthorized` with `WWW-Authenticate: Bearer` | OAuth 2.1 well-known metadata |
+| x402 HTTP client | `402 Payment Required` with `payment-required` | x402 payment metadata / response headers |
+
+Do not make the `/mcp` streamable HTTP endpoint return `402` for every missing token: MCP clients expect the OAuth `401` challenge and may fail before they can initialize. Instead, expose x402 payment metadata separately at `/.well-known/x402-payment` while keeping OAuth discovery enabled.
+
+Example discovery response:
+
+```json
+{
+  "x402Version": 2,
+  "stability": "experimental",
+  "transport": "mcp-streamable-http",
+  "resource": "https://agent.example.com/mcp",
+  "mcpEndpoint": "https://agent.example.com/mcp",
+  "oauthProtectedResourceMetadata": "https://agent.example.com/.well-known/oauth-protected-resource/mcp",
+  "authorizationServerMetadata": "https://agent.example.com/.well-known/oauth-authorization-server",
+  "paymentRequiredHeader": "payment-required",
+  "paymentResponseHeader": "payment-response",
+  "paymentSignatureHeader": "payment-signature",
+  "statusCodes": {
+    "mcpOAuthMissingCredentials": 401,
+    "standardX402MissingPayment": 402
+  }
+}
+```
+
+This lets:
+
+- MCP-native clients follow OAuth 2.1 and send `Authorization: Bearer <token>`.
+- x402-aware clients discover the payment headers and endpoint before calling `/mcp`.
+- Browser-based agents read payment challenge/response headers because CORS allows and exposes `payment-signature`, `payment-required`, and `payment-response`.
+
+The x402 discovery shape is marked `experimental` and may evolve as MCP transport support aligns with the x402 v2 MCP transport specification.
 
 ## Next Steps
 

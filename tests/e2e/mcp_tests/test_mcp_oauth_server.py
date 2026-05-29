@@ -301,6 +301,43 @@ class TestMcpOAuthDiscoveryEndpoints:
             await server_data["result"]["stop"]()
             await asyncio.sleep(0.3)
 
+    @pytest.mark.asyncio
+    async def test_x402_payment_discovery_endpoint(self):
+        """Should expose x402 discovery without replacing MCP OAuth 401 flow."""
+        server_data = await create_and_start_server(18888)
+        base_url = server_data["base_url"]
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{base_url}/.well-known/x402-payment")
+
+            assert response.status_code == 200
+            assert "application/json" in response.headers.get("content-type", "")
+            assert response.headers["cache-control"] == "public, max-age=3600"
+
+            data = response.json()
+            assert data["x402Version"] == 2
+            assert data["stability"] == "experimental"
+            assert data["transport"] == "mcp-streamable-http"
+            assert data["resource"] == f"{base_url}/mcp"
+            assert data["mcpEndpoint"] == f"{base_url}/mcp"
+            assert data["paymentRequiredHeader"] == "payment-required"
+            assert data["paymentSignatureHeader"] == "payment-signature"
+            assert data["paymentResponseHeader"] == "payment-response"
+            assert data["statusCodes"] == {
+                "mcpOAuthMissingCredentials": 401,
+                "standardX402MissingPayment": 402,
+            }
+            assert data["oauthProtectedResourceMetadata"] == (
+                f"{base_url}/.well-known/oauth-protected-resource/mcp"
+            )
+            assert "tools" not in data
+            assert "resources" not in data
+            assert "prompts" not in data
+            assert "authorizationHeader" not in data
+        finally:
+            await server_data["result"]["stop"]()
+            await asyncio.sleep(0.3)
+
 
 class TestMcpServerInfoEndpoint:
     """Tests for server info endpoint (/)."""
@@ -325,12 +362,18 @@ class TestMcpServerInfoEndpoint:
             assert data["endpoints"]["mcp"] == f"{base_url}/mcp"
             assert data["endpoints"]["health"] == f"{base_url}/health"
             assert data["endpoints"]["register"] == f"{base_url}/register"
+            assert data["endpoints"]["x402_payment"] == (
+                f"{base_url}/.well-known/x402-payment"
+            )
 
             # OAuth info
             assert "oauth" in data
             assert "authorization_server_metadata" in data["oauth"]
             assert "protected_resource_metadata" in data["oauth"]
             assert "openid_configuration" in data["oauth"]
+            assert data["oauth"]["x402_payment_discovery"] == (
+                f"{base_url}/.well-known/x402-payment"
+            )
             assert data["oauth"]["client_id"] == "test-agent-123"
             assert "scopes" in data["oauth"]
             assert "mcp:tools" in data["oauth"]["scopes"]

@@ -238,6 +238,38 @@ class McpProtectedResourceMetadata(TypedDict, total=False):
     mcp_capabilities: Optional[Dict[str, Any]]
 
 
+class X402PaymentDiscoveryMetadata(TypedDict, total=False):
+    """x402 discovery metadata for MCP payment-aware clients.
+
+    Attributes:
+        x402Version: x402 protocol version advertised by the discovery document.
+        stability: Stability marker for the experimental discovery shape.
+        resource: MCP protected resource URL.
+        transport: MCP transport this payment metadata applies to.
+        mcpEndpoint: MCP endpoint URL.
+        oauthProtectedResourceMetadata: MCP OAuth protected resource metadata URL.
+        authorizationServerMetadata: OAuth authorization server metadata URL.
+        paymentRequiredHeader: Header name for payment challenge data.
+        paymentResponseHeader: Header name for payment settlement response data.
+        paymentSignatureHeader: Header name for payment signature data.
+        statusCodes: HTTP status-code mapping for OAuth and x402 flows.
+        clientHints: Human-readable client integration hints.
+    """
+
+    x402Version: int
+    stability: str
+    resource: str
+    transport: str
+    mcpEndpoint: str
+    oauthProtectedResourceMetadata: str
+    authorizationServerMetadata: str
+    paymentRequiredHeader: str
+    paymentResponseHeader: str
+    paymentSignatureHeader: str
+    statusCodes: Dict[str, int]
+    clientHints: List[str]
+
+
 class AuthorizationServerMetadata(TypedDict, total=False):
     """OAuth Authorization Server Metadata (RFC 8414).
 
@@ -385,11 +417,13 @@ class ServerInfoEndpoints(TypedDict, total=False):
         mcp: MCP endpoint URL.
         health: Health check endpoint URL.
         register: Client registration endpoint URL.
+        x402_payment: x402 payment discovery endpoint URL.
     """
 
     mcp: str
     health: Optional[str]
     register: Optional[str]
+    x402_payment: Optional[str]
 
 
 class ServerInfoOAuth(TypedDict, total=False):
@@ -399,6 +433,7 @@ class ServerInfoOAuth(TypedDict, total=False):
         authorization_server_metadata: OAuth AS metadata endpoint URL.
         protected_resource_metadata: Protected resource metadata endpoint URL.
         openid_configuration: OIDC configuration endpoint URL.
+        x402_payment_discovery: x402 payment discovery endpoint URL.
         authorization_endpoint: OAuth authorization endpoint URL.
         token_endpoint: OAuth token endpoint URL.
         jwks_uri: JWKS endpoint URL.
@@ -410,6 +445,7 @@ class ServerInfoOAuth(TypedDict, total=False):
     authorization_server_metadata: str
     protected_resource_metadata: str
     openid_configuration: str
+    x402_payment_discovery: str
     authorization_endpoint: str
     token_endpoint: str
     jwks_uri: str
