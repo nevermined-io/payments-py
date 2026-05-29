@@ -887,6 +887,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mcp-oauth-and-x402-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP OAuth and x402 Discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1402,6 +1413,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mcp-oauth-and-x402-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP OAuth and x402 Discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1859,10 +1881,61 @@
 <ul>
 <li><code>/.well-known/oauth-authorization-server</code> - OAuth 2.1 discovery</li>
 <li><code>/.well-known/oauth-protected-resource</code> - Resource metadata</li>
+<li><code>/.well-known/oauth-protected-resource/mcp</code> - MCP-specific protected resource metadata</li>
+<li><code>/.well-known/x402-payment</code> - x402 payment discovery for MCP-aware payment clients</li>
 <li><code>/register</code> - Client registration</li>
 <li><code>/mcp</code> - MCP protocol endpoint (POST/GET/DELETE)</li>
 <li><code>/health</code> - Health check</li>
 </ul>
+<h2 id="mcp-oauth-and-x402-discovery">MCP OAuth and x402 Discovery<a class="headerlink" href="#mcp-oauth-and-x402-discovery" title="Permanent link">&para;</a></h2>
+<p>MCP and standard x402 use different HTTP challenge shapes:</p>
+<table>
+<thead>
+<tr>
+<th>Client type</th>
+<th>Missing credentials response</th>
+<th>Discovery mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCP client</td>
+<td><code>401 Unauthorized</code> with <code>WWW-Authenticate: Bearer</code></td>
+<td>OAuth 2.1 well-known metadata</td>
+</tr>
+<tr>
+<td>x402 HTTP client</td>
+<td><code>402 Payment Required</code> with <code>payment-required</code></td>
+<td>x402 payment metadata / response headers</td>
+</tr>
+</tbody>
+</table>
+<p>Do not make the <code>/mcp</code> streamable HTTP endpoint return <code>402</code> for every missing token: MCP clients expect the OAuth <code>401</code> challenge and may fail before they can initialize. Instead, expose x402 payment metadata separately at <code>/.well-known/x402-payment</code> while keeping OAuth discovery enabled.</p>
+<p>Example discovery response:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="p">{</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">&quot;x402Version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nt">&quot;stability&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;experimental&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span><span class="nt">&quot;transport&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;mcp-streamable-http&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="nt">&quot;resource&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://agent.example.com/mcp&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">  </span><span class="nt">&quot;mcpEndpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://agent.example.com/mcp&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">  </span><span class="nt">&quot;oauthProtectedResourceMetadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://agent.example.com/.well-known/oauth-protected-resource/mcp&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">  </span><span class="nt">&quot;authorizationServerMetadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://agent.example.com/.well-known/oauth-authorization-server&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">  </span><span class="nt">&quot;paymentRequiredHeader&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payment-required&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">  </span><span class="nt">&quot;paymentResponseHeader&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payment-response&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">  </span><span class="nt">&quot;paymentSignatureHeader&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;payment-signature&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">  </span><span class="nt">&quot;statusCodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">    </span><span class="nt">&quot;mcpOAuthMissingCredentials&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">401</span><span class="p">,</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">    </span><span class="nt">&quot;standardX402MissingPayment&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">402</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="p">}</span>
+</code></pre></div>
+<p>This lets:</p>
+<ul>
+<li>MCP-native clients follow OAuth 2.1 and send <code>Authorization: Bearer &lt;token&gt;</code>.</li>
+<li>x402-aware clients discover the payment headers and endpoint before calling <code>/mcp</code>.</li>
+<li>Browser-based agents read payment challenge/response headers because CORS allows and exposes <code>payment-signature</code>, <code>payment-required</code>, and <code>payment-response</code>.</li>
+</ul>
+<p>The x402 discovery shape is marked <code>experimental</code> and may evolve as MCP transport support aligns with the x402 v2 MCP transport specification.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../10-a2a-integration/">A2A Integration</a> - Agent-to-Agent protocol</li>
