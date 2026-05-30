@@ -69,7 +69,7 @@ class PaymentsMock:
 TEST_PORT = 18890
 
 
-async def create_and_start_server(port: int = TEST_PORT):
+async def create_and_start_server(port: int = TEST_PORT, start_options=None):
     """Create, configure, and start a test MCP server."""
     mock_payments = PaymentsMock()
 
@@ -128,15 +128,15 @@ async def create_and_start_server(port: int = TEST_PORT):
     )
 
     # Start the server
-    result = await mock_payments.mcp.start(
-        {
-            "port": port,
-            "agentId": "test-agent-123",
-            "serverName": "test-mcp-server",
-            "version": "0.1.0",
-            "description": "Test MCP server for E2E tests",
-        }
-    )
+    options = {
+        "port": port,
+        "agentId": "test-agent-123",
+        "serverName": "test-mcp-server",
+        "version": "0.1.0",
+        "description": "Test MCP server for E2E tests",
+    }
+    options.update(start_options or {})
+    result = await mock_payments.mcp.start(options)
 
     # Give server time to fully start
     await asyncio.sleep(0.5)
@@ -334,6 +334,66 @@ class TestMcpOAuthDiscoveryEndpoints:
             assert "resources" not in data
             assert "prompts" not in data
             assert "authorizationHeader" not in data
+        finally:
+            await server_data["result"]["stop"]()
+            await asyncio.sleep(0.3)
+
+    @pytest.mark.asyncio
+    async def test_x402_payment_discovery_can_be_disabled_independently(self):
+        """Should disable x402 discovery without disabling OAuth discovery."""
+        server_data = await create_and_start_server(
+            18887, {"enableX402Discovery": False}
+        )
+        base_url = server_data["base_url"]
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                x402_response = await client.get(f"{base_url}/.well-known/x402-payment")
+                oauth_response = await client.get(
+                    f"{base_url}/.well-known/oauth-authorization-server"
+                )
+                info_response = await client.get(f"{base_url}/")
+
+            assert x402_response.status_code == 404
+            assert oauth_response.status_code == 200
+            assert info_response.status_code == 200
+
+            info = info_response.json()
+            assert "x402_payment" not in info["endpoints"]
+            assert "x402_payment_discovery" not in info["oauth"]
+            assert "authorization_server_metadata" in info["oauth"]
+        finally:
+            await server_data["result"]["stop"]()
+            await asyncio.sleep(0.3)
+
+    @pytest.mark.asyncio
+    async def test_x402_payment_discovery_stays_enabled_without_oauth_discovery(self):
+        """Should keep x402 discovery available when OAuth discovery is disabled."""
+        server_data = await create_and_start_server(
+            18886, {"enableOAuthDiscovery": False}
+        )
+        base_url = server_data["base_url"]
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                x402_response = await client.get(f"{base_url}/.well-known/x402-payment")
+                oauth_response = await client.get(
+                    f"{base_url}/.well-known/oauth-authorization-server"
+                )
+                info_response = await client.get(f"{base_url}/")
+
+            assert x402_response.status_code == 200
+            assert oauth_response.status_code == 404
+            assert info_response.status_code == 200
+
+            info = info_response.json()
+            assert info["endpoints"]["x402_payment"] == (
+                f"{base_url}/.well-known/x402-payment"
+            )
+            assert info["oauth"]["x402_payment_discovery"] == (
+                f"{base_url}/.well-known/x402-payment"
+            )
+            assert "authorization_server_metadata" not in info["oauth"]
+            assert "protected_resource_metadata" not in info["oauth"]
+            assert "openid_configuration" not in info["oauth"]
         finally:
             await server_data["result"]["stop"]()
             await asyncio.sleep(0.3)

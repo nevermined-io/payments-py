@@ -26,6 +26,7 @@ from ..types.http_types import (
     OAuthUrls,
     OidcConfiguration,
     ProtectedResourceMetadata,
+    ServerInfoOAuth,
     ServerInfoResponse,
     X402PaymentDiscoveryMetadata,
 )
@@ -369,29 +370,48 @@ def build_server_info_response(
     oauth_urls = get_oauth_urls(config["environment"], config.get("oauthUrls"))
     scopes = config.get("scopes") or list(_DEFAULT_SCOPES)
 
+    enable_oauth_discovery = config.get("enableOAuthDiscovery", True)
+    enable_x402_discovery = config.get("enableX402Discovery", True)
+    enable_client_registration = config.get("enableClientRegistration", True)
+    enable_health_check = config.get("enableHealthCheck", True)
+
+    endpoints: Dict[str, str] = {"mcp": f"{config['baseUrl']}/mcp"}
+    if enable_health_check:
+        endpoints["health"] = f"{config['baseUrl']}/health"
+    if enable_client_registration:
+        endpoints["register"] = f"{config['baseUrl']}/register"
+    if enable_x402_discovery:
+        endpoints["x402_payment"] = f"{config['baseUrl']}/.well-known/x402-payment"
+
+    oauth_info: ServerInfoOAuth = {
+        "authorization_endpoint": oauth_urls["authorizationUri"],
+        "token_endpoint": oauth_urls["tokenUri"],
+        "jwks_uri": oauth_urls["jwksUri"],
+        "client_id": config["agentId"],
+        "scopes": scopes,
+    }
+    if enable_oauth_discovery:
+        oauth_info.update(
+            {
+                "authorization_server_metadata": f"{config['baseUrl']}/.well-known/oauth-authorization-server",
+                "protected_resource_metadata": f"{config['baseUrl']}/.well-known/oauth-protected-resource",
+                "openid_configuration": f"{config['baseUrl']}/.well-known/openid-configuration",
+            }
+        )
+    if enable_client_registration:
+        oauth_info["registration_endpoint"] = f"{config['baseUrl']}/register"
+    if enable_x402_discovery:
+        oauth_info["x402_payment_discovery"] = (
+            f"{config['baseUrl']}/.well-known/x402-payment"
+        )
+
     return {
         "name": config.get("serverName") or "MCP Server",
         "version": version or "1.0.0",
         "description": description
         or "MCP server with Nevermined OAuth integration via Streamable HTTP",
-        "endpoints": {
-            "mcp": f"{config['baseUrl']}/mcp",
-            "health": f"{config['baseUrl']}/health",
-            "register": f"{config['baseUrl']}/register",
-            "x402_payment": f"{config['baseUrl']}/.well-known/x402-payment",
-        },
-        "oauth": {
-            "authorization_server_metadata": f"{config['baseUrl']}/.well-known/oauth-authorization-server",
-            "protected_resource_metadata": f"{config['baseUrl']}/.well-known/oauth-protected-resource",
-            "openid_configuration": f"{config['baseUrl']}/.well-known/openid-configuration",
-            "x402_payment_discovery": f"{config['baseUrl']}/.well-known/x402-payment",
-            "authorization_endpoint": oauth_urls["authorizationUri"],
-            "token_endpoint": oauth_urls["tokenUri"],
-            "jwks_uri": oauth_urls["jwksUri"],
-            "registration_endpoint": f"{config['baseUrl']}/register",
-            "client_id": config["agentId"],
-            "scopes": scopes,
-        },
+        "endpoints": endpoints,
+        "oauth": oauth_info,
         "tools": config.get("tools") or [],
         "resources": config.get("resources") or [],
         "prompts": config.get("prompts") or [],

@@ -405,6 +405,7 @@ class McpServerManager:
                     "resources": list(self._resources.keys()),
                     "prompts": list(self._prompts.keys()),
                     "enableOAuthDiscovery": config.get("enableOAuthDiscovery", True),
+                    "enableX402Discovery": config.get("enableX402Discovery", True),
                     "enableClientRegistration": config.get(
                         "enableClientRegistration", True
                     ),
