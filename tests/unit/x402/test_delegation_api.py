@@ -94,3 +94,44 @@ class TestDelegationAPIListPaymentMethods:
         assert methods[0].brand == "visa"
         assert methods[1].id == "pm_2"
         assert methods[1].brand == "mastercard"
+
+    @patch("payments_py.x402.delegation_api.requests.get")
+    def test_forwards_provider_query_param_when_set(self, mock_get, mock_options):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = []
+        mock_get.return_value = mock_response
+
+        api = DelegationAPI(mock_options)
+        api.list_payment_methods(provider="stripe")
+
+        # The provider is forwarded as a ?provider= query param via requests' params.
+        _, kwargs = mock_get.call_args
+        assert kwargs["params"] == {"provider": "stripe"}
+
+    @patch("payments_py.x402.delegation_api.requests.get")
+    def test_omits_provider_query_param_when_not_set(self, mock_get, mock_options):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = []
+        mock_get.return_value = mock_response
+
+        api = DelegationAPI(mock_options)
+        api.list_payment_methods()
+
+        # No provider → params is None so the default "all methods" behaviour holds.
+        _, kwargs = mock_get.call_args
+        assert kwargs["params"] is None
+
+    @patch("payments_py.x402.delegation_api.requests.get")
+    def test_forwards_erc4337_provider(self, mock_get, mock_options):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = []
+        mock_get.return_value = mock_response
+
+        api = DelegationAPI(mock_options)
+        api.list_payment_methods(provider="erc4337")
+
+        _, kwargs = mock_get.call_args
+        assert kwargs["params"] == {"provider": "erc4337"}
