@@ -113,7 +113,11 @@ class FacilitatorAPI(BasePaymentsAPI):
         if max_amount is not None:
             body["maxAmount"] = max_amount
 
-        options = self.get_public_http_options("POST", body)
+        # Send the NVM API-key auth header (Authorization: Bearer <nvm_api_key>).
+        # The backend /verify endpoint runs an OPTIONAL guard that tolerates the
+        # header's absence today, so this is non-breaking; it pre-positions for
+        # the later strict-guard flip. See nevermined-io/nvm-monorepo#1570.
+        options = self.get_backend_http_options("POST", body)
 
         try:
             response = requests.post(url, **options)
@@ -169,7 +173,11 @@ class FacilitatorAPI(BasePaymentsAPI):
         if agent_request_id is not None:
             body["agentRequestId"] = agent_request_id
 
-        options = self.get_public_http_options("POST", body)
+        # Send the NVM API-key auth header (Authorization: Bearer <nvm_api_key>).
+        # The backend /settle endpoint runs an OPTIONAL guard that tolerates the
+        # header's absence today, so this is non-breaking; it pre-positions for
+        # the later strict-guard flip. See nevermined-io/nvm-monorepo#1570.
+        options = self.get_backend_http_options("POST", body)
 
         try:
             response = requests.post(url, **options)

@@ -319,6 +319,74 @@ class TestFacilitatorVisa:
         assert result.network == "visa"
         assert result.credits_redeemed == "5"
 
+    # The facilitator verify/settle endpoints carry money side effects
+    # (Stripe/VGS/Braintree on settle), so the SDK now authenticates them with
+    # the NVM API key instead of calling them unauthenticated. The backend's
+    # optional guard tolerates the header today; this pre-positions for the
+    # later strict-guard flip. See nevermined-io/nvm-monorepo#1570.
+    @patch("payments_py.x402.facilitator_api.requests.post")
+    def test_verify_sends_nvm_api_key_authorization_header(
+        self, mock_post, mock_options
+    ):
+        mock_options.organization_id = None
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"isValid": True}
+        mock_post.return_value = mock_response
+
+        FacilitatorAPI(mock_options).verify_permissions(
+            payment_required=_visa_payment_required(),
+            x402_access_token="eyJ.visa.token",
+        )
+
+        _, kwargs = mock_post.call_args
+        assert (
+            kwargs["headers"]["Authorization"] == f"Bearer {mock_options.nvm_api_key}"
+        )
+
+    @patch("payments_py.x402.facilitator_api.requests.post")
+    def test_settle_sends_nvm_api_key_authorization_header(
+        self, mock_post, mock_options
+    ):
+        mock_options.organization_id = None
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"success": True}
+        mock_post.return_value = mock_response
+
+        FacilitatorAPI(mock_options).settle_permissions(
+            payment_required=_visa_payment_required(),
+            x402_access_token="eyJ.visa.token",
+        )
+
+        _, kwargs = mock_post.call_args
+        assert (
+            kwargs["headers"]["Authorization"] == f"Bearer {mock_options.nvm_api_key}"
+        )
+
+    @patch("payments_py.x402.facilitator_api.requests.post")
+    def test_settle_sends_current_org_id_header(self, mock_post, mock_options):
+        # Switching to the authed HTTP options means an org-pinned caller now
+        # also sends X-Current-Org-Id, so the money-adjacent settle becomes
+        # org-scoped. See nevermined-io/nvm-monorepo#1570.
+        mock_options.organization_id = "org-123"
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"success": True}
+        mock_post.return_value = mock_response
+
+        FacilitatorAPI(mock_options).settle_permissions(
+            payment_required=_visa_payment_required(),
+            x402_access_token="eyJ.visa.token",
+        )
+
+        _, kwargs = mock_post.call_args
+        assert kwargs["headers"]["X-Current-Org-Id"] == "org-123"
+        # Authorization is still the Bearer key alongside the org scope.
+        assert (
+            kwargs["headers"]["Authorization"] == f"Bearer {mock_options.nvm_api_key}"
+        )
+
     @patch("payments_py.x402.facilitator_api.requests.post")
     def test_verify_surfaces_backend_code_on_4xx(self, mock_post, mock_options):
         mock_post.return_value = _http_error_response(
