@@ -98,9 +98,17 @@ class DelegationAPI(BasePaymentsAPI):
         """Get an instance of the DelegationAPI class."""
         return cls(options)
 
-    def list_payment_methods(self) -> List[PaymentMethodSummary]:
+    def list_payment_methods(
+        self, provider: Optional[DelegationProvider] = None
+    ) -> List[PaymentMethodSummary]:
         """
         List the user's enrolled payment methods for card delegation.
+
+        Args:
+            provider: When set, return only methods backed by this provider
+                ('stripe' | 'braintree' | 'visa' | 'erc4337'). Forwarded as a
+                ``?provider=`` query string. Omit to return methods from every
+                provider (default).
 
         Returns:
             A list of payment method summaries
@@ -110,9 +118,10 @@ class DelegationAPI(BasePaymentsAPI):
         """
         url = f"{self.environment.backend}/api/v1/payment-methods"
         options = self.get_backend_http_options("GET")
+        params = {"provider": provider} if provider else None
 
         try:
-            response = requests.get(url, **options)
+            response = requests.get(url, params=params, **options)
             response.raise_for_status()
             data = response.json()
             return [PaymentMethodSummary.model_validate(pm) for pm in data]
