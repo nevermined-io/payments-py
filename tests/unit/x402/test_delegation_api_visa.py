@@ -389,9 +389,16 @@ class TestFacilitatorVisa:
 
     @patch("payments_py.x402.facilitator_api.requests.post")
     def test_verify_surfaces_backend_code_on_4xx(self, mock_post, mock_options):
+        # Realistic post-#1676 backend pairing: budget-insufficient is now its
+        # own code (BCK.X402.0023) with a matching message, not the generic
+        # BCK.X402.0005 "Invalid access token". The test only cares that the SDK
+        # surfaces whatever code/message the backend returns on a 4xx.
         mock_post.return_value = _http_error_response(
             403,
-            {"code": "BCK.X402.0005", "message": "Insufficient credits"},
+            {
+                "code": "BCK.X402.0023",
+                "message": "Delegation budget insufficient for this order",
+            },
         )
 
         with pytest.raises(PaymentsError) as excinfo:
@@ -400,8 +407,8 @@ class TestFacilitatorVisa:
                 x402_access_token="eyJ.visa.token",
             )
 
-        assert excinfo.value.code == "BCK.X402.0005"
-        assert "Insufficient credits" in str(excinfo.value)
+        assert excinfo.value.code == "BCK.X402.0023"
+        assert "Delegation budget insufficient for this order" in str(excinfo.value)
 
 
 class TestErrorEnvelopeCoverage:
