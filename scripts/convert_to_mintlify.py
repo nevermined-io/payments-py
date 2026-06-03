@@ -185,9 +185,13 @@ def dedent_content(content: str) -> str:
 def convert_internal_links(content: str) -> str:
     """Convert internal markdown links to Mintlify format."""
     for source, target in LINK_MAPPING.items():
-        # Match [text](filename.md) or [text](../path/filename.md)
-        pattern = rf"\[([^\]]+)\]\([^)]*{re.escape(source)}\)"
-        replacement = rf"[\1]({target})"
+        # Match [text](filename.md) or [text](../path/filename.md), preserving any
+        # trailing #anchor fragment (e.g. filename.md#section) so deep links survive
+        # the rewrite. Without the optional group the anchored form fails to match,
+        # the relative .md path leaks through into the generated Card/link, and the
+        # docs-site link-rot check fails (filename.md does not exist there).
+        pattern = rf"\[([^\]]+)\]\([^)]*{re.escape(source)}(#[^)]*)?\)"
+        replacement = rf"[\1]({target}\2)"
         content = re.sub(pattern, replacement, content)
 
     return content
