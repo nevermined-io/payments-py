@@ -33,6 +33,12 @@ the span helpers, so eagerly importing the middleware here would force
 (``PaymentMiddleware``, ``RouteConfig``, ``X402_HEADERS``, ``build_payment_app``)
 are resolved lazily via a module-level ``__getattr__`` (PEP 562) and only
 import ``fastapi`` when first referenced.
+
+Caveat: ``from payments_py.langsmith import *`` still imports ``fastapi``,
+because a star-import iterates ``__all__`` (which lists the four middleware
+names) and so references each one. Plain ``import payments_py.langsmith`` and
+the ``@requires_payment`` decorator path -- the case this lazy import exists to
+serve -- are unaffected.
 """
 
 from typing import TYPE_CHECKING, Any
@@ -85,11 +91,17 @@ def __getattr__(name: str) -> Any:
     if name in _MIDDLEWARE_EXPORTS:
         from payments_py.langsmith import middleware
 
-        return getattr(middleware, name)
+        value = getattr(middleware, name)
+        # Cache into the module namespace so subsequent lookups resolve
+        # directly and skip __getattr__ entirely (canonical PEP 562 idiom).
+        globals()[name] = value
+        return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def __dir__() -> list[str]:
+    # __all__ is defined below this function; it is read at call time (not at
+    # definition time), so referencing it here is safe.
     return sorted(__all__)
 
 

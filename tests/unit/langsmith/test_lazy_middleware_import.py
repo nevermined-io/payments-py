@@ -96,10 +96,14 @@ def test_requires_payment_imports_without_fastapi(monkeypatch):
 
 
 def test_referencing_middleware_symbol_without_fastapi_raises(monkeypatch):
-    """Touching a middleware re-export with no ``fastapi`` raises ImportError."""
+    """Touching a middleware re-export with no ``fastapi`` raises the missing-dep error.
+
+    ``ModuleNotFoundError`` is the precise type (a subclass of ``ImportError``)
+    raised when ``fastapi`` cannot be imported.
+    """
     module = _fresh_import(monkeypatch, blocked={"fastapi"})
 
-    with pytest.raises(ImportError):
+    with pytest.raises(ModuleNotFoundError):
         _ = module.PaymentMiddleware
 
 
@@ -124,21 +128,20 @@ def test_from_import_resolves_middleware_symbols(monkeypatch):
     """The headline ``from payments_py.langsmith import …`` form works.
 
     PEP 562 ``__getattr__`` fires for ``from package import name`` too, not just
-    attribute access — this pins the exact user-facing import promised in the
-    acceptance criteria against future regression. ``importlib.__import__`` with
-    a ``fromlist`` is what the ``from … import`` statement compiles to, so it
-    exercises the same code path after a fresh (cache-cleared) package import.
+    attribute access. This pins the exact user-facing import promised in the
+    acceptance criteria against future regression. We run the literal
+    ``from … import`` statement (which compiles to the ``IMPORT_FROM`` bytecode
+    the real user code uses) *after* ``_fresh_import`` has cleared the package
+    from ``sys.modules``, so the statement re-imports it and resolves both names
+    through ``__getattr__``.
     """
     _fresh_import(monkeypatch)
 
-    pkg = importlib.__import__(
-        "payments_py.langsmith",
-        fromlist=["PaymentMiddleware", "build_payment_app"],
-    )
+    from payments_py.langsmith import PaymentMiddleware, build_payment_app
     from payments_py.langsmith import middleware
 
-    assert pkg.PaymentMiddleware is middleware.PaymentMiddleware
-    assert pkg.build_payment_app is middleware.build_payment_app
+    assert PaymentMiddleware is middleware.PaymentMiddleware
+    assert build_payment_app is middleware.build_payment_app
 
 
 def test_unknown_attribute_raises_attribute_error(monkeypatch):
