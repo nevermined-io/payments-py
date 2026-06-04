@@ -281,8 +281,9 @@ class TestLangSmithSpansIntegration:
         assert post_verify_md["nvm.plan_ids"] == ["plan-123"]
         assert post_verify_md["nvm.payer"] == "0x1234567890abcdef"
         assert post_verify_md["nvm.agent_request_id"] == "test-request-id-123"
-        # ≤20 chars → redacted (first 4 chars + marker), never exported verbatim.
-        assert post_verify_md["nvm.payment_token"] == "tok…(short)"
+        # "tok" is ≤4 chars → redacted to just the marker (no prefix revealed),
+        # never exported verbatim.
+        assert post_verify_md["nvm.payment_token"] == "…(short)"
         assert "nvm.verify.duration_ms" in post_verify_md
 
         # Settle span pins every documented attribute from the settle-span row.
@@ -294,7 +295,7 @@ class TestLangSmithSpansIntegration:
         assert settle_md["nvm.tx_hash"] == "0xabc123"
         assert settle_md["nvm.network"] == "eip155:84532"
         assert settle_md["nvm.payer"] == "0x1234567890abcdef"
-        assert settle_md["nvm.payment_token"] == "tok…(short)"
+        assert settle_md["nvm.payment_token"] == "…(short)"
         assert "nvm.settle.duration_ms" in settle_md
 
         # Parent run tree gets metadata three times: pre-verify, post-verify,
@@ -309,6 +310,17 @@ class TestLangSmithSpansIntegration:
         assert all_parent_md["nvm.payer"] == "0x1234567890abcdef"
         assert all_parent_md["nvm.credits_redeemed"] == "1"
         assert all_parent_md["nvm.tx_hash"] == "0xabc123"
+
+        # Defence-in-depth: the raw payment_token must never appear as a VALUE
+        # in any metadata payload attached to the parent run tree -- only the
+        # redacted marker is allowed through.
+        all_parent_values = [
+            v
+            for call in parent_rt.add_metadata.call_args_list
+            for v in call.args[0].values()
+        ]
+        assert "tok" not in all_parent_values
+        assert "…(short)" in all_parent_values
 
     def test_spans_no_op_when_no_active_run(self, mock_payments):
         """With no LangSmith run active, parent metadata is skipped and tool still works."""
