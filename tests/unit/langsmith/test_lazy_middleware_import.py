@@ -120,6 +120,27 @@ def test_middleware_symbols_resolve_lazily(monkeypatch, symbol):
     assert "payments_py.langsmith.middleware" in sys.modules
 
 
+def test_from_import_resolves_middleware_symbols(monkeypatch):
+    """The headline ``from payments_py.langsmith import …`` form works.
+
+    PEP 562 ``__getattr__`` fires for ``from package import name`` too, not just
+    attribute access — this pins the exact user-facing import promised in the
+    acceptance criteria against future regression. ``importlib.__import__`` with
+    a ``fromlist`` is what the ``from … import`` statement compiles to, so it
+    exercises the same code path after a fresh (cache-cleared) package import.
+    """
+    _fresh_import(monkeypatch)
+
+    pkg = importlib.__import__(
+        "payments_py.langsmith",
+        fromlist=["PaymentMiddleware", "build_payment_app"],
+    )
+    from payments_py.langsmith import middleware
+
+    assert pkg.PaymentMiddleware is middleware.PaymentMiddleware
+    assert pkg.build_payment_app is middleware.build_payment_app
+
+
 def test_unknown_attribute_raises_attribute_error(monkeypatch):
     """``__getattr__`` only handles known exports; others raise AttributeError."""
     module = _fresh_import(monkeypatch)

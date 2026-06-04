@@ -35,7 +35,7 @@ are resolved lazily via a module-level ``__getattr__`` (PEP 562) and only
 import ``fastapi`` when first referenced.
 """
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from payments_py.langsmith.spans import (
     abbreviate_token,
@@ -48,6 +48,18 @@ from payments_py.langsmith.spans import (
     settlement_span,
     verify_span,
 )
+
+if TYPE_CHECKING:
+    # Static-analysis / IDE only: lets Pyright resolve the four lazily
+    # re-exported middleware names (and silences reportUnsupportedDunderAll)
+    # without importing fastapi. This block is never executed at runtime, so
+    # the lazy, fastapi-free import path below is unaffected.
+    from payments_py.langsmith.middleware import (
+        PaymentMiddleware,
+        RouteConfig,
+        X402_HEADERS,
+        build_payment_app,
+    )
 
 # Symbols re-exported from the FastAPI-dependent middleware module. Loaded
 # lazily by __getattr__ below so that importing this package (e.g. via the
