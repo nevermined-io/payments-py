@@ -266,7 +266,7 @@ When the optional `[langsmith]` extra is installed and a LangSmith run is active
 - **`nvm:verify`** — opens around the verify-permissions call, with attributes describing the scheme, plan, payer, and verify duration.
 - **`nvm:settlement`** — opens around the settle-permissions call, with attributes describing credits redeemed, remaining balance, transaction hash, network, and settle duration.
 
-The same `nvm.*` metadata is also attached to the parent tool span so the trace is searchable from either level.
+The same `nvm.*` metadata is also attached to the parent tool span so the trace is searchable from either level. The per-call child spans are always authoritative; the parent copy is best-effort and can be overwritten when two protected tools run in the same node — see [Known limitations](#known-limitations).
 
 ### Install
 
@@ -337,6 +337,22 @@ Other `nvm.*` attributes that may be considered sensitive depending on your cont
 - `nvm.balance.after` — the payer's remaining credit balance after this settlement. Reveals per-payer depletion patterns to anyone with trace read access on the operator's LangSmith project. Suppress with `LANGSMITH_HIDE_OUTPUTS=true` or post-filter.
 
 None of these grant access on their own.
+
+### Known limitations
+
+#### Parent metadata is last-writer-wins across tools in one node
+
+`@requires_payment` attaches its `nvm.*` metadata to **two** places: the per-call **child** spans (`nvm:verify` / `nvm:settlement`) and, as a convenience for searchability, the **parent** LangSmith run tree.
+
+The child spans are isolated per call, so they are always correct. The parent copy is **not** namespaced per tool: the bare `nvm.*` keys (`nvm.tx_hash`, `nvm.credits_redeemed`, `nvm.payment_token`, …) are written directly onto the parent run's metadata. When an agent calls **two `@requires_payment` tools within the same LangGraph `ToolNode`** — the common pattern, since a single ReAct step can dispatch multiple tool calls into one node — both decorators target the **same** parent run tree, and the second `add_metadata` **silently overwrites** the first's `nvm.*` values. The parent therefore reflects only the **last** tool that settled in that node; the earlier tool's parent-level `nvm.*` is lost.
+
+What this means in practice:
+
+- **Per-call billing fidelity lives on the child spans, not the parent.** For accurate per-tool accounting (which token, which tx hash, how many credits each call redeemed), filter and aggregate on the `nvm:verify` / `nvm:settlement` **child** spans. Each child carries the values for exactly one call.
+- **Treat parent `nvm.*` as best-effort.** It is convenient for "did this trace touch Nevermined at all?" searches, but do not rely on it for last-writer-sensitive fields when multiple paid tools can run in one node.
+- This is a **last-writer-wins** behaviour, not a correctness bug in settlement — every call still verifies and settles independently and correctly. Only the parent's *denormalized copy* of the metadata is affected.
+
+This matches the cross-SDK **observability spans v1** contract (the SDK-neutral span spec maintained in `nvm-monorepo`, which both `payments-py` and `@nevermined-io/payments` emit against): child spans are authoritative per tool; parent `nvm.*` is best-effort / last-writer-wins.
 
 ### Manual use (non-LangChain paths)
 

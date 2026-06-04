@@ -1,5 +1,6 @@
 """Unit tests for the LangSmith span helpers."""
 
+import logging
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
@@ -42,6 +43,45 @@ def test_abbreviate_token_short_token_returned_as_is():
 def test_abbreviate_token_none_or_empty_returns_none():
     assert abbreviate_token(None) is None
     assert abbreviate_token("") is None
+
+
+def test_abbreviate_token_short_token_emits_warning_but_returns_value(caplog):
+    # A sub-21-char token is almost certainly not a real x402 JWT, so the
+    # helper warns -- but the return contract is unchanged (value returned
+    # verbatim, helper stays idempotent).
+    short = "not-a-real-jwt"  # 14 chars
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        result = abbreviate_token(short)
+    assert result == short
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "shorter than expected" in warnings[0].getMessage()
+
+
+def test_abbreviate_token_boundary_20_chars_warns(caplog):
+    # 20 chars is the inclusive upper bound for the "short" branch.
+    short = "a" * 20
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        result = abbreviate_token(short)
+    assert result == short
+    assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_abbreviate_token_jwt_length_does_not_warn(caplog):
+    # A normal JWT-length token (>20 chars) is abbreviated silently.
+    token = "eyJ4NDAyVmVyc2lvbiI6Miwicm9sZXMiOlsicGF5ZXIiXX0.stubsig"
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        result = abbreviate_token(token)
+    assert result == "eyJ4NDAyVmVyc2lv…bsig"
+    assert not any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_abbreviate_token_none_or_empty_does_not_warn(caplog):
+    # No token at all is not a "wrong token" mistake -- stay silent.
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        assert abbreviate_token(None) is None
+        assert abbreviate_token("") is None
+    assert not any(r.levelno == logging.WARNING for r in caplog.records)
 
 
 # --------------------------------------------------------------------------- #

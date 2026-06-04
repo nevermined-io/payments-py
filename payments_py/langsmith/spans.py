@@ -127,11 +127,23 @@ def abbreviate_token(token: Optional[str]) -> Optional[str]:
 
     Returns ``None`` if ``token`` is ``None`` or empty. Returns the token
     unchanged when it is already 20 characters or fewer (no benefit to
-    abbreviating).
+    abbreviating) -- but emits a ``logging.warning`` in that case, because
+    real x402 access tokens are JWTs (always >20 chars). A sub-21-char
+    token would therefore ship in FULL under ``nvm.payment_token``, which
+    usually means the wrong value was passed (e.g. a plan id or an opaque
+    handle rather than the JWT). The return contract is preserved -- the
+    value still comes back unchanged so the helper stays idempotent; only
+    a warning is added so callers (especially the non-LangChain paths that
+    use this as a public helper) notice the likely mistake.
     """
     if not token:
         return None
     if len(token) <= 20:
+        logger.warning(
+            "abbreviate_token: token shorter than expected (<21 chars) -- "
+            "was the right x402 access token passed? It will be surfaced in "
+            "full under nvm.payment_token."
+        )
         return token
     return f"{token[:16]}…{token[-4:]}"
 
