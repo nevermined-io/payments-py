@@ -1,5 +1,6 @@
 """Unit tests for the LangSmith span helpers."""
 
+import logging
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
@@ -33,15 +34,111 @@ def test_abbreviate_token_long_token():
     assert token not in abbreviated
 
 
-def test_abbreviate_token_short_token_returned_as_is():
-    # A 20-char token has no abbreviation benefit and is returned unchanged.
+def test_abbreviate_token_short_token_is_redacted():
+    # A 20-char token is almost certainly not a real x402 JWT, so it is
+    # redacted (first 4 chars + marker) rather than exported verbatim.
     short = "a" * 20
-    assert abbreviate_token(short) == short
+    assert abbreviate_token(short) == "aaaa…(short)"
+    # The full short value never leaves the function.
+    assert short not in abbreviate_token(short)
 
 
 def test_abbreviate_token_none_or_empty_returns_none():
     assert abbreviate_token(None) is None
     assert abbreviate_token("") is None
+
+
+def test_abbreviate_token_short_token_emits_warning_and_redacts(caplog):
+    # A sub-21-char token is almost certainly not a real x402 JWT, so the
+    # helper warns AND redacts: only the first 4 chars are revealed (to aid
+    # debugging the misconfig); the rest is replaced by the marker so the
+    # credential never reaches a durable trace store.
+    short = "not-a-real-jwt"  # 14 chars
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        result = abbreviate_token(short)
+    assert result == "not-…(short)"
+    assert short not in result
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "20 characters or fewer" in warnings[0].getMessage()
+
+
+def test_abbreviate_token_boundary_20_chars_warns_and_redacts(caplog):
+    # 20 chars is the inclusive upper bound for the "short" branch.
+    short = "a" * 20
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        result = abbreviate_token(short)
+    assert result == "aaaa…(short)"
+    assert len([r for r in caplog.records if r.levelno == logging.WARNING]) == 1
+
+
+def test_abbreviate_token_very_short_token_reveals_nothing(caplog):
+    # For a token of 4 chars or fewer, token[:4] would be the ENTIRE value, so
+    # nothing is revealed -- it collapses to just the marker.
+    for raw in ("a", "ab", "abc", "abcd"):
+        caplog.clear()
+        with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+            result = abbreviate_token(raw)
+        assert result == "…(short)"
+        # The raw value is not revealed anywhere in the output.
+        assert raw not in result
+        assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_abbreviate_token_21_chars_does_not_warn_and_abbreviates(caplog):
+    # Fence-post: 21 chars is the first length that must NOT take the short
+    # branch -- it warns nowhere and uses the <first16>…<last4> form. Guards
+    # against a `< 20` vs `<= 20` off-by-one regressing the boundary upward.
+    token = "a" * 21
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        result = abbreviate_token(token)
+    assert result == f"{'a' * 16}…{'a' * 4}"
+    assert not any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_abbreviate_token_raw_value_ending_in_marker_is_not_passthrough(caplog):
+    # A raw <=20-char value that merely ENDS in the marker must not be mistaken
+    # for an already-redacted value and returned verbatim -- the length-bound on
+    # the classifier rejects it, so it is redacted (and warned) like any other
+    # short token. (12 and 8 are the only lengths a genuine marker can have.)
+    raw = "leakme…(short)"  # 14 chars: ends in marker but is NOT a genuine one
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        result = abbreviate_token(raw)
+    assert result == "leak…(short)"
+    assert "leakme" not in result
+    assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_abbreviate_token_is_idempotent_on_redacted_marker(caplog):
+    # The decorator/middleware path abbreviates twice (attach_metadata_safely
+    # then the builders). Re-applying to an already-redacted value must be a
+    # stable no-op -- same value, and no second warning. Both marker lengths
+    # (4-char prefix and empty prefix) must round-trip.
+    for short, expected in (("not-a-real-jwt", "not-…(short)"), ("ab", "…(short)")):
+        once = abbreviate_token(short)
+        assert once == expected
+        caplog.clear()
+        with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+            twice = abbreviate_token(once)
+        assert twice == once
+        assert not any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_abbreviate_token_jwt_length_does_not_warn(caplog):
+    # A normal JWT-length token (>20 chars) is abbreviated silently.
+    token = "eyJ4NDAyVmVyc2lvbiI6Miwicm9sZXMiOlsicGF5ZXIiXX0.stubsig"
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        result = abbreviate_token(token)
+    assert result == "eyJ4NDAyVmVyc2lv…bsig"
+    assert not any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_abbreviate_token_none_or_empty_does_not_warn(caplog):
+    # No token at all is not a "wrong token" mistake -- stay silent.
+    with caplog.at_level(logging.WARNING, logger="payments_py.langsmith.spans"):
+        assert abbreviate_token(None) is None
+        assert abbreviate_token("") is None
+    assert not any(r.levelno == logging.WARNING for r in caplog.records)
 
 
 # --------------------------------------------------------------------------- #
