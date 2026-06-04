@@ -281,7 +281,8 @@ class TestLangSmithSpansIntegration:
         assert post_verify_md["nvm.plan_ids"] == ["plan-123"]
         assert post_verify_md["nvm.payer"] == "0x1234567890abcdef"
         assert post_verify_md["nvm.agent_request_id"] == "test-request-id-123"
-        assert post_verify_md["nvm.payment_token"] == "tok"  # ≤20 chars → verbatim
+        # ≤20 chars → redacted (first 4 chars + marker), never exported verbatim.
+        assert post_verify_md["nvm.payment_token"] == "tok…(short)"
         assert "nvm.verify.duration_ms" in post_verify_md
 
         # Settle span pins every documented attribute from the settle-span row.
@@ -293,7 +294,7 @@ class TestLangSmithSpansIntegration:
         assert settle_md["nvm.tx_hash"] == "0xabc123"
         assert settle_md["nvm.network"] == "eip155:84532"
         assert settle_md["nvm.payer"] == "0x1234567890abcdef"
-        assert settle_md["nvm.payment_token"] == "tok"
+        assert settle_md["nvm.payment_token"] == "tok…(short)"
         assert "nvm.settle.duration_ms" in settle_md
 
         # Parent run tree gets metadata three times: pre-verify, post-verify,

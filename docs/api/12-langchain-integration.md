@@ -327,6 +327,8 @@ The `payment_token` that the buyer passes via `config["configurable"]["payment_t
 
 For correlation across spans the decorator surfaces an abbreviated `nvm.payment_token` attribute (`eyJ4NDAyVmVyc2lv…bsig`, first 16 chars + ellipsis + last 4) on both `nvm:verify` and `nvm:settlement`. That gives you "which token was this?" without exposing the credential itself.
 
+A real x402 access token is a JWT (always >20 chars). If a token of **20 characters or fewer** is passed — almost always a misconfiguration (a plan id or opaque handle where the JWT was expected) — it is **redacted, not exported**: `nvm.payment_token` shows only the first 4 chars plus a `…(short)` marker (e.g. `eyJ4…(short)`), and a runtime warning is logged. The full short value never reaches a span attribute, so a misrouted secret cannot leak into a durable trace store even when it is shorter than the abbreviation threshold.
+
 The active redaction covers the documented LangChain-via-configurable path. If you're surfacing the token through a different channel (custom callbacks, an explicit `add_metadata({"payment_token": ...})`, raw inputs to a tool whose signature contains the token), the decorator can't see those — strip them yourself or set `export LANGSMITH_HIDE_INPUTS=true` for blanket coverage.
 
 Other `nvm.*` attributes that may be considered sensitive depending on your context:

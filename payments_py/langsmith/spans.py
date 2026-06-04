@@ -118,33 +118,49 @@ def redact_metadata_keys(run_tree: Optional[Any], *keys: str) -> None:
         logger.debug("LangSmith redact_metadata_keys failed (ignored)", exc_info=True)
 
 
+_SHORT_TOKEN_MARKER = "…(short)"
+
+
 def abbreviate_token(token: Optional[str]) -> Optional[str]:
-    """Return a short ``<first 16>…<last 4>`` form of a payment token.
+    """Return a short, non-functional reference to a payment token.
 
     Used to attach an identifiable but non-functional reference to the
     x402 access token in span metadata. Long enough for humans to spot
     which token was used; short enough not to leak the credential.
 
-    Returns ``None`` if ``token`` is ``None`` or empty. Returns the token
-    unchanged when it is already 20 characters or fewer (no benefit to
-    abbreviating) -- but emits a ``logging.warning`` in that case, because
-    real x402 access tokens are JWTs (always >20 chars). A sub-21-char
-    token would therefore ship in FULL under ``nvm.payment_token``, which
-    usually means the wrong value was passed (e.g. a plan id or an opaque
-    handle rather than the JWT). The return contract is preserved -- the
-    value still comes back unchanged so the helper stays idempotent; only
-    a warning is added so callers (especially the non-LangChain paths that
-    use this as a public helper) notice the likely mistake.
+    Returns ``None`` if ``token`` is ``None`` or empty.
+
+    Normal x402 access tokens are JWTs (always >20 chars) and are
+    abbreviated to ``<first 16>…<last 4>``.
+
+    A token of 20 characters or fewer is almost always a misconfiguration
+    (a plan id, an opaque handle, etc. passed where the JWT was expected).
+    Because this helper exists *to redact* credentials before they reach a
+    durable, queryable trace store, such tokens are **redacted, not
+    exported**: only the first 4 characters are revealed (to aid debugging
+    the misconfig), followed by a ``…(short)`` marker. A ``logging.warning``
+    is also emitted so the caller -- especially the non-LangChain paths
+    that use this as a public helper -- notices the likely mistake. The
+    full short value never leaves this function.
+
+    Idempotent: re-applying it to an already-abbreviated or already-redacted
+    value yields the same value (the decorator/middleware path abbreviates
+    twice -- once in ``attach_metadata_safely``, once in the builders).
     """
     if not token:
         return None
+    if token.endswith(_SHORT_TOKEN_MARKER):
+        # Already redacted (re-applied on the decorator/middleware path);
+        # re-slicing would let the marker drift, so return it unchanged and
+        # stay silent -- the original short value already triggered the warning.
+        return token
     if len(token) <= 20:
         logger.warning(
-            "abbreviate_token: token shorter than expected (<21 chars) -- "
-            "was the right x402 access token passed? It will be surfaced in "
-            "full under nvm.payment_token."
+            "abbreviate_token: token is 20 characters or fewer -- was the "
+            "right x402 access token passed? Short/non-JWT tokens are almost "
+            "always a misconfiguration and are redacted (not exported)."
         )
-        return token
+        return f"{token[:4]}{_SHORT_TOKEN_MARKER}"
     return f"{token[:16]}…{token[-4:]}"
 
 
