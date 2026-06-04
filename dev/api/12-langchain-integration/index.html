@@ -1067,6 +1067,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limitations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Known limitations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parent-metadata-is-last-writer-wins-across-tools-in-one-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parent metadata is last-writer-wins across tools in one node
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#manual-use-non-langchain-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1610,6 +1638,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limitations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Known limitations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parent-metadata-is-last-writer-wins-across-tools-in-one-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parent metadata is last-writer-wins across tools in one node
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#manual-use-non-langchain-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1942,7 +1998,7 @@
 <li><strong><code>nvm:verify</code></strong> — opens around the verify-permissions call, with attributes describing the scheme, plan, payer, and verify duration.</li>
 <li><strong><code>nvm:settlement</code></strong> — opens around the settle-permissions call, with attributes describing credits redeemed, remaining balance, transaction hash, network, and settle duration.</li>
 </ul>
-<p>The same <code>nvm.*</code> metadata is also attached to the parent tool span so the trace is searchable from either level.</p>
+<p>The same <code>nvm.*</code> metadata is also attached to the parent tool span so the trace is searchable from either level. The per-call child spans are always authoritative; the parent copy is best-effort and can be overwritten when two protected tools run in the same node — see <a href="#known-limitations">Known limitations</a>.</p>
 <h3 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;payments-py[langchain,langsmith]&quot;</span>
 </code></pre></div>
@@ -2073,6 +2129,7 @@
 <h3 id="sensitive-data-in-traces">Sensitive data in traces<a class="headerlink" href="#sensitive-data-in-traces" title="Permanent link">&para;</a></h3>
 <p>The <code>payment_token</code> that the buyer passes via <code>config["configurable"]["payment_token"]</code> is captured by LangChain into the parent tool span's metadata, and would normally be inherited by any child span — including the <code>nvm:verify</code> and <code>nvm:settlement</code> spans the decorator emits. The full token grants access to the protected tool until it expires, so the decorator <strong>proactively strips <code>payment_token</code> from the parent tool span's metadata</strong> before opening any child span. The full credential never reaches a Nevermined span attribute.</p>
 <p>For correlation across spans the decorator surfaces an abbreviated <code>nvm.payment_token</code> attribute (<code>eyJ4NDAyVmVyc2lv…bsig</code>, first 16 chars + ellipsis + last 4) on both <code>nvm:verify</code> and <code>nvm:settlement</code>. That gives you "which token was this?" without exposing the credential itself.</p>
+<p>A real x402 access token is a JWT, which is far longer than 20 chars. If a token of <strong>20 characters or fewer</strong> is passed — almost always a misconfiguration (a plan id or opaque handle where the JWT was expected) — it is <strong>redacted, not exported</strong>: <code>nvm.payment_token</code> shows at most the first 4 chars plus a <code>…(short)</code> marker (e.g. <code>eyJ4…(short)</code>), and a runtime warning is logged. For a token of 4 chars or fewer, nothing is revealed at all — it collapses to just <code>…(short)</code>. The full short value never reaches a span attribute, so a misrouted secret cannot leak into a durable trace store even when it is shorter than the abbreviation threshold.</p>
 <p>The active redaction covers the documented LangChain-via-configurable path. If you're surfacing the token through a different channel (custom callbacks, an explicit <code>add_metadata({"payment_token": ...})</code>, raw inputs to a tool whose signature contains the token), the decorator can't see those — strip them yourself or set <code>export LANGSMITH_HIDE_INPUTS=true</code> for blanket coverage.</p>
 <p>Other <code>nvm.*</code> attributes that may be considered sensitive depending on your context:</p>
 <ul>
@@ -2082,6 +2139,17 @@
 <li><code>nvm.balance.after</code> — the payer's remaining credit balance after this settlement. Reveals per-payer depletion patterns to anyone with trace read access on the operator's LangSmith project. Suppress with <code>LANGSMITH_HIDE_OUTPUTS=true</code> or post-filter.</li>
 </ul>
 <p>None of these grant access on their own.</p>
+<h3 id="known-limitations">Known limitations<a class="headerlink" href="#known-limitations" title="Permanent link">&para;</a></h3>
+<h4 id="parent-metadata-is-last-writer-wins-across-tools-in-one-node">Parent metadata is last-writer-wins across tools in one node<a class="headerlink" href="#parent-metadata-is-last-writer-wins-across-tools-in-one-node" title="Permanent link">&para;</a></h4>
+<p><code>@requires_payment</code> attaches its <code>nvm.*</code> metadata to <strong>two</strong> places: the per-call <strong>child</strong> spans (<code>nvm:verify</code> / <code>nvm:settlement</code>) and, as a convenience for searchability, the <strong>parent</strong> LangSmith run tree.</p>
+<p>The child spans are isolated per call, so they are always correct. The parent copy is <strong>not</strong> namespaced per tool: the bare <code>nvm.*</code> keys (<code>nvm.tx_hash</code>, <code>nvm.credits_redeemed</code>, <code>nvm.payment_token</code>, …) are written directly onto the parent run's metadata. When an agent calls <strong>two <code>@requires_payment</code> tools within the same LangGraph <code>ToolNode</code></strong> — the common pattern, since a single ReAct step can dispatch multiple tool calls into one node — both decorators target the <strong>same</strong> parent run tree, and the second <code>add_metadata</code> <strong>silently overwrites</strong> the first's <code>nvm.*</code> values. The parent therefore reflects only the <strong>last</strong> tool that settled in that node; the earlier tool's parent-level <code>nvm.*</code> is lost.</p>
+<p>What this means in practice:</p>
+<ul>
+<li><strong>Per-call billing fidelity lives on the child spans, not the parent.</strong> For accurate per-tool accounting (which token, which tx hash, how many credits each call redeemed), filter and aggregate on the <code>nvm:verify</code> / <code>nvm:settlement</code> <strong>child</strong> spans. Each child carries the values for exactly one call.</li>
+<li><strong>Treat parent <code>nvm.*</code> as best-effort.</strong> It is convenient for "did this trace touch Nevermined at all?" searches, but do not rely on it for last-writer-sensitive fields when multiple paid tools can run in one node.</li>
+<li>This is a <strong>last-writer-wins</strong> behaviour, not a correctness bug in settlement — every call still verifies and settles independently and correctly. Only the parent's <em>denormalized copy</em> of the metadata is affected.</li>
+</ul>
+<p>This matches the cross-SDK <strong>observability spans v1</strong> contract (the SDK-neutral span spec maintained in <code>nvm-monorepo</code>, which both <code>payments-py</code> and <code>@nevermined-io/payments</code> emit against): child spans are authoritative per tool; parent <code>nvm.*</code> is best-effort / last-writer-wins.</p>
 <h3 id="manual-use-non-langchain-paths">Manual use (non-LangChain paths)<a class="headerlink" href="#manual-use-non-langchain-paths" title="Permanent link">&para;</a></h3>
 <p>The same context managers are also exported for code that wants to emit Nevermined-flavored spans without going through <code>@requires_payment</code> (e.g. the FastAPI middleware path):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.langsmith</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
