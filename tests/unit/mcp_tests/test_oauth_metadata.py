@@ -295,6 +295,19 @@ class TestBuildServerInfoResponse:
         )
         assert "authorization_server_metadata" not in info["oauth"]
 
+    def test_advertises_x402_by_default(self, base_config):
+        """Should advertise x402 discovery unless explicitly disabled."""
+        info = build_server_info_response(base_config)
+
+        assert (
+            info["endpoints"]["x402_payment"]
+            == "http://localhost:3000/.well-known/x402-payment"
+        )
+        assert (
+            info["oauth"]["x402_payment_discovery"]
+            == "http://localhost:3000/.well-known/x402-payment"
+        )
+
     def test_includes_mcp_capabilities(self, base_config):
         """Should include MCP capabilities."""
         info = build_server_info_response(base_config)

@@ -296,7 +296,7 @@ class AuthorizationServerMetadata(TypedDict, total=False):
     issuer: str
     authorization_endpoint: str
     token_endpoint: str
-    registration_endpoint: Optional[str]
+    registration_endpoint: str
     jwks_uri: str
     response_types_supported: List[str]
     grant_types_supported: List[str]
@@ -331,7 +331,7 @@ class OidcConfiguration(TypedDict, total=False):
     issuer: str
     authorization_endpoint: str
     token_endpoint: str
-    registration_endpoint: Optional[str]
+    registration_endpoint: str
     jwks_uri: str
     response_types_supported: List[str]
     grant_types_supported: List[str]
