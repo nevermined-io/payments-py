@@ -266,7 +266,7 @@ When the optional `[langsmith]` extra is installed and a LangSmith run is active
 - **`nvm:verify`** — opens around the verify-permissions call, with attributes describing the scheme, plan, payer, and verify duration.
 - **`nvm:settlement`** — opens around the settle-permissions call, with attributes describing credits redeemed, remaining balance, transaction hash, network, and settle duration.
 
-The same `nvm.*` metadata is also attached to the parent tool span so the trace is searchable from either level.
+The same `nvm.*` metadata is also attached to the parent tool span so the trace is searchable from either level. The per-call child spans are always authoritative; the parent copy is best-effort and can be overwritten when two protected tools run in the same node — see [Known limitations](#known-limitations).
 
 ### Install
 
@@ -327,6 +327,8 @@ The `payment_token` that the buyer passes via `config["configurable"]["payment_t
 
 For correlation across spans the decorator surfaces an abbreviated `nvm.payment_token` attribute (`eyJ4NDAyVmVyc2lv…bsig`, first 16 chars + ellipsis + last 4) on both `nvm:verify` and `nvm:settlement`. That gives you "which token was this?" without exposing the credential itself.
 
+A real x402 access token is a JWT, which is far longer than 20 chars. If a token of **20 characters or fewer** is passed — almost always a misconfiguration (a plan id or opaque handle where the JWT was expected) — it is **redacted, not exported**: `nvm.payment_token` shows at most the first 4 chars plus a `…(short)` marker (e.g. `eyJ4…(short)`), and a runtime warning is logged. For a token of 4 chars or fewer, nothing is revealed at all — it collapses to just `…(short)`. The full short value never reaches a span attribute, so a misrouted secret cannot leak into a durable trace store even when it is shorter than the abbreviation threshold.
+
 The active redaction covers the documented LangChain-via-configurable path. If you're surfacing the token through a different channel (custom callbacks, an explicit `add_metadata({"payment_token": ...})`, raw inputs to a tool whose signature contains the token), the decorator can't see those — strip them yourself or set `export LANGSMITH_HIDE_INPUTS=true` for blanket coverage.
 
 Other `nvm.*` attributes that may be considered sensitive depending on your context:
@@ -337,6 +339,22 @@ Other `nvm.*` attributes that may be considered sensitive depending on your cont
 - `nvm.balance.after` — the payer's remaining credit balance after this settlement. Reveals per-payer depletion patterns to anyone with trace read access on the operator's LangSmith project. Suppress with `LANGSMITH_HIDE_OUTPUTS=true` or post-filter.
 
 None of these grant access on their own.
+
+### Known limitations
+
+#### Parent metadata is last-writer-wins across tools in one node
+
+`@requires_payment` attaches its `nvm.*` metadata to **two** places: the per-call **child** spans (`nvm:verify` / `nvm:settlement`) and, as a convenience for searchability, the **parent** LangSmith run tree.
+
+The child spans are isolated per call, so they are always correct. The parent copy is **not** namespaced per tool: the bare `nvm.*` keys (`nvm.tx_hash`, `nvm.credits_redeemed`, `nvm.payment_token`, …) are written directly onto the parent run's metadata. When an agent calls **two `@requires_payment` tools within the same LangGraph `ToolNode`** — the common pattern, since a single ReAct step can dispatch multiple tool calls into one node — both decorators target the **same** parent run tree, and the second `add_metadata` **silently overwrites** the first's `nvm.*` values. The parent therefore reflects only the **last** tool that settled in that node; the earlier tool's parent-level `nvm.*` is lost.
+
+What this means in practice:
+
+- **Per-call billing fidelity lives on the child spans, not the parent.** For accurate per-tool accounting (which token, which tx hash, how many credits each call redeemed), filter and aggregate on the `nvm:verify` / `nvm:settlement` **child** spans. Each child carries the values for exactly one call.
+- **Treat parent `nvm.*` as best-effort.** It is convenient for "did this trace touch Nevermined at all?" searches, but do not rely on it for last-writer-sensitive fields when multiple paid tools can run in one node.
+- This is a **last-writer-wins** behaviour, not a correctness bug in settlement — every call still verifies and settles independently and correctly. Only the parent's *denormalized copy* of the metadata is affected.
+
+This matches the cross-SDK **observability spans v1** contract (the SDK-neutral span spec maintained in `nvm-monorepo`, which both `payments-py` and `@nevermined-io/payments` emit against): child spans are authoritative per tool; parent `nvm.*` is best-effort / last-writer-wins.
 
 ### Manual use (non-LangChain paths)
 

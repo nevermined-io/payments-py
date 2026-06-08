@@ -118,21 +118,67 @@ def redact_metadata_keys(run_tree: Optional[Any], *keys: str) -> None:
         logger.debug("LangSmith redact_metadata_keys failed (ignored)", exc_info=True)
 
 
+_SHORT_TOKEN_MARKER = "…(short)"
+# A redacted short token is exactly ``<prefix><marker>`` where ``prefix`` is
+# either empty (raw length <= 4) or the first 4 chars (raw length > 4) -- so a
+# genuine marker only ever has one of these two lengths. Recognising it by both
+# suffix AND an exact length stops a raw <=20-char value that merely *ends* in
+# the marker (e.g. ``"x…(short)"``) from slipping through verbatim.
+_REDACTED_MARKER_LENS = frozenset(
+    {len(_SHORT_TOKEN_MARKER), 4 + len(_SHORT_TOKEN_MARKER)}
+)
+
+
+def _is_redacted_marker(token: str) -> bool:
+    """True if ``token`` is already a value produced by the short-token branch."""
+    return token.endswith(_SHORT_TOKEN_MARKER) and len(token) in _REDACTED_MARKER_LENS
+
+
 def abbreviate_token(token: Optional[str]) -> Optional[str]:
-    """Return a short ``<first 16>…<last 4>`` form of a payment token.
+    """Return a short, non-functional reference to a payment token.
 
     Used to attach an identifiable but non-functional reference to the
     x402 access token in span metadata. Long enough for humans to spot
     which token was used; short enough not to leak the credential.
 
-    Returns ``None`` if ``token`` is ``None`` or empty. Returns the token
-    unchanged when it is already 20 characters or fewer (no benefit to
-    abbreviating).
+    Returns ``None`` if ``token`` is ``None`` or empty.
+
+    Real x402 access tokens are JWTs, which are far longer than 20 chars;
+    they are abbreviated to ``<first 16>…<last 4>``.
+
+    A token of 20 characters or fewer is almost always a misconfiguration
+    (a plan id, an opaque handle, etc. passed where the JWT was expected).
+    Because this helper exists *to redact* credentials before they reach a
+    durable, queryable trace store, such tokens are **redacted, not
+    exported**: at most the first 4 characters are revealed (to aid
+    debugging the misconfig), followed by a ``…(short)`` marker -- and for a
+    token of 4 chars or fewer **nothing** is revealed (the whole value would
+    otherwise be the "prefix"), so it collapses to just the marker. A
+    ``logging.warning`` is also emitted so the caller -- especially the
+    non-LangChain paths that use this as a public helper -- notices the
+    likely mistake. The full short value never leaves this function.
+
+    Idempotent: re-applying it to an already-abbreviated or already-redacted
+    value yields the same value (the decorator/middleware path abbreviates
+    twice -- once in ``attach_metadata_safely``, once in the builders).
     """
     if not token:
         return None
-    if len(token) <= 20:
+    if _is_redacted_marker(token):
+        # Already redacted (re-applied on the decorator/middleware path);
+        # re-slicing would let the marker drift, so return it unchanged and
+        # stay silent -- the original short value already triggered the warning.
         return token
+    if len(token) <= 20:
+        logger.warning(
+            "abbreviate_token: token is 20 characters or fewer -- was the "
+            "right x402 access token passed? Short/non-JWT tokens are almost "
+            "always a misconfiguration and are redacted (not exported)."
+        )
+        # Reveal at most 4 chars; for a <=4-char token reveal nothing, since
+        # token[:4] would be the entire value -- defeating the redaction.
+        prefix = token[:4] if len(token) > 4 else ""
+        return f"{prefix}{_SHORT_TOKEN_MARKER}"
     return f"{token[:16]}…{token[-4:]}"
 
 
