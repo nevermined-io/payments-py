@@ -111,14 +111,22 @@ def last_settlement() -> Optional[SettleResponse]:
     ``network``, ``payer``) without threading it back through the
     runnable config (which LangGraph copies per node).
 
-    Returns ``None`` if no settlement has happened yet in this process, or
-    if the most recent invocation raised before reaching the settle phase.
+    Returns ``None`` if no settlement has happened yet in this process, or if
+    the most recent invocation did not reach a *successful* settle — i.e. it
+    raised before the settle phase (a verify failure / ``PaymentRequiredError``)
+    **or** it reached settle but settlement failed (settle errors are swallowed
+    and logged, so the tool still returns its result while ``last_settlement()``
+    stays ``None``). The slot is reset to ``None`` at the start of every
+    invocation, so a prior invocation's receipt is never misattributed to a
+    later call that failed to settle.
 
     .. note::
        This accessor reads from a module-level slot. In multi-tenant
        processes (e.g. a server handling concurrent settlements), the value
        reflects whichever invocation settled most recently — there is no
-       per-call isolation.
+       per-call isolation. Because the slot is also reset on entry, a
+       concurrent invocation that merely *starts* (even one that fails verify)
+       nulls a sibling's freshly written receipt.
     """
     return _LAST_SETTLEMENT["value"]
 
@@ -194,6 +202,19 @@ def _store_in_configurable(config: Any, key: str, value: Any) -> None:
         configurable[key] = value
 
 
+def _remove_from_configurable(config: Any, key: str) -> None:
+    """Remove a key from config["configurable"] if present (no-op otherwise)."""
+    if config is None:
+        return
+    configurable = None
+    if isinstance(config, dict):
+        configurable = config.get("configurable")
+    else:
+        configurable = getattr(config, "configurable", None)
+    if isinstance(configurable, dict):
+        configurable.pop(key, None)
+
+
 def _verify_payment(
     func: Callable,
     kwargs: dict,
@@ -254,6 +275,22 @@ def _verify_payment(
                 "Payment required: missing payment_token in config['configurable']",
                 payment_required,
             )
+
+        # Drop the raw token from configurable now that we hold it in ``token``
+        # (and, below, in ``_VerifiedPayment.token``). LangChain's
+        # ``ensure_config`` re-promotes every configurable scalar into a
+        # runnable's ``metadata`` on EACH invocation, so any traced runnable the
+        # tool body spawns (an LLM call, a sub-chain) sharing this config would
+        # otherwise re-leak the full credential into its own span metadata —
+        # ``redact_metadata_keys`` above only scrubs the parent run-tree once.
+        # This MUST run after extraction (popping earlier would make
+        # ``_extract_payment_token`` return None) and before the tool body runs,
+        # which is guaranteed: ``_verify_payment`` completes before ``func`` is
+        # called. Settlement reads ``_VerifiedPayment.token``, never configurable,
+        # so removal is non-functional. On the ``@tool`` path LangChain hands the
+        # decorator a per-invocation config copy, so this does not mutate a config
+        # the caller reuses across sibling tools.
+        _remove_from_configurable(runnable_config, "payment_token")
 
         credits_pre = _resolve_credits_pre(config.credits, kwargs)
         # For verification, use pre-resolved credits or default to 1
