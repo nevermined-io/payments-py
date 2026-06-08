@@ -68,6 +68,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 from payments_py.langsmith.spans import (
+    abbreviate_token,
     active_run_tree,
     attach_metadata_safely,
     build_settle_metadata,
@@ -288,8 +289,19 @@ def _verify_payment(
                 payment_required,
             )
 
+    # The ``token`` field carries the ABBREVIATED reference, never the raw
+    # credential: this PaymentContext is written into ``config["configurable"]``,
+    # which LangChain can capture into span metadata, so persisting the full
+    # token here would reopen the very leak the parent-tree
+    # ``redact_metadata_keys("payment_token")`` call above closes — and a child
+    # run opened *during* the tool body would capture it before any post-hoc
+    # redaction could run. Settlement uses ``_VerifiedPayment.token`` (the raw
+    # token in the internal container below), never this field, so abbreviating
+    # here is non-functional. ``abbreviate_token`` is the same helper surfaced as
+    # ``nvm.payment_token``; ``or ""`` is belt-and-suspenders past the ``not
+    # token`` guard above and can never fall back to the raw credential.
     payment_context = PaymentContext(
-        token=token,
+        token=abbreviate_token(token) or "",
         payment_required=payment_required,
         credits_to_settle=credits_to_charge,
         verified=True,
@@ -493,6 +505,12 @@ def _execute_with_payment(
     config: _PaymentConfig,
 ) -> Any:
     """Synchronous payment verification, execution, and settlement."""
+    # Reset the module-level receipt slot at the START of every invocation,
+    # before verify. Any failure that does not reach the settle-success write
+    # (a verify failure / PaymentRequiredError, or a swallowed settle failure)
+    # then leaves last_settlement() returning None rather than a stale receipt
+    # from a previous invocation — matching the last_settlement() docstring.
+    _LAST_SETTLEMENT["value"] = None
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = func(*args, **kwargs)
@@ -507,6 +525,10 @@ async def _execute_with_payment_async(
     config: _PaymentConfig,
 ) -> Any:
     """Async payment verification, execution, and settlement."""
+    # Reset the receipt slot at the start of the invocation, before verify —
+    # see _execute_with_payment for the rationale. Both entry points must do
+    # this so the stale-receipt guard holds on the async path too.
+    _LAST_SETTLEMENT["value"] = None
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = await func(*args, **kwargs)
