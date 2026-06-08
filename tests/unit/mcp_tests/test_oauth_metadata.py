@@ -261,6 +261,53 @@ class TestBuildServerInfoResponse:
             == "http://localhost:3000/.well-known/openid-configuration"
         )
 
+    def test_omits_disabled_discovery_advertisements(self, base_config):
+        """Should only advertise mounted OAuth and x402 discovery routes."""
+        info = build_server_info_response(
+            {
+                **base_config,
+                "enableOAuthDiscovery": False,
+                "enableX402Discovery": False,
+            }
+        )
+
+        assert "x402_payment" not in info["endpoints"]
+        assert "authorization_server_metadata" not in info["oauth"]
+        assert "protected_resource_metadata" not in info["oauth"]
+        assert "openid_configuration" not in info["oauth"]
+        assert "x402_payment_discovery" not in info["oauth"]
+        assert info["oauth"]["authorization_endpoint"]
+        assert info["oauth"]["token_endpoint"]
+
+    def test_advertises_x402_independently_of_oauth_discovery(self, base_config):
+        """Should allow x402 discovery to stay advertised without OAuth discovery."""
+        info = build_server_info_response(
+            {**base_config, "enableOAuthDiscovery": False}
+        )
+
+        assert (
+            info["endpoints"]["x402_payment"]
+            == "http://localhost:3000/.well-known/x402-payment"
+        )
+        assert (
+            info["oauth"]["x402_payment_discovery"]
+            == "http://localhost:3000/.well-known/x402-payment"
+        )
+        assert "authorization_server_metadata" not in info["oauth"]
+
+    def test_advertises_x402_by_default(self, base_config):
+        """Should advertise x402 discovery unless explicitly disabled."""
+        info = build_server_info_response(base_config)
+
+        assert (
+            info["endpoints"]["x402_payment"]
+            == "http://localhost:3000/.well-known/x402-payment"
+        )
+        assert (
+            info["oauth"]["x402_payment_discovery"]
+            == "http://localhost:3000/.well-known/x402-payment"
+        )
+
     def test_includes_mcp_capabilities(self, base_config):
         """Should include MCP capabilities."""
         info = build_server_info_response(base_config)

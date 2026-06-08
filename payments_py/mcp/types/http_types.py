@@ -115,6 +115,8 @@ class HttpRouterConfig(TypedDict, total=False):
         environment: Nevermined environment (required).
         enableOAuthDiscovery: Enable OAuth discovery endpoints (/.well-known/*).
                              Defaults to True.
+        enableX402Discovery: Enable x402 payment discovery endpoint
+                             (/.well-known/x402-payment). Defaults to True.
         enableClientRegistration: Enable dynamic client registration (/register).
                                  Defaults to True.
         enableHealthCheck: Enable health check endpoint (/health).
@@ -135,6 +137,7 @@ class HttpRouterConfig(TypedDict, total=False):
     prompts: Optional[List[str]]
     protocolVersion: Optional[str]
     enableOAuthDiscovery: Optional[bool]
+    enableX402Discovery: Optional[bool]
     enableClientRegistration: Optional[bool]
     enableHealthCheck: Optional[bool]
     enableServerInfo: Optional[bool]
@@ -164,6 +167,7 @@ class HttpServerConfig(TypedDict, total=False):
     prompts: Optional[List[str]]
     protocolVersion: Optional[str]
     enableOAuthDiscovery: Optional[bool]
+    enableX402Discovery: Optional[bool]
     enableClientRegistration: Optional[bool]
     enableHealthCheck: Optional[bool]
     enableServerInfo: Optional[bool]
@@ -292,7 +296,7 @@ class AuthorizationServerMetadata(TypedDict, total=False):
     issuer: str
     authorization_endpoint: str
     token_endpoint: str
-    registration_endpoint: Optional[str]
+    registration_endpoint: str
     jwks_uri: str
     response_types_supported: List[str]
     grant_types_supported: List[str]
@@ -327,7 +331,7 @@ class OidcConfiguration(TypedDict, total=False):
     issuer: str
     authorization_endpoint: str
     token_endpoint: str
-    registration_endpoint: Optional[str]
+    registration_endpoint: str
     jwks_uri: str
     response_types_supported: List[str]
     grant_types_supported: List[str]
