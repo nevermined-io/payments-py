@@ -467,32 +467,62 @@ class TestBuildPaymentApp:
         assert client.get("/x").status_code == 200
 
 
-class TestBuildPaymentAppDeprecationWarning:
+def _our_optional_warnings(recwarn):
+    """Only the build_payment_app 'no longer required' UserWarnings.
+
+    Scoped by message so unrelated UserWarnings from FastAPI/Starlette can't
+    make the assertions pass or fail spuriously.
+    """
+    return [
+        w
+        for w in recwarn.list
+        if issubclass(w.category, UserWarning)
+        and "no longer required" in str(w.message)
+    ]
+
+
+class TestBuildPaymentAppOptionalWarning:
     """build_payment_app warns it's optional on langgraph-api >= 0.6.15.
 
     The spike (nvm-monorepo#1762) bisected the OpenAPI-docstring crash fix to
     langgraph-api 0.6.15 (``get_schema`` broadened its catch to
     ``except Exception``), so a plain Starlette http.app boots without the
-    FastAPI wrapper. #1763 surfaces that via a DeprecationWarning.
+    FastAPI wrapper. #1763 surfaces that via a UserWarning (visible by default,
+    unlike DeprecationWarning, so the nudge actually reaches deployers).
     """
 
     def test_warns_at_fix_version(self, mock_payments, monkeypatch):
         monkeypatch.setattr(ls_middleware, "_langgraph_api_version", lambda: (0, 6, 15))
-        with pytest.warns(DeprecationWarning, match="no longer required"):
+        with pytest.warns(UserWarning, match="no longer required"):
             build_payment_app(payments=mock_payments, routes=None)
 
-    def test_warns_on_newer_version(self, mock_payments, monkeypatch):
+    def test_warning_points_at_plain_starlette_form(self, mock_payments, monkeypatch):
         monkeypatch.setattr(ls_middleware, "_langgraph_api_version", lambda: (0, 8, 7))
-        with pytest.warns(DeprecationWarning, match="PaymentMiddleware directly"):
+        with pytest.warns(UserWarning, match=r"Starlette\(middleware="):
             build_payment_app(payments=mock_payments, routes=None)
 
-    def test_no_warning_below_fix_version(self, mock_payments, monkeypatch, recwarn):
-        monkeypatch.setattr(ls_middleware, "_langgraph_api_version", lambda: (0, 6, 14))
+    @pytest.mark.parametrize(
+        "detected,should_warn",
+        [
+            ((0, 6, 15), True),  # exactly the fix version
+            ((0, 8, 7), True),  # newer 3-component
+            ((0, 7), True),  # 2-component, above fix
+            ((0, 6), False),  # 2-component == 0.6.0 < 0.6.15
+            ((1,), True),  # 1-component major bump
+            ((0,), False),  # 1-component, below
+            ((0, 6, 14), False),  # the last crashing patch
+        ],
+    )
+    def test_warning_gate_across_tuple_shapes(
+        self, mock_payments, monkeypatch, recwarn, detected, should_warn
+    ):
+        """Pin the tuple-prefix comparison against the (0,6,15) sentinel so a
+        future "harden the version compare" refactor can't silently regress the
+        2-/1-component cases (e.g. break the "0.7" path)."""
+        monkeypatch.setattr(ls_middleware, "_langgraph_api_version", lambda: detected)
         app = build_payment_app(payments=mock_payments, routes=None)
-        assert isinstance(app, FastAPI)
-        assert not [
-            w for w in recwarn.list if issubclass(w.category, DeprecationWarning)
-        ]
+        assert isinstance(app, FastAPI)  # always built, warning or not
+        assert bool(_our_optional_warnings(recwarn)) == should_warn
 
     def test_no_warning_when_version_undetected(
         self, mock_payments, monkeypatch, recwarn
@@ -501,9 +531,15 @@ class TestBuildPaymentAppDeprecationWarning:
         monkeypatch.setattr(ls_middleware, "_langgraph_api_version", lambda: None)
         app = build_payment_app(payments=mock_payments, routes=None)
         assert isinstance(app, FastAPI)
-        assert not [
-            w for w in recwarn.list if issubclass(w.category, DeprecationWarning)
-        ]
+        assert not _our_optional_warnings(recwarn)
+
+    def test_warns_via_real_version_detection(self, mock_payments, monkeypatch):
+        """End-to-end: patch only importlib.metadata.version and let the real
+        parse -> compare -> warn seam run (the other tests stub
+        _langgraph_api_version wholesale, never exercising the parser here)."""
+        monkeypatch.setattr("importlib.metadata.version", lambda name: "0.8.7")
+        with pytest.warns(UserWarning, match="no longer required"):
+            build_payment_app(payments=mock_payments, routes=None)
 
 
 class TestLanggraphApiVersionDetection:
@@ -516,6 +552,14 @@ class TestLanggraphApiVersionDetection:
     def test_parses_prerelease_component(self, monkeypatch):
         # A pre-release suffix on the patch component is stripped to its int.
         monkeypatch.setattr("importlib.metadata.version", lambda name: "0.6.15rc1")
+        assert ls_middleware._langgraph_api_version() == (0, 6, 15)
+
+    def test_parses_non_digit_and_extra_components(self, monkeypatch):
+        # A component with no leading digit degrades to 0 (the else-0 branch)...
+        monkeypatch.setattr("importlib.metadata.version", lambda name: "0.6.rc1")
+        assert ls_middleware._langgraph_api_version() == (0, 6, 0)
+        # ...and a 4th component is dropped by the [:3] slice.
+        monkeypatch.setattr("importlib.metadata.version", lambda name: "0.6.15.post1")
         assert ls_middleware._langgraph_api_version() == (0, 6, 15)
 
     def test_returns_none_when_not_installed(self, monkeypatch):

@@ -557,9 +557,13 @@ def build_payment_app(
             Middleware(PaymentMiddleware, payments=payments, routes={...}),
         ])
 
-    On ``langgraph-api >= 0.6.15`` this factory emits a ``DeprecationWarning``
-    pointing at the plain-Starlette form above. It remains useful on older
-    ``langgraph-api`` (where the FastAPI wrapper is still load-bearing). The
+    On ``langgraph-api >= 0.6.15`` this factory emits a ``UserWarning``
+    pointing at the plain-Starlette form above. (``UserWarning`` rather than
+    ``DeprecationWarning`` so the nudge is actually visible at app startup —
+    ``DeprecationWarning`` is suppressed by default outside ``__main__``/pytest;
+    and the factory is not being removed, only made optional.) It remains useful
+    on older ``langgraph-api`` (where the FastAPI wrapper is still load-bearing).
+    The
     middleware class itself (``PaymentMiddleware``) is a Starlette
     ``BaseHTTPMiddleware`` subclass and works on both Starlette and FastAPI —
     only the outer app wrapper ever mattered for the upstream bug.
@@ -597,8 +601,9 @@ def build_payment_app(
             f"langgraph-api >= {fix} (detected "
             f"{'.'.join(str(p) for p in detected)}). Mount PaymentMiddleware "
             f"directly on a plain Starlette http.app instead: "
-            f"app.add_middleware(PaymentMiddleware, payments=..., routes=...).",
-            DeprecationWarning,
+            f"Starlette(middleware=[Middleware(PaymentMiddleware, "
+            f"payments=..., routes=...)]).",
+            UserWarning,
             stacklevel=2,
         )
     app = FastAPI()
