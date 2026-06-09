@@ -30,13 +30,16 @@ more than payment gating.
 import asyncio
 import base64
 import contextlib
+import importlib.metadata
 import inspect
 import logging
 import posixpath
+import re
 import time
+import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Tuple, Union
 
 from fastapi import FastAPI
 from starlette.datastructures import MutableHeaders
@@ -497,28 +500,73 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             return _send_payment_required(payment_required, rejection.message)
 
 
+# langgraph-api version that fixed the OpenAPI-docstring crash on non-FastAPI
+# http.app wrappers. In <0.6.15, ``SchemaGenerator.get_schema`` caught only
+# ``AssertionError`` around ``parse_docstring``, so a YAML ``ScannerError`` from
+# an internal endpoint docstring with an unsafe colon propagated and crashed
+# startup. 0.6.15 broadened the catch to ``except Exception`` (degrades to a
+# plain description + a logged warning), so a plain Starlette ``http.app`` boots
+# cleanly. Empirically bisected (0.6.14 crashes, 0.6.15 boots) and verified
+# end-to-end on 0.8.7 — see nevermined-io/nvm-monorepo#1762.
+_LANGGRAPH_API_DOCSTRING_FIX: Tuple[int, int, int] = (0, 6, 15)
+
+
+def _langgraph_api_version() -> Optional[Tuple[int, ...]]:
+    """Return the installed ``langgraph-api`` version as an int tuple, or None.
+
+    Best-effort and fully defensive: returns ``None`` if the package is absent
+    or the version string can't be parsed (e.g. an exotic pre-release). Only the
+    leading integer of each of the first three dot components is used, so
+    ``"0.6.15"`` → ``(0, 6, 15)`` and ``"0.6.15rc1"`` → ``(0, 6, 15)``.
+    """
+    try:
+        raw = importlib.metadata.version("langgraph-api")
+        parts = []
+        for component in raw.split(".")[:3]:
+            match = re.match(r"\d+", component)
+            parts.append(int(match.group()) if match else 0)
+        return tuple(parts)
+    except Exception:
+        return None
+
+
 def build_payment_app(
     payments: Any,
     routes: Optional[Dict[str, Union[RouteConfig, dict]]] = None,
 ) -> Any:
     """Build a FastAPI app pre-wired with PaymentMiddleware for LangSmith Deployment.
 
-    This is the recommended entry point. The returned FastAPI instance is
-    intended to be mounted via the http.app field of langgraph.json.
+    Convenience factory. The returned FastAPI instance is intended to be mounted
+    via the ``http.app`` field of ``langgraph.json``.
 
-    Why a FastAPI wrapper. ``langgraph-api`` 0.5.x crashed on plain
-    Starlette ``http.app`` wrappers because its ``update_openapi_spec``
-    fell through to Starlette's ``SchemaGenerator``, which YAML-parses
-    every endpoint docstring (``api/mcp.py`` and an a2a docstring both
-    had YAML-unsafe colons that tripped the parser). FastAPI dodges this
-    via ``app.openapi()``. The specific tripper docstrings were
-    rewritten in newer ``langgraph-api`` versions, but the code-path
-    structure is unchanged and we have not empirically validated that
-    no OTHER docstring would trip it; this factory remains the
-    recommended path until that spike lands. The middleware class
-    itself (``PaymentMiddleware``) is a Starlette ``BaseHTTPMiddleware``
-    subclass and works on both Starlette and FastAPI — only the outer
-    app wrapper matters for the upstream bug.
+    Not required on ``langgraph-api >= 0.6.15``. ``langgraph-api`` 0.5.x–0.6.14
+    crashed on plain Starlette ``http.app`` wrappers because its
+    ``update_openapi_spec`` fell through to Starlette's ``SchemaGenerator``,
+    which YAML-parses every endpoint docstring; internal endpoint docstrings with
+    YAML-unsafe colons tripped the parser, and ``get_schema`` only caught
+    ``AssertionError`` — so the ``ScannerError`` crashed startup. FastAPI dodged
+    this via ``app.openapi()``. 0.6.15 broadened that catch to
+    ``except Exception`` (the bad docstring degrades to a plain description and a
+    logged warning), so a **plain Starlette** ``http.app`` now boots cleanly:
+
+        from starlette.applications import Starlette
+        from starlette.middleware import Middleware
+        from payments_py.langsmith import PaymentMiddleware, RouteConfig
+
+        app = Starlette(middleware=[
+            Middleware(PaymentMiddleware, payments=payments, routes={...}),
+        ])
+
+    On ``langgraph-api >= 0.6.15`` this factory emits a ``UserWarning``
+    pointing at the plain-Starlette form above. (``UserWarning`` rather than
+    ``DeprecationWarning`` so the nudge is actually visible at app startup —
+    ``DeprecationWarning`` is suppressed by default outside ``__main__``/pytest;
+    and the factory is not being removed, only made optional.) It remains useful
+    on older ``langgraph-api`` (where the FastAPI wrapper is still load-bearing).
+    The
+    middleware class itself (``PaymentMiddleware``) is a Starlette
+    ``BaseHTTPMiddleware`` subclass and works on both Starlette and FastAPI —
+    only the outer app wrapper ever mattered for the upstream bug.
 
     Args:
         payments: A configured payments_py.Payments instance.
@@ -545,6 +593,19 @@ def build_payment_app(
         # langgraph.json
         # { "http": { "app": "./nvm_app.py:app" } }
     """
+    detected = _langgraph_api_version()
+    if detected is not None and detected >= _LANGGRAPH_API_DOCSTRING_FIX:
+        fix = ".".join(str(p) for p in _LANGGRAPH_API_DOCSTRING_FIX)
+        warnings.warn(
+            f"build_payment_app's FastAPI wrapper is no longer required on "
+            f"langgraph-api >= {fix} (detected "
+            f"{'.'.join(str(p) for p in detected)}). Mount PaymentMiddleware "
+            f"directly on a plain Starlette http.app instead: "
+            f"Starlette(middleware=[Middleware(PaymentMiddleware, "
+            f"payments=..., routes=...)]).",
+            UserWarning,
+            stacklevel=2,
+        )
     app = FastAPI()
     app.add_middleware(PaymentMiddleware, payments=payments, routes=routes or {})
     return app
