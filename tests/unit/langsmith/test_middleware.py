@@ -8,6 +8,7 @@ matching, and the settle-failure-still-returns-200 contract.
 
 import base64
 import json
+from importlib.metadata import PackageNotFoundError
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,6 +23,7 @@ from payments_py.langsmith import (
     X402_HEADERS,
     build_payment_app,
 )
+from payments_py.langsmith import middleware as ls_middleware
 from payments_py.x402.types import SettleResponse, VerifyResponse
 
 
@@ -463,3 +465,62 @@ class TestBuildPaymentApp:
         client = TestClient(app)
         # No routes + no env vars -> pass through
         assert client.get("/x").status_code == 200
+
+
+class TestBuildPaymentAppDeprecationWarning:
+    """build_payment_app warns it's optional on langgraph-api >= 0.6.15.
+
+    The spike (nvm-monorepo#1762) bisected the OpenAPI-docstring crash fix to
+    langgraph-api 0.6.15 (``get_schema`` broadened its catch to
+    ``except Exception``), so a plain Starlette http.app boots without the
+    FastAPI wrapper. #1763 surfaces that via a DeprecationWarning.
+    """
+
+    def test_warns_at_fix_version(self, mock_payments, monkeypatch):
+        monkeypatch.setattr(ls_middleware, "_langgraph_api_version", lambda: (0, 6, 15))
+        with pytest.warns(DeprecationWarning, match="no longer required"):
+            build_payment_app(payments=mock_payments, routes=None)
+
+    def test_warns_on_newer_version(self, mock_payments, monkeypatch):
+        monkeypatch.setattr(ls_middleware, "_langgraph_api_version", lambda: (0, 8, 7))
+        with pytest.warns(DeprecationWarning, match="PaymentMiddleware directly"):
+            build_payment_app(payments=mock_payments, routes=None)
+
+    def test_no_warning_below_fix_version(self, mock_payments, monkeypatch, recwarn):
+        monkeypatch.setattr(ls_middleware, "_langgraph_api_version", lambda: (0, 6, 14))
+        app = build_payment_app(payments=mock_payments, routes=None)
+        assert isinstance(app, FastAPI)
+        assert not [
+            w for w in recwarn.list if issubclass(w.category, DeprecationWarning)
+        ]
+
+    def test_no_warning_when_version_undetected(
+        self, mock_payments, monkeypatch, recwarn
+    ):
+        # langgraph-api absent / unparseable -> None -> silent, still returns app.
+        monkeypatch.setattr(ls_middleware, "_langgraph_api_version", lambda: None)
+        app = build_payment_app(payments=mock_payments, routes=None)
+        assert isinstance(app, FastAPI)
+        assert not [
+            w for w in recwarn.list if issubclass(w.category, DeprecationWarning)
+        ]
+
+
+class TestLanggraphApiVersionDetection:
+    """_langgraph_api_version parses the installed version defensively."""
+
+    def test_parses_three_components(self, monkeypatch):
+        monkeypatch.setattr("importlib.metadata.version", lambda name: "0.6.15")
+        assert ls_middleware._langgraph_api_version() == (0, 6, 15)
+
+    def test_parses_prerelease_component(self, monkeypatch):
+        # A pre-release suffix on the patch component is stripped to its int.
+        monkeypatch.setattr("importlib.metadata.version", lambda name: "0.6.15rc1")
+        assert ls_middleware._langgraph_api_version() == (0, 6, 15)
+
+    def test_returns_none_when_not_installed(self, monkeypatch):
+        def _raise(name):
+            raise PackageNotFoundError(name)
+
+        monkeypatch.setattr("importlib.metadata.version", _raise)
+        assert ls_middleware._langgraph_api_version() is None
