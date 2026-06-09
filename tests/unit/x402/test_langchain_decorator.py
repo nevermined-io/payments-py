@@ -149,6 +149,41 @@ class TestRequiresPaymentDecorator:
             == long_token
         )
 
+    def test_tool_path_does_not_mutate_callers_config(self, mock_payments):
+        """The ``@tool`` path must NOT strip payment_token from the caller's dict.
+
+        The pop in ``_verify_payment`` is only safe because LangChain's ``@tool``
+        hands the decorator a per-invocation config copy (see the comment at the
+        pop site). This pins that assumption: a caller reusing one config object
+        across sibling tools must keep ``payment_token`` for the second call. If a
+        future LangChain version stops copying, this fails loudly instead of
+        silently turning the next sibling call into a ``PaymentRequiredError``.
+        """
+        my_tool = _make_protected_tool(mock_payments)  # wrapped with @tool
+        caller_config = {"configurable": {"payment_token": "tok-original"}}
+
+        my_tool.invoke({"topic": "x"}, config=caller_config)
+
+        assert caller_config["configurable"].get("payment_token") == "tok-original", (
+            "LangChain @tool no longer copies config per invocation — "
+            "_remove_from_configurable now mutates the caller's dict"
+        )
+
+    def test_configurable_helpers_tolerate_missing_configurable(self):
+        """``_get_configurable`` and the remove/store helpers no-op on a None or
+        malformed config instead of raising (the unexercised guard branches)."""
+        # None config / non-dict configurable resolve to None.
+        assert decorator_module._get_configurable(None) is None
+        assert (
+            decorator_module._get_configurable({"configurable": "not-a-dict"}) is None
+        )
+        assert decorator_module._get_configurable({}) is None
+
+        # The mutators are silent no-ops when there's nowhere to write.
+        decorator_module._remove_from_configurable(None, "payment_token")
+        decorator_module._store_in_configurable(None, "k", "v")
+        assert decorator_module._extract_payment_token(None) is None
+
 
 class TestLastSettlement:
     def test_returns_none_before_any_settlement(self):
