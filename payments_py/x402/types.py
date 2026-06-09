@@ -294,8 +294,12 @@ class PaymentContext:
        form surfaced as ``nvm.payment_token``): its context object is written
        into ``config["configurable"]``, which tracing frameworks can capture into
        span metadata, so persisting the raw token there would leak it into nested
-       runs. Code that needs the raw token under the decorator must read it from
-       ``config["configurable"]["payment_token"]``, never from this field.
+       runs. Under that decorator the raw token is also intentionally **removed**
+       from ``config["configurable"]`` before the tool body runs (see
+       ``_remove_from_configurable`` in ``langchain/decorator.py``), precisely so
+       it cannot leak into nested spans — it is therefore *not* retrievable from
+       ``configurable`` inside a decorated tool body. Only the FastAPI / Starlette
+       path leaves the raw token in this ``token`` field.
     """
 
     token: str

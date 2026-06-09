@@ -175,43 +175,40 @@ def _resolve_credits_post(
     return credits({"args": kwargs, "result": result})
 
 
-def _extract_payment_token(config: Any) -> Optional[str]:
-    """Extract payment token from RunnableConfig.configurable."""
+def _get_configurable(config: Any) -> Optional[dict]:
+    """Return ``config["configurable"]`` as a dict, or ``None``.
+
+    Handles both a dict ``RunnableConfig`` and an attribute-style one. Single
+    source of truth for locating ``configurable`` -- the extract/store/remove
+    helpers below all route through here.
+    """
     if config is None:
         return None
-    configurable = None
-    if isinstance(config, dict):
-        configurable = config.get("configurable")
-    else:
-        configurable = getattr(config, "configurable", None)
-    if isinstance(configurable, dict):
-        return configurable.get("payment_token")
-    return None
+    raw = (
+        config.get("configurable")
+        if isinstance(config, dict)
+        else getattr(config, "configurable", None)
+    )
+    return raw if isinstance(raw, dict) else None
+
+
+def _extract_payment_token(config: Any) -> Optional[str]:
+    """Extract payment token from RunnableConfig.configurable."""
+    configurable = _get_configurable(config)
+    return configurable.get("payment_token") if configurable is not None else None
 
 
 def _store_in_configurable(config: Any, key: str, value: Any) -> None:
     """Store a value in config["configurable"] if available."""
-    if config is None:
-        return
-    configurable = None
-    if isinstance(config, dict):
-        configurable = config.get("configurable")
-    else:
-        configurable = getattr(config, "configurable", None)
-    if isinstance(configurable, dict):
+    configurable = _get_configurable(config)
+    if configurable is not None:
         configurable[key] = value
 
 
 def _remove_from_configurable(config: Any, key: str) -> None:
     """Remove a key from config["configurable"] if present (no-op otherwise)."""
-    if config is None:
-        return
-    configurable = None
-    if isinstance(config, dict):
-        configurable = config.get("configurable")
-    else:
-        configurable = getattr(config, "configurable", None)
-    if isinstance(configurable, dict):
+    configurable = _get_configurable(config)
+    if configurable is not None:
         configurable.pop(key, None)
 
 

@@ -149,6 +149,90 @@ class TestRequiresPaymentDecorator:
             == long_token
         )
 
+    def test_tool_path_does_not_mutate_callers_config(self, mock_payments):
+        """The ``@tool`` path must NOT strip payment_token from the caller's dict.
+
+        The pop in ``_verify_payment`` is only safe because LangChain's ``@tool``
+        hands the decorator a per-invocation config copy (see the comment at the
+        pop site). This pins that assumption: a caller reusing one config object
+        across sibling tools must keep ``payment_token`` for the second call. If a
+        future LangChain version stops copying, this fails loudly instead of
+        silently turning the next sibling call into a ``PaymentRequiredError``.
+        """
+        my_tool = _make_protected_tool(mock_payments)  # wrapped with @tool
+        caller_config = {"configurable": {"payment_token": "tok-original"}}
+
+        my_tool.invoke({"topic": "x"}, config=caller_config)
+
+        # The caller's dict is intact — payment_token survives for the next sibling.
+        assert caller_config["configurable"].get("payment_token") == "tok-original", (
+            "LangChain @tool no longer copies config per invocation — "
+            "_remove_from_configurable now mutates the caller's dict"
+        )
+        # ...and the decorator demonstrably worked on a COPY: the payment_context it
+        # writes post-verify is absent from the caller's dict. Without this, the test
+        # would also pass if the pop became dead code (nothing would touch the dict).
+        assert "payment_context" not in caller_config["configurable"]
+        # Liveness: the payment flow actually executed (no swallowed early-out).
+        mock_payments.facilitator.verify_permissions.assert_called_once()
+
+    def test_configurable_helpers_tolerate_missing_configurable(self):
+        """``_get_configurable`` and the remove/store helpers no-op on a None or
+        malformed config instead of raising (the unexercised guard branches)."""
+        from types import SimpleNamespace
+
+        # None config / non-dict configurable resolve to None.
+        assert decorator_module._get_configurable(None) is None
+        assert (
+            decorator_module._get_configurable({"configurable": "not-a-dict"}) is None
+        )
+        assert decorator_module._get_configurable({}) is None
+
+        # Attribute-style config (the getattr branch): valid + malformed + missing.
+        assert decorator_module._get_configurable(
+            SimpleNamespace(configurable={"payment_token": "tok"})
+        ) == {"payment_token": "tok"}
+        assert (
+            decorator_module._get_configurable(SimpleNamespace(configurable="x"))
+            is None
+        )
+        assert decorator_module._get_configurable(SimpleNamespace()) is None
+
+        # The mutators / extractor are silent no-ops when there's nowhere to write —
+        # both for a None config and for a malformed (non-dict) configurable.
+        decorator_module._remove_from_configurable(None, "payment_token")
+        decorator_module._store_in_configurable(None, "k", "v")
+        assert decorator_module._extract_payment_token(None) is None
+        assert decorator_module._extract_payment_token({"configurable": "x"}) is None
+        decorator_module._remove_from_configurable(
+            {"configurable": "x"}, "payment_token"
+        )
+        decorator_module._store_in_configurable({"configurable": "x"}, "k", "v")
+
+    @pytest.mark.asyncio
+    async def test_tool_path_does_not_mutate_callers_config_async(self, mock_payments):
+        """Async twin of the copy-pin test. LangChain's ``ainvoke`` copies the
+        config through different machinery than ``invoke``, so the
+        caller's-dict-not-mutated guarantee is a distinct path worth pinning.
+        """
+
+        @tool
+        @requires_payment(payments=mock_payments, plan_id="plan-123", credits=1)
+        async def my_tool(topic: str, config: RunnableConfig = None) -> str:
+            """Return a canned string."""
+            return f"insight for {topic}"
+
+        caller_config = {"configurable": {"payment_token": "tok-original"}}
+
+        await my_tool.ainvoke({"topic": "x"}, config=caller_config)
+
+        assert caller_config["configurable"].get("payment_token") == "tok-original", (
+            "LangChain @tool ainvoke no longer copies config per invocation — "
+            "_remove_from_configurable now mutates the caller's dict"
+        )
+        assert "payment_context" not in caller_config["configurable"]
+        mock_payments.facilitator.verify_permissions.assert_called_once()
+
 
 class TestLastSettlement:
     def test_returns_none_before_any_settlement(self):
