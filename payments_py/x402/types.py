@@ -282,6 +282,20 @@ class PaymentContext:
     Populated by middleware/decorators and made available to handlers:
     - FastAPI: ``request.state.payment_context``
     - Strands: ``tool_context.invocation_state["payment_context"]``
+
+    .. warning::
+       The ``token`` field is **producer-dependent** and must not be assumed to
+       be the functional credential. The FastAPI / Starlette middlewares store
+       the **raw** x402 access token here on purpose: they strip the
+       ``payment-signature`` request header before calling the route handler, so
+       ``payment_context.token`` is the handler's only remaining source for it.
+       The LangChain ``requires_payment`` decorator, by contrast, stores an
+       **abbreviated, non-functional** reference (the same ``<first 16>…<last 4>``
+       form surfaced as ``nvm.payment_token``): its context object is written
+       into ``config["configurable"]``, which tracing frameworks can capture into
+       span metadata, so persisting the raw token there would leak it into nested
+       runs. Code that needs the raw token under the decorator must read it from
+       ``config["configurable"]["payment_token"]``, never from this field.
     """
 
     token: str

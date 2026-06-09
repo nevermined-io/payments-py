@@ -68,6 +68,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional, Union
 
 from payments_py.langsmith.spans import (
+    abbreviate_token,
     active_run_tree,
     attach_metadata_safely,
     build_settle_metadata,
@@ -110,14 +111,22 @@ def last_settlement() -> Optional[SettleResponse]:
     ``network``, ``payer``) without threading it back through the
     runnable config (which LangGraph copies per node).
 
-    Returns ``None`` if no settlement has happened yet in this process, or
-    if the most recent invocation raised before reaching the settle phase.
+    Returns ``None`` if no settlement has happened yet in this process, or if
+    the most recent invocation did not reach a *successful* settle — i.e. it
+    raised before the settle phase (a verify failure / ``PaymentRequiredError``)
+    **or** it reached settle but settlement failed (settle errors are swallowed
+    and logged, so the tool still returns its result while ``last_settlement()``
+    stays ``None``). The slot is reset to ``None`` at the start of every
+    invocation, so a prior invocation's receipt is never misattributed to a
+    later call that failed to settle.
 
     .. note::
        This accessor reads from a module-level slot. In multi-tenant
        processes (e.g. a server handling concurrent settlements), the value
        reflects whichever invocation settled most recently — there is no
-       per-call isolation.
+       per-call isolation. Because the slot is also reset on entry, a
+       concurrent invocation that merely *starts* (even one that fails verify)
+       nulls a sibling's freshly written receipt.
     """
     return _LAST_SETTLEMENT["value"]
 
@@ -193,6 +202,19 @@ def _store_in_configurable(config: Any, key: str, value: Any) -> None:
         configurable[key] = value
 
 
+def _remove_from_configurable(config: Any, key: str) -> None:
+    """Remove a key from config["configurable"] if present (no-op otherwise)."""
+    if config is None:
+        return
+    configurable = None
+    if isinstance(config, dict):
+        configurable = config.get("configurable")
+    else:
+        configurable = getattr(config, "configurable", None)
+    if isinstance(configurable, dict):
+        configurable.pop(key, None)
+
+
 def _verify_payment(
     func: Callable,
     kwargs: dict,
@@ -254,6 +276,22 @@ def _verify_payment(
                 payment_required,
             )
 
+        # Drop the raw token from configurable now that we hold it in ``token``
+        # (and, below, in ``_VerifiedPayment.token``). LangChain's
+        # ``ensure_config`` re-promotes every configurable scalar into a
+        # runnable's ``metadata`` on EACH invocation, so any traced runnable the
+        # tool body spawns (an LLM call, a sub-chain) sharing this config would
+        # otherwise re-leak the full credential into its own span metadata —
+        # ``redact_metadata_keys`` above only scrubs the parent run-tree once.
+        # This MUST run after extraction (popping earlier would make
+        # ``_extract_payment_token`` return None) and before the tool body runs,
+        # which is guaranteed: ``_verify_payment`` completes before ``func`` is
+        # called. Settlement reads ``_VerifiedPayment.token``, never configurable,
+        # so removal is non-functional. On the ``@tool`` path LangChain hands the
+        # decorator a per-invocation config copy, so this does not mutate a config
+        # the caller reuses across sibling tools.
+        _remove_from_configurable(runnable_config, "payment_token")
+
         credits_pre = _resolve_credits_pre(config.credits, kwargs)
         # For verification, use pre-resolved credits or default to 1
         credits_to_charge = credits_pre if credits_pre is not None else 1
@@ -288,8 +326,19 @@ def _verify_payment(
                 payment_required,
             )
 
+    # The ``token`` field carries the ABBREVIATED reference, never the raw
+    # credential: this PaymentContext is written into ``config["configurable"]``,
+    # which LangChain can capture into span metadata, so persisting the full
+    # token here would reopen the very leak the parent-tree
+    # ``redact_metadata_keys("payment_token")`` call above closes — and a child
+    # run opened *during* the tool body would capture it before any post-hoc
+    # redaction could run. Settlement uses ``_VerifiedPayment.token`` (the raw
+    # token in the internal container below), never this field, so abbreviating
+    # here is non-functional. ``abbreviate_token`` is the same helper surfaced as
+    # ``nvm.payment_token``; ``or ""`` is belt-and-suspenders past the ``not
+    # token`` guard above and can never fall back to the raw credential.
     payment_context = PaymentContext(
-        token=token,
+        token=abbreviate_token(token) or "",
         payment_required=payment_required,
         credits_to_settle=credits_to_charge,
         verified=True,
@@ -493,6 +542,12 @@ def _execute_with_payment(
     config: _PaymentConfig,
 ) -> Any:
     """Synchronous payment verification, execution, and settlement."""
+    # Reset the module-level receipt slot at the START of every invocation,
+    # before verify. Any failure that does not reach the settle-success write
+    # (a verify failure / PaymentRequiredError, or a swallowed settle failure)
+    # then leaves last_settlement() returning None rather than a stale receipt
+    # from a previous invocation — matching the last_settlement() docstring.
+    _LAST_SETTLEMENT["value"] = None
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = func(*args, **kwargs)
@@ -507,6 +562,10 @@ async def _execute_with_payment_async(
     config: _PaymentConfig,
 ) -> Any:
     """Async payment verification, execution, and settlement."""
+    # Reset the receipt slot at the start of the invocation, before verify —
+    # see _execute_with_payment for the rationale. Both entry points must do
+    # this so the stale-receipt guard holds on the async path too.
+    _LAST_SETTLEMENT["value"] = None
     runnable_config = _extract_runnable_config(kwargs)
     verified = _verify_payment(func, kwargs, config, runnable_config)
     result = await func(*args, **kwargs)

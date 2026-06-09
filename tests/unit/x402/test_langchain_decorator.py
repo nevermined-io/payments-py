@@ -99,6 +99,56 @@ class TestRequiresPaymentDecorator:
 
         assert result == "insight for x"
 
+    def test_no_raw_token_survives_in_configurable(self, mock_payments):
+        """Neither payment_context.token nor the raw payment_token key leaks the
+        full credential into config["configurable"] (nvm-monorepo#1891 + the
+        residual child-runnable leak aaitor flagged on PR #219).
+
+        Two leak surfaces are closed:
+        - ``payment_context.token`` stores the ABBREVIATED reference, not the raw
+          token (the field is non-functional; settle uses the internal
+          ``_VerifiedPayment.token``).
+        - the raw ``payment_token`` key is POPPED from configurable after
+          extraction, so a traced child runnable the tool body spawns can't have
+          LangChain's ``ensure_config`` re-promote it into the child's span
+          metadata.
+
+        We invoke the bare ``@requires_payment`` wrapper directly (not through
+        ``@tool``, which deep-copies the config) so the decorator mutates the same
+        configurable bag we then read back.
+        """
+        long_token = "j" * 40
+
+        @requires_payment(payments=mock_payments, plan_id="plan-123", credits=1)
+        def my_tool(topic: str, config: RunnableConfig = None) -> str:
+            """Return a canned string."""
+            return f"insight for {topic}"
+
+        config = {"configurable": {"payment_token": long_token}}
+        my_tool(topic="evs", config=config)
+
+        configurable = config["configurable"]
+        ctx = configurable["payment_context"]
+        assert ctx is not None
+        # Abbreviated form is <first 16>…<last 4>, the same surfaced as
+        # nvm.payment_token — not the raw 40-char credential.
+        assert ctx.token == f"{'j' * 16}…jjjj"
+        # Sweep every PaymentContext field — guards future leak surfaces too.
+        for name, value in vars(ctx).items():
+            assert long_token not in str(value), f"raw token leaked in .{name}"
+        # The raw payment_token key was removed from configurable, so any child
+        # runnable sharing this config sees no credential to re-promote.
+        assert "payment_token" not in configurable
+        # Settlement still ran with the raw token (internal _VerifiedPayment),
+        # so removing it from configurable is non-functional.
+        mock_payments.facilitator.settle_permissions.assert_called_once()
+        assert (
+            mock_payments.facilitator.settle_permissions.call_args.kwargs[
+                "x402_access_token"
+            ]
+            == long_token
+        )
+
 
 class TestLastSettlement:
     def test_returns_none_before_any_settlement(self):
@@ -149,6 +199,94 @@ class TestLastSettlement:
         my_tool = _make_protected_tool(mock_payments)
         with pytest.raises(PaymentRequiredError):
             my_tool.invoke({"topic": "x"}, config={"configurable": {}})
+        assert last_settlement() is None
+
+    def test_none_after_prior_success_then_failed_settle(self, mock_payments):
+        """Regression for the stale-receipt bug (nvm-monorepo#1890).
+
+        Tool A settles, then tool B's settle throws (swallowed). Without
+        resetting the slot on each invocation, last_settlement() would still
+        return A's receipt and misattribute it to B. The wrapper resets the slot
+        at the START of every invocation, so a failed settle after a prior
+        success leaves it None — matching the last_settlement() docstring.
+        """
+        my_tool = _make_protected_tool(mock_payments)
+
+        # First invocation settles successfully and populates the slot.
+        my_tool.invoke(
+            {"topic": "a"}, config={"configurable": {"payment_token": "tok"}}
+        )
+        assert last_settlement().credits_redeemed == "1"
+
+        # Second invocation's settle throws (swallowed); the slot must not
+        # retain A's receipt.
+        mock_payments.facilitator.settle_permissions.side_effect = RuntimeError("boom")
+        result = my_tool.invoke(
+            {"topic": "b"}, config={"configurable": {"payment_token": "tok"}}
+        )
+
+        assert result == "insight for b"
+        assert last_settlement() is None
+
+    def test_none_after_prior_success_then_verify_failure(self, mock_payments):
+        """Regression for the stale-receipt bug (nvm-monorepo#1890), verify path.
+
+        A verify failure raises PaymentRequiredError before reaching settle. The
+        start-of-invocation reset must clear a prior invocation's receipt so the
+        slot is None for ANY pre-settle failure, not just settle failures.
+        """
+        my_tool = _make_protected_tool(mock_payments)
+
+        # First invocation settles successfully and populates the slot.
+        my_tool.invoke(
+            {"topic": "a"}, config={"configurable": {"payment_token": "tok"}}
+        )
+        assert last_settlement().credits_redeemed == "1"
+
+        # Second invocation fails verification before reaching settle.
+        mock_payments.facilitator.verify_permissions.return_value = VerifyResponse(
+            is_valid=False,
+            invalid_reason="Insufficient credits",
+        )
+        with pytest.raises(PaymentRequiredError):
+            my_tool.invoke(
+                {"topic": "b"}, config={"configurable": {"payment_token": "tok"}}
+            )
+
+        assert last_settlement() is None
+
+    @pytest.mark.asyncio
+    async def test_none_after_prior_success_then_failed_settle_async(
+        self, mock_payments
+    ):
+        """Async twin of the stale-receipt reset (nvm-monorepo#1890).
+
+        The reset lives in _execute_with_payment_async too. Both sync regressions
+        drive ``.invoke``; without this, dropping ONLY the async reset line would
+        silently regress every ``async def`` tool to stale receipts and the suite
+        would still pass.
+        """
+
+        @tool
+        @requires_payment(payments=mock_payments, plan_id="plan-123", credits=1)
+        async def my_tool(topic: str, config: RunnableConfig = None) -> str:
+            """Return a canned string."""
+            return f"insight for {topic}"
+
+        # First invocation settles successfully and populates the slot.
+        await my_tool.ainvoke(
+            {"topic": "a"}, config={"configurable": {"payment_token": "tok"}}
+        )
+        assert last_settlement().credits_redeemed == "1"
+
+        # Second invocation's settle throws (swallowed); the slot must not
+        # retain A's receipt on the async path either.
+        mock_payments.facilitator.settle_permissions.side_effect = RuntimeError("boom")
+        result = await my_tool.ainvoke(
+            {"topic": "b"}, config={"configurable": {"payment_token": "tok"}}
+        )
+
+        assert result == "insight for b"
         assert last_settlement() is None
 
 
