@@ -1,0 +1,2235 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python SDK for Nevermined Payments - AI Agent monetization and access control">
+      
+      
+        <meta name="author" content="Nevermined">
+      
+      
+        <link rel="canonical" href="https://nevermined-io.github.io/payments-py/1.12.0/api/12-langchain-integration/">
+      
+      
+        <link rel="prev" href="../11-x402/">
+      
+      
+        <link rel="next" href="../13-langsmith-deployment/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>12. LangChain Integration - Nevermined Payments Python SDK</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../overrides/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#langchain-integration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nevermined Payments Python SDK" class="md-header__button md-logo" aria-label="Nevermined Payments Python SDK" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nevermined Payments Python SDK
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              12. LangChain Integration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/nevermined-io/payments-py" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    nevermined-io/payments-py
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../01-installation/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/payments/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nevermined Payments Python SDK" class="md-nav__button md-logo" aria-label="Nevermined Payments Python SDK" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nevermined Payments Python SDK
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/nevermined-io/payments-py" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    nevermined-io/payments-py
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    01. Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02-initializing-the-library/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    02. Initializing the Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-payment-plans/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    03. Payment Plans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04-agents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    04. Agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-publishing-static-resources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    05. Publishing Static Resources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06-payments-and-balance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    06. Payments and Balance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07-querying-an-agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    07. Querying an Agent
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08-validation-of-requests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    08. Request Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09-mcp-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    09. MCP Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10-a2a-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. A2A Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11-x402/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. x402 Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. LangChain Integration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. LangChain Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requires_payment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        requires_payment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="requires_payment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decorator-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decorator order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-credits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic credits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#credits-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credits semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#paymentrequirederror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PaymentRequiredError
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PaymentRequiredError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#last_settlement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        last_settlement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="last_settlement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signature_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create_paid_react_agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create_paid_react_agent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="create_paid_react_agent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signature_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#end-to-end-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-end usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observability-with-langsmith" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observability with LangSmith
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Observability with LangSmith">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regional-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regional endpoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#span-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Span attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sensitive-data-in-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensitive data in traces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limitations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Known limitations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parent-metadata-is-last-writer-wins-across-tools-in-one-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parent metadata is last-writer-wins across tools in one node
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-use-non-langchain-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual use (non-LangChain paths)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../13-langsmith-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. LangSmith Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/payments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Payments Class
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/data_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/environments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/langsmith/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LangSmith Spans
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exports
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#requires_payment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        requires_payment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="requires_payment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decorator-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decorator order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dynamic-credits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic credits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#credits-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credits semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#paymentrequirederror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PaymentRequiredError
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PaymentRequiredError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#last_settlement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        last_settlement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="last_settlement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signature_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create_paid_react_agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create_paid_react_agent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="create_paid_react_agent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signature_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#end-to-end-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        End-to-end usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observability-with-langsmith" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observability with LangSmith
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Observability with LangSmith">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regional-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regional endpoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#span-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Span attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sensitive-data-in-traces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensitive data in traces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known limitations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Known limitations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parent-metadata-is-last-writer-wins-across-tools-in-one-node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parent metadata is last-writer-wins across tools in one node
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-use-non-langchain-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual use (non-LangChain paths)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="langchain-integration">LangChain Integration<a class="headerlink" href="#langchain-integration" title="Permanent link">&para;</a></h1>
+<p>This guide covers the LangChain and LangGraph integration shipped in the <code>[langchain]</code> optional extra of <code>payments-py</code>. The module <code>payments_py.x402.langchain</code> provides the decorator, helpers, and exceptions for monetizing LangChain tools with the x402 protocol.</p>
+<p>For the conceptual walk-through (two integration approaches, the discovery-first flow, dynamic credits patterns), see the <a href="/docs/integrate/add-to-your-agent/langchain">LangChain integration guide</a>. For a runnable end-to-end demo, see the <a href="https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py"><code>langchain-paid-agent-py</code></a> tutorial.</p>
+<blockquote>
+<p>Looking to gate a <strong>LangSmith Deployment</strong> entry point (<code>/threads/{id}/runs/wait</code> etc.) rather than individual tools? See <a href="../13-langsmith-deployment/">LangSmith Deployment Middleware</a>. The two integrations are complementary: the decorator covered here protects tools the agent calls; the LangSmith Deployment middleware protects the agent's HTTP entry point.</p>
+</blockquote>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>payments-py<span class="o">[</span>langchain<span class="o">]</span><span class="w"> </span>langgraph<span class="w"> </span>langchain-openai
+</code></pre></div>
+<p>The <code>[langchain]</code> extra installs <code>langchain-core</code>. <code>langgraph</code> and <code>langchain-openai</code> are optional — needed only if you build a LangGraph agent.</p>
+<h2 id="exports">Exports<a class="headerlink" href="#exports" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>requires_payment</code></td>
+<td>Decorator that gates a <code>@tool</code> on an x402 access token</td>
+</tr>
+<tr>
+<td><code>PaymentRequiredError</code></td>
+<td>Exception raised when the token is missing or verification fails</td>
+</tr>
+<tr>
+<td><code>last_settlement</code></td>
+<td>Read the most recent settlement receipt from outside the agent's call stack</td>
+</tr>
+<tr>
+<td><code>create_paid_react_agent</code></td>
+<td>LangGraph ReAct agent builder that lets <code>PaymentRequiredError</code> propagate intact</td>
+</tr>
+</tbody>
+</table>
+<p>All four are exported from <code>payments_py.x402.langchain</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.langchain</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">requires_payment</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">PaymentRequiredError</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">last_settlement</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">create_paid_react_agent</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span>
+</code></pre></div>
+<h2 id="requires_payment"><code>requires_payment</code><a class="headerlink" href="#requires_payment" title="Permanent link">&para;</a></h2>
+<p>Decorator that protects a LangChain <code>@tool</code> with x402 payment verification and settlement. Pulls the access token from <code>RunnableConfig.configurable["payment_token"]</code>, verifies it, runs the tool body, then settles credits.</p>
+<h3 id="signature">Signature<a class="headerlink" href="#signature" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">requires_payment</span><span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">payments</span><span class="p">:</span> <span class="n">Payments</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">plan_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">plan_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">credits</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">dict</span><span class="p">],</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">network</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">scheme</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>payments</code></td>
+<td>A <code>Payments</code> instance with <code>payments.facilitator</code> configured.</td>
+</tr>
+<tr>
+<td><code>plan_id</code> / <code>plan_ids</code></td>
+<td>The plan(s) the tool charges against. Pass one of the two; <code>plan_id</code> is a convenience for the single-plan case.</td>
+</tr>
+<tr>
+<td><code>credits</code></td>
+<td>How many credits to charge. Sent to the facilitator as <code>max_amount</code>. See <a href="#credits-semantics">credits semantics</a> for fixed-vs-range plans.</td>
+</tr>
+<tr>
+<td><code>agent_id</code></td>
+<td>Optional agent identifier propagated to the receipt.</td>
+</tr>
+<tr>
+<td><code>network</code></td>
+<td>Optional CAIP-2 network ID. Auto-resolved from the plan when omitted.</td>
+</tr>
+<tr>
+<td><code>scheme</code></td>
+<td>Optional x402 scheme (<code>nvm:erc4337</code> or <code>nvm:card-delegation</code>). Auto-resolved when omitted.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="decorator-order">Decorator order<a class="headerlink" href="#decorator-order" title="Permanent link">&para;</a></h3>
+<p><code>@tool</code> <strong>outside</strong>, <code>@requires_payment</code> <strong>inside</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.runnables</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnableConfig</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">tool</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py</span><span class="w"> </span><span class="kn">import</span> <span class="n">Payments</span><span class="p">,</span> <span class="n">PaymentOptions</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.langchain</span><span class="w"> </span><span class="kn">import</span> <span class="n">requires_payment</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:builder-key&quot;</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;sandbox&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="p">)</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="nd">@tool</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="nd">@requires_payment</span><span class="p">(</span><span class="n">payments</span><span class="o">=</span><span class="n">payments</span><span class="p">,</span> <span class="n">plan_id</span><span class="o">=</span><span class="s2">&quot;plan-123&quot;</span><span class="p">,</span> <span class="n">credits</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_market_insight</span><span class="p">(</span><span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">RunnableConfig</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a short market insight. Costs 1 credit per call.&quot;&quot;&quot;</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Market insight for &#39;</span><span class="si">{</span><span class="n">topic</span><span class="si">}</span><span class="s2">&#39;: demand is up 12% QoQ.&quot;</span>
+</code></pre></div>
+<p>The protected function <strong>must</strong> accept a <code>config: RunnableConfig</code> parameter — that is how the decorator reads the payment token at call time.</p>
+<h3 id="dynamic-credits">Dynamic credits<a class="headerlink" href="#dynamic-credits" title="Permanent link">&para;</a></h3>
+<p><code>credits</code> accepts three forms:</p>
+<ul>
+<li><strong>Static int</strong> — <code>credits=1</code> (fixed cost per call).</li>
+<li><strong>Lambda</strong> — <code>credits=lambda ctx: max(1, len(ctx["result"]) // 100)</code>.</li>
+<li><strong>Named function</strong> — <code>credits=my_fn</code> where <code>my_fn(ctx) -&gt; int</code>.</li>
+</ul>
+<p>When callable, <code>ctx</code> is <code>{"args": &lt;tool kwargs&gt;, "result": &lt;tool return&gt;}</code>. Dynamic credits resolve <strong>after</strong> execution so the result is available.</p>
+<h3 id="credits-semantics">Credits semantics<a class="headerlink" href="#credits-semantics" title="Permanent link">&para;</a></h3>
+<p>The <code>credits</code> argument is sent to the facilitator as <code>max_amount</code>. The actual amount redeemed depends on the plan's server-side credit configuration:</p>
+<ul>
+<li><strong>Fixed plans</strong> (<code>plan.credits.minAmount == plan.credits.maxAmount</code>) always burn <code>plan.credits.maxAmount</code>. The decorator's <code>credits=N</code> is then effectively a no-op (per <a href="https://github.com/nevermined-io/nvm-monorepo/issues/1568">nevermined-io/nvm-monorepo#1568</a>).</li>
+<li><strong>Range plans</strong> clamp the supplied value into <code>[plan.credits.minAmount, plan.credits.maxAmount]</code>.</li>
+</ul>
+<p>If you want predictable per-call cost, configure the plan as fixed; the decorator value is then a client-side declaration.</p>
+<h2 id="paymentrequirederror"><code>PaymentRequiredError</code><a class="headerlink" href="#paymentrequirederror" title="Permanent link">&para;</a></h2>
+<p>Raised by <code>@requires_payment</code> when the token is missing from <code>config["configurable"]["payment_token"]</code>, or when the facilitator rejects the token (expired, invalid signature, insufficient balance, etc.). Carries the full <code>X402PaymentRequired</code> payload so callers can run the x402 discovery flow.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.langchain</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaymentRequiredError</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="s2">&quot;human&quot;</span><span class="p">,</span> <span class="s2">&quot;...&quot;</span><span class="p">)]},</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;configurable&quot;</span><span class="p">:</span> <span class="p">{}})</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">except</span> <span class="n">PaymentRequiredError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">accepts</span> <span class="o">=</span> <span class="n">err</span><span class="o">.</span><span class="n">payment_required</span><span class="o">.</span><span class="n">accepts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="c1"># accepts.scheme    → &quot;nvm:erc4337&quot; or &quot;nvm:card-delegation&quot;</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="c1"># accepts.network   → CAIP-2 chain or provider name (stripe, braintree, visa)</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="c1"># accepts.plan_id   → which plan to acquire a token against</span>
+</code></pre></div>
+<h3 id="attributes">Attributes<a class="headerlink" href="#attributes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>payment_required</code></td>
+<td><code>X402PaymentRequired \| None</code></td>
+<td>The full x402 v2 payment-required payload. <code>accepts[0]</code> carries scheme / network / plan_id / agent_id.</td>
+</tr>
+</tbody>
+</table>
+<p>For the discovery → acquire → retry flow, see the <a href="/docs/integrate/add-to-your-agent/langchain">LangChain integration guide</a>.</p>
+<h2 id="last_settlement"><code>last_settlement</code><a class="headerlink" href="#last_settlement" title="Permanent link">&para;</a></h2>
+<p>Returns the most recent <code>SettleResponse</code> produced by <code>@requires_payment</code> in this process. Use this after invoking a LangGraph runnable to recover the settlement receipt — <code>credits_redeemed</code>, <code>remaining_balance</code>, <code>transaction</code>, <code>network</code>, <code>payer</code> — without threading it back through <code>RunnableConfig.configurable</code> (which LangGraph copies per node, so the SDK's in-place write is not visible to the outer caller).</p>
+<h3 id="signature_1">Signature<a class="headerlink" href="#signature_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">last_settlement</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">SettleResponse</span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Returns <code>None</code> if no settlement has happened yet in this process, or if the most recent invocation raised before reaching the settle phase.</p>
+<h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.langchain</span><span class="w"> </span><span class="kn">import</span> <span class="n">last_settlement</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="p">{</span><span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="s2">&quot;human&quot;</span><span class="p">,</span> <span class="s2">&quot;...&quot;</span><span class="p">)]},</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;configurable&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;payment_token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">}},</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">)</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">receipt</span> <span class="o">=</span> <span class="n">last_settlement</span><span class="p">()</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="k">if</span> <span class="n">receipt</span><span class="p">:</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  credits_redeemed: </span><span class="si">{</span><span class="n">receipt</span><span class="o">.</span><span class="n">credits_redeemed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  remaining_balance: </span><span class="si">{</span><span class="n">receipt</span><span class="o">.</span><span class="n">remaining_balance</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  transaction: </span><span class="si">{</span><span class="n">receipt</span><span class="o">.</span><span class="n">transaction</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Single-tenant</p>
+<p><code>last_settlement()</code> reads from a module-level slot. In multi-tenant processes (e.g. a server handling concurrent settlements), the value reflects whichever invocation settled most recently — there is no per-call isolation. For multi-tenant scenarios, surface settlement via a callback or observability layer instead.</p>
+</div>
+<h2 id="create_paid_react_agent"><code>create_paid_react_agent</code><a class="headerlink" href="#create_paid_react_agent" title="Permanent link">&para;</a></h2>
+<p>Thin wrapper over <a href="https://langchain-ai.github.io/langgraph/reference/prebuilt/#create_react_agent"><code>langgraph.prebuilt.create_react_agent</code></a> that constructs the underlying <code>ToolNode</code> with <code>handle_tool_errors=False</code>. That single change is what lets <code>PaymentRequiredError</code> propagate all the way back to <code>agent.invoke()</code>'s caller with its <code>X402PaymentRequired</code> payload intact — the default <code>ToolNode</code> behaviour stringifies the exception into a <code>ToolMessage</code> for the LLM and <strong>loses the payload</strong>.</p>
+<h3 id="signature_2">Signature<a class="headerlink" href="#signature_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_paid_react_agent</span><span class="p">(</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">model</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">tools</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CompiledStateGraph</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>model</code></td>
+<td>Anything accepted by <code>create_react_agent</code>'s <code>model</code> argument (a <code>BaseChatModel</code>, a string, a runnable, etc.).</td>
+</tr>
+<tr>
+<td><code>tools</code></td>
+<td>Sequence of LangChain tools — typically functions decorated with <code>@tool</code> and <code>@requires_payment</code>.</td>
+</tr>
+<tr>
+<td><code>**kwargs</code></td>
+<td>Forwarded verbatim to <code>create_react_agent</code> (<code>prompt</code>, <code>state_schema</code>, <code>checkpointer</code>, …). Unknown kwargs raise <code>TypeError</code> from LangGraph at call time.</td>
+</tr>
+</tbody>
+</table>
+<p><code>langgraph</code> is imported lazily so the <code>[langchain]</code> extra need not pull it in. Install LangGraph yourself (<code>pip install langgraph</code>) to use this helper.</p>
+<h3 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.langchain</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_paid_react_agent</span><span class="p">,</span> <span class="n">requires_payment</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="nd">@tool</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="nd">@requires_payment</span><span class="p">(</span><span class="n">payments</span><span class="o">=</span><span class="n">payments</span><span class="p">,</span> <span class="n">plan_id</span><span class="o">=</span><span class="n">PLAN_ID</span><span class="p">,</span> <span class="n">credits</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_market_insight</span><span class="p">(</span><span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Market insight for </span><span class="si">{</span><span class="n">topic</span><span class="si">}</span><span class="s2"> ...&quot;</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">create_paid_react_agent</span><span class="p">(</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    <span class="n">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="p">[</span><span class="n">get_market_insight</span><span class="p">],</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">prompt</span><span class="o">=</span><span class="s2">&quot;You are a market data assistant. Always call get_market_insight.&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a><span class="p">)</span>
+</code></pre></div>
+<h2 id="end-to-end-usage">End-to-end usage<a class="headerlink" href="#end-to-end-usage" title="Permanent link">&para;</a></h2>
+<p>The canonical x402 flow uses all four symbols together — discovery, acquisition, retry, receipt read:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py</span><span class="w"> </span><span class="kn">import</span> <span class="n">Payments</span><span class="p">,</span> <span class="n">PaymentOptions</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.langchain</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">PaymentRequiredError</span><span class="p">,</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="n">create_paid_react_agent</span><span class="p">,</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">last_settlement</span><span class="p">,</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="n">requires_payment</span><span class="p">,</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="p">)</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">DelegationConfig</span><span class="p">,</span> <span class="n">X402TokenOptions</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="n">load_dotenv</span><span class="p">()</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    <span class="n">PaymentOptions</span><span class="p">(</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>        <span class="n">nvm_api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;NVM_API_KEY&quot;</span><span class="p">],</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        <span class="n">environment</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;NVM_ENVIRONMENT&quot;</span><span class="p">,</span> <span class="s2">&quot;sandbox&quot;</span><span class="p">),</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    <span class="p">)</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="p">)</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="c1"># 1. Build the agent (see the LangChain integration guide for the protected tool).</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">create_paid_react_agent</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="p">[</span><span class="n">get_market_insight</span><span class="p">],</span> <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">)</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="c1"># 2. Discover what the agent&#39;s tool charges by invoking without a token.</span>
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a><span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>    <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="s2">&quot;human&quot;</span><span class="p">,</span> <span class="n">QUERY</span><span class="p">)]},</span> <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;configurable&quot;</span><span class="p">:</span> <span class="p">{}})</span>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="k">except</span> <span class="n">PaymentRequiredError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>    <span class="n">accept</span> <span class="o">=</span> <span class="n">err</span><span class="o">.</span><span class="n">payment_required</span><span class="o">.</span><span class="n">accepts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a><span class="c1"># 3. Acquire a token against the discovered plan.</span>
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a><span class="n">pm</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">payments</span><span class="o">.</span><span class="n">delegation</span><span class="o">.</span><span class="n">list_payment_methods</span><span class="p">()</span>
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>          <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">provider</span> <span class="o">==</span> <span class="n">accept</span><span class="o">.</span><span class="n">network</span><span class="p">)</span>
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a><span class="n">token</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">x402</span><span class="o">.</span><span class="n">get_x402_access_token</span><span class="p">(</span>
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>    <span class="n">accept</span><span class="o">.</span><span class="n">plan_id</span><span class="p">,</span>
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>    <span class="n">token_options</span><span class="o">=</span><span class="n">X402TokenOptions</span><span class="p">(</span>
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>        <span class="n">scheme</span><span class="o">=</span><span class="n">accept</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span>
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>        <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span>
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a>            <span class="n">provider_payment_method_id</span><span class="o">=</span><span class="n">pm</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a>            <span class="n">spending_limit_cents</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
+<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a>            <span class="n">duration_secs</span><span class="o">=</span><span class="mi">3600</span><span class="p">,</span>
+<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a>            <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;usd&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a>        <span class="p">),</span>
+<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a>    <span class="p">),</span>
+<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a><span class="p">)[</span><span class="s2">&quot;accessToken&quot;</span><span class="p">]</span>
+<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a>
+<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a><span class="c1"># 4. Retry with the token and read the settlement.</span>
+<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a><span class="n">result</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span>
+<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a>    <span class="p">{</span><span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[(</span><span class="s2">&quot;human&quot;</span><span class="p">,</span> <span class="n">QUERY</span><span class="p">)]},</span>
+<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a>    <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;configurable&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;payment_token&quot;</span><span class="p">:</span> <span class="n">token</span><span class="p">}},</span>
+<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a><span class="p">)</span>
+<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a><span class="n">receipt</span> <span class="o">=</span> <span class="n">last_settlement</span><span class="p">()</span>
+</code></pre></div>
+<p>For the full, runnable version see <a href="https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py"><code>tutorials/langchain-paid-agent-py</code></a>.</p>
+<h2 id="observability-with-langsmith">Observability with LangSmith<a class="headerlink" href="#observability-with-langsmith" title="Permanent link">&para;</a></h2>
+<p>When the optional <code>[langsmith]</code> extra is installed and a LangSmith run is active in the calling context, <code>@requires_payment</code> automatically emits two child spans nested under the active tool span:</p>
+<ul>
+<li><strong><code>nvm:verify</code></strong> — opens around the verify-permissions call, with attributes describing the scheme, plan, payer, and verify duration.</li>
+<li><strong><code>nvm:settlement</code></strong> — opens around the settle-permissions call, with attributes describing credits redeemed, remaining balance, transaction hash, network, and settle duration.</li>
+</ul>
+<p>The same <code>nvm.*</code> metadata is also attached to the parent tool span so the trace is searchable from either level. The per-call child spans are always authoritative; the parent copy is best-effort and can be overwritten when two protected tools run in the same node — see <a href="#known-limitations">Known limitations</a>.</p>
+<h3 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;payments-py[langchain,langsmith]&quot;</span>
+</code></pre></div>
+<h3 id="enable">Enable<a class="headerlink" href="#enable" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LANGSMITH_TRACING</span><span class="o">=</span><span class="nb">true</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LANGSMITH_API_KEY</span><span class="o">=</span>&lt;your-langsmith-api-key&gt;
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LANGSMITH_PROJECT</span><span class="o">=</span>&lt;your-project-name&gt;<span class="w">  </span><span class="c1"># optional</span>
+</code></pre></div>
+<p>No code changes are needed beyond the existing <code>@requires_payment</code> decorator — the spans are emitted automatically when LangSmith is active. If <code>langsmith</code> is not installed or <code>LANGSMITH_TRACING</code> is unset, span emission is a silent no-op.</p>
+<h4 id="regional-endpoint">Regional endpoint<a class="headerlink" href="#regional-endpoint" title="Permanent link">&para;</a></h4>
+<p>LangSmith hosts accounts across several regions. The SDK defaults to GCP US (<code>https://api.smith.langchain.com</code>); accounts in any other region must set <code>LANGSMITH_ENDPOINT</code> or the trace POST will fail with <code>403 Forbidden</code> on <code>/runs/multipart</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Region</th>
+<th>Endpoint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GCP US</td>
+<td><code>https://api.smith.langchain.com</code> <em>(default)</em></td>
+</tr>
+<tr>
+<td>GCP EU</td>
+<td><code>https://eu.api.smith.langchain.com</code></td>
+</tr>
+<tr>
+<td>GCP APAC</td>
+<td><code>https://apac.api.smith.langchain.com</code></td>
+</tr>
+<tr>
+<td>AWS US</td>
+<td><code>https://aws.api.smith.langchain.com</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">LANGSMITH_ENDPOINT</span><span class="o">=</span>https://eu.api.smith.langchain.com
+</code></pre></div>
+<p>The payment flow itself is unaffected by trace-shipping failures — verify, tool execution, and settle proceed normally. Only the LangSmith trace ingestion fails, surfaced as <code>langsmith.utils.LangSmithError</code> warnings.</p>
+<h3 id="span-attributes">Span attributes<a class="headerlink" href="#span-attributes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Span</th>
+<th>Attribute</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.plan_ids</code></td>
+<td>configured <code>plan_id</code> / <code>plan_ids</code></td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.scheme</code></td>
+<td>resolved scheme (<code>nvm:erc4337</code> or <code>nvm:card-delegation</code>)</td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.network</code></td>
+<td>CAIP-2 chain or provider name</td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.agent_id</code></td>
+<td>configured <code>agent_id</code></td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.payer</code></td>
+<td>from <code>VerifyResponse.payer</code></td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.agent_request_id</code></td>
+<td>from <code>VerifyResponse.agent_request_id</code></td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.payment_token</code></td>
+<td>first 16 chars + <code>…</code> + last 4 chars of the x402 access token</td>
+</tr>
+<tr>
+<td><code>nvm:verify</code></td>
+<td><code>nvm.verify.duration_ms</code></td>
+<td>measured</td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.credits_redeemed</code></td>
+<td>from <code>SettleResponse.credits_redeemed</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.balance.after</code></td>
+<td>from <code>SettleResponse.remaining_balance</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.tx_hash</code></td>
+<td>from <code>SettleResponse.transaction</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.network</code></td>
+<td>from <code>SettleResponse.network</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.payer</code></td>
+<td>from <code>SettleResponse.payer</code></td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.payment_token</code></td>
+<td>first 16 chars + <code>…</code> + last 4 chars of the x402 access token</td>
+</tr>
+<tr>
+<td><code>nvm:settlement</code></td>
+<td><code>nvm.settle.duration_ms</code></td>
+<td>measured</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sensitive-data-in-traces">Sensitive data in traces<a class="headerlink" href="#sensitive-data-in-traces" title="Permanent link">&para;</a></h3>
+<p>The <code>payment_token</code> that the buyer passes via <code>config["configurable"]["payment_token"]</code> is captured by LangChain into the parent tool span's metadata, and would normally be inherited by any child span — including the <code>nvm:verify</code> and <code>nvm:settlement</code> spans the decorator emits. The full token grants access to the protected tool until it expires, so the decorator <strong>proactively strips <code>payment_token</code> from the parent tool span's metadata</strong> before opening any child span. The full credential never reaches a Nevermined span attribute.</p>
+<p>For correlation across spans the decorator surfaces an abbreviated <code>nvm.payment_token</code> attribute (<code>eyJ4NDAyVmVyc2lv…bsig</code>, first 16 chars + ellipsis + last 4) on both <code>nvm:verify</code> and <code>nvm:settlement</code>. That gives you "which token was this?" without exposing the credential itself.</p>
+<p>A real x402 access token is a JWT, which is far longer than 20 chars. If a token of <strong>20 characters or fewer</strong> is passed — almost always a misconfiguration (a plan id or opaque handle where the JWT was expected) — it is <strong>redacted, not exported</strong>: <code>nvm.payment_token</code> shows at most the first 4 chars plus a <code>…(short)</code> marker (e.g. <code>eyJ4…(short)</code>), and a runtime warning is logged. For a token of 4 chars or fewer, nothing is revealed at all — it collapses to just <code>…(short)</code>. The full short value never reaches a span attribute, so a misrouted secret cannot leak into a durable trace store even when it is shorter than the abbreviation threshold.</p>
+<p>The active redaction covers the documented LangChain-via-configurable path. If you're surfacing the token through a different channel (custom callbacks, an explicit <code>add_metadata({"payment_token": ...})</code>, raw inputs to a tool whose signature contains the token), the decorator can't see those — strip them yourself or set <code>export LANGSMITH_HIDE_INPUTS=true</code> for blanket coverage.</p>
+<p>Other <code>nvm.*</code> attributes that may be considered sensitive depending on your context:</p>
+<ul>
+<li><code>nvm.payer</code> — the payer's wallet address (public on-chain, but a stable identifier).</li>
+<li><code>nvm.tx_hash</code> — the settlement transaction id.</li>
+<li><code>nvm.agent_request_id</code> — Nevermined-internal correlation id.</li>
+<li><code>nvm.balance.after</code> — the payer's remaining credit balance after this settlement. Reveals per-payer depletion patterns to anyone with trace read access on the operator's LangSmith project. Suppress with <code>LANGSMITH_HIDE_OUTPUTS=true</code> or post-filter.</li>
+</ul>
+<p>None of these grant access on their own.</p>
+<h3 id="known-limitations">Known limitations<a class="headerlink" href="#known-limitations" title="Permanent link">&para;</a></h3>
+<h4 id="parent-metadata-is-last-writer-wins-across-tools-in-one-node">Parent metadata is last-writer-wins across tools in one node<a class="headerlink" href="#parent-metadata-is-last-writer-wins-across-tools-in-one-node" title="Permanent link">&para;</a></h4>
+<p><code>@requires_payment</code> attaches its <code>nvm.*</code> metadata to <strong>two</strong> places: the per-call <strong>child</strong> spans (<code>nvm:verify</code> / <code>nvm:settlement</code>) and, as a convenience for searchability, the <strong>parent</strong> LangSmith run tree.</p>
+<p>The child spans are isolated per call, so they are always correct. The parent copy is <strong>not</strong> namespaced per tool: the bare <code>nvm.*</code> keys (<code>nvm.tx_hash</code>, <code>nvm.credits_redeemed</code>, <code>nvm.payment_token</code>, …) are written directly onto the parent run's metadata. When an agent calls <strong>two <code>@requires_payment</code> tools within the same LangGraph <code>ToolNode</code></strong> — the common pattern, since a single ReAct step can dispatch multiple tool calls into one node — both decorators target the <strong>same</strong> parent run tree, and the second <code>add_metadata</code> <strong>silently overwrites</strong> the first's <code>nvm.*</code> values. The parent therefore reflects only the <strong>last</strong> tool that settled in that node; the earlier tool's parent-level <code>nvm.*</code> is lost.</p>
+<p>What this means in practice:</p>
+<ul>
+<li><strong>Per-call billing fidelity lives on the child spans, not the parent.</strong> For accurate per-tool accounting (which token, which tx hash, how many credits each call redeemed), filter and aggregate on the <code>nvm:verify</code> / <code>nvm:settlement</code> <strong>child</strong> spans. Each child carries the values for exactly one call.</li>
+<li><strong>Treat parent <code>nvm.*</code> as best-effort.</strong> It is convenient for "did this trace touch Nevermined at all?" searches, but do not rely on it for last-writer-sensitive fields when multiple paid tools can run in one node.</li>
+<li>This is a <strong>last-writer-wins</strong> behaviour, not a correctness bug in settlement — every call still verifies and settles independently and correctly. Only the parent's <em>denormalized copy</em> of the metadata is affected.</li>
+</ul>
+<p>This matches the cross-SDK <strong>observability spans v1</strong> contract (the SDK-neutral span spec maintained in <code>nvm-monorepo</code>, which both <code>payments-py</code> and <code>@nevermined-io/payments</code> emit against): child spans are authoritative per tool; parent <code>nvm.*</code> is best-effort / last-writer-wins.</p>
+<h3 id="manual-use-non-langchain-paths">Manual use (non-LangChain paths)<a class="headerlink" href="#manual-use-non-langchain-paths" title="Permanent link">&para;</a></h3>
+<p>The same context managers are also exported for code that wants to emit Nevermined-flavored spans without going through <code>@requires_payment</code> (e.g. the FastAPI middleware path):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.langsmith</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="n">settlement_span</span><span class="p">,</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">verify_span</span><span class="p">,</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">build_settle_metadata</span><span class="p">,</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="p">)</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="k">with</span> <span class="n">settlement_span</span><span class="p">(</span><span class="n">plan_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;plan-1&quot;</span><span class="p">])</span> <span class="k">as</span> <span class="n">span</span><span class="p">:</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="n">settlement</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">settle_permissions</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    <span class="k">if</span> <span class="n">span</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>        <span class="n">span</span><span class="o">.</span><span class="n">add_metadata</span><span class="p">(</span><span class="n">build_settle_metadata</span><span class="p">(</span><span class="n">settlement</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;plan-1&quot;</span><span class="p">]))</span>
+</code></pre></div>
+<p>Span emission failures are caught internally — observability is best-effort and will not interfere with the payment flow.</p>
+<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="/docs/integrate/add-to-your-agent/langchain">LangChain integration guide</a> — conceptual walk-through, the two integration approaches (decorator vs. HTTP middleware), and the TypeScript variant.</li>
+<li><a href="../11-x402/">x402 Protocol</a> — token generation, delegation config, scheme resolution.</li>
+<li><a href="https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py"><code>tutorials/langchain-paid-agent-py</code></a> — the minimal end-to-end demo.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
