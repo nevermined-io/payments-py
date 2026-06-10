@@ -146,7 +146,7 @@ price_config = get_native_token_price_config(
 from payments_py.plans import get_fiat_price_config
 
 price_config = get_fiat_price_config(
-    amount=999,  # $9.99 in cents
+    amount=9_990_000,  # $9.99 (6-decimal units, not cents)
     receiver="0xBuilderAddress"
 )
 ```
@@ -158,11 +158,13 @@ from payments_py.plans import get_fiat_price_config
 from payments_py.common.types import Currency
 
 price_config = get_fiat_price_config(
-    amount=2900,  # €29.00 in euro cents
+    amount=29_000_000,  # €29.00 (6-decimal units, not cents)
     receiver="0xBuilderAddress",
     currency=Currency.EUR
 )
 ```
+
+> Fiat amounts are in **6-decimal units** (the USDC convention used across the Nevermined protocol), **not** cents — `10_000_000` = $10.00. The server-side minimum is **$1.00** (`1_000_000`); smaller amounts are rejected with `BCK.PROTOCOL.0047`.
 
 ### EURC Token Price (Euro Stablecoin)
 
