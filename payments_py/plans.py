@@ -31,9 +31,9 @@ def get_fiat_price_config(
 
     Args:
         amount: The amount in 6-decimal units (the USDC convention used across
-            the Nevermined protocol), NOT cents. E.g. 2_000_000 = $2.00; the
-            server-side minimum is $1.00 (1_000_000), and smaller amounts are
-            rejected with BCK.PROTOCOL.0047.
+            the Nevermined protocol), NOT cents. E.g. ``2_000_000`` = $2.00; the
+            server-side minimum is $1.00 (``1_000_000``), and smaller amounts are
+            rejected with ``BCK.PROTOCOL.0047``.
         receiver: The address that will receive the payment
         currency: Fiat currency code in ISO 4217 format (default: 'USD'). Any code accepted by Stripe.
 
