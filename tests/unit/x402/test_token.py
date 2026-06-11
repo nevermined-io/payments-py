@@ -7,6 +7,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+from payments_py.common.payments_error import PaymentsError
 from payments_py.x402.token import X402TokenAPI, decode_access_token
 from payments_py.x402.types import (
     DelegationConfig,
@@ -143,7 +144,7 @@ class TestInlineCreateDeprecationWarning:
             ),
         )
 
-        with pytest.warns(DeprecationWarning, match="create_delegation"):
+        with pytest.warns(FutureWarning, match="create_delegation"):
             api.get_x402_access_token("plan-fiat", token_options=token_options)
 
         # The request still goes through — the path is deprecated, not removed.
@@ -169,7 +170,7 @@ class TestInlineCreateDeprecationWarning:
             delegation_config=DelegationConfig(card_id="card-uuid-1"),
         )
 
-        with pytest.warns(DeprecationWarning, match="create_delegation"):
+        with pytest.warns(FutureWarning, match="create_delegation"):
             api.get_x402_access_token("plan-fiat", token_options=token_options)
 
     @patch("payments_py.x402.token.requests.post")
@@ -189,7 +190,7 @@ class TestInlineCreateDeprecationWarning:
             ),
         )
 
-        with pytest.warns(DeprecationWarning, match="create_delegation"):
+        with pytest.warns(FutureWarning, match="create_delegation"):
             api.get_x402_access_token("plan-crypto", token_options=token_options)
 
     @patch("payments_py.x402.token.requests.post")
@@ -267,6 +268,64 @@ class TestInlineCreateDeprecationWarning:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             api.get_x402_access_token("plan-crypto")
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_api_key_id_only_does_not_warn(self, mock_post, mock_options):
+        """api_key_id is scoping metadata, not an inline-create signal: a config
+        with only api_key_id and NO delegation_id (and no card/limits) is not a
+        create-on-the-fly request, so it must stay silent. The backend resolves
+        the delegation from the api_key scope."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(api_key_id="key-1"),
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_spending_limit_zero_is_an_inline_signal(self, mock_post, mock_options):
+        """spending_limit_cents=0 (falsy but not None) is still an inline-create
+        signal — pins the predicate's `is not None` check against a refactor to
+        truthiness, which would wrongly skip the warning for a 0 limit."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(spending_limit_cents=0),
+        )
+
+        with pytest.warns(FutureWarning, match="create_delegation"):
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_empty_string_delegation_id_raises_validation_error(
+        self, mock_post, mock_options
+    ):
+        """An empty-string delegation_id is neither a valid reuse nor absent —
+        it would serialize delegationId: "" and 4xx at the backend. The SDK
+        fails fast with a client-input validation error (no HTTP call)."""
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(delegation_id=""),
+        )
+
+        with pytest.raises(PaymentsError) as excinfo:
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+        assert excinfo.value.code == "validation"
+        assert "empty string" in str(excinfo.value)
+        # Fails before any backend round-trip.
+        mock_post.assert_not_called()
 
 
 class TestDecodeAccessToken:

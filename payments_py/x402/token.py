@@ -108,8 +108,8 @@ class X402TokenAPI(BasePaymentsAPI):
         Passing spending limits / a payment method here instead (inline
         create-on-the-fly, i.e. a ``delegation_config`` with no
         ``delegation_id``) is **deprecated** (#1674): this method emits a
-        ``DeprecationWarning`` and the backend logs its own deprecation
-        warning. The inline path will be removed in a future release.
+        ``FutureWarning`` and the backend logs its own deprecation warning.
+        The inline path will be removed in a future release.
 
         Args:
             plan_id: The unique identifier of the payment plan
@@ -121,7 +121,9 @@ class X402TokenAPI(BasePaymentsAPI):
                 - accessToken: The X402 access token string
 
         Raises:
-            PaymentsError: If the request fails
+            PaymentsError: If the request fails, or (``code='validation'``) if
+                ``delegation_config.delegation_id`` is an empty string — pass a
+                valid delegation UUID or omit the field.
 
         Example:
             ```python
@@ -176,7 +178,23 @@ class X402TokenAPI(BasePaymentsAPI):
         # Add delegation config for both erc4337 and card-delegation schemes
         if token_options and token_options.delegation_config:
             delegation_config = token_options.delegation_config
+            # An empty-string delegation_id is neither a valid reuse (it's not a
+            # UUID) nor "absent": model_dump(exclude_none=True) keeps "" (empty
+            # is not None), so it would serialize `delegationId: ""` and 4xx at
+            # the backend, while _is_inline_create would (mis)read it as inline.
+            # Fail fast with a clear client-input error instead (symmetric with
+            # the TS SDK guard, payments#379).
+            if delegation_config.delegation_id == "":
+                raise PaymentsError.validation(
+                    "delegation_id must not be an empty string — pass a valid "
+                    "delegation UUID or omit the field."
+                )
             if _is_inline_create(delegation_config):
+                # FutureWarning (not DeprecationWarning): DeprecationWarning is
+                # filtered out by default outside __main__, so agents running
+                # under FastAPI / gunicorn / Celery / Docker workers would never
+                # see the nudge. FutureWarning is shown by default → true runtime
+                # parity with the TS SDK's console.warn.
                 warnings.warn(
                     "Passing spending limits / a payment method to "
                     "get_x402_access_token (inline delegation create-on-the-fly) "
@@ -184,7 +202,7 @@ class X402TokenAPI(BasePaymentsAPI):
                     "Create the delegation first with "
                     "payments.delegation.create_delegation(...) and pass only "
                     "DelegationConfig(delegation_id=...) here.",
-                    DeprecationWarning,
+                    FutureWarning,
                     stacklevel=2,
                 )
             body["delegationConfig"] = delegation_config.model_dump(
