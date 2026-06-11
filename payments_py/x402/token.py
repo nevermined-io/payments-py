@@ -178,13 +178,17 @@ class X402TokenAPI(BasePaymentsAPI):
         # Add delegation config for both erc4337 and card-delegation schemes
         if token_options and token_options.delegation_config:
             delegation_config = token_options.delegation_config
-            # An empty-string delegation_id is neither a valid reuse (it's not a
-            # UUID) nor "absent": model_dump(exclude_none=True) keeps "" (empty
-            # is not None), so it would serialize `delegationId: ""` and 4xx at
-            # the backend, while _is_inline_create would (mis)read it as inline.
-            # Fail fast with a clear client-input error instead (symmetric with
-            # the TS SDK guard, payments#379).
-            if delegation_config.delegation_id == "":
+            # An empty- or whitespace-only delegation_id is neither a valid
+            # reuse (it's not a UUID) nor "absent": model_dump(exclude_none=True)
+            # keeps it (it is not None), so it would serialize a blank
+            # `delegationId` and 4xx at the backend, while _is_inline_create
+            # would (mis)read it as inline. Fail fast with a clear client-input
+            # error instead. Strip first to match the TS SDK guard's
+            # `.trim() === ''` (payments#379) — exact cross-SDK symmetry.
+            if (
+                delegation_config.delegation_id is not None
+                and delegation_config.delegation_id.strip() == ""
+            ):
                 raise PaymentsError.validation(
                     "delegation_id must not be an empty string — pass a valid "
                     "delegation UUID or omit the field."

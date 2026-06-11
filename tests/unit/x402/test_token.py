@@ -307,16 +307,19 @@ class TestInlineCreateDeprecationWarning:
         with pytest.warns(FutureWarning, match="create_delegation"):
             api.get_x402_access_token("plan-crypto", token_options=token_options)
 
+    @pytest.mark.parametrize("blank_id", ["", "   "])
     @patch("payments_py.x402.token.requests.post")
-    def test_empty_string_delegation_id_raises_validation_error(
-        self, mock_post, mock_options
+    def test_blank_delegation_id_raises_validation_error(
+        self, mock_post, mock_options, blank_id
     ):
-        """An empty-string delegation_id is neither a valid reuse nor absent —
-        it would serialize delegationId: "" and 4xx at the backend. The SDK
-        fails fast with a client-input validation error (no HTTP call)."""
+        """An empty- or whitespace-only delegation_id is neither a valid reuse
+        nor absent — it would serialize a blank delegationId and 4xx at the
+        backend. The SDK strips and fails fast with a client-input validation
+        error (no HTTP call). Whitespace-only pins the .strip() symmetry with
+        the TS SDK's .trim() guard (payments#379)."""
         api = X402TokenAPI(mock_options)
         token_options = X402TokenOptions(
-            delegation_config=DelegationConfig(delegation_id=""),
+            delegation_config=DelegationConfig(delegation_id=blank_id),
         )
 
         with pytest.raises(PaymentsError) as excinfo:
