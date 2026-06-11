@@ -3,8 +3,10 @@
 from unittest.mock import patch, MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 from payments_py.x402.delegation_api import DelegationAPI, PaymentMethodSummary
+from payments_py.x402.types import CreateDelegationPayload, DelegationConfig
 
 
 @pytest.fixture
@@ -59,6 +61,75 @@ class TestPaymentMethodSummary:
         data = pm.model_dump(by_alias=True)
         assert data["expMonth"] == 1
         assert data["expYear"] == 2030
+
+
+class TestCreateDelegationPayloadValidation:
+    """The create-delegation payload mirrors the backend DTO (#1677, #1534):
+    currency is required (no silent default) and plan_id is optional /
+    plan-agnostic by default."""
+
+    def test_currency_is_required(self):
+        with pytest.raises(ValidationError) as excinfo:
+            CreateDelegationPayload(
+                provider="erc4337",
+                spending_limit_cents=10000,
+                duration_secs=604800,
+            )
+        assert any(e["loc"] == ("currency",) for e in excinfo.value.errors())
+
+    def test_rejects_unknown_currency(self):
+        with pytest.raises(ValidationError):
+            CreateDelegationPayload(
+                provider="stripe",
+                provider_payment_method_id="pm_123",
+                spending_limit_cents=10000,
+                duration_secs=604800,
+                currency="gbp",  # type: ignore[arg-type]
+            )
+
+    def test_accepts_supported_currencies(self):
+        for currency in ("usd", "eur", "usdc", "eurc"):
+            payload = CreateDelegationPayload(
+                provider="erc4337",
+                spending_limit_cents=10000,
+                duration_secs=604800,
+                currency=currency,  # type: ignore[arg-type]
+            )
+            assert payload.currency == currency
+
+    def test_plan_id_is_optional_and_serialized_under_alias(self):
+        # Plan-agnostic by default: omitting plan_id is valid and excluded.
+        agnostic = CreateDelegationPayload(
+            provider="erc4337",
+            spending_limit_cents=10000,
+            duration_secs=604800,
+            currency="usdc",
+        )
+        assert agnostic.plan_id is None
+        assert "planId" not in agnostic.model_dump(by_alias=True, exclude_none=True)
+
+        # Opt-in plan binding serializes under the camelCase wire alias.
+        bound = CreateDelegationPayload(
+            provider="visa",
+            provider_payment_method_id="vat_1abc",
+            spending_limit_cents=10000,
+            duration_secs=604800,
+            currency="usd",
+            plan_id="42",
+        )
+        assert bound.model_dump(by_alias=True)["planId"] == "42"
+
+
+class TestDelegationConfigPlanId:
+    """plan_id is additive on the token-request delegation config too (#1534)."""
+
+    def test_plan_id_serializes_under_alias(self):
+        config = DelegationConfig(delegation_id="deleg-1", plan_id="42")
+        assert config.model_dump(by_alias=True, exclude_none=True)["planId"] == "42"
+
+    def test_plan_id_optional(self):
+        config = DelegationConfig(delegation_id="deleg-1")
+        assert config.plan_id is None
 
 
 class TestDelegationAPIListPaymentMethods:

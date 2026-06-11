@@ -2,6 +2,7 @@
 
 import base64
 import json
+import warnings
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -117,6 +118,106 @@ class TestTokenWithOptions:
         assert body["accepted"]["scheme"] == "nvm:erc4337"
         assert "delegationConfig" not in body
         assert "sessionKeyConfig" not in body
+
+
+class TestInlineCreateDeprecationWarning:
+    """The token request must nudge callers off the deprecated inline
+    create-on-the-fly path (a delegation_config with no delegation_id) and
+    toward the create-first flow (#1674)."""
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_inline_create_via_payment_method_warns(self, mock_post, mock_options):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "card-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            scheme="nvm:card-delegation",
+            delegation_config=DelegationConfig(
+                provider_payment_method_id="pm_123",
+                spending_limit_cents=10000,
+                duration_secs=604800,
+                currency="usd",
+            ),
+        )
+
+        with pytest.warns(DeprecationWarning, match="create_delegation"):
+            api.get_x402_access_token("plan-fiat", token_options=token_options)
+
+        # The request still goes through — the path is deprecated, not removed.
+        call_args = mock_post.call_args
+        body = json.loads(call_args.kwargs.get("data", "{}"))
+        assert body["delegationConfig"]["providerPaymentMethodId"] == "pm_123"
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_inline_create_via_card_id_warns(self, mock_post, mock_options):
+        """Referencing an enrolled card by its PaymentMethod entity UUID (card_id)
+        with no delegation_id still asks the backend to create a delegation on
+        the fly — the deprecated path."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "card-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            scheme="nvm:card-delegation",
+            delegation_config=DelegationConfig(card_id="card-uuid-1"),
+        )
+
+        with pytest.warns(DeprecationWarning, match="create_delegation"):
+            api.get_x402_access_token("plan-fiat", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_inline_create_via_spending_limits_warns(self, mock_post, mock_options):
+        """erc4337 auto-create (spending limits only, no payment method and no
+        delegation_id) is also the deprecated inline path."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(
+                spending_limit_cents=10000,
+                duration_secs=604800,
+            ),
+        )
+
+        with pytest.warns(DeprecationWarning, match="deprecated"):
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_reuse_by_delegation_id_does_not_warn(self, mock_post, mock_options):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(delegation_id="deleg-123"),
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # any warning becomes a test failure
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_no_delegation_config_does_not_warn(self, mock_post, mock_options):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            api.get_x402_access_token("plan-crypto")
 
 
 class TestDecodeAccessToken:

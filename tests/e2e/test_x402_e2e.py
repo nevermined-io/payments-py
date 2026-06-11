@@ -158,6 +158,7 @@ class TestX402DelegationFlow:
                     provider="erc4337",
                     spending_limit_cents=100000,  # $1000 USDC
                     duration_secs=604800,  # 1 week
+                    currency="usdc",
                 )
             ),
             label="Crypto Delegation Creation",

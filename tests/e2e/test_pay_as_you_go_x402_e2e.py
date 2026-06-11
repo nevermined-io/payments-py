@@ -190,6 +190,7 @@ class TestPayAsYouGoFlow:
                 provider="erc4337",
                 spending_limit_cents=100000,
                 duration_secs=604800,
+                currency="usdc",
             )
         )
         TestPayAsYouGoFlow.delegation_id = delegation.delegation_id

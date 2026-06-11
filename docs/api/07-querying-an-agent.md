@@ -41,32 +41,25 @@ print(f"Access Token: {access_token[:50]}...")
 
 ### Token Generation with Delegation
 
-For erc4337 (crypto) plans, token generation now uses delegations. Two patterns are supported:
+For erc4337 (crypto) plans, token generation uses delegations. The supported
+flow is **create-first**: create the delegation once, then reference it by
+`delegation_id` on every token request. Delegations are plan-agnostic by
+default, so a single delegation can back token requests across many plans.
 
 ```python
 from payments_py.x402 import X402TokenOptions, DelegationConfig, CreateDelegationPayload
 
-# Pattern A — Auto-create delegation (simple)
-result = payments.x402.get_x402_access_token(
-    plan_id="your-plan-id",
-    agent_id="agent-id",
-    token_options=X402TokenOptions(
-        delegation_config=DelegationConfig(
-            spending_limit_cents=10000,  # $100
-            duration_secs=604800         # 1 week
-        )
-    )
-)
-
-# Pattern B — Explicit create + reuse (for sharing across plans)
+# Step 1 — create the delegation once. `currency` is required.
 delegation = payments.delegation.create_delegation(
     CreateDelegationPayload(
         provider="erc4337",
-        spending_limit_cents=10000,
-        duration_secs=604800
+        spending_limit_cents=10000,  # $100
+        duration_secs=604800,        # 1 week
+        currency="usdc",
     )
 )
 
+# Step 2 — request a token referencing the delegation id (reusable across plans).
 result = payments.x402.get_x402_access_token(
     plan_id="your-plan-id",
     agent_id="agent-id",
@@ -77,6 +70,11 @@ result = payments.x402.get_x402_access_token(
     )
 )
 ```
+
+> **Deprecated:** passing `spending_limit_cents` / `duration_secs` (or a payment
+> method) directly to `get_x402_access_token` — inline "create-on-the-fly" —
+> still works but emits a `DeprecationWarning` and will be removed in a future
+> release. Create the delegation first as shown above.
 
 ## Make Requests to Agents
 

@@ -7,6 +7,7 @@ Tokens are used to authorize payment verification and settlement.
 
 import base64
 import json
+import warnings
 import requests
 from typing import Dict, Any, Optional
 from payments_py.common.payments_error import PaymentsError
@@ -14,7 +15,31 @@ from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.nvm_api import API_URL_CREATE_PERMISSION
 from payments_py.x402.schemes import get_default_network
-from payments_py.x402.types import X402TokenOptions
+from payments_py.x402.types import DelegationConfig, X402TokenOptions
+
+
+def _is_inline_create(delegation_config: DelegationConfig) -> bool:
+    """Whether a delegation config asks the backend to create a delegation
+    on the fly (the deprecated path) rather than reusing an existing one.
+
+    The supported flow is create-first: create the delegation via
+    ``POST /delegation/create`` and pass only ``delegation_id`` here. A config
+    that carries no ``delegation_id`` but does carry an inline-create signal
+    (a payment-method reference or spending limits) triggers the backend's
+    deprecated create-on-the-fly path, which logs its own deprecation warning
+    server-side (#1674) and will be removed in a future release.
+    """
+    if delegation_config.delegation_id:
+        return False
+    return any(
+        value is not None
+        for value in (
+            delegation_config.card_id,
+            delegation_config.provider_payment_method_id,
+            delegation_config.spending_limit_cents,
+            delegation_config.duration_secs,
+        )
+    )
 
 
 def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
@@ -71,14 +96,20 @@ class X402TokenAPI(BasePaymentsAPI):
         token_options: Optional[X402TokenOptions] = None,
     ) -> Dict[str, Any]:
         """
-        Create a delegation and get an X402 access token for the given plan.
+        Get an X402 access token for the given plan against a delegation.
 
         This token allows the agent to verify and settle delegations on behalf
         of the subscriber.
 
-        For erc4337 scheme, you must pass ``token_options.delegation_config`` with either:
-        - ``delegation_id`` to reuse an existing delegation, or
-        - ``spending_limit_cents`` + ``duration_secs`` to auto-create a new one.
+        Supported flow (**create-first**): create the delegation once via
+        ``payments.delegation.create_delegation(...)`` and pass only its
+        ``delegation_id`` here via ``token_options.delegation_config``.
+
+        Passing spending limits / a payment method here instead (inline
+        create-on-the-fly, i.e. a ``delegation_config`` with no
+        ``delegation_id``) is **deprecated** (#1674): this method emits a
+        ``DeprecationWarning`` and the backend logs its own deprecation
+        warning. The inline path will be removed in a future release.
 
         Args:
             plan_id: The unique identifier of the payment plan
@@ -94,22 +125,21 @@ class X402TokenAPI(BasePaymentsAPI):
 
         Example:
             ```python
-            # Pattern A - auto-create delegation
-            result = payments.x402.get_x402_access_token(
-                plan_id, agent_id,
-                token_options=X402TokenOptions(
-                    delegation_config=DelegationConfig(
-                        spending_limit_cents=10000, duration_secs=604800
-                    )
+            # Create the delegation once (currency is required), then reuse it.
+            delegation = payments.delegation.create_delegation(
+                CreateDelegationPayload(
+                    provider="erc4337",
+                    spending_limit_cents=10000,
+                    duration_secs=604800,
+                    currency="usdc",
                 )
             )
 
-            # Pattern B - reuse existing delegation
             result = payments.x402.get_x402_access_token(
                 plan_id, agent_id,
                 token_options=X402TokenOptions(
                     delegation_config=DelegationConfig(
-                        delegation_id="existing-delegation-uuid"
+                        delegation_id=delegation.delegation_id
                     )
                 )
             )
@@ -145,7 +175,19 @@ class X402TokenAPI(BasePaymentsAPI):
 
         # Add delegation config for both erc4337 and card-delegation schemes
         if token_options and token_options.delegation_config:
-            body["delegationConfig"] = token_options.delegation_config.model_dump(
+            delegation_config = token_options.delegation_config
+            if _is_inline_create(delegation_config):
+                warnings.warn(
+                    "Passing spending limits / a payment method to "
+                    "get_x402_access_token (inline delegation create-on-the-fly) "
+                    "is deprecated and will be removed in a future release. "
+                    "Create the delegation first with "
+                    "payments.delegation.create_delegation(...) and pass only "
+                    "DelegationConfig(delegation_id=...) here.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            body["delegationConfig"] = delegation_config.model_dump(
                 by_alias=True, exclude_none=True
             )
 
