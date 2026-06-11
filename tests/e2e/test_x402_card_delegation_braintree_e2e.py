@@ -121,6 +121,7 @@ class TestX402BraintreeCardDelegationFlow:
                     provider_payment_method_id=pm.id,
                     spending_limit_cents=10000,
                     duration_secs=604800,
+                    currency="usd",
                 )
             ),
             label="Braintree Delegation Creation",

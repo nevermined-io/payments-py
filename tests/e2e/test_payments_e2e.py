@@ -454,6 +454,7 @@ class TestE2ESubscriberAgentFlow:
                 provider="erc4337",
                 spending_limit_cents=100000,
                 duration_secs=604800,
+                currency="usdc",
             )
         )
         agent_access_params = retry_with_backoff(

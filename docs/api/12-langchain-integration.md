@@ -214,7 +214,11 @@ from payments_py.x402.langchain import (
     last_settlement,
     requires_payment,
 )
-from payments_py.x402.types import DelegationConfig, X402TokenOptions
+from payments_py.x402.types import (
+    CreateDelegationPayload,
+    DelegationConfig,
+    X402TokenOptions,
+)
 
 load_dotenv()
 payments = Payments.get_instance(
@@ -233,19 +237,24 @@ try:
 except PaymentRequiredError as err:
     accept = err.payment_required.accepts[0]
 
-# 3. Acquire a token against the discovered plan.
+# 3. Create a delegation once (currency is required), then acquire a token
+#    against the discovered plan by referencing the delegation id.
 pm = next(m for m in payments.delegation.list_payment_methods()
           if m.provider == accept.network)
+delegation = payments.delegation.create_delegation(
+    CreateDelegationPayload(
+        provider=pm.provider,
+        provider_payment_method_id=pm.id,
+        spending_limit_cents=10000,
+        duration_secs=3600,
+        currency="usd",
+    )
+)
 token = payments.x402.get_x402_access_token(
     accept.plan_id,
     token_options=X402TokenOptions(
         scheme=accept.scheme,
-        delegation_config=DelegationConfig(
-            provider_payment_method_id=pm.id,
-            spending_limit_cents=10000,
-            duration_secs=3600,
-            currency="usd",
-        ),
+        delegation_config=DelegationConfig(delegation_id=delegation.delegation_id),
     ),
 )["accessToken"]
 

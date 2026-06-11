@@ -2,10 +2,12 @@
 
 import base64
 import json
+import warnings
 from unittest.mock import patch, MagicMock
 
 import pytest
 
+from payments_py.common.payments_error import PaymentsError
 from payments_py.x402.token import X402TokenAPI, decode_access_token
 from payments_py.x402.types import (
     DelegationConfig,
@@ -117,6 +119,216 @@ class TestTokenWithOptions:
         assert body["accepted"]["scheme"] == "nvm:erc4337"
         assert "delegationConfig" not in body
         assert "sessionKeyConfig" not in body
+
+
+class TestInlineCreateDeprecationWarning:
+    """The token request must nudge callers off the deprecated inline
+    create-on-the-fly path (a delegation_config with no delegation_id) and
+    toward the create-first flow (#1674)."""
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_inline_create_via_payment_method_warns(self, mock_post, mock_options):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "card-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            scheme="nvm:card-delegation",
+            delegation_config=DelegationConfig(
+                provider_payment_method_id="pm_123",
+                spending_limit_cents=10000,
+                duration_secs=604800,
+                currency="usd",
+            ),
+        )
+
+        with pytest.warns(FutureWarning, match="create_delegation"):
+            api.get_x402_access_token("plan-fiat", token_options=token_options)
+
+        # The request still goes through — the path is deprecated, not removed.
+        call_args = mock_post.call_args
+        body = json.loads(call_args.kwargs.get("data", "{}"))
+        assert body["delegationConfig"]["providerPaymentMethodId"] == "pm_123"
+        # The now-required currency survives serialization onto the wire.
+        assert body["delegationConfig"]["currency"] == "usd"
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_inline_create_via_card_id_warns(self, mock_post, mock_options):
+        """Referencing an enrolled card by its PaymentMethod entity UUID (card_id)
+        with no delegation_id still asks the backend to create a delegation on
+        the fly — the deprecated path."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "card-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            scheme="nvm:card-delegation",
+            delegation_config=DelegationConfig(card_id="card-uuid-1"),
+        )
+
+        with pytest.warns(FutureWarning, match="create_delegation"):
+            api.get_x402_access_token("plan-fiat", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_inline_create_via_spending_limits_warns(self, mock_post, mock_options):
+        """erc4337 auto-create (spending limits only, no payment method and no
+        delegation_id) is also the deprecated inline path."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(
+                spending_limit_cents=10000,
+                duration_secs=604800,
+            ),
+        )
+
+        with pytest.warns(FutureWarning, match="create_delegation"):
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_reuse_by_delegation_id_does_not_warn(self, mock_post, mock_options):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(delegation_id="deleg-123"),
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # any warning becomes a test failure
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_delegation_id_with_leftover_inline_fields_does_not_warn(
+        self, mock_post, mock_options
+    ):
+        """Migration footgun guard: a caller who switched to create-first but
+        left stale spending limits in their config must stay SILENT — the
+        delegation_id takes precedence (reuse), so the inline fields are inert.
+        Pins the predicate's early-return against a future refactor."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(
+                delegation_id="deleg-123",
+                spending_limit_cents=10000,
+                duration_secs=604800,
+            ),
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_delegation_id_with_api_key_id_does_not_warn(self, mock_post, mock_options):
+        """api_key_id-scoped reuse is a documented pattern: {delegation_id,
+        api_key_id} is still a reuse, not an inline create — stays silent."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(
+                delegation_id="deleg-123",
+                api_key_id="key-1",
+            ),
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_no_delegation_config_does_not_warn(self, mock_post, mock_options):
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            api.get_x402_access_token("plan-crypto")
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_api_key_id_only_does_not_warn(self, mock_post, mock_options):
+        """api_key_id is scoping metadata, not an inline-create signal: a config
+        with only api_key_id and NO delegation_id (and no card/limits) is not a
+        create-on-the-fly request, so it must stay silent. The backend resolves
+        the delegation from the api_key scope."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(api_key_id="key-1"),
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_spending_limit_zero_is_an_inline_signal(self, mock_post, mock_options):
+        """spending_limit_cents=0 (falsy but not None) is still an inline-create
+        signal — pins the predicate's `is not None` check against a refactor to
+        truthiness, which would wrongly skip the warning for a 0 limit."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(spending_limit_cents=0),
+        )
+
+        with pytest.warns(FutureWarning, match="create_delegation"):
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @pytest.mark.parametrize("blank_id", ["", "   "])
+    @patch("payments_py.x402.token.requests.post")
+    def test_blank_delegation_id_raises_validation_error(
+        self, mock_post, mock_options, blank_id
+    ):
+        """An empty- or whitespace-only delegation_id is neither a valid reuse
+        nor absent — it would serialize a blank delegationId and 4xx at the
+        backend. The SDK strips and fails fast with a client-input validation
+        error (no HTTP call). Whitespace-only pins the .strip() symmetry with
+        the TS SDK's .trim() guard (payments#379)."""
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(delegation_id=blank_id),
+        )
+
+        with pytest.raises(PaymentsError) as excinfo:
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+        assert excinfo.value.code == "validation"
+        assert "empty string" in str(excinfo.value)
+        # Fails before any backend round-trip.
+        mock_post.assert_not_called()
 
 
 class TestDecodeAccessToken:

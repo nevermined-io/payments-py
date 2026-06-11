@@ -35,6 +35,11 @@ if TYPE_CHECKING:
 CardProvider = Literal["stripe", "braintree", "visa"]
 # All delegation providers — card providers above plus the crypto path.
 DelegationProvider = Literal["stripe", "braintree", "visa", "erc4337"]
+# Currencies accepted by POST /api/v1/delegation/create. Mirrors the backend
+# DTO enum (apps/api/src/delegation/dto/create-delegation.dto.ts, #1677): fiat
+# 'usd'/'eur' for Stripe/Braintree/Visa, stablecoin 'usdc'/'eurc' for erc4337.
+# Validated at runtime by Pydantic on model construction.
+DelegationCurrency = Literal["usd", "eur", "usdc", "eurc"]
 
 
 class X402Resource(BaseModel):
@@ -314,18 +319,27 @@ class DelegationConfig(BaseModel):
     """
     Configuration for delegation-based payments (both crypto and card schemes).
 
-    To reuse an existing delegation supply ``delegation_id``.
+    The supported flow is **create-first**: create the delegation once via
+    ``payments.delegation.create_delegation(...)`` and then reference it here
+    with ``delegation_id``. Supplying spending limits / a payment method here
+    instead (inline create-on-the-fly) is **deprecated** — see
+    ``X402TokenAPI.get_x402_access_token``, which warns at runtime.
+
+    To reuse an existing delegation supply ``delegation_id`` (preferred).
     To reuse an existing card (PaymentMethod entity) supply ``card_id``.
-    When creating a brand-new delegation provide ``provider_payment_method_id``,
-    ``spending_limit_cents``, and ``duration_secs``.
+    The deprecated inline path provides ``provider_payment_method_id``,
+    ``spending_limit_cents``, ``duration_secs``, and ``currency``.
 
     Attributes:
         card_id: PaymentMethod entity UUID -- preferred way to reference an enrolled card
-        delegation_id: Existing delegation UUID to reuse instead of creating a new one
-        provider_payment_method_id: Stripe payment method ID (e.g., 'pm_...'). Required only for new delegations.
-        spending_limit_cents: Maximum spending limit in cents. Required only for new delegations.
-        duration_secs: Duration of the delegation in seconds. Required only for new delegations.
-        currency: Currency code (default: 'usd')
+        delegation_id: Existing delegation UUID to reuse instead of creating a new one (preferred)
+        provider_payment_method_id: Stripe payment method ID (e.g., 'pm_...'). Deprecated inline-create only.
+        spending_limit_cents: Maximum spending limit in cents. Deprecated inline-create only.
+        duration_secs: Duration of the delegation in seconds. Deprecated inline-create only.
+        currency: Currency code ('usd' | 'eur' | 'usdc' | 'eurc'). Required by the
+            backend for the deprecated inline-create path (no silent default).
+        plan_id: Plan ID to scope the delegation to. Optional and plan-agnostic by
+            default (#1534); set it to bind the delegation to a single plan.
         merchant_account_id: Stripe Connect merchant account ID
         max_transactions: Maximum number of transactions allowed
         api_key_id: NVM API Key ID to scope the delegation to
@@ -338,7 +352,8 @@ class DelegationConfig(BaseModel):
     )
     spending_limit_cents: Optional[int] = Field(None, alias="spendingLimitCents")
     duration_secs: Optional[int] = Field(None, alias="durationSecs")
-    currency: Optional[str] = None
+    currency: Optional[DelegationCurrency] = None
+    plan_id: Optional[str] = Field(None, alias="planId")
     merchant_account_id: Optional[str] = Field(None, alias="merchantAccountId")
     max_transactions: Optional[int] = Field(None, alias="maxTransactions")
     api_key_id: Optional[str] = Field(None, alias="apiKeyId")
@@ -364,8 +379,11 @@ class CreateDelegationPayload(BaseModel):
             'pm_...', Braintree vault token, or Visa Agentic token id 'vat_...')
         spending_limit_cents: Maximum spending limit in cents
         duration_secs: Duration of the delegation in seconds
-        currency: Currency code (default: 'usd')
-        plan_id: Plan ID to scope the delegation to
+        currency: Currency code ('usd' | 'eur' | 'usdc' | 'eurc'). **Required** —
+            the backend no longer applies a silent 'usd'/'usdc' default (#1677).
+        plan_id: Plan ID to scope the delegation to. Optional and plan-agnostic by
+            default (#1534) — EXCEPT provider='visa', where the backend REQUIRES it
+            (the VGS mandate is merchant-scoped, derived from the plan owner).
         merchant_account_id: Merchant account ID (Stripe Connect acct_xxx or Braintree merchantId)
         max_transactions: Maximum number of transactions allowed
         api_key_id: NVM API Key ID to scope the delegation to
@@ -377,7 +395,7 @@ class CreateDelegationPayload(BaseModel):
     )
     spending_limit_cents: int = Field(..., alias="spendingLimitCents")
     duration_secs: int = Field(..., alias="durationSecs")
-    currency: Optional[str] = None
+    currency: DelegationCurrency
     plan_id: Optional[str] = Field(None, alias="planId")
     merchant_account_id: Optional[str] = Field(None, alias="merchantAccountId")
     max_transactions: Optional[int] = Field(None, alias="maxTransactions")

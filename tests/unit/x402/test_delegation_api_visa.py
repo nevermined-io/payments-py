@@ -154,6 +154,7 @@ class TestCreateDelegationVisa:
             providerPaymentMethodId="vat_1abc23def45",
             spendingLimitCents=10_000,
             durationSecs=3_600,
+            currency="usd",
             planId="42",
         )
         result = DelegationAPI(mock_options).create_delegation(payload)
@@ -168,6 +169,7 @@ class TestCreateDelegationVisa:
         assert body["providerPaymentMethodId"] == "vat_1abc23def45"
         assert body["spendingLimitCents"] == 10_000
         assert body["durationSecs"] == 3_600
+        assert body["currency"] == "usd"
         assert body["planId"] == "42"
 
     @patch("payments_py.x402.delegation_api.requests.post")
@@ -190,6 +192,7 @@ class TestCreateDelegationVisa:
             providerPaymentMethodId="vat_1abc23def45",
             spendingLimitCents=1_000,
             durationSecs=3_600,
+            currency="usd",
         )
         with pytest.raises(PaymentsError) as excinfo:
             DelegationAPI(mock_options).create_delegation(payload)
@@ -223,6 +226,7 @@ class TestCreateDelegationVisa:
                 providerPaymentMethodId="vat_1abc23def45",
                 spendingLimitCents=1_000,
                 durationSecs=3_600,
+                currency="usd",
             )
         )
 
@@ -481,6 +485,7 @@ class TestErrorEnvelopeCoverage:
                     providerPaymentMethodId="vat_1abc23def45",
                     spendingLimitCents=1_000,
                     durationSecs=3_600,
+                    currency="usd",
                 )
             )
 
@@ -503,6 +508,7 @@ class TestErrorEnvelopeCoverage:
                     providerPaymentMethodId="vat_1abc23def45",
                     spendingLimitCents=1_000,
                     durationSecs=3_600,
+                    currency="usd",
                 )
             )
 
@@ -530,6 +536,7 @@ class TestErrorEnvelopeCoverage:
                     providerPaymentMethodId="vat_1abc23def45",
                     spendingLimitCents=1_000,
                     durationSecs=3_600,
+                    currency="usd",
                 )
             )
 

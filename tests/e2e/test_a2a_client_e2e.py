@@ -77,6 +77,7 @@ def delegation_config(payments_subscriber: Payments):
             provider="erc4337",
             spending_limit_cents=100000,
             duration_secs=604800,
+            currency="usdc",
         )
     )
     return DelegationConfig(delegation_id=delegation.delegation_id)
