@@ -159,6 +159,7 @@ class TestX402CardDelegationFlow:
                         provider_payment_method_id=card.id,
                         spending_limit_cents=5000,
                         duration_secs=3600,
+                        currency="usd",
                     ),
                 ),
             ),

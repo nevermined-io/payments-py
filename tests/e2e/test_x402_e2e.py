@@ -336,6 +336,7 @@ class TestX402DelegationFlow:
                     delegation_config=DelegationConfig(
                         spending_limit_cents=50000,
                         duration_secs=3600,
+                        currency="usdc",
                     )
                 ),
             ),
