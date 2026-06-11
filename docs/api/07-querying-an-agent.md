@@ -21,7 +21,7 @@ payments = Payments.get_instance(
     PaymentOptions(nvm_api_key="nvm:subscriber-key", environment="sandbox")
 )
 
-# Generate access token (basic — auto-creates delegation)
+# Generate access token (basic — no delegation config needed for credit/fiat plans)
 result = payments.x402.get_x402_access_token(
     plan_id="your-plan-id",
     agent_id="agent-id"  # Optional but recommended

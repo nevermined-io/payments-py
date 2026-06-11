@@ -131,6 +131,16 @@ class TestDelegationConfigPlanId:
         config = DelegationConfig(delegation_id="deleg-1")
         assert config.plan_id is None
 
+    def test_rejects_unknown_currency(self):
+        # currency is enum-typed on the inline config too (deprecated path).
+        with pytest.raises(ValidationError):
+            DelegationConfig(
+                provider_payment_method_id="pm_123",
+                spending_limit_cents=10000,
+                duration_secs=604800,
+                currency="gbp",  # type: ignore[arg-type]
+            )
+
 
 class TestDelegationAPIListPaymentMethods:
     """Tests for DelegationAPI.list_payment_methods."""

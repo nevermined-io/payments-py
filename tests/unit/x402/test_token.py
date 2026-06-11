@@ -150,6 +150,8 @@ class TestInlineCreateDeprecationWarning:
         call_args = mock_post.call_args
         body = json.loads(call_args.kwargs.get("data", "{}"))
         assert body["delegationConfig"]["providerPaymentMethodId"] == "pm_123"
+        # The now-required currency survives serialization onto the wire.
+        assert body["delegationConfig"]["currency"] == "usd"
 
     @patch("payments_py.x402.token.requests.post")
     def test_inline_create_via_card_id_warns(self, mock_post, mock_options):
@@ -187,7 +189,7 @@ class TestInlineCreateDeprecationWarning:
             ),
         )
 
-        with pytest.warns(DeprecationWarning, match="deprecated"):
+        with pytest.warns(DeprecationWarning, match="create_delegation"):
             api.get_x402_access_token("plan-crypto", token_options=token_options)
 
     @patch("payments_py.x402.token.requests.post")
@@ -204,6 +206,53 @@ class TestInlineCreateDeprecationWarning:
 
         with warnings.catch_warnings():
             warnings.simplefilter("error")  # any warning becomes a test failure
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_delegation_id_with_leftover_inline_fields_does_not_warn(
+        self, mock_post, mock_options
+    ):
+        """Migration footgun guard: a caller who switched to create-first but
+        left stale spending limits in their config must stay SILENT — the
+        delegation_id takes precedence (reuse), so the inline fields are inert.
+        Pins the predicate's early-return against a future refactor."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(
+                delegation_id="deleg-123",
+                spending_limit_cents=10000,
+                duration_secs=604800,
+            ),
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            api.get_x402_access_token("plan-crypto", token_options=token_options)
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_delegation_id_with_api_key_id_does_not_warn(self, mock_post, mock_options):
+        """api_key_id-scoped reuse is a documented pattern: {delegation_id,
+        api_key_id} is still a reuse, not an inline create — stays silent."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {"accessToken": "erc-token"}
+        mock_post.return_value = mock_response
+
+        api = X402TokenAPI(mock_options)
+        token_options = X402TokenOptions(
+            delegation_config=DelegationConfig(
+                delegation_id="deleg-123",
+                api_key_id="key-1",
+            ),
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
             api.get_x402_access_token("plan-crypto", token_options=token_options)
 
     @patch("payments_py.x402.token.requests.post")
