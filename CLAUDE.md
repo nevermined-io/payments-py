@@ -167,24 +167,35 @@ tests/
 ## API Version Pinning
 
 Every HTTP call to the Nevermined backend carries a `Nevermined-Version`
-header (both `get_backend_http_options()` and `get_public_http_options()`
-in `payments_py/api/base_payments.py` inject it). Constants live in
+header: both option builders (`get_backend_http_options()` /
+`get_public_http_options()` in `payments_py/api/base_payments.py`) inject
+it, and the read-only GETs that historically bypassed the builders
+(`get_plan`, `get_plan_balance`, `get_agents_associated_to_plan`,
+`get_agent`, `get_agent_plans`, `get_deployment_info`) are routed through
+`get_public_http_options("GET")` so the invariant holds everywhere
+(wire-level tests in `TestBareEndpointVersionPin`). New endpoint code MUST
+use one of the two builders — never hand-build headers. Constants live in
 `payments_py/common/api_version.py`:
 
 - `LOCKED_API_VERSION` (`"1.1"`) — the **backend API version** (nvm-monorepo
   `MAJOR.MINOR`) this SDK release is built and tested against. It is **not**
   the package version in `pyproject.toml`; the two move independently. See
   https://docs.nevermined.app/api-reference/versioning and
-  nvm-monorepo#1535 / #1938.
+  nvm-monorepo#1535 / nvm-monorepo#1938.
 - `API_VERSION_HEADER` (`"Nevermined-Version"`) — the request header name.
 
 **Bump procedure:** when the backend ships a new API version, run the full
 test suite (unit + integration + E2E against a backend already serving the
-new version), fix any contract drift, then update `LOCKED_API_VERSION` in
-`payments_py/common/api_version.py` and the pinned value in
-`tests/unit/test_base_payments_http.py`
-(`test_header_name_and_locked_version_constants`) in the same PR. Never bump
-it speculatively — the constant is a tested-compatibility claim.
+new version), fix any contract drift, then update — in the same PR:
+
+1. `LOCKED_API_VERSION` in `payments_py/common/api_version.py`
+2. the pinned value in `tests/unit/test_base_payments_http.py`
+   (`test_header_name_and_locked_version_constants`)
+3. the prose `"1.1"` occurrences in this section and in
+   `docs/api/02-initializing-the-library.md` (the `api_version="1.1"`
+   example) — they are documentation, not constants, and drift silently
+
+Never bump it speculatively — the constant is a tested-compatibility claim.
 
 **Override path:** users can target a different backend contract per
 instance via `PaymentOptions(api_version="x.y")`; `BasePaymentsAPI`

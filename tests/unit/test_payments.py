@@ -64,7 +64,14 @@ def test_payments_api_version_override_propagates_to_sub_apis():
     )
     assert payments.api_version == "2.0"
     assert payments._build_options().api_version == "2.0"
-    for sub_api in (payments.plans, payments.agents, payments.facilitator):
+    # payments.delegation is the one sub-API built LAZILY via _build_options()
+    # — asserting it covers the propagation path the eager trio cannot.
+    for sub_api in (
+        payments.plans,
+        payments.agents,
+        payments.facilitator,
+        payments.delegation,
+    ):
         opts = sub_api.get_backend_http_options("GET")
         assert opts["headers"]["Nevermined-Version"] == "2.0"
 

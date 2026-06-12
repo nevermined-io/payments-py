@@ -8,7 +8,7 @@ serving the pinned contract (or reject the call) instead of silently
 changing response shapes under the SDK.
 
 See https://docs.nevermined.app/api-reference/versioning and
-nvm-monorepo#1535 / #1938.
+nvm-monorepo#1535 / nvm-monorepo#1938.
 """
 
 # The BACKEND API version (monorepo MAJOR.MINOR) this SDK release is built

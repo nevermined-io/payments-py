@@ -84,8 +84,9 @@ class ContractsAPI(BasePaymentsAPI):
             backend_url = self.environment.backend
             info_url = f"{backend_url}{API_URL_INFO}"
 
-            # Info endpoint doesn't require authentication
-            response = requests.get(info_url)
+            # Info endpoint doesn't require authentication, but it still
+            # carries the API version pin like every other backend call.
+            response = requests.get(info_url, **self.get_public_http_options("GET"))
             response.raise_for_status()
 
             info_data = response.json()

@@ -185,7 +185,7 @@ class TestExtraHeadersAllowlist:
 
 class TestNeverminedVersionHeader:
     """Every backend/public HTTP call must pin the backend API version via
-    the ``Nevermined-Version`` header (nvm-monorepo#1535 / #1938).
+    the ``Nevermined-Version`` header (nvm-monorepo#1535 / nvm-monorepo#1938).
 
     The default is ``LOCKED_API_VERSION`` — the backend API version
     (monorepo MAJOR.MINOR) this SDK release is built and tested against,
@@ -255,3 +255,117 @@ class TestNeverminedVersionHeader:
         assert bp.version == "9.9.9"
         opts = bp.get_backend_http_options("GET")
         assert opts["headers"][API_VERSION_HEADER] == LOCKED_API_VERSION
+
+
+class TestBareEndpointVersionPin:
+    """Every backend call carries the pin — including the read-only GETs that
+    historically bypassed the option builders (#226 review). Each endpoint is
+    exercised at the wire level with requests.get monkeypatched, asserting the
+    Nevermined-Version header is present."""
+
+    def _payments(self):
+        from payments_py.payments import Payments
+
+        return Payments(
+            PaymentOptions(nvm_api_key=_SAFE_JWT, environment="staging_sandbox")
+        )
+
+    def _ok_response(self, payload: Optional[dict] = None) -> MagicMock:
+        response = MagicMock()
+        response.ok = True
+        response.status_code = 200
+        response.json.return_value = payload or {}
+        response.raise_for_status.return_value = None
+        return response
+
+    def test_get_plan_carries_version_header(self, monkeypatch):
+        from payments_py.api import plans_api
+
+        get = MagicMock(return_value=self._ok_response({"id": "1"}))
+        monkeypatch.setattr(plans_api.requests, "get", get)
+
+        self._payments().plans.get_plan("1")
+
+        headers = get.call_args.kwargs["headers"]
+        assert headers[API_VERSION_HEADER] == LOCKED_API_VERSION
+
+    def test_get_plan_balance_carries_version_header(self, monkeypatch):
+        from payments_py.api import plans_api
+
+        get = MagicMock(return_value=self._ok_response({"balance": "0"}))
+        monkeypatch.setattr(plans_api.requests, "get", get)
+
+        try:
+            self._payments().plans.get_plan_balance(
+                "1", "0x6B16D0b334824581B4a24A49Fd7fcbD6509CE5da"
+            )
+        except Exception:
+            # Post-processing of the mocked payload is out of scope — the
+            # wire-level header assertion below is what this test pins.
+            pass
+
+        headers = get.call_args.kwargs["headers"]
+        assert headers[API_VERSION_HEADER] == LOCKED_API_VERSION
+
+    def test_get_plan_agents_carries_version_header_and_keeps_params(self, monkeypatch):
+        from payments_py.api import plans_api
+
+        get = MagicMock(return_value=self._ok_response({"agents": []}))
+        monkeypatch.setattr(plans_api.requests, "get", get)
+
+        self._payments().plans.get_agents_associated_to_plan("1")
+
+        assert "params" in get.call_args.kwargs  # pagination preserved
+        headers = get.call_args.kwargs["headers"]
+        assert headers[API_VERSION_HEADER] == LOCKED_API_VERSION
+
+    def test_get_agent_carries_version_header(self, monkeypatch):
+        from payments_py.api import agents_api
+
+        get = MagicMock(return_value=self._ok_response({"id": "did:nv:agent"}))
+        monkeypatch.setattr(agents_api.requests, "get", get)
+
+        self._payments().agents.get_agent("did:nv:agent")
+
+        headers = get.call_args.kwargs["headers"]
+        assert headers[API_VERSION_HEADER] == LOCKED_API_VERSION
+
+    def test_get_agent_plans_carries_version_header_and_keeps_params(self, monkeypatch):
+        from payments_py.api import agents_api
+
+        get = MagicMock(return_value=self._ok_response({"plans": []}))
+        monkeypatch.setattr(agents_api.requests, "get", get)
+
+        self._payments().agents.get_agent_plans("did:nv:agent")
+
+        assert "params" in get.call_args.kwargs
+        headers = get.call_args.kwargs["headers"]
+        assert headers[API_VERSION_HEADER] == LOCKED_API_VERSION
+
+    def test_deployment_info_carries_version_header(self, monkeypatch):
+        from payments_py.api import contracts_api
+
+        get = MagicMock(
+            return_value=self._ok_response(
+                {"deployment": {"contracts": {}, "chainId": 84532}}
+            )
+        )
+        monkeypatch.setattr(contracts_api.requests, "get", get)
+
+        payments = self._payments()
+        try:
+            payments.contracts.get_deployment_info()
+        except Exception:
+            # The mocked payload may not satisfy downstream parsing — the
+            # wire-level assertion below is what this test pins.
+            pass
+
+        headers = get.call_args.kwargs["headers"]
+        assert headers[API_VERSION_HEADER] == LOCKED_API_VERSION
+
+    def test_empty_api_version_resolves_to_locked_default(self):
+        options = PaymentOptions(
+            nvm_api_key=_SAFE_JWT, environment="staging_sandbox", api_version=""
+        )
+        api = BasePaymentsAPI(options)
+        assert api.api_version == LOCKED_API_VERSION
