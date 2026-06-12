@@ -164,6 +164,36 @@ tests/
 - `payments.plans` - Plan management
 - `payments.agents` - Agent management
 
+## API Version Pinning
+
+Every HTTP call to the Nevermined backend carries a `Nevermined-Version`
+header (both `get_backend_http_options()` and `get_public_http_options()`
+in `payments_py/api/base_payments.py` inject it). Constants live in
+`payments_py/common/api_version.py`:
+
+- `LOCKED_API_VERSION` (`"1.1"`) — the **backend API version** (nvm-monorepo
+  `MAJOR.MINOR`) this SDK release is built and tested against. It is **not**
+  the package version in `pyproject.toml`; the two move independently. See
+  https://docs.nevermined.app/api-reference/versioning and
+  nvm-monorepo#1535 / #1938.
+- `API_VERSION_HEADER` (`"Nevermined-Version"`) — the request header name.
+
+**Bump procedure:** when the backend ships a new API version, run the full
+test suite (unit + integration + E2E against a backend already serving the
+new version), fix any contract drift, then update `LOCKED_API_VERSION` in
+`payments_py/common/api_version.py` and the pinned value in
+`tests/unit/test_base_payments_http.py`
+(`test_header_name_and_locked_version_constants`) in the same PR. Never bump
+it speculatively — the constant is a tested-compatibility claim.
+
+**Override path:** users can target a different backend contract per
+instance via `PaymentOptions(api_version="x.y")`; `BasePaymentsAPI`
+resolves `options.api_version or LOCKED_API_VERSION` into
+`self.api_version`, and `Payments._build_options()` propagates it to
+lazily-built sub-APIs. Note `PaymentOptions.version` is a different,
+legacy field (SDK version reported to the backend) — do not reuse it for
+API version pinning.
+
 ## Framework Integrations
 
 - **FastAPI**: `payments_py.x402.fastapi` — `PaymentMiddleware` (install with `pip install payments-py[fastapi]`)

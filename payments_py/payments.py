@@ -174,13 +174,14 @@ class Payments(BasePaymentsAPI):
             self._delegation_api = DelegationAPI.get_instance(self._build_options())
         return self._delegation_api
 
-    def _build_options(self):
+    def _build_options(self) -> PaymentOptions:
         """Build PaymentOptions from current state."""
         return PaymentOptions(
             nvm_api_key=self.nvm_api_key,
             environment=self.environment_name,
             app_id=self.app_id,
             version=self.version,
+            api_version=self.api_version,
             organization_id=self.current_organization_id,
         )
 

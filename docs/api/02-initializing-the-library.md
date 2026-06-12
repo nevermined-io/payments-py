@@ -59,6 +59,7 @@ The `PaymentOptions` class accepts the following parameters:
 | `environment` | `str` | Yes | Environment name (see below) |
 | `app_id` | `str` | No | Application identifier |
 | `version` | `str` | No | Application version |
+| `api_version` | `str` | No | Backend API version sent as the `Nevermined-Version` header. Defaults to the version this SDK release targets (see below) |
 | `headers` | `dict` | No | Additional HTTP headers |
 | `return_url` | `str` | No | Return URL (browser mode only) |
 
@@ -75,6 +76,27 @@ payments = Payments.get_instance(
     )
 )
 ```
+
+### API Version Pinning
+
+Every request the SDK sends to the Nevermined backend carries a
+`Nevermined-Version` header declaring which backend API version
+(`MAJOR.MINOR`) the SDK was built and tested against. You normally don't
+need to touch this — the SDK pins the right version for you. To target a
+different backend contract explicitly:
+
+```python
+payments = Payments.get_instance(
+    PaymentOptions(
+        nvm_api_key="nvm:your-api-key",
+        environment="sandbox",
+        api_version="1.1",  # override the pinned backend API version
+    )
+)
+```
+
+See the [API versioning reference](https://docs.nevermined.app/api-reference/versioning)
+for the list of versions and the changes between them.
 
 ## Environments
 

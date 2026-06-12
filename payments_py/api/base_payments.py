@@ -7,6 +7,7 @@ import jwt
 import json
 from typing import Optional, Dict, Any
 from enum import Enum
+from payments_py.common.api_version import API_VERSION_HEADER, LOCKED_API_VERSION
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.environments import get_environment
@@ -77,6 +78,10 @@ class BasePaymentsAPI:
         self.environment_name = options.environment
         self.app_id = options.app_id
         self.version = options.version
+        # Backend API version (monorepo MAJOR.MINOR) declared on every
+        # request via the ``Nevermined-Version`` header. Defaults to the
+        # version this SDK release is built/tested against.
+        self.api_version: str = options.api_version or LOCKED_API_VERSION
         self.account_address: Optional[str] = None
         self.helicone_api_key: str = None
         self.is_browser_instance = True
@@ -186,6 +191,7 @@ class BasePaymentsAPI:
             "Accept": "application/json",
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.nvm_api_key}",
+            API_VERSION_HEADER: self.api_version,
         }
         if self.current_organization_id:
             headers[CURRENT_ORG_ID_HEADER] = self.current_organization_id
@@ -231,6 +237,7 @@ class BasePaymentsAPI:
             "headers": {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
+                API_VERSION_HEADER: self.api_version,
             },
             "timeout": DEFAULT_HTTP_TIMEOUT,
         }

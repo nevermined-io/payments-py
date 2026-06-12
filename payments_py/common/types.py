@@ -20,6 +20,13 @@ class PaymentOptions(BaseModel):
         return_url: Optional URL to return to after login (browser flows).
         app_id: Optional application identifier stamped on registered assets.
         version: Optional SDK version reported to the backend.
+        api_version: Optional backend API version (monorepo ``MAJOR.MINOR``,
+            e.g. ``"1.1"``) sent as the ``Nevermined-Version`` header on
+            every backend request. Defaults to
+            :data:`payments_py.common.api_version.LOCKED_API_VERSION` — the
+            backend API version this SDK release is built and tested
+            against. Override only to target a different backend contract;
+            see https://docs.nevermined.app/api-reference/versioning.
         headers: Optional default headers to merge into every request.
         organization_id: Optional organization id (e.g. ``"org-..."``) used
             as the active workspace for every authenticated backend call.
@@ -37,6 +44,7 @@ class PaymentOptions(BaseModel):
     return_url: Optional[str] = None
     app_id: Optional[str] = None
     version: Optional[str] = None
+    api_version: Optional[str] = None
     headers: Optional[Dict[str, str]] = None
     organization_id: Optional[str] = None
 
