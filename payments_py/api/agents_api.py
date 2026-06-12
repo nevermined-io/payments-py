@@ -180,7 +180,7 @@ class AgentsAPI(BasePaymentsAPI):
             PaymentsError: If the agent is not found
         """
         url = f"{self.environment.backend}{API_URL_GET_AGENT.format(agent_id=agent_id)}"
-        response = requests.get(url)
+        response = requests.get(url, **self.get_public_http_options("GET"))
         if not response.ok:
             try:
                 error = response.json()
@@ -213,7 +213,9 @@ class AgentsAPI(BasePaymentsAPI):
             "page": pagination.page,
             "offset": pagination.offset,
         }
-        response = requests.get(url, params=params)
+        response = requests.get(
+            url, params=params, **self.get_public_http_options("GET")
+        )
         if not response.ok:
             try:
                 error = response.json()

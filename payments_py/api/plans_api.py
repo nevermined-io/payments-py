@@ -287,7 +287,7 @@ class PlansAPI(BasePaymentsAPI):
             PaymentsError: If the plan is not found
         """
         url = f"{self.environment.backend}{API_URL_GET_PLAN.format(plan_id=plan_id)}"
-        response = requests.get(url)
+        response = requests.get(url, **self.get_public_http_options("GET"))
         if not response.ok:
             raise PaymentsError.validation(
                 f"Plan not found. {response.status_code} - {response.text}"
@@ -315,10 +315,7 @@ class PlansAPI(BasePaymentsAPI):
             account_address = self.get_account_address()
 
         url = f"{self.environment.backend}{API_URL_PLAN_BALANCE.format(plan_id=plan_id, holder_address=account_address)}"
-        response = requests.get(
-            url,
-            headers={"Accept": "application/json", "Content-Type": "application/json"},
-        )
+        response = requests.get(url, **self.get_public_http_options("GET"))
         if not response.ok:
             raise PaymentsError.internal(
                 f"Unable to get plan balance. {response.status_code} - {response.text}"
@@ -473,7 +470,9 @@ class PlansAPI(BasePaymentsAPI):
             "page": pagination.page,
             "offset": pagination.offset,
         }
-        response = requests.get(url, params=params)
+        response = requests.get(
+            url, params=params, **self.get_public_http_options("GET")
+        )
         if not response.ok:
             raise PaymentsError.internal(
                 f"Unable to get agents associated to plan. {response.status_code} - {response.text}"

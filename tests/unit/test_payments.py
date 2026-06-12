@@ -52,6 +52,30 @@ def test_payments_initialization_without_api_key():
         Payments(PaymentOptions(environment="staging_sandbox"))
 
 
+def test_payments_api_version_override_propagates_to_sub_apis():
+    """An ``api_version`` override must reach every sub-API's headers and
+    survive ``_build_options`` (used by lazily-built sub-APIs)."""
+    payments = Payments(
+        PaymentOptions(
+            nvm_api_key=TEST_API_KEY,
+            environment="staging_sandbox",
+            api_version="2.0",
+        )
+    )
+    assert payments.api_version == "2.0"
+    assert payments._build_options().api_version == "2.0"
+    # payments.delegation is the one sub-API built LAZILY via _build_options()
+    # — asserting it covers the propagation path the eager trio cannot.
+    for sub_api in (
+        payments.plans,
+        payments.agents,
+        payments.facilitator,
+        payments.delegation,
+    ):
+        opts = sub_api.get_backend_http_options("GET")
+        assert opts["headers"]["Nevermined-Version"] == "2.0"
+
+
 def test_is_ethereum_address():
     """Test the is_ethereum_address helper function."""
     assert is_ethereum_address("0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d")
