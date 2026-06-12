@@ -572,6 +572,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#api-version-pinning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Version Pinning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1250,6 +1267,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#api-version-pinning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Version Pinning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1445,6 +1479,12 @@
 <td>Application version</td>
 </tr>
 <tr>
+<td><code>api_version</code></td>
+<td><code>str</code></td>
+<td>No</td>
+<td>Backend API version sent as the <code>Nevermined-Version</code> header. Defaults to the version this SDK release targets (see below)</td>
+</tr>
+<tr>
 <td><code>headers</code></td>
 <td><code>dict</code></td>
 <td>No</td>
@@ -1470,15 +1510,31 @@
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="p">)</span>
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="p">)</span>
 </code></pre></div>
-<h2 id="environments">Environments<a class="headerlink" href="#environments" title="Permanent link">&para;</a></h2>
-<h3 id="sandbox-environment-testing">Sandbox Environment (Testing)<a class="headerlink" href="#sandbox-environment-testing" title="Permanent link">&para;</a></h3>
-<p>Use <code>sandbox</code> for development and testing:</p>
+<h3 id="api-version-pinning">API Version Pinning<a class="headerlink" href="#api-version-pinning" title="Permanent link">&para;</a></h3>
+<p>Every request the SDK sends to the Nevermined backend carries a
+<code>Nevermined-Version</code> header declaring which backend API version
+(<code>MAJOR.MINOR</code>) the SDK was built and tested against. You normally don't
+need to touch this — the SDK pins the right version for you. To target a
+different backend contract explicitly:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">PaymentOptions</span><span class="p">(</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:your-api-key&quot;</span><span class="p">,</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;sandbox&quot;</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="p">)</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;sandbox&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        <span class="n">api_version</span><span class="o">=</span><span class="s2">&quot;1.1&quot;</span><span class="p">,</span>  <span class="c1"># override the pinned backend API version</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="p">)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">)</span>
+</code></pre></div>
+<p>See the <a href="https://docs.nevermined.app/api-reference/versioning">API versioning reference</a>
+for the list of versions and the changes between them.</p>
+<h2 id="environments">Environments<a class="headerlink" href="#environments" title="Permanent link">&para;</a></h2>
+<h3 id="sandbox-environment-testing">Sandbox Environment (Testing)<a class="headerlink" href="#sandbox-environment-testing" title="Permanent link">&para;</a></h3>
+<p>Use <code>sandbox</code> for development and testing:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">PaymentOptions</span><span class="p">(</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        <span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:your-api-key&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;sandbox&quot;</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="p">)</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">)</span>
 </code></pre></div>
 <ul>
 <li>Backend: <code>https://api.sandbox.nevermined.app</code></li>
@@ -1487,12 +1543,12 @@
 </ul>
 <h3 id="live-environment-production">Live Environment (Production)<a class="headerlink" href="#live-environment-production" title="Permanent link">&para;</a></h3>
 <p>Use <code>live</code> for production:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">PaymentOptions</span><span class="p">(</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        <span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:your-api-key&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;live&quot;</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="p">)</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">PaymentOptions</span><span class="p">(</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        <span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:your-api-key&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;live&quot;</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="p">)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="p">)</span>
 </code></pre></div>
 <ul>
 <li>Backend: <code>https://api.live.nevermined.app</code></li>
@@ -1501,18 +1557,18 @@
 </ul>
 <h3 id="custom-environment">Custom Environment<a class="headerlink" href="#custom-environment" title="Permanent link">&para;</a></h3>
 <p>For self-hosted or development setups:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># Set environment variables first</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;NVM_BACKEND_URL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;http://localhost:3001&quot;</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;NVM_PROXY_URL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;http://localhost:443&quot;</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">PaymentOptions</span><span class="p">(</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:your-api-key&quot;</span><span class="p">,</span>
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;custom&quot;</span>
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="p">)</span>
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1"># Set environment variables first</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;NVM_BACKEND_URL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;http://localhost:3001&quot;</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;NVM_PROXY_URL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;http://localhost:443&quot;</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="n">PaymentOptions</span><span class="p">(</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        <span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:your-api-key&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>        <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;custom&quot;</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="p">)</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="p">)</span>
 </code></pre></div>
 <h3 id="available-environments">Available Environments<a class="headerlink" href="#available-environments" title="Permanent link">&para;</a></h3>
 <table>
@@ -1539,38 +1595,38 @@
 </table>
 <h2 id="accessing-sub-apis">Accessing Sub-APIs<a class="headerlink" href="#accessing-sub-apis" title="Permanent link">&para;</a></h2>
 <p>The initialized <code>Payments</code> object provides access to specialized APIs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Plans API - manage payment plans</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">register_credits_plan</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan</span><span class="p">(</span><span class="n">plan_id</span><span class="p">)</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan_balance</span><span class="p">(</span><span class="n">plan_id</span><span class="p">)</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># Agents API - manage AI agents</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">get_agent</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># Facilitator API - x402 verification/settlement</span>
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">verify_permissions</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">settle_permissions</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="c1"># X402 Token API - generate access tokens</span>
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="n">payments</span><span class="o">.</span><span class="n">x402</span><span class="o">.</span><span class="n">get_x402_access_token</span><span class="p">(</span><span class="n">plan_id</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">)</span>
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="c1"># MCP Integration</span>
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="n">payments</span><span class="o">.</span><span class="n">mcp</span><span class="o">.</span><span class="n">register_tool</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="k">await</span> <span class="n">payments</span><span class="o">.</span><span class="n">mcp</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a><span class="c1"># A2A Integration</span>
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a><span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">](</span><span class="n">agent_card</span><span class="o">=</span><span class="n">card</span><span class="p">,</span> <span class="n">executor</span><span class="o">=</span><span class="n">executor</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Plans API - manage payment plans</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">register_credits_plan</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan</span><span class="p">(</span><span class="n">plan_id</span><span class="p">)</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan_balance</span><span class="p">(</span><span class="n">plan_id</span><span class="p">)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c1"># Agents API - manage AI agents</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">register_agent</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">payments</span><span class="o">.</span><span class="n">agents</span><span class="o">.</span><span class="n">get_agent</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># Facilitator API - x402 verification/settlement</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">verify_permissions</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">payments</span><span class="o">.</span><span class="n">facilitator</span><span class="o">.</span><span class="n">settle_permissions</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="c1"># X402 Token API - generate access tokens</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="n">payments</span><span class="o">.</span><span class="n">x402</span><span class="o">.</span><span class="n">get_x402_access_token</span><span class="p">(</span><span class="n">plan_id</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">)</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="c1"># MCP Integration</span>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="n">payments</span><span class="o">.</span><span class="n">mcp</span><span class="o">.</span><span class="n">register_tool</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="k">await</span> <span class="n">payments</span><span class="o">.</span><span class="n">mcp</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="c1"># A2A Integration</span>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">](</span><span class="n">agent_card</span><span class="o">=</span><span class="n">card</span><span class="p">,</span> <span class="n">executor</span><span class="o">=</span><span class="n">executor</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
 <p>The SDK raises <code>PaymentsError</code> for API errors:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.payments_error</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaymentsError</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan</span><span class="p">(</span><span class="s2">&quot;invalid-id&quot;</span><span class="p">)</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="k">except</span> <span class="n">PaymentsError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Code: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.common.payments_error</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaymentsError</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_plan</span><span class="p">(</span><span class="s2">&quot;invalid-id&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="k">except</span> <span class="n">PaymentsError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Code: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <p>Now that you have initialized the SDK, proceed to:</p>
