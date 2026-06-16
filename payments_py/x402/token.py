@@ -68,6 +68,30 @@ def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def encode_access_token(payload: Dict[str, Any]) -> str:
+    """
+    Encode a PaymentPayload dict into an x402 access token string.
+
+    Inverse of :func:`decode_access_token`. Used by the MCP transport to turn
+    the in-band ``_meta["x402/payment"]`` PaymentPayload object back into the
+    base64url token string the facilitator's verify/settle APIs consume.
+
+    The base64 envelope is transport-only: the EIP-712 signature lives inside
+    ``payload.authorization`` / ``payload.signature``, not over the base64
+    wrapper, so re-encoding a decoded payload is byte-safe for the facilitator
+    (round-trip verified by ``tests/unit/mcp_tests/test_x402_inband.py``).
+
+    Args:
+        payload: The decoded PaymentPayload dict (e.g. from ``_meta["x402/payment"]``).
+
+    Returns:
+        The base64url-encoded access token string (unpadded), matching the
+        encoding ``decode_access_token`` accepts.
+    """
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
 class X402TokenAPI(BasePaymentsAPI):
     """
     X402 Token API for generating access tokens.
@@ -229,4 +253,4 @@ class X402TokenAPI(BasePaymentsAPI):
             ) from err
 
 
-__all__ = ["X402TokenAPI", "decode_access_token"]
+__all__ = ["X402TokenAPI", "decode_access_token", "encode_access_token"]

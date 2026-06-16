@@ -302,98 +302,21 @@ class TestMcpOAuthDiscoveryEndpoints:
             await asyncio.sleep(0.3)
 
     @pytest.mark.asyncio
-    async def test_x402_payment_discovery_endpoint(self):
-        """Should expose x402 discovery without replacing MCP OAuth 401 flow."""
+    async def test_no_x402_payment_discovery_endpoint(self):
+        """x402 v2 MCP transport signals payment in band — the well-known
+        discovery endpoint must not be mounted (404)."""
         server_data = await create_and_start_server(18888)
         base_url = server_data["base_url"]
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.get(f"{base_url}/.well-known/x402-payment")
-
-            assert response.status_code == 200
-            assert "application/json" in response.headers.get("content-type", "")
-            assert response.headers["cache-control"] == "public, max-age=3600"
-
-            data = response.json()
-            assert data["x402Version"] == 2
-            assert data["stability"] == "experimental"
-            assert data["transport"] == "mcp-streamable-http"
-            assert data["resource"] == f"{base_url}/mcp"
-            assert data["mcpEndpoint"] == f"{base_url}/mcp"
-            assert data["paymentRequiredHeader"] == "payment-required"
-            assert data["paymentSignatureHeader"] == "payment-signature"
-            assert data["paymentResponseHeader"] == "payment-response"
-            assert data["statusCodes"] == {
-                "mcpOAuthMissingCredentials": 401,
-                "standardX402MissingPayment": 402,
-            }
-            assert data["oauthProtectedResourceMetadata"] == (
-                f"{base_url}/.well-known/oauth-protected-resource/mcp"
-            )
-            assert "tools" not in data
-            assert "resources" not in data
-            assert "prompts" not in data
-            assert "authorizationHeader" not in data
-        finally:
-            await server_data["result"]["stop"]()
-            await asyncio.sleep(0.3)
-
-    @pytest.mark.asyncio
-    async def test_x402_payment_discovery_can_be_disabled_independently(self):
-        """Should disable x402 discovery without disabling OAuth discovery."""
-        server_data = await create_and_start_server(
-            18887, {"enableX402Discovery": False}
-        )
-        base_url = server_data["base_url"]
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                x402_response = await client.get(f"{base_url}/.well-known/x402-payment")
+                # OAuth discovery is unaffected.
                 oauth_response = await client.get(
                     f"{base_url}/.well-known/oauth-authorization-server"
                 )
-                info_response = await client.get(f"{base_url}/")
 
-            assert x402_response.status_code == 404
+            assert response.status_code == 404
             assert oauth_response.status_code == 200
-            assert info_response.status_code == 200
-
-            info = info_response.json()
-            assert "x402_payment" not in info["endpoints"]
-            assert "x402_payment_discovery" not in info["oauth"]
-            assert "authorization_server_metadata" in info["oauth"]
-        finally:
-            await server_data["result"]["stop"]()
-            await asyncio.sleep(0.3)
-
-    @pytest.mark.asyncio
-    async def test_x402_payment_discovery_stays_enabled_without_oauth_discovery(self):
-        """Should keep x402 discovery available when OAuth discovery is disabled."""
-        server_data = await create_and_start_server(
-            18886, {"enableOAuthDiscovery": False}
-        )
-        base_url = server_data["base_url"]
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                x402_response = await client.get(f"{base_url}/.well-known/x402-payment")
-                oauth_response = await client.get(
-                    f"{base_url}/.well-known/oauth-authorization-server"
-                )
-                info_response = await client.get(f"{base_url}/")
-
-            assert x402_response.status_code == 200
-            assert oauth_response.status_code == 404
-            assert info_response.status_code == 200
-
-            info = info_response.json()
-            assert info["endpoints"]["x402_payment"] == (
-                f"{base_url}/.well-known/x402-payment"
-            )
-            assert info["oauth"]["x402_payment_discovery"] == (
-                f"{base_url}/.well-known/x402-payment"
-            )
-            assert "authorization_server_metadata" not in info["oauth"]
-            assert "protected_resource_metadata" not in info["oauth"]
-            assert "openid_configuration" not in info["oauth"]
         finally:
             await server_data["result"]["stop"]()
             await asyncio.sleep(0.3)
@@ -422,18 +345,14 @@ class TestMcpServerInfoEndpoint:
             assert data["endpoints"]["mcp"] == f"{base_url}/mcp"
             assert data["endpoints"]["health"] == f"{base_url}/health"
             assert data["endpoints"]["register"] == f"{base_url}/register"
-            assert data["endpoints"]["x402_payment"] == (
-                f"{base_url}/.well-known/x402-payment"
-            )
+            assert "x402_payment" not in data["endpoints"]
 
             # OAuth info
             assert "oauth" in data
             assert "authorization_server_metadata" in data["oauth"]
             assert "protected_resource_metadata" in data["oauth"]
             assert "openid_configuration" in data["oauth"]
-            assert data["oauth"]["x402_payment_discovery"] == (
-                f"{base_url}/.well-known/x402-payment"
-            )
+            assert "x402_payment_discovery" not in data["oauth"]
             assert data["oauth"]["client_id"] == "test-agent-123"
             assert "scopes" in data["oauth"]
             assert "mcp:tools" in data["oauth"]["scopes"]

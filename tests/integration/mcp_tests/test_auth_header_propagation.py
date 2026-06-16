@@ -165,7 +165,9 @@ class TestMcpHandlerAuthHeaderPropagation:
         error = exc_info.value
         assert hasattr(error, "code") and error.code == -32003
         assert "Authorization required" in str(error)
-        assert hasattr(error, "data") and error.data.get("reason") == "missing"
+        # PaymentRequiredError carries the spec PaymentRequired object (the old
+        # create_rpc_error `.data.reason` field no longer exists).
+        assert error.payment_required["x402Version"] == 2
 
         # Should not have called verify_permissions
         verify_calls = [c for c in mock_instance.calls if c[0] == "verify_permissions"]

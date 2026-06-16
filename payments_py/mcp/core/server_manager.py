@@ -40,6 +40,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from ..http.mcp_handler import mount_mcp_handlers
 from ..http.oauth_router import create_cors_middleware, create_oauth_router
 from ..http.session_manager import SessionManager, create_session_manager
+from ..utils.errors import PaymentRequiredError
+from ..utils.meta import payment_required_result, read_payment_payload
+from payments_py.x402.token import encode_access_token
 from ..types.server_types import (
     McpPromptConfig,
     McpRegistrationOptions,
@@ -405,7 +408,6 @@ class McpServerManager:
                     "resources": list(self._resources.keys()),
                     "prompts": list(self._prompts.keys()),
                     "enableOAuthDiscovery": config.get("enableOAuthDiscovery", True),
-                    "enableX402Discovery": config.get("enableX402Discovery", True),
                     "enableClientRegistration": config.get(
                         "enableClientRegistration", True
                     ),
@@ -603,8 +605,36 @@ class McpServerManager:
             # Get request context for extra (headers, etc.)
             extra = self._get_request_extra()
 
-            # Execute the protected handler
-            result = await protected_handler(arguments, extra)
+            # x402 v2 MCP transport: prefer the in-band payment payload from
+            # params._meta["x402/payment"]. Re-encode it into the access token
+            # string the verify/settle path expects and present it via the same
+            # extra/headers shape the auth flow already reads, so the in-band
+            # payload takes precedence over (and the existing Authorization
+            # header remains a deprecated fallback when absent).
+            payment_payload = read_payment_payload(self._mcp_server)
+            if payment_payload is not None:
+                token = encode_access_token(payment_payload)
+                extra = {
+                    "requestInfo": {"headers": {"authorization": f"Bearer {token}"}}
+                }
+            elif self._log:
+                self._log(
+                    "x402: no _meta['x402/payment'] on tool call; falling back to "
+                    "the Authorization header (deprecated under the x402 v2 MCP "
+                    "transport)."
+                )
+
+            # Execute the protected handler. Payment-required (pre-execution) and
+            # settlement-failure (post-execution) are signalled in band as an
+            # error tool result carrying the PaymentRequired object. This also
+            # catches SettlementFailedError (a PaymentRequiredError subclass). A
+            # PaymentRequiredError raised from arbitrary user tool code would
+            # likewise be converted — acceptable, since it is an SDK-internal type
+            # not meant to be raised by application handlers.
+            try:
+                result = await protected_handler(arguments, extra)
+            except PaymentRequiredError as payment_error:
+                return payment_required_result(payment_error.payment_required)
 
             # Convert result to MCP format with metadata
             # Extract metadata from paywall result (txHash, creditsRedeemed, etc.)

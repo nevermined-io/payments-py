@@ -41,7 +41,6 @@ from .oauth_metadata import (
     build_oidc_configuration,
     build_protected_resource_metadata,
     build_server_info_response,
-    build_x402_payment_discovery_metadata,
 )
 
 # =============================================================================
@@ -116,7 +115,6 @@ def create_oauth_router(options: Dict[str, Any]) -> APIRouter:
     oauth_urls = options.get("oauthUrls")
     protocol_version = options.get("protocolVersion")
     enable_oauth_discovery = options.get("enableOAuthDiscovery", True)
-    enable_x402_discovery = options.get("enableX402Discovery", True)
     enable_client_registration = options.get("enableClientRegistration", True)
     enable_health_check = options.get("enableHealthCheck", True)
     enable_server_info = options.get("enableServerInfo", True)
@@ -142,7 +140,6 @@ def create_oauth_router(options: Dict[str, Any]) -> APIRouter:
         "oauthUrls": oauth_urls,
         "protocolVersion": protocol_version,
         "enableOAuthDiscovery": enable_oauth_discovery,
-        "enableX402Discovery": enable_x402_discovery,
         "enableClientRegistration": enable_client_registration,
         "enableHealthCheck": enable_health_check,
     }
@@ -191,19 +188,10 @@ def create_oauth_router(options: Dict[str, Any]) -> APIRouter:
                 headers={"Cache-Control": "public, max-age=3600"},
             )
 
-    # --- x402 Discovery Endpoint ---
-
-    if enable_x402_discovery:
-
-        @router.get("/.well-known/x402-payment")
-        async def x402_payment_discovery() -> JSONResponse:
-            """x402 discovery metadata for MCP payment-aware clients."""
-            log("GET /.well-known/x402-payment")
-            metadata = build_x402_payment_discovery_metadata(config)
-            return JSONResponse(
-                content=metadata,
-                headers={"Cache-Control": "public, max-age=3600"},
-            )
+    # x402 payment-required is signalled in band via the MCP tool-call
+    # machinery (tool-result error + _meta), per the x402 v2 MCP transport, so
+    # there is no payment discovery endpoint — discovery is implicit on the
+    # first tool call.
 
     # --- Dynamic Client Registration ---
 
@@ -316,17 +304,11 @@ def create_cors_middleware(origins: Union[str, List[str]] = "*") -> Dict[str, An
             "Content-Type",
             "Accept",
             "Authorization",
-            "payment-signature",
-            "payment-required",
-            "payment-response",
             "mcp-session-id",
             "mcp-protocol-version",
         ],
         "expose_headers": [
             "mcp-session-id",
-            "payment-signature",
-            "payment-required",
-            "payment-response",
         ],
     }
 

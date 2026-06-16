@@ -2,12 +2,16 @@
 Authentication handler for MCP paywall using x402 tokens.
 """
 
+import logging
 from typing import Any, Dict, Optional
 
 from ..utils.request import extract_auth_header, strip_bearer
 from ..utils.logical_url import build_logical_url, build_logical_meta_url
-from ..utils.errors import create_rpc_error, ERROR_CODES
+from ..utils.errors import PaymentRequiredError
+from payments_py.x402.helpers import build_payment_required_for_plans
 from payments_py.x402.token import decode_access_token
+
+logger = logging.getLogger(__name__)
 
 
 class PaywallAuthenticator:
@@ -22,6 +26,80 @@ class PaywallAuthenticator:
             payments: Payments client used to call backend APIs.
         """
         self._payments = payments
+
+    async def _maybe_await(self, maybe_awaitable: Any) -> Any:
+        """Await a value if it is awaitable; otherwise return it directly."""
+        return (
+            await maybe_awaitable
+            if hasattr(maybe_awaitable, "__await__")
+            else maybe_awaitable
+        )
+
+    async def _build_payment_required_error(
+        self,
+        agent_id: str,
+        endpoint: str,
+        message: str = "Payment required.",
+    ) -> PaymentRequiredError:
+        """Build a spec-shaped ``PaymentRequiredError`` from the agent's plans.
+
+        Fetches the agent's plans (best-effort) to populate the ``accepts``
+        array of the ``PaymentRequired`` object and a human-readable list of
+        plan names in the error message. Falls back to an empty plan id when
+        no plans can be resolved so the structured shape is still valid.
+
+        Args:
+            agent_id: Agent identifier used to look up purchasable plans.
+            endpoint: Logical resource URL placed in ``PaymentRequired.resource``.
+            message: Leading human-readable message (e.g. "Authorization required.").
+
+        Returns:
+            A ``PaymentRequiredError`` carrying the ``PaymentRequired`` dict.
+        """
+        plan_ids: list = []
+        names: list = []
+        try:
+            plans = await self._maybe_await(
+                self._payments.agents.get_agent_plans(agent_id)
+            )
+            items = (plans or {}).get("plans", [])
+            if isinstance(items, list):
+                for p in items:
+                    pid = p.get("planId") or p.get("id")
+                    if pid:
+                        plan_ids.append(pid)
+                    meta_main = ((p or {}).get("metadata") or {}).get("main") or {}
+                    pname = meta_main.get("name")
+                    if isinstance(pname, str) and pname:
+                        names.append(pname)
+                    elif pid:
+                        pn = p.get("name")
+                        names.append(f"{pid} ({pn})" if pn else pid)
+        except Exception as exc:
+            # A plan-lookup failure (network / bad agent_id / backend 5xx) must
+            # not be silently swallowed: without this log a broken plans backend
+            # is indistinguishable from "user simply hasn't paid". We still fall
+            # back to a structurally-valid PaymentRequired (empty plan id) so the
+            # client gets a well-formed error.
+            logger.error(
+                "Failed to fetch agent plans while building payment-required "
+                "(agent_id=%s): %s",
+                agent_id,
+                exc,
+            )
+
+        plans_msg = f" Available plans: {', '.join(names[:3])}..." if names else ""
+
+        payment_required = build_payment_required_for_plans(
+            plan_ids or [""],
+            endpoint=endpoint,
+            agent_id=agent_id,
+            http_verb="POST",
+            environment=getattr(self._payments, "environment_name", None),
+        )
+        pr_dict = payment_required.model_dump(by_alias=True)
+        pr_dict["error"] = "payment required"
+        return PaymentRequiredError(pr_dict, f"{message}{plans_msg}")
 
     async def _verify_with_endpoint(
         self,
@@ -172,36 +250,9 @@ class PaywallAuthenticator:
             except Exception:
                 pass
 
-        # Both attempts failed — enrich denial with suggested plans (best-effort)
-        plans_msg = ""
-        try:
-            plans = self._payments.agents.get_agent_plans(agent_id)
-            if hasattr(plans, "__await__"):
-                plans = await plans
-            items = (plans or {}).get("plans", [])
-            if isinstance(items, list) and items:
-                names = []
-                for p in items:
-                    meta_main = ((p or {}).get("metadata") or {}).get("main") or {}
-                    pname = meta_main.get("name")
-                    if isinstance(pname, str) and pname:
-                        names.append(pname)
-                    else:
-                        pid = p.get("planId") or p.get("id") or "plan"
-                        pn = p.get("name")
-                        label = f"{pid} ({pn})" if pn else pid
-                        names.append(label)
-                if names:
-                    summary = ", ".join(names[:3])
-                    plans_msg = f" Available plans: {summary}..."
-        except Exception:
-            pass
-
-        raise create_rpc_error(
-            ERROR_CODES["PaymentRequired"],
-            f"Payment required.{plans_msg}",
-            {"reason": "invalid"},
-        )
+        # Both attempts failed — surface a spec-shaped PaymentRequired error
+        # (in-band tool-result error for tools; JSON-RPC error elsewhere).
+        raise await self._build_payment_required_error(agent_id, logical_url)
 
     async def authenticate(
         self,
@@ -230,24 +281,24 @@ class PaywallAuthenticator:
         Raises:
             Exception: When authorization is missing or the user is not a subscriber.
         """
+        logical_url = build_logical_url(
+            {
+                "kind": kind,
+                "serverName": server_name,
+                "name": name,
+                "argsOrVars": args_or_vars,
+            }
+        )
+
         auth_header = extract_auth_header(extra)
         if not auth_header:
-            raise create_rpc_error(
-                ERROR_CODES["PaymentRequired"],
-                "Authorization required",
-                {"reason": "missing"},
+            raise await self._build_payment_required_error(
+                agent_id, logical_url, "Authorization required."
             )
 
         return await self._verify_with_fallback(
             access_token=strip_bearer(auth_header),
-            logical_url=build_logical_url(
-                {
-                    "kind": kind,
-                    "serverName": server_name,
-                    "name": name,
-                    "argsOrVars": args_or_vars,
-                }
-            ),
+            logical_url=logical_url,
             http_url=None,  # No HTTP context available in Python SDK yet
             max_amount=options.get("maxAmount", 1),
             agent_id=agent_id,
@@ -277,17 +328,17 @@ class PaywallAuthenticator:
         Raises:
             Exception: When authorization is missing or the user is not a subscriber.
         """
+        logical_url = build_logical_meta_url(server_name, method)
+
         auth_header = extract_auth_header(extra)
         if not auth_header:
-            raise create_rpc_error(
-                ERROR_CODES["PaymentRequired"],
-                "Authorization required",
-                {"reason": "missing"},
+            raise await self._build_payment_required_error(
+                agent_id, logical_url, "Authorization required."
             )
 
         return await self._verify_with_fallback(
             access_token=strip_bearer(auth_header),
-            logical_url=build_logical_meta_url(server_name, method),
+            logical_url=logical_url,
             http_url=None,  # No HTTP context available in Python SDK yet
             max_amount=options.get("maxAmount", 1),
             agent_id=agent_id,
