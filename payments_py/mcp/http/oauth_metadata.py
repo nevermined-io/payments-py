@@ -28,7 +28,6 @@ from ..types.http_types import (
     ProtectedResourceMetadata,
     ServerInfoOAuth,
     ServerInfoResponse,
-    X402PaymentDiscoveryMetadata,
 )
 
 # =============================================================================
@@ -118,8 +117,6 @@ _DEFAULT_SCOPES: List[str] = [
     "mcp:tools",
 ]
 
-X402_VERSION = 2
-
 
 # =============================================================================
 # METADATA BUILDERS
@@ -197,63 +194,6 @@ def build_mcp_protected_resource_metadata(
             "tools": config.get("tools") or [],
             "protocol_version": config.get("protocolVersion") or "2024-11-05",
         },
-    }
-
-
-def build_x402_payment_discovery_metadata(
-    config: OAuthConfig,
-) -> X402PaymentDiscoveryMetadata:
-    """Build x402 discovery metadata for an MCP server.
-
-    MCP clients must keep the OAuth 2.1 ``401`` + ``WWW-Authenticate`` flow,
-    while generic x402 clients need a stable place to discover the payment
-    challenge shape without changing the MCP transport response code.  This
-    well-known document gives x402-aware clients the payment headers and MCP
-    endpoint up front, so the protected ``/mcp`` route can remain compliant
-    with both ecosystems.
-
-    Args:
-        config: OAuth configuration including baseUrl.
-
-    Returns:
-        x402 payment discovery metadata response dict.
-
-    Examples:
-        >>> metadata = build_x402_payment_discovery_metadata({
-        ...     "baseUrl": "http://localhost:5001",
-        ...     "agentId": "agent_123",
-        ...     "environment": "staging_sandbox",
-        ... })
-        >>> metadata["paymentRequiredHeader"]
-        'payment-required'
-    """
-    base_url = config["baseUrl"].rstrip("/")
-
-    return {
-        "x402Version": X402_VERSION,
-        "stability": "experimental",
-        "resource": f"{base_url}/mcp",
-        "transport": "mcp-streamable-http",
-        "mcpEndpoint": f"{base_url}/mcp",
-        "oauthProtectedResourceMetadata": (
-            f"{base_url}/.well-known/oauth-protected-resource/mcp"
-        ),
-        "authorizationServerMetadata": (
-            f"{base_url}/.well-known/oauth-authorization-server"
-        ),
-        "paymentRequiredHeader": "payment-required",
-        "paymentResponseHeader": "payment-response",
-        "paymentSignatureHeader": "payment-signature",
-        "statusCodes": {
-            "mcpOAuthMissingCredentials": 401,
-            "standardX402MissingPayment": 402,
-        },
-        "clientHints": [
-            "MCP-native clients should follow OAuth discovery and send Authorization: Bearer.",
-            "Send the resulting bearer token in the Authorization header.",
-            "x402-native clients can read this document before calling /mcp.",
-            "Do not replace MCP's 401 challenge with 402 on the streamable HTTP endpoint.",
-        ],
     }
 
 
@@ -371,7 +311,6 @@ def build_server_info_response(
     scopes = config.get("scopes") or list(_DEFAULT_SCOPES)
 
     enable_oauth_discovery = config.get("enableOAuthDiscovery", True)
-    enable_x402_discovery = config.get("enableX402Discovery", True)
     enable_client_registration = config.get("enableClientRegistration", True)
     enable_health_check = config.get("enableHealthCheck", True)
 
@@ -380,8 +319,6 @@ def build_server_info_response(
         endpoints["health"] = f"{config['baseUrl']}/health"
     if enable_client_registration:
         endpoints["register"] = f"{config['baseUrl']}/register"
-    if enable_x402_discovery:
-        endpoints["x402_payment"] = f"{config['baseUrl']}/.well-known/x402-payment"
 
     oauth_info: ServerInfoOAuth = {
         "authorization_endpoint": oauth_urls["authorizationUri"],
@@ -400,10 +337,6 @@ def build_server_info_response(
         )
     if enable_client_registration:
         oauth_info["registration_endpoint"] = f"{config['baseUrl']}/register"
-    if enable_x402_discovery:
-        oauth_info["x402_payment_discovery"] = (
-            f"{config['baseUrl']}/.well-known/x402-payment"
-        )
 
     return {
         "name": config.get("serverName") or "MCP Server",

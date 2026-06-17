@@ -34,10 +34,17 @@ class VerifyResult:
 class SettleResult:
     """Mock settle permissions result."""
 
-    def __init__(self, success=True, transaction="0x123", credits_redeemed="1"):
+    def __init__(
+        self,
+        success=True,
+        transaction="0x123",
+        credits_redeemed="1",
+        remaining_balance="100",
+    ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
+        self.remaining_balance = remaining_balance
 
 
 class PaymentsMinimal:
@@ -55,7 +62,11 @@ class PaymentsMinimal:
                 return VerifyResult(is_valid=True)
 
             def settle_permissions(
-                self, payment_required=None, max_amount=None, x402_access_token=None
+                self,
+                payment_required=None,
+                max_amount=None,
+                x402_access_token=None,
+                agent_request_id=None,
             ):
                 return SettleResult(
                     success=True, transaction="0x123", credits_redeemed=str(max_amount)
@@ -131,7 +142,11 @@ def test_context_integration_with_real_like_data():
                     return VerifyResult(is_valid=True)
 
                 def settle_permissions(
-                    self, payment_required=None, max_amount=None, x402_access_token=None
+                    self,
+                    payment_required=None,
+                    max_amount=None,
+                    x402_access_token=None,
+                    agent_request_id=None,
                 ):
                     return SettleResult(
                         success=True,

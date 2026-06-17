@@ -8,6 +8,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from payments_py.mcp import build_mcp_integration
+from payments_py.mcp.utils.errors import SettlementFailedError
 
 
 def mock_decode_access_token(token: str):
@@ -44,11 +45,16 @@ class MockSettleResult:
     """Mock settle permissions result."""
 
     def __init__(
-        self, success: bool, transaction: str = None, credits_redeemed: str = "0"
+        self,
+        success: bool,
+        transaction: str = None,
+        credits_redeemed: str = "0",
+        remaining_balance: str = "100",
     ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
+        self.remaining_balance = remaining_balance
 
 
 class PaymentsMockWithFailures:
@@ -216,7 +222,9 @@ class TestMcpPaywallInvalidTokenFlow:
         error = exc_info.value
         assert hasattr(error, "code") and error.code == -32003
         assert "Payment" in str(error)
-        assert hasattr(error, "data") and error.data.get("reason") == "invalid"
+        # PaymentRequiredError carries the spec PaymentRequired object (the old
+        # create_rpc_error `.data.reason` field no longer exists).
+        assert error.payment_required["x402Version"] == 2
 
         # Should have called verify_permissions (which returned isValid: False)
         assert any(c[0] == "verify_permissions" for c in mock_instance.calls)
@@ -339,12 +347,17 @@ class TestMcpPaywallInvalidTokenFlow:
         error = exc_info.value
         # Should be a misconfiguration error for redemption failure
         assert hasattr(error, "code") and error.code == -32002
-        assert "Failed to settle credits" in str(error)
+        assert "Failed to redeem credits" in str(error)
 
     @pytest.mark.asyncio
     @patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_access_token)
-    async def test_ignores_redemption_errors_by_default(self):
-        """Should ignore redemption errors by default."""
+    async def test_suppresses_content_when_redemption_fails_even_with_ignore(self):
+        """Post-execution settlement failure suppresses content even with 'ignore'.
+
+        Under the x402 v2 in-band MCP transport the SDK never delivers a paid
+        result without settlement landing, so onRedeemError='ignore' no longer
+        returns the tool content; it raises SettlementFailedError instead.
+        """
         mock_instance = PaymentsMockWithFailures("insufficient-balance")
         mcp = build_mcp_integration(mock_instance)
         mcp.configure(
@@ -366,19 +379,16 @@ class TestMcpPaywallInvalidTokenFlow:
             },
         )
 
-        # Should not throw, even though redemption fails
-        result = await wrapped(
-            {"input": "test"},
-            {"requestInfo": {"headers": {"authorization": "Bearer token"}}},
-        )
+        # Even with onRedeemError='ignore', a post-execution settlement failure
+        # now raises (content suppressed) per the x402 v2 spec. 'ignore' only
+        # changes the error type vs 'propagate' (which raises a -32002 instead).
+        with pytest.raises(SettlementFailedError) as exc_info:
+            await wrapped(
+                {"input": "test"},
+                {"requestInfo": {"headers": {"authorization": "Bearer token"}}},
+            )
 
-        assert result is not None
-        assert result["content"][0]["text"] == "result"
-
-        # When redemption fails silently, metadata is NOT added (Python behavior)
-        # The handler completes successfully without throwing, but no metadata is added
-        # because the redemption failed (success=False)
-        # This differs from TypeScript where metadata is always added
+        assert exc_info.value.payment_required["x402Version"] == 2
 
     @pytest.mark.asyncio
     @patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_access_token)

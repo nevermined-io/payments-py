@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from payments_py.mcp import build_mcp_integration
+from payments_py.mcp.utils.errors import SettlementFailedError
 
 
 # Mock the decode_access_token to return x402-compliant token structure
@@ -37,10 +38,31 @@ class VerifyResult:
 class SettleResult:
     """Mock settle permissions result."""
 
-    def __init__(self, success=True, transaction=None, credits_redeemed="1"):
+    def __init__(
+        self,
+        success=True,
+        transaction=None,
+        credits_redeemed="1",
+        remaining_balance="100",
+    ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
+        self.remaining_balance = remaining_balance
+
+    def model_dump(self, by_alias=False, exclude_none=False):
+        data = {
+            "success": self.success,
+            "transaction": self.transaction,
+            "network": "eip155:84532",
+            "payer": "0x123subscriber",
+            ("remainingBalance" if by_alias else "remaining_balance"): (
+                self.remaining_balance
+            ),
+        }
+        if exclude_none:
+            data = {k: v for k, v in data.items() if v is not None}
+        return data
 
 
 def make_settle_result(settle_result):
@@ -152,11 +174,13 @@ def test_adds_metadata_to_result_after_successful_redemption():
     assert out["_meta"] is not None
     assert isinstance(out["_meta"], dict)
 
-    # Verify _meta contains expected fields
-    assert out["_meta"].get("success") is True
-    assert out["_meta"].get("creditsRedeemed") == "3"
+    # Verify _meta contains expected fields under the Nevermined namespace
+    # (x402 v2 in-band transport: observability lives under nevermined/credits).
+    nvm = out["_meta"]["nevermined/credits"]
+    assert nvm.get("success") is True
+    assert nvm.get("creditsRedeemed") == "3"
     # txHash should be None since our mock doesn't return it
-    assert out["_meta"].get("txHash") is None
+    assert nvm.get("txHash") is None
 
 
 @patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
@@ -185,15 +209,23 @@ def test_adds_metadata_with_txhash_when_settle_returns_it():
     assert out["_meta"] is not None
     assert isinstance(out["_meta"], dict)
 
-    # Verify _meta contains expected fields including txHash
-    assert out["_meta"].get("success") is True
-    assert out["_meta"].get("creditsRedeemed") == "5"
-    assert out["_meta"].get("txHash") == "0x1234567890abcdef"
+    # Verify Nevermined observability includes txHash...
+    nvm = out["_meta"]["nevermined/credits"]
+    assert nvm.get("success") is True
+    assert nvm.get("creditsRedeemed") == "5"
+    assert nvm.get("txHash") == "0x1234567890abcdef"
+    # ...and the spec-defined settlement receipt carries the transaction.
+    assert out["_meta"]["x402/payment-response"]["transaction"] == "0x1234567890abcdef"
 
 
 @patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
-def test_adds_metadata_with_failure_info_when_settlement_fails():
-    """Test that metadata reports failure when credit settlement fails."""
+def test_raises_settlement_failed_when_settlement_fails():
+    """Settlement failure AFTER execution raises SettlementFailedError.
+
+    Under the x402 v2 in-band transport the paywall no longer returns the tool
+    result with ``_meta.success=False``; it raises so the dispatcher suppresses
+    the paid content and surfaces the payment-required error instead.
+    """
     settle_result = {"success": False, "error": "Insufficient credits"}
     pm = PaymentsMock(settle_result=settle_result)
     mcp = build_mcp_integration(pm)
@@ -206,14 +238,11 @@ def test_adds_metadata_with_failure_info_when_settlement_fails():
         base, {"kind": "tool", "name": "test", "credits": 2, "planId": "plan123"}
     )
     extra = {"requestInfo": {"headers": {"authorization": "Bearer token"}}}
-    out = asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
+    with pytest.raises(SettlementFailedError) as err:
+        asyncio.get_event_loop().run_until_complete(wrapped({}, extra))
 
-    # Verify _meta is present with failure info
-    assert "_meta" in out
-    assert out["_meta"] is not None
-    assert out["_meta"]["success"] is False
-    assert out["_meta"]["creditsRedeemed"] == "0"
-    assert out["_meta"]["planId"] == "plan123"
+    assert err.value.payment_required["x402Version"] == 2
+    assert err.value.payment_required["error"] == "settlement failed"
 
 
 def test_rejects_when_authorization_header_missing():

@@ -162,7 +162,6 @@ class McpServerConfig(TypedDict, total=False):
         description: Server description (optional).
         corsOrigins: CORS origins. Defaults to '*'.
         enableOAuthDiscovery: Enable OAuth discovery endpoints. Defaults to True.
-        enableX402Discovery: Enable x402 discovery endpoint. Defaults to True.
         enableClientRegistration: Enable client registration. Defaults to True.
         enableHealthCheck: Enable health check endpoint. Defaults to True.
         enableServerInfo: Enable server info endpoint. Defaults to True.
@@ -180,7 +179,6 @@ class McpServerConfig(TypedDict, total=False):
     description: Optional[str]
     corsOrigins: Union[str, List[str], None]
     enableOAuthDiscovery: Optional[bool]
-    enableX402Discovery: Optional[bool]
     enableClientRegistration: Optional[bool]
     enableHealthCheck: Optional[bool]
     enableServerInfo: Optional[bool]

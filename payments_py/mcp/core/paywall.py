@@ -2,12 +2,22 @@
 Paywall decorator for MCP handlers (tools, resources, prompts).
 """
 
+import logging
 from typing import Any, Awaitable, Callable, Dict, Optional
 
-from ..utils.errors import ERROR_CODES, create_rpc_error
+from ..utils.errors import ERROR_CODES, create_rpc_error, SettlementFailedError
 from ..utils.extra import build_extra_from_fastmcp_context
+from ..utils.meta import (
+    X402_PAYMENT_RESPONSE_META_KEY,
+    NEVERMINED_CREDITS_META_KEY,
+)
 from ..types import PaywallOptions, PaywallContext
-from payments_py.x402.helpers import build_payment_required
+from payments_py.x402.helpers import (
+    build_payment_required,
+    build_payment_required_for_plans,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class PaywallDecorator:
@@ -168,7 +178,6 @@ class PaywallDecorator:
             }
 
             # Call handler with a compatible signature across tool/resource/prompt
-            # Call handler with a compatible signature across tool/resource/prompt
             try:
                 result = handler(*all_args, paywall_context)
             except TypeError:
@@ -223,27 +232,72 @@ class PaywallDecorator:
                 agent_request_id=auth_result.get("agent_request_id"),
             )
 
-            # Always add _meta to result
-            if "_meta" not in result or result["_meta"] is None:
-                result["_meta"] = {}
-            if not isinstance(result["_meta"], dict):
+            # Settlement failed AFTER the tool executed: per the x402 v2 MCP
+            # transport spec, do NOT return the tool's content — surface only
+            # the payment error so a paid result is never delivered without
+            # payment landing. The tool dispatcher converts this into a
+            # CallToolResult(isError=True) carrying the PaymentRequired object.
+            if not credits_result.get("success", False):
+                logger.error(
+                    "x402 settlement failed after tool execution; suppressing "
+                    "tool content. reason=%s",
+                    credits_result.get("errorReason"),
+                )
+                raise SettlementFailedError(
+                    self._build_payment_required(auth_result),
+                    "Settlement failed after tool execution",
+                )
+
+            # Ensure a dict _meta to attach receipts to.
+            if not isinstance(result.get("_meta"), dict):
                 result["_meta"] = {}
 
-            result["_meta"].update(
-                {
-                    "txHash": credits_result.get("txHash"),
-                    "creditsRedeemed": credits_result.get("creditsRedeemed", "0"),
-                    "planId": auth_result.get("plan_id"),
-                    "subscriberAddress": auth_result.get("subscriber_address"),
-                    "success": credits_result.get("success", False),
-                }
-            )
+            # Spec-defined settlement receipt (x402 v2 MCP transport). Absent for
+            # free/no-credit calls where no settlement occurred.
+            settlement = credits_result.get("settlement")
+            if settlement is not None:
+                result["_meta"][X402_PAYMENT_RESPONSE_META_KEY] = settlement
+
+            # Nevermined-namespaced observability (NOT part of the x402 spec).
+            nvm_meta = {
+                "txHash": credits_result.get("txHash"),
+                "creditsRedeemed": credits_result.get("creditsRedeemed", "0"),
+                "remainingBalance": credits_result.get("remainingBalance"),
+                "planId": auth_result.get("plan_id"),
+                "subscriberAddress": auth_result.get("subscriber_address"),
+                "success": credits_result.get("success", False),
+            }
             if credits_result.get("errorReason"):
-                result["_meta"]["errorReason"] = credits_result["errorReason"]
+                nvm_meta["errorReason"] = credits_result["errorReason"]
+            result["_meta"][NEVERMINED_CREDITS_META_KEY] = nvm_meta
 
             return result
 
         return wrapped
+
+    def _build_payment_required(self, auth_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Build a spec-shaped ``PaymentRequired`` dict for a settlement failure.
+
+        Used when settlement fails after a tool has executed: the dispatcher
+        surfaces this object in the in-band payment error.
+
+        Args:
+            auth_result: The authenticated request context (plan id, urls, …).
+
+        Returns:
+            The ``PaymentRequired`` object as a plain dict.
+        """
+        plan_id = auth_result.get("plan_id") or ""
+        payment_required = build_payment_required_for_plans(
+            [plan_id] if plan_id else [""],
+            endpoint=auth_result.get("logical_url") or auth_result.get("http_url"),
+            agent_id=auth_result.get("agent_id"),
+            http_verb="POST",
+            environment=getattr(self._payments, "environment_name", None),
+        )
+        pr_dict = payment_required.model_dump(by_alias=True)
+        pr_dict["error"] = "settlement failed"
+        return pr_dict
 
     async def _redeem(
         self,
@@ -304,6 +358,14 @@ class PaywallDecorator:
                     "success": settle_success,
                     "txHash": settle_result.transaction if settle_success else None,
                     "creditsRedeemed": credits_burned,
+                    "remainingBalance": (
+                        settle_result.remaining_balance if settle_success else None
+                    ),
+                    "settlement": (
+                        settle_result.model_dump(by_alias=True, exclude_none=True)
+                        if settle_success and hasattr(settle_result, "model_dump")
+                        else None
+                    ),
                 }
             else:
                 return {
@@ -312,6 +374,7 @@ class PaywallDecorator:
                     "creditsRedeemed": "0",
                 }
         except Exception as primary_error:
+            logger.error("x402 settle failed (primary endpoint): %s", primary_error)
             # If primary endpoint fails and we have a fallback, retry with it
             if fallback_endpoint:
                 try:
@@ -341,15 +404,26 @@ class PaywallDecorator:
                         "success": settle_success,
                         "txHash": settle_result.transaction if settle_success else None,
                         "creditsRedeemed": credits_burned,
+                        "remainingBalance": (
+                            settle_result.remaining_balance if settle_success else None
+                        ),
+                        "settlement": (
+                            settle_result.model_dump(by_alias=True, exclude_none=True)
+                            if settle_success and hasattr(settle_result, "model_dump")
+                            else None
+                        ),
                     }
                 except Exception as fallback_error:
+                    logger.error(
+                        "x402 settle failed (fallback endpoint): %s", fallback_error
+                    )
                     primary_error = fallback_error
 
             if options.get("onRedeemError") == "propagate":
                 error_msg = str(primary_error)
                 raise create_rpc_error(
                     ERROR_CODES["Misconfiguration"],
-                    f"Failed to settle credits: {error_msg}",
+                    f"Failed to redeem credits: {error_msg}",
                 )
             return {
                 "success": False,
@@ -368,7 +442,17 @@ class PaywallDecorator:
 
 
 class _RedeemOnCloseAsyncIterator:
-    """Wrap an async-iterable to ensure a callback runs on completion or early close."""
+    """Wrap an async-iterable to ensure a callback runs on completion or early close.
+
+    Settlement runs on completion and the result is stored in ``_credits_result``,
+    but it is currently NOT surfaced to the consumer: unlike the non-streaming
+    path (and the TS SDK's final ``_meta`` chunk), streamed results have no
+    ``_meta`` channel here — the MCP tool-result dispatch yields content chunks,
+    not a trailing metadata frame, so a streaming settlement failure is invisible
+    to the client. Streaming-observability parity is a tracked follow-up
+    (aaitor review on PR #228); revisit if/when the dispatch grows a final
+    metadata frame.
+    """
 
     def __init__(
         self, async_iterable: Any, on_finally: Callable[[], Awaitable[Dict[str, Any]]]

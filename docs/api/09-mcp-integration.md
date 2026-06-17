@@ -324,38 +324,69 @@ asyncio.run(main())
 | `maxAmount` | `int` | Max credits to verify during authentication (default: `1`) |
 | `onRedeemError` | `str` | `"ignore"` (default) or `"propagate"` to raise on redemption failure |
 
-## Response Metadata (`_meta`)
+## In-band x402 signaling (`_meta`)
 
-After each paywall-protected call, the SDK injects a `_meta` field into the response following the [MCP specification](https://modelcontextprotocol.io/specification/2025-06-18/basic). This field is always present regardless of whether credit redemption succeeded or failed:
+The MCP transport follows the [x402 v2 MCP transport specification](https://github.com/coinbase/x402/blob/main/specs/transports-v2/mcp.md): payments are signalled **in band** through the MCP tool-call machinery, not via HTTP status codes or headers.
+
+**Request — payment payload.** The client sends the x402 `PaymentPayload` as plain JSON in the tool-call request params under `_meta["x402/payment"]`:
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "premium_tool",
+    "arguments": { "...": "..." },
+    "_meta": { "x402/payment": { "x402Version": 2, "accepted": { "...": "..." }, "payload": { "...": "..." } } }
+  }
+}
+```
+
+For backward compatibility the server still falls back to reading the access token from the `Authorization: Bearer` header when `_meta["x402/payment"]` is absent, but that path is deprecated under the x402 v2 MCP transport.
+
+**Response — settlement receipt.** On a successful paid call the SDK injects the settlement receipt under the spec key `_meta["x402/payment-response"]`, alongside Nevermined-specific observability under the namespaced `_meta["nevermined/credits"]` key (not part of the x402 spec):
 
 ```python
-# Successful redemption
 {
     "content": [{"type": "text", "text": "result"}],
     "_meta": {
-        "success": True,
-        "txHash": "0xabc...",
-        "creditsRedeemed": "5",
-        "planId": "plan-123",
-        "subscriberAddress": "0x123..."
-    }
-}
-
-# Failed redemption
-{
-    "content": [{"type": "text", "text": "result"}],
-    "_meta": {
-        "success": False,
-        "creditsRedeemed": "0",
-        "planId": "plan-123",
-        "subscriberAddress": "0x123...",
-        "errorReason": "Insufficient credits"
+        "x402/payment-response": {
+            "success": True,
+            "transaction": "0xabc...",
+            "network": "eip155:84532",
+            "payer": "0x123..."
+        },
+        "nevermined/credits": {
+            "success": True,
+            "txHash": "0xabc...",
+            "creditsRedeemed": "5",
+            "planId": "plan-123",
+            "subscriberAddress": "0x123..."
+        }
     }
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
+**Payment required.** When the caller has not paid (or cannot be authorized), the tool returns an **error tool result** carrying the `PaymentRequired` object in both `structuredContent` (the object) and `content[0].text` (its JSON-stringified copy):
+
+```python
+{
+    "isError": True,
+    "structuredContent": {
+        "x402Version": 2,
+        "error": "payment required",
+        "resource": { "url": "mcp://my-server/tools/premium_tool", "...": "..." },
+        "accepts": [ { "scheme": "nvm:erc4337", "planId": "plan-123", "...": "..." } ]
+    },
+    "content": [{"type": "text", "text": "{\"x402Version\": 2, ...}"}]
+}
+```
+
+**Settlement failure after execution.** If settlement fails *after* the tool has already executed, the server returns the same payment-required error result and **suppresses the tool's content** — a paid result is never delivered without payment landing.
+
+> **Note on `onRedeemError`.** Under the in-band MCP transport, content is *always* suppressed when post-execution settlement fails — even with the default `onRedeemError: "ignore"` — because the x402 v2 spec forbids delivering a paid result without settlement. `onRedeemError` no longer controls whether content is returned; it now only affects the *kind* of error surfaced: `"ignore"` yields the in-band payment-required error result, while `"propagate"` raises a JSON-RPC misconfiguration error instead.
+
+| `nevermined/credits` field | Type | Description |
+|----------------------------|------|-------------|
 | `success` | `bool` | Whether credit redemption succeeded |
 | `txHash` | `str` or `None` | Blockchain transaction hash (only on success) |
 | `creditsRedeemed` | `str` | Number of credits burned (`"0"` on failure) |
@@ -370,50 +401,22 @@ The MCP server exposes:
 - `/.well-known/oauth-authorization-server` - OAuth 2.1 discovery
 - `/.well-known/oauth-protected-resource` - Resource metadata
 - `/.well-known/oauth-protected-resource/mcp` - MCP-specific protected resource metadata
-- `/.well-known/x402-payment` - x402 payment discovery for MCP-aware payment clients
 - `/register` - Client registration
 - `/mcp` - MCP protocol endpoint (POST/GET/DELETE)
 - `/health` - Health check
 
-## MCP OAuth and x402 Discovery
+## OAuth `401` vs. payment-required
 
-MCP and standard x402 use different HTTP challenge shapes:
+OAuth and x402 payment-required live at **different layers**, so they never collide:
 
-| Client type | Missing credentials response | Discovery mechanism |
-|-------------|------------------------------|---------------------|
-| MCP client | `401 Unauthorized` with `WWW-Authenticate: Bearer` | OAuth 2.1 well-known metadata |
-| x402 HTTP client | `402 Payment Required` with `payment-required` | x402 payment metadata / response headers |
+| Layer | Signal | Meaning |
+|-------|--------|---------|
+| HTTP transport | `401 Unauthorized` + `WWW-Authenticate: Bearer` (OAuth 2.1) | The request is not authenticated; follow OAuth discovery to obtain a token. |
+| MCP tool call | tool result with `isError: true` + `PaymentRequired` in `structuredContent` | The caller is authenticated but has not paid for this tool. |
 
-Do not make the `/mcp` streamable HTTP endpoint return `402` for every missing token: MCP clients expect the OAuth `401` challenge and may fail before they can initialize. Instead, expose x402 payment metadata separately at `/.well-known/x402-payment` while keeping OAuth discovery enabled.
+Because payment-required is signalled **in band** as a tool result (not as an HTTP `402`), there is no clash with the OAuth `401` challenge and no need to special-case the `/mcp` status code. The `/mcp` endpoint keeps the standard OAuth `401` behavior; payment is negotiated entirely through the tool-call `_meta` / tool-result mechanism described above.
 
-Example discovery response:
-
-```json
-{
-  "x402Version": 2,
-  "stability": "experimental",
-  "transport": "mcp-streamable-http",
-  "resource": "https://agent.example.com/mcp",
-  "mcpEndpoint": "https://agent.example.com/mcp",
-  "oauthProtectedResourceMetadata": "https://agent.example.com/.well-known/oauth-protected-resource/mcp",
-  "authorizationServerMetadata": "https://agent.example.com/.well-known/oauth-authorization-server",
-  "paymentRequiredHeader": "payment-required",
-  "paymentResponseHeader": "payment-response",
-  "paymentSignatureHeader": "payment-signature",
-  "statusCodes": {
-    "mcpOAuthMissingCredentials": 401,
-    "standardX402MissingPayment": 402
-  }
-}
-```
-
-This lets:
-
-- MCP-native clients follow OAuth 2.1 and send `Authorization: Bearer <token>`.
-- x402-aware clients discover the payment headers and endpoint before calling `/mcp`.
-- Browser-based agents read payment challenge/response headers because CORS allows and exposes `payment-signature`, `payment-required`, and `payment-response`.
-
-The x402 discovery shape is marked `experimental` and may evolve as MCP transport support aligns with the x402 v2 MCP transport specification.
+x402 discovery is therefore **implicit on the first tool call**: a client that has not paid receives the `PaymentRequired` object (with its `accepts` array) in the error tool result and pays on the next call. There is no `/.well-known/x402-payment` endpoint.
 
 ## Next Steps
 
