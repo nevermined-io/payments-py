@@ -100,7 +100,7 @@ class PaywallAuthenticator:
         payment_required = build_payment_required_for_plans(
             plan_ids or [""],
             endpoint=endpoint,
-            agent_id=agent_id or None,
+            agent_id=agent_id,
             http_verb="POST",
             environment=getattr(self._payments, "environment_name", None),
         )
@@ -176,7 +176,7 @@ class PaywallAuthenticator:
         payment_required = build_payment_required(
             plan_id=plan_id,
             endpoint=endpoint,
-            agent_id=agent_id or None,
+            agent_id=agent_id,
             environment=getattr(self._payments, "environment_name", None),
         )
         result = self._payments.facilitator.verify_permissions(

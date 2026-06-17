@@ -327,8 +327,9 @@ def build_server_info_response(
         "scopes": scopes,
     }
     # agentId is optional under the plan-centric model; omit client_id when absent.
-    if config.get("agentId"):
-        oauth_info["client_id"] = config["agentId"]
+    agent_id = config.get("agentId")
+    if agent_id:
+        oauth_info["client_id"] = agent_id
     if enable_oauth_discovery:
         oauth_info.update(
             {
