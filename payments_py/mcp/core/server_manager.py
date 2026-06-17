@@ -844,6 +844,13 @@ class McpServerManager:
         resources_list = ", ".join(info["resources"]) if info["resources"] else "none"
         prompts_list = ", ".join(info["prompts"]) if info["prompts"] else "none"
 
+        # Build the optional Agent ID line as a plain variable first: a nested
+        # triple-quoted f-string inside the {} below is only valid on Python
+        # 3.12+ (PEP 701), but this package supports Python >= 3.10.
+        agent_line = (
+            f"\n  Agent ID: {config['agentId']}" if config.get("agentId") else ""
+        )
+
         self._log(f"""MCP Server Started!
   MCP Endpoint: {info['baseUrl']}/mcp
   Health Check: {info['baseUrl']}/health
@@ -852,8 +859,7 @@ class McpServerManager:
   Tools: {tools_list}
   Resources: {resources_list}
   Prompts: {prompts_list}
-  Plan ID: {config['planId']}{f"""
-  Agent ID: {config['agentId']}""" if config.get('agentId') else ''}""")
+  Plan ID: {config['planId']}{agent_line}""")
 
 
 # =============================================================================
