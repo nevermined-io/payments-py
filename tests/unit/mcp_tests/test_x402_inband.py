@@ -338,6 +338,9 @@ class TestAuthBuildsPaymentRequired:
         # failure is logged (not silently masked as "user hasn't paid").
         assert exc_info.value.payment_required["x402Version"] == 2
         assert "Failed to fetch agent plans" in caplog.text
+        # A backend outage is surfaced as "plans unavailable", NOT a clean 402,
+        # so the empty accepts list isn't read by the client as "free".
+        assert exc_info.value.payment_required["error"] == "plans unavailable"
 
 
 # ---------------------------------------------------------------------------
@@ -495,3 +498,34 @@ class TestDispatcherInBand:
         )
         assert any("deprecated" in m.lower() for m in logs)
         assert not result.isError
+
+
+# ---------------------------------------------------------------------------
+# (ix) onRedeemError "propagate" raises Misconfiguration
+# ---------------------------------------------------------------------------
+
+
+class TestOnRedeemErrorPropagate:
+    @pytest.mark.asyncio
+    async def test_propagate_raises_misconfiguration(self):
+        from payments_py.mcp.utils.errors import ERROR_CODES
+
+        decorator = _make_decorator(None)
+        # settle_permissions throws → with onRedeemError "propagate" the paywall
+        # raises a JSON-RPC Misconfiguration (-32002) rather than suppressing.
+        decorator._payments.facilitator.settle_permissions = MagicMock(
+            side_effect=RuntimeError("settle boom")
+        )
+
+        def handler(args, extra, ctx):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+        protected = decorator.protect(
+            handler,
+            {"name": "premium", "kind": "tool", "onRedeemError": "propagate"},
+        )
+
+        with pytest.raises(Exception) as exc_info:
+            await protected({"q": "x"}, {"requestInfo": {"headers": {}}})
+
+        assert getattr(exc_info.value, "code", None) == ERROR_CODES["Misconfiguration"]

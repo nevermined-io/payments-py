@@ -359,7 +359,7 @@ class PaywallDecorator:
                     "creditsRedeemed": credits_burned,
                     "settlement": (
                         settle_result.model_dump(by_alias=True)
-                        if hasattr(settle_result, "model_dump")
+                        if settle_success and hasattr(settle_result, "model_dump")
                         else None
                     ),
                 }
@@ -402,7 +402,7 @@ class PaywallDecorator:
                         "creditsRedeemed": credits_burned,
                         "settlement": (
                             settle_result.model_dump(by_alias=True)
-                            if hasattr(settle_result, "model_dump")
+                            if settle_success and hasattr(settle_result, "model_dump")
                             else None
                         ),
                     }
@@ -435,7 +435,17 @@ class PaywallDecorator:
 
 
 class _RedeemOnCloseAsyncIterator:
-    """Wrap an async-iterable to ensure a callback runs on completion or early close."""
+    """Wrap an async-iterable to ensure a callback runs on completion or early close.
+
+    Settlement runs on completion and the result is stored in ``_credits_result``,
+    but it is currently NOT surfaced to the consumer: unlike the non-streaming
+    path (and the TS SDK's final ``_meta`` chunk), streamed results have no
+    ``_meta`` channel here — the MCP tool-result dispatch yields content chunks,
+    not a trailing metadata frame, so a streaming settlement failure is invisible
+    to the client. Streaming-observability parity is a tracked follow-up
+    (aaitor review on PR #228); revisit if/when the dispatch grows a final
+    metadata frame.
+    """
 
     def __init__(
         self, async_iterable: Any, on_finally: Callable[[], Awaitable[Dict[str, Any]]]

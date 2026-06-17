@@ -64,6 +64,12 @@ from ..types.server_types import (
 # =============================================================================
 
 
+# Tracks whether the deprecated Authorization-header fallback warning has been
+# logged, so it fires at most once per process (parity with the TS SDK) rather
+# than on every tool call lacking an in-band _meta["x402/payment"] payload.
+_x402_header_fallback_warned = {"done": False}
+
+
 class ServerState(str, Enum):
     """Server state enumeration.
 
@@ -617,11 +623,12 @@ class McpServerManager:
                 extra = {
                     "requestInfo": {"headers": {"authorization": f"Bearer {token}"}}
                 }
-            elif self._log:
+            elif self._log and not _x402_header_fallback_warned["done"]:
+                _x402_header_fallback_warned["done"] = True
                 self._log(
                     "x402: no _meta['x402/payment'] on tool call; falling back to "
                     "the Authorization header (deprecated under the x402 v2 MCP "
-                    "transport)."
+                    "transport). Shown once per process."
                 )
 
             # Execute the protected handler. Payment-required (pre-execution) and

@@ -48,10 +48,13 @@ def read_payment_payload(mcp_server: Any) -> Optional[Dict[str, Any]]:
         The decoded PaymentPayload dict, or ``None``.
     """
     try:
-        meta = mcp_server.request_context.meta
+        request_context = mcp_server.request_context
     except LookupError:
-        # Called outside of a request context.
+        # Called outside of a request context. Scope the try to JUST the
+        # contextvar access so an unrelated KeyError/IndexError (LookupError
+        # subclasses) raised while reading the request is not swallowed.
         return None
+    meta = request_context.meta
     if meta is None:
         return None
     extra = getattr(meta, "model_extra", None) or {}

@@ -58,6 +58,7 @@ class PaywallAuthenticator:
         """
         plan_ids: list = []
         names: list = []
+        plans_lookup_failed = False
         try:
             plans = await self._maybe_await(
                 self._payments.agents.get_agent_plans(agent_id)
@@ -87,6 +88,7 @@ class PaywallAuthenticator:
                 agent_id,
                 exc,
             )
+            plans_lookup_failed = True
 
         plans_msg = f" Available plans: {', '.join(names[:3])}..." if names else ""
 
@@ -98,7 +100,12 @@ class PaywallAuthenticator:
             environment=getattr(self._payments, "environment_name", None),
         )
         pr_dict = payment_required.model_dump(by_alias=True)
-        pr_dict["error"] = "payment required"
+        # Distinguish a backend outage from a genuine "not paid": when the plan
+        # lookup raised, the empty accepts list must not read as a clean 402.
+        # (Mirrors the TS sibling, which sets "plans unavailable" in this case.)
+        pr_dict["error"] = (
+            "plans unavailable" if plans_lookup_failed else "payment required"
+        )
         return PaymentRequiredError(pr_dict, f"{message}{plans_msg}")
 
     async def _verify_with_endpoint(
