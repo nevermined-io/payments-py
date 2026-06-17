@@ -18,6 +18,7 @@ from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.organizations_api import resolve_publication_headers
 from payments_py.api.nvm_api import (
     API_URL_REGISTER_AGENT,
+    API_URL_GET_USER_AGENTS,
     API_URL_GET_AGENT,
     API_URL_ADD_PLAN_AGENT,
     API_URL_REMOVE_PLAN_AGENT,
@@ -222,6 +223,61 @@ class AgentsAPI(BasePaymentsAPI):
             except Exception:
                 error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to get agent plans", error)
+        return response.json()
+
+    def get_user_agents(
+        self,
+        org_id: Optional[str] = None,
+        pagination: Optional[PaginationOptions] = None,
+    ) -> Dict[str, Any]:
+        """
+        List the AI agents published by the current user.
+
+        Returns only the agents the authenticated account created — this is
+        account management ("my agents"), not a marketplace search, and never
+        returns other users' agents. Pass ``org_id`` to list every agent in an
+        organization you are a member of instead.
+
+        Args:
+            org_id: Optional organization id. When set, returns every agent in
+                that organization (the backend rejects orgs you are not an
+                active member of); when omitted, returns the agents authored by
+                the caller.
+            pagination: Optional pagination options (page, offset, sort_by,
+                sort_order).
+
+        Returns:
+            A paginated result of the shape
+            ``{"total", "page", "offset", "agents": [...]}``.
+
+        Raises:
+            PaymentsError: If the request fails.
+        """
+        if pagination is None:
+            pagination = PaginationOptions()
+
+        url = f"{self.environment.backend}{API_URL_GET_USER_AGENTS}"
+        params: Dict[str, Any] = {
+            "page": pagination.page,
+            "offset": pagination.offset,
+        }
+        if pagination.sort_by:
+            params["sortBy"] = pagination.sort_by
+        if pagination.sort_order:
+            params["sortOrder"] = pagination.sort_order
+        if org_id:
+            params["orgId"] = org_id
+
+        response = requests.get(
+            url, params=params, **self.get_backend_http_options("GET")
+        )
+        if not response.ok:
+            try:
+                error = response.json()
+            except ValueError:
+                # Non-JSON error body (e.g. a gateway HTML 502).
+                error = {"message": response.text, "code": response.status_code}
+            raise PaymentsError.from_backend("Unable to get user agents", error)
         return response.json()
 
     def add_plan_to_agent(self, plan_id: str, agent_id: str) -> Dict[str, Any]:

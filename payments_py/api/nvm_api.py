@@ -7,6 +7,10 @@ from typing import Optional, Dict, Any
 
 # Plan endpoints
 API_URL_REGISTER_PLAN = "/api/v1/protocol/plans"
+# GET: the caller's own plans (?orgId= scopes to an org the caller belongs to).
+# Distinct from the global /all-plans surface — this never returns other users' plans.
+# Same path as registration (GET vs POST); alias to avoid literal drift.
+API_URL_GET_USER_PLANS = API_URL_REGISTER_PLAN
 API_URL_GET_PLAN = "/api/v1/protocol/plans/{plan_id}"
 API_URL_PLAN_BALANCE = "/api/v1/protocol/plans/{plan_id}/balance/{holder_address}"
 API_URL_ORDER_PLAN = "/api/v1/protocol/plans/{plan_id}/order"
@@ -18,6 +22,9 @@ API_URL_REDEEM_PLAN = "/api/v1/protocol/plans/redeem"
 
 # Agent endpoints
 API_URL_REGISTER_AGENT = "/api/v1/protocol/agents"
+# GET: the caller's own agents (?orgId= scopes to an org the caller belongs to).
+# Same path as registration (GET vs POST); alias to avoid literal drift.
+API_URL_GET_USER_AGENTS = API_URL_REGISTER_AGENT
 API_URL_GET_AGENT = "/api/v1/protocol/agents/{agent_id}"
 API_URL_SEARCH_AGENTS = "/api/v1/protocol/agents/search"
 API_URL_ADD_PLAN_AGENT = "/api/v1/protocol/agents/{agent_id}/plan/{plan_id}"
