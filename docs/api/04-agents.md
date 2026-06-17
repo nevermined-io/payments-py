@@ -178,6 +178,28 @@ The `:agentId` and `:taskId` placeholders will be replaced with actual values du
 
 ## Retrieve Agents
 
+### List Your Agents
+
+List the agents **you** published. This is caller-scoped account management — it
+returns only the agents the authenticated account created, never other users'
+agents (Nevermined is not a marketplace, so there is no global agent search).
+Useful for finding and managing your own agents (e.g. spotting duplicates).
+
+```python
+from payments_py.common.types import PaginationOptions
+
+# Your own agents
+result = payments.agents.get_user_agents(
+    pagination=PaginationOptions(page=1, offset=10)
+)
+print(f"Total: {result['total']}")
+for agent in result["agents"]:
+    print(agent["id"])
+
+# Every agent in an organization you belong to
+org_agents = payments.agents.get_user_agents(org_id="org-acme")
+```
+
 ### Get a Single Agent
 
 ```python

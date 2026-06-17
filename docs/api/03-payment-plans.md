@@ -245,6 +245,28 @@ credits_config = get_non_expirable_duration_config()
 
 ## Retrieve Plans
 
+### List Your Plans
+
+List the plans **you** published. This is caller-scoped account management — it
+returns only the plans the authenticated account created, never other users'
+plans (Nevermined is not a marketplace, so there is no global plan search).
+Useful for finding and managing your own plans (e.g. spotting duplicates).
+
+```python
+from payments_py.common.types import PaginationOptions
+
+# Your own plans
+result = payments.plans.get_user_plans(
+    pagination=PaginationOptions(page=1, offset=10)
+)
+print(f"Total: {result['total']}")
+for plan in result["plans"]:
+    print(plan["id"])
+
+# Every plan in an organization you belong to
+org_plans = payments.plans.get_user_plans(org_id="org-acme")
+```
+
 ### Get a Single Plan
 
 ```python
