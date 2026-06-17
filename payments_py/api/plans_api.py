@@ -308,12 +308,14 @@ class PlansAPI(BasePaymentsAPI):
         returns other users' plans. Pass ``org_id`` to list every plan in an
         organization you are a member of instead.
 
-        Equivalent to ``plans.getPlans()`` in the TypeScript SDK.
+        Analogous to ``plans.getPlans()`` in the TypeScript SDK; this method
+        also accepts ``org_id`` to scope the listing to an organization.
 
         Args:
             org_id: Optional organization id. When set, returns every plan in
-                that organization (requires active membership); when omitted,
-                returns the plans authored by the caller.
+                that organization (the backend rejects orgs you are not an
+                active member of); when omitted, returns the plans authored by
+                the caller.
             pagination: Optional pagination options (page, offset, sort_by,
                 sort_order).
 
@@ -345,7 +347,8 @@ class PlansAPI(BasePaymentsAPI):
         if not response.ok:
             try:
                 error = response.json()
-            except Exception:
+            except ValueError:
+                # Non-JSON error body (e.g. a gateway HTML 502).
                 error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to get user plans", error)
         return response.json()

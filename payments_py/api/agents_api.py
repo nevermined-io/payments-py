@@ -240,8 +240,9 @@ class AgentsAPI(BasePaymentsAPI):
 
         Args:
             org_id: Optional organization id. When set, returns every agent in
-                that organization (requires active membership); when omitted,
-                returns the agents authored by the caller.
+                that organization (the backend rejects orgs you are not an
+                active member of); when omitted, returns the agents authored by
+                the caller.
             pagination: Optional pagination options (page, offset, sort_by,
                 sort_order).
 
@@ -273,7 +274,8 @@ class AgentsAPI(BasePaymentsAPI):
         if not response.ok:
             try:
                 error = response.json()
-            except Exception:
+            except ValueError:
+                # Non-JSON error body (e.g. a gateway HTML 502).
                 error = {"message": response.text, "code": response.status_code}
             raise PaymentsError.from_backend("Unable to get user agents", error)
         return response.json()
