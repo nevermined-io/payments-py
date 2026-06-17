@@ -6,6 +6,16 @@ from typing import Any, Dict, List
 
 from payments_py.a2a.types import PaymentAgentCardMetadata
 
+# Canonical A2A agent-card discovery path (A2A >= 0.3, per RFC 8615). Served by
+# Nevermined A2A agents and used as the default when fetching a remote card.
+AGENT_CARD_WELL_KNOWN_PATH = ".well-known/agent-card.json"
+
+# Legacy pre-0.3 discovery path. Still served as a backward-compat alias and
+# tried as a fetch fallback, so updated clients keep working against Nevermined
+# agents that have not adopted the canonical path yet.
+# ponytail: drop the alias + fallback one release after agents are updated.
+LEGACY_AGENT_CARD_WELL_KNOWN_PATH = ".well-known/agent.json"
+
 
 def build_payment_agent_card(
     base_card: Dict[str, Any], payment_metadata: PaymentAgentCardMetadata

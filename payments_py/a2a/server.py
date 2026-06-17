@@ -14,6 +14,10 @@ from a2a.server.apps.jsonrpc.fastapi_app import A2AFastAPIApplication
 from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
 
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
+from payments_py.a2a.agent_card import (
+    AGENT_CARD_WELL_KNOWN_PATH,
+    LEGACY_AGENT_CARD_WELL_KNOWN_PATH,
+)
 from payments_py.a2a.types import AgentCard, HttpRequestContext
 from payments_py.payments import Payments
 from payments_py.x402.helpers import build_payment_required_for_plans
@@ -310,15 +314,15 @@ class PaymentsA2AServer:  # noqa: D101
                     await hooks["onError"](method_name, exc, request)
                 raise
 
-        # Basic .well-known/agent.json endpoint
+        # Agent card discovery: canonical path (A2A >= 0.3) + legacy alias, so
+        # both pre-spec and current A2A clients can discover the card.
         if expose_agent_card:
-            route_path = (
-                f"{base_path.rstrip('/')}/.well-known/agent.json"
-                if base_path != "/"
-                else "/.well-known/agent.json"
-            )
+            prefix = base_path.rstrip("/") if base_path != "/" else ""
 
-            @app.get(route_path, include_in_schema=False)
+            @app.get(f"{prefix}/{AGENT_CARD_WELL_KNOWN_PATH}", include_in_schema=False)
+            @app.get(
+                f"{prefix}/{LEGACY_AGENT_CARD_WELL_KNOWN_PATH}", include_in_schema=False
+            )
             async def get_agent_card() -> Any:  # noqa: D401, ANN201
                 return agent_card
 
