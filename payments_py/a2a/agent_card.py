@@ -14,7 +14,7 @@ AGENT_CARD_WELL_KNOWN_PATH = ".well-known/agent-card.json"
 # Legacy pre-0.3 discovery path. Still served as a backward-compat alias and
 # tried as a fetch fallback, so updated clients keep working against Nevermined
 # agents that have not adopted the canonical path yet.
-# ponytail: drop the alias + fallback one release after agents are updated.
+# TODO(a2a): drop the alias + fallback one release after agents are updated.
 LEGACY_AGENT_CARD_WELL_KNOWN_PATH = ".well-known/agent.json"
 
 
@@ -85,7 +85,7 @@ def build_payment_agent_card(
     # spec-compliant A2A clients can detect and activate the standards-based
     # in-band payment flow. The Nevermined-specific extension is kept alongside
     # it for one release (it still carries the agentId / plan params the server
-    # reads). ponytail: drop urn:nevermined:payment once clients use v0.2 only.
+    # reads). TODO(a2a): drop urn:nevermined:payment once clients use v0.2 only.
     x402_extension = {
         "uri": A2A_X402_EXTENSION_URI,
         "description": (

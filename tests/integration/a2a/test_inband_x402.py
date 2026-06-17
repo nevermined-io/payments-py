@@ -282,9 +282,11 @@ async def test_inband_settlement_failure_suppresses_content():
     meta = task["status"]["message"]["metadata"]
     assert meta["x402.payment.status"] == "payment-failed"
     assert "x402.payment.error" in meta
-    # Paid content suppressed in artifacts AND anywhere else in the task.
+    # Paid content suppressed in artifacts, the status message, AND anywhere else.
     assert task.get("artifacts") in (None, [])
-    assert "PAID_SECRET_RESULT" not in response.text
+    assert "PAID_SECRET_RESULT" not in response.text  # artifact
+    assert "Request completed successfully!" not in response.text  # status message
+    assert task["status"]["message"]["parts"][0]["text"] == "Payment settlement failed."
     # Verify ran (token was valid) and settle was attempted once.
     assert mock_payments.facilitator.validation_call_count == 1
     assert mock_payments.facilitator.settle_call_count == 1

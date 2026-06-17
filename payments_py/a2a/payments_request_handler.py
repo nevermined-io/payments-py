@@ -682,8 +682,10 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         if isinstance(settle_result, dict):
             return SettleResponse.model_validate(settle_result)
         # Duck-typed object (e.g. test doubles): pull known fields off it.
+        # Default success to False — never claim a settlement landed when the
+        # result object doesn't explicitly say so (fail safe, not fail open).
         return SettleResponse(
-            success=bool(getattr(settle_result, "success", True)),
+            success=bool(getattr(settle_result, "success", False)),
             transaction=getattr(settle_result, "transaction", "") or "",
             network=getattr(settle_result, "network", "") or "",
             payer=getattr(settle_result, "payer", None),
@@ -772,8 +774,16 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             _X402_UTILS.record_payment_success(task, receipt)
         else:
             task.status.state = TaskState.failed
-            # Suppress paid content everywhere it could surface: artifacts AND
-            # the message history (which carries the agent's response messages).
+            # Suppress paid content everywhere it could surface. record_payment_failure
+            # only ADDS metadata to an existing status message, so the agent's paid
+            # reply in status.message.parts would survive — replace the status message
+            # outright, and drop artifacts and history too.
+            task.status.message = Message(
+                message_id=f"{task.id}-payment-failed",
+                role="agent",
+                parts=[{"kind": "text", "text": "Payment settlement failed."}],
+                metadata={},
+            )
             task.artifacts = None
             task.history = []
             _X402_UTILS.record_payment_failure(task, "SETTLEMENT_FAILED", receipt)
