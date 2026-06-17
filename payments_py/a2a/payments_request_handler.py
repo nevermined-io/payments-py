@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
+import uuid
 from typing import Any, Dict
 
 import httpx
@@ -17,18 +18,27 @@ from a2a.types import (
     MessageSendParams,
     Task,
     TaskIdParams,
+    TaskState,
+    TaskStatus,
     TaskStatusUpdateEvent,
 )
 from payments_py.common.payments_error import PaymentsError
 from payments_py.payments import Payments
+from payments_py.x402.a2a import X402A2AUtils
 from payments_py.x402.token import decode_access_token
 from payments_py.x402.helpers import (
     build_payment_required,
     build_payment_required_for_plans,
 )
+from payments_py.x402.resolve_scheme import resolve_scheme
 from payments_py.x402.schemes import is_valid_scheme
+from payments_py.x402.types import SettleResponse
 
+from .inband import get_inband_payment_payload
 from .types import HttpRequestContext
+
+# Shared in-band x402 metadata helper (stateless; one instance is fine).
+_X402_UTILS = X402A2AUtils()
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +82,9 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         self._async_execution = async_execution
         self._http_ctx_by_task: Dict[str, HttpRequestContext] = {}
         self._http_ctx_by_message: Dict[str, HttpRequestContext] = {}
+        # Settlement receipt captured per task during finalization, so the
+        # in-band x402 v2 path can emit it into the resulting task metadata.
+        self._settle_receipt_by_task: Dict[str, SettleResponse] = {}
         self.latest_agent_request: Any = None
         self.latest_agent_request_id: str | None = None
 
@@ -192,9 +205,16 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         if not decoded:
             raise PaymentsError.unauthorized("Invalid access token")
 
-        # If no plan_ids found in agent card, try token
+        # If no plan_ids found in agent card, try token. The in-band v2
+        # PaymentPayload nests the plan under ``accepted.planId``; the legacy
+        # token shape may carry it at the top level.
         if not resolved_plan_ids:
-            decoded_plan_id = decoded.get("planId") or decoded.get("plan_id")
+            accepted = decoded.get("accepted") or {}
+            decoded_plan_id = (
+                decoded.get("planId")
+                or decoded.get("plan_id")
+                or (accepted.get("planId") if isinstance(accepted, dict) else None)
+            )
             if decoded_plan_id:
                 resolved_plan_ids = [decoded_plan_id]
 
@@ -302,6 +322,37 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         if not agent_id:
             raise PaymentsError.internal("Agent ID not found in payment extension.")
 
+        # ---------------- in-band x402 v2 A2A flow ----------------
+        # The standards path signals payment in band (not via HTTP 402): a first
+        # ``message/send`` with no payment yields an ``input-required`` task; a
+        # follow-up carrying ``x402.payment.payload`` is verified, executed and
+        # settled with the receipt emitted into the resulting task metadata.
+        inband_payload = get_inband_payment_payload(params.message)
+        if http_ctx.inband:
+            # First contact (no token, no payload) -> ask for payment in band.
+            # Nothing executes, so release the stored context immediately.
+            if not http_ctx.bearer_token and inband_payload is None:
+                self.delete_http_ctx_for_task(prev_task_id or "")
+                self.delete_http_ctx_for_message(params.message.message_id)
+                return self._build_payment_required_task(
+                    task_id=prev_task_id or params.message.task_id,
+                    context_id=params.message.context_id,
+                    agent_id=agent_id,
+                    ext_params=ext_params,
+                    endpoint=http_ctx.url_requested,
+                )
+            # Verification already failed in the middleware -> payment-failed.
+            verify_error = http_ctx.validation.get("verify_error")
+            if verify_error:
+                self.delete_http_ctx_for_task(prev_task_id or "")
+                self.delete_http_ctx_for_message(params.message.message_id)
+                return self._build_payment_failed_task(
+                    task_id=prev_task_id or params.message.task_id,
+                    context_id=params.message.context_id,
+                    code="PAYMENT_VERIFICATION_FAILED",
+                    reason=verify_error,
+                )
+
         # Setup message execution (equivalent to TS setup)
         (
             task_manager,
@@ -331,6 +382,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         ):
             blocking = False
 
+        # The in-band x402 v2 settlement receipt is captured synchronously during
+        # finalization and must be stamped onto the returned task; in non-blocking
+        # mode the task returns before settlement lands, which would risk
+        # delivering paid content without settlement. Force blocking for the
+        # in-band path so the spec's "never deliver unpaid content" rule holds.
+        if http_ctx.inband and http_ctx.bearer_token:
+            blocking = True
+
         interrupted_or_non_blocking = False
         try:
             # Both blocking and non-blocking use the same method, but with different
@@ -346,6 +405,10 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
             if isinstance(result, Task):
                 self._validate_task_id_match(task_id, result.id)
+                # In-band x402 v2: stamp the settlement outcome onto the task so
+                # spec-compliant clients read the receipt/status from metadata.
+                if http_ctx.inband:
+                    self._apply_inband_settlement(result, task_id)
 
             await self._send_push_notification_if_needed(task_id, result_aggregator)
 
@@ -571,7 +634,7 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         try:
             loop = asyncio.get_running_loop()
-            await loop.run_in_executor(
+            settle_result = await loop.run_in_executor(
                 None,
                 lambda: self._payments.facilitator.settle_permissions(
                     payment_required=payment_required,
@@ -580,12 +643,140 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                     agent_request_id=agent_request_id,
                 ),
             )
+            # Capture the receipt so the in-band x402 v2 path can stamp it onto
+            # the task. Only kept for in-band requests to avoid unbounded growth
+            # on the legacy header path (which never consumes these entries).
+            task_id = getattr(event, "task_id", None)
+            if task_id is not None and http_ctx.inband:
+                self._settle_receipt_by_task[task_id] = self._coerce_settle_response(
+                    settle_result
+                )
         except Exception:  # noqa: BLE001
             logger.warning(
                 "Failed to settle %s credits during task finalization",
                 credits_used,
                 exc_info=True,
             )
+            task_id = getattr(event, "task_id", None)
+            if task_id is not None and http_ctx.inband:
+                # Record a failed receipt so the in-band path emits payment-failed
+                # and never delivers paid content without settlement landing.
+                self._settle_receipt_by_task[task_id] = SettleResponse(
+                    success=False,
+                    error_reason="Settlement failed during task finalization",
+                )
+
+    # ------------------------------------------------------------------
+    # In-band x402 v2 helpers ------------------------------------------
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _coerce_settle_response(settle_result: Any) -> SettleResponse:
+        """Normalize a facilitator settle result into a ``SettleResponse``.
+
+        ``settle_permissions`` may return a ``SettleResponse``, a compatible
+        object (duck-typed in tests), or a plain dict. Always return a
+        ``SettleResponse`` so the receipt serializes with the x402 aliases.
+        """
+        if isinstance(settle_result, SettleResponse):
+            return settle_result
+        if isinstance(settle_result, dict):
+            return SettleResponse.model_validate(settle_result)
+        # Duck-typed object (e.g. test doubles): pull known fields off it.
+        return SettleResponse(
+            success=bool(getattr(settle_result, "success", True)),
+            transaction=getattr(settle_result, "transaction", "") or "",
+            network=getattr(settle_result, "network", "") or "",
+            payer=getattr(settle_result, "payer", None),
+            credits_redeemed=getattr(settle_result, "credits_redeemed", None),
+            error_reason=getattr(settle_result, "error_reason", None),
+        )
+
+    def _build_payment_required_task(
+        self,
+        *,
+        task_id: str | None,
+        context_id: str | None,
+        agent_id: str,
+        ext_params: dict,
+        endpoint: str | None = None,
+    ) -> Task:
+        """Build an ``input-required`` task carrying the x402 PaymentRequired.
+
+        This is the spec-compliant "payment required" signal for the in-band
+        A2A transport: the client reads ``x402.payment.required`` and replies
+        with a follow-up ``message/send`` carrying ``x402.payment.payload``.
+        """
+        plan_id = ext_params.get("planId") or ext_params.get("plan_id")
+        plan_ids = ext_params.get("planIds") or ext_params.get("plan_ids")
+        resolved_plan_ids = (
+            plan_ids
+            if isinstance(plan_ids, list) and plan_ids
+            else ([plan_id] if plan_id else [])
+        )
+        scheme = "nvm:erc4337"
+        if resolved_plan_ids:
+            try:
+                scheme = resolve_scheme(self._payments, resolved_plan_ids[0])
+            except Exception:  # noqa: BLE001
+                scheme = "nvm:erc4337"
+
+        payment_required = build_payment_required_for_plans(
+            plan_ids=resolved_plan_ids or [""],
+            agent_id=agent_id,
+            endpoint=endpoint,
+            http_verb="POST",
+            scheme=scheme,
+            environment=getattr(self._payments, "environment_name", None),
+        )
+
+        task = Task(
+            id=task_id or str(uuid.uuid4()),
+            context_id=context_id or str(uuid.uuid4()),
+            status=TaskStatus(state=TaskState.input_required),
+            history=[],
+        )
+        return _X402_UTILS.create_payment_required_task(task, payment_required)
+
+    def _build_payment_failed_task(
+        self,
+        *,
+        task_id: str | None,
+        context_id: str | None,
+        code: str,
+        reason: str,
+    ) -> Task:
+        """Build a ``failed`` task carrying the x402 payment-failed metadata."""
+        task = Task(
+            id=task_id or str(uuid.uuid4()),
+            context_id=context_id or str(uuid.uuid4()),
+            status=TaskStatus(state=TaskState.failed),
+            history=[],
+        )
+        return _X402_UTILS.record_payment_failure(
+            task, code, SettleResponse(success=False, error_reason=reason)
+        )
+
+    def _apply_inband_settlement(self, task: Task, task_id: str) -> None:
+        """Stamp the captured settlement outcome onto an executed task.
+
+        On success the task carries ``payment-completed`` + the receipt; on a
+        settlement failure it is forced to ``failed`` / ``payment-failed`` and
+        its agent content is dropped so a paid result is never delivered without
+        settlement landing (spec requirement).
+        """
+        receipt = self._settle_receipt_by_task.pop(task_id, None)
+        if receipt is None:
+            # Free / no-credit call: nothing settled, nothing to stamp.
+            return
+        if receipt.success:
+            _X402_UTILS.record_payment_success(task, receipt)
+        else:
+            task.status.state = TaskState.failed
+            # Suppress paid content everywhere it could surface: artifacts AND
+            # the message history (which carries the agent's response messages).
+            task.artifacts = None
+            task.history = []
+            _X402_UTILS.record_payment_failure(task, "SETTLEMENT_FAILED", receipt)
 
     # ------------------------------------------------------------------
     # Streaming override ------------------------------------------------

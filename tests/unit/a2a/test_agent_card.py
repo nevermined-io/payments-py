@@ -3,6 +3,11 @@
 import pytest
 
 from payments_py.a2a.agent_card import build_payment_agent_card
+from payments_py.x402.a2a import A2A_X402_EXTENSION_URI
+
+
+def _ext_by_uri(card, uri):
+    return next(e for e in card["capabilities"]["extensions"] if e["uri"] == uri)
 
 
 def test_build_payment_agent_card_success():  # noqa: D401
@@ -15,9 +20,11 @@ def test_build_payment_agent_card_success():  # noqa: D401
         "costDescription": "5 credits per call",
     }
     card = build_payment_agent_card(base_card, metadata)  # type: ignore[arg-type]
-    ext = card["capabilities"]["extensions"][-1]
-    assert ext["uri"] == "urn:nevermined:payment"
+    ext = _ext_by_uri(card, "urn:nevermined:payment")
     assert ext["params"]["agentId"] == "agent-1"
+    # The official A2A x402 v0.2 extension is also declared for standards clients.
+    official = _ext_by_uri(card, A2A_X402_EXTENSION_URI)
+    assert official["required"] is False
 
 
 def test_build_payment_agent_card_with_plan_ids():  # noqa: D401
@@ -30,10 +37,11 @@ def test_build_payment_agent_card_with_plan_ids():  # noqa: D401
         "planIds": ["plan-1", "plan-2"],
     }
     card = build_payment_agent_card(base_card, metadata)  # type: ignore[arg-type]
-    ext = card["capabilities"]["extensions"][-1]
-    assert ext["uri"] == "urn:nevermined:payment"
+    ext = _ext_by_uri(card, "urn:nevermined:payment")
     assert ext["params"]["planIds"] == ["plan-1", "plan-2"]
     assert "planId" not in ext["params"]
+    # Official extension present alongside the Nevermined one.
+    assert _ext_by_uri(card, A2A_X402_EXTENSION_URI)["uri"] == A2A_X402_EXTENSION_URI
 
 
 # noqa: WPS437
