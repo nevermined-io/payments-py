@@ -194,8 +194,15 @@ async def test_decorator_default_credits():
 
 
 @pytest.mark.asyncio
-async def test_decorator_missing_payment_signature_returns_402():
-    """Request without payment-signature header should get 402 with payment-required."""
+async def test_decorator_missing_token_returns_inband_payment_required():
+    """First message/send with no payment yields an in-band payment-required task.
+
+    Per the x402 v2 A2A transport, a payment-gated message with neither the
+    deprecated ``payment-signature`` header nor an in-band ``x402.payment.payload``
+    must NOT return HTTP 402 — it returns an ``input-required`` task carrying the
+    ``X402PaymentRequired`` object in ``x402.payment.required`` so standards
+    clients can pay on the follow-up message.
+    """
     mock_payments = MockPaymentsService()
 
     @a2a_requires_payment(
@@ -210,13 +217,15 @@ async def test_decorator_missing_payment_signature_returns_402():
 
     response = client.post("/rpc", json=_make_payload())
 
-    assert response.status_code == 402
-    assert "Missing payment-signature header" in response.json()["error"]["message"]
-    assert "payment-required" in response.headers
-    # Verify the payment-required header contains planId and agentId
-    pr_data = json.loads(base64.b64decode(response.headers["payment-required"]))
+    assert response.status_code == 200
+    task = response.json()["result"]
+    assert task["status"]["state"] == "input-required"
+    meta = task["status"]["message"]["metadata"]
+    assert meta["x402.payment.status"] == "payment-required"
+    pr_data = meta["x402.payment.required"]
     assert pr_data["accepts"][0]["planId"] == "test-plan"
     assert pr_data["accepts"][0]["extra"]["agentId"] == "decorator-test-agent"
+    # The agent must NOT run and nothing settles before payment.
     assert mock_payments.facilitator.validation_call_count == 0
     assert mock_payments.facilitator.settle_call_count == 0
 
@@ -317,8 +326,8 @@ async def test_decorator_agent_card_endpoint():
 
 
 @pytest.mark.asyncio
-async def test_decorator_multi_plan_missing_token_returns_402():
-    """Multi-plan agent card returns 402 with correct accepts[] entries."""
+async def test_decorator_multi_plan_missing_token_returns_inband_payment_required():
+    """Multi-plan card yields an in-band payment-required task with both plans."""
     mock_payments = MockPaymentsService()
 
     multi_plan_card = build_payment_agent_card(
@@ -348,9 +357,12 @@ async def test_decorator_multi_plan_missing_token_returns_402():
 
     response = client.post("/rpc", json=_make_payload())
 
-    assert response.status_code == 402
-    assert "payment-required" in response.headers
-    pr_data = json.loads(base64.b64decode(response.headers["payment-required"]))
+    assert response.status_code == 200
+    task = response.json()["result"]
+    assert task["status"]["state"] == "input-required"
+    meta = task["status"]["message"]["metadata"]
+    assert meta["x402.payment.status"] == "payment-required"
+    pr_data = meta["x402.payment.required"]
     assert len(pr_data["accepts"]) == 2
     assert pr_data["accepts"][0]["planId"] == "plan-a"
     assert pr_data["accepts"][1]["planId"] == "plan-b"

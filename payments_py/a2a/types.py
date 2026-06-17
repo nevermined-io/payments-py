@@ -44,3 +44,8 @@ class HttpRequestContext:  # noqa: D101
     url_requested: str
     http_method_requested: str
     validation: Dict[str, Any]
+    # True when the access token was carried in-band via the x402 v2 A2A payload
+    # metadata (x402.payment.payload) rather than the deprecated
+    # ``payment-signature`` HTTP header. Tells the handler to emit spec-shaped
+    # receipts/status into the resulting task metadata.
+    inband: bool = False

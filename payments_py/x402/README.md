@@ -894,7 +894,13 @@ else:
 
 ### A2A Integration Utilities
 
-Utilities for managing x402 payment state in A2A/AP2 tasks.
+Utilities for managing x402 payment state in A2A/AP2 tasks. These helpers now power the **live in-band server flow** in `PaymentsA2AServer` (the [a2a-x402 extension](https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2) is declared on the agent card), so a payment-gated request with no payment yields an `input-required` task instead of an HTTP 402. Payment is signalled **in band** via task/message metadata, correlated by `taskId`:
+
+- **payment-required** → server sets task `status.state = "input-required"`, metadata `x402.payment.status = "payment-required"` + `x402.payment.required` (the `X402PaymentRequired`).
+- **payment-submitted** → client's follow-up `message/send` carries `x402.payment.status = "payment-submitted"` + `x402.payment.payload`.
+- **payment-completed / payment-failed** → final task carries `x402.payment.status` + `x402.payment.receipts` (or `x402.payment.error` on failure).
+
+The legacy `payment-signature` HTTP header is a **deprecated fallback (one release)**. See the [A2A Integration guide](../../docs/api/10-a2a-integration.md#in-band-x402-v2-payments-standards-flow) for the full lifecycle.
 
 ```python
 from payments_py.x402 import X402A2AUtils
