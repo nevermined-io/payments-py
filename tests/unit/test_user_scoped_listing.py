@@ -129,6 +129,25 @@ class TestGetUserAgents:
         qs = parse_qs(urlparse(m.last_request.url).query)
         assert qs["orgId"] == ["org-acme"]
 
+    def test_forwards_pagination(self):
+        payments = _payments()
+        with requests_mock.Mocker() as m:
+            m.get(
+                f"{BACKEND}/api/v1/protocol/agents",
+                json={"total": 0, "page": 2, "offset": 25, "agents": []},
+            )
+            payments.agents.get_user_agents(
+                pagination=PaginationOptions(
+                    page=2, offset=25, sort_by="created", sort_order="asc"
+                )
+            )
+
+        qs = parse_qs(urlparse(m.last_request.url).query)
+        assert qs["page"] == ["2"]
+        assert qs["offset"] == ["25"]
+        assert qs["sortBy"] == ["created"]
+        assert qs["sortOrder"] == ["asc"]
+
     def test_raises_on_error(self):
         payments = _payments()
         with requests_mock.Mocker() as m:
