@@ -31,6 +31,7 @@ Examples:
 """
 
 import asyncio
+import logging
 from enum import Enum
 from typing import Any, Callable, Dict, Optional
 
@@ -620,16 +621,30 @@ class McpServerManager:
             payment_payload = read_payment_payload(self._mcp_server)
             if payment_payload is not None:
                 token = encode_access_token(payment_payload)
-                extra = {
-                    "requestInfo": {"headers": {"authorization": f"Bearer {token}"}}
+                # Override only the Authorization header with the in-band token;
+                # keep the rest of the request context (tenant/tracing/custom
+                # headers) so the user handler still receives it — mirrors the TS
+                # sibling's raw-extra forward. Replacing `extra` wholesale here
+                # would silently drop those headers on the in-band path.
+                request_info = dict((extra or {}).get("requestInfo") or {})
+                request_info["headers"] = {
+                    **(request_info.get("headers") or {}),
+                    "authorization": f"Bearer {token}",
                 }
-            elif self._log and not _x402_header_fallback_warned["done"]:
+                extra = {**(extra or {}), "requestInfo": request_info}
+            elif not _x402_header_fallback_warned["done"]:
                 _x402_header_fallback_warned["done"] = True
-                self._log(
+                # Emit via the stdlib logger regardless of onLog so servers
+                # without a callback (the common case) still see the migration
+                # nudge; also forward to onLog if present.
+                message = (
                     "x402: no _meta['x402/payment'] on tool call; falling back to "
                     "the Authorization header (deprecated under the x402 v2 MCP "
                     "transport). Shown once per process."
                 )
+                logging.getLogger(__name__).warning(message)
+                if self._log:
+                    self._log(message)
 
             # Execute the protected handler. Payment-required (pre-execution) and
             # settlement-failure (post-execution) are signalled in band as an

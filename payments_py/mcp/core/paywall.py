@@ -262,6 +262,7 @@ class PaywallDecorator:
             nvm_meta = {
                 "txHash": credits_result.get("txHash"),
                 "creditsRedeemed": credits_result.get("creditsRedeemed", "0"),
+                "remainingBalance": credits_result.get("remainingBalance"),
                 "planId": auth_result.get("plan_id"),
                 "subscriberAddress": auth_result.get("subscriber_address"),
                 "success": credits_result.get("success", False),
@@ -357,8 +358,11 @@ class PaywallDecorator:
                     "success": settle_success,
                     "txHash": settle_result.transaction if settle_success else None,
                     "creditsRedeemed": credits_burned,
+                    "remainingBalance": (
+                        settle_result.remaining_balance if settle_success else None
+                    ),
                     "settlement": (
-                        settle_result.model_dump(by_alias=True)
+                        settle_result.model_dump(by_alias=True, exclude_none=True)
                         if settle_success and hasattr(settle_result, "model_dump")
                         else None
                     ),
@@ -400,8 +404,11 @@ class PaywallDecorator:
                         "success": settle_success,
                         "txHash": settle_result.transaction if settle_success else None,
                         "creditsRedeemed": credits_burned,
+                        "remainingBalance": (
+                            settle_result.remaining_balance if settle_success else None
+                        ),
                         "settlement": (
-                            settle_result.model_dump(by_alias=True)
+                            settle_result.model_dump(by_alias=True, exclude_none=True)
                             if settle_success and hasattr(settle_result, "model_dump")
                             else None
                         ),
@@ -416,7 +423,7 @@ class PaywallDecorator:
                 error_msg = str(primary_error)
                 raise create_rpc_error(
                     ERROR_CODES["Misconfiguration"],
-                    f"Failed to settle credits: {error_msg}",
+                    f"Failed to redeem credits: {error_msg}",
                 )
             return {
                 "success": False,

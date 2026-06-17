@@ -34,10 +34,17 @@ class VerifyResult:
 class SettleResult:
     """Mock settle permissions result."""
 
-    def __init__(self, success=True, transaction="0x123", credits_redeemed="1"):
+    def __init__(
+        self,
+        success=True,
+        transaction="0x123",
+        credits_redeemed="1",
+        remaining_balance="100",
+    ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
+        self.remaining_balance = remaining_balance
 
 
 class PaymentsMinimal:

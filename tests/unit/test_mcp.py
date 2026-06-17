@@ -38,18 +38,31 @@ class VerifyResult:
 class SettleResult:
     """Mock settle permissions result."""
 
-    def __init__(self, success=True, transaction=None, credits_redeemed="1"):
+    def __init__(
+        self,
+        success=True,
+        transaction=None,
+        credits_redeemed="1",
+        remaining_balance="100",
+    ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
+        self.remaining_balance = remaining_balance
 
-    def model_dump(self, by_alias=False):
-        return {
+    def model_dump(self, by_alias=False, exclude_none=False):
+        data = {
             "success": self.success,
             "transaction": self.transaction,
             "network": "eip155:84532",
             "payer": "0x123subscriber",
+            ("remainingBalance" if by_alias else "remaining_balance"): (
+                self.remaining_balance
+            ),
         }
+        if exclude_none:
+            data = {k: v for k, v in data.items() if v is not None}
+        return data
 
 
 def make_settle_result(settle_result):

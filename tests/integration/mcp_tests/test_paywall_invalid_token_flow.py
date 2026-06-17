@@ -45,11 +45,16 @@ class MockSettleResult:
     """Mock settle permissions result."""
 
     def __init__(
-        self, success: bool, transaction: str = None, credits_redeemed: str = "0"
+        self,
+        success: bool,
+        transaction: str = None,
+        credits_redeemed: str = "0",
+        remaining_balance: str = "100",
     ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
+        self.remaining_balance = remaining_balance
 
 
 class PaymentsMockWithFailures:
@@ -342,7 +347,7 @@ class TestMcpPaywallInvalidTokenFlow:
         error = exc_info.value
         # Should be a misconfiguration error for redemption failure
         assert hasattr(error, "code") and error.code == -32002
-        assert "Failed to settle credits" in str(error)
+        assert "Failed to redeem credits" in str(error)
 
     @pytest.mark.asyncio
     @patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_access_token)

@@ -29,7 +29,7 @@ from payments_py.mcp.utils.meta import (
 )
 from payments_py.mcp.utils.errors import PaymentRequiredError, SettlementFailedError
 from payments_py.mcp.core.auth import PaywallAuthenticator
-from payments_py.mcp.core.paywall import PaywallDecorator
+from payments_py.mcp.core.paywall import PaywallDecorator, _RedeemOnCloseAsyncIterator
 from payments_py.mcp.core.server_manager import (
     McpServerManager,
     _get_mcp_server_class,
@@ -57,18 +57,38 @@ SAMPLE_PAYLOAD = {
 class _FakeSettlement:
     """Mimics the facilitator settlement model (pydantic-like)."""
 
-    def __init__(self, success=True, transaction="0xabc", credits_redeemed="5"):
+    def __init__(
+        self,
+        success=True,
+        transaction="0xabc",
+        credits_redeemed="5",
+        remaining_balance="100",
+    ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
+        self.remaining_balance = remaining_balance
 
-    def model_dump(self, by_alias=False):
-        return {
+    def model_dump(self, by_alias=False, exclude_none=False):
+        data = {
             "success": self.success,
             "transaction": self.transaction,
             "network": "eip155:84532",
             "payer": "0x123",
+            ("creditsRedeemed" if by_alias else "credits_redeemed"): (
+                self.credits_redeemed
+            ),
+            ("remainingBalance" if by_alias else "remaining_balance"): (
+                self.remaining_balance
+            ),
+            # Null-valued fields the real model carries — used to exercise
+            # exclude_none in the spec receipt.
+            ("orderTx" if by_alias else "order_tx"): None,
+            ("errorReason" if by_alias else "error_reason"): None,
         }
+        if exclude_none:
+            data = {k: v for k, v in data.items() if v is not None}
+        return data
 
 
 class _FakeRequestContext:
@@ -229,12 +249,18 @@ class TestPaywallSettlementReceipt:
 
         meta = result["_meta"]
         # Spec settlement receipt.
-        assert meta[X402_PAYMENT_RESPONSE_META_KEY]["success"] is True
-        assert meta[X402_PAYMENT_RESPONSE_META_KEY]["transaction"] == "0xabc"
+        receipt = meta[X402_PAYMENT_RESPONSE_META_KEY]
+        assert receipt["success"] is True
+        assert receipt["transaction"] == "0xabc"
+        assert receipt["remainingBalance"] == "100"
+        # exclude_none keeps the receipt tight — null-valued keys are dropped.
+        assert "orderTx" not in receipt and "errorReason" not in receipt
         # Nevermined-namespaced observability.
-        assert meta[NEVERMINED_CREDITS_META_KEY]["success"] is True
-        assert meta[NEVERMINED_CREDITS_META_KEY]["creditsRedeemed"] == "5"
-        assert meta[NEVERMINED_CREDITS_META_KEY]["planId"] == "plan-123"
+        nvm = meta[NEVERMINED_CREDITS_META_KEY]
+        assert nvm["success"] is True
+        assert nvm["creditsRedeemed"] == "5"
+        assert nvm["remainingBalance"] == "100"
+        assert nvm["planId"] == "plan-123"
         # The tool content is preserved on success.
         assert result["content"][0]["text"] == "ok"
 
@@ -341,6 +367,10 @@ class TestAuthBuildsPaymentRequired:
         # A backend outage is surfaced as "plans unavailable", NOT a clean 402,
         # so the empty accepts list isn't read by the client as "free".
         assert exc_info.value.payment_required["error"] == "plans unavailable"
+        # The fallback accepts shape is exactly one entry with an empty plan id;
+        # guards against an empty-accepts regression at the integration point.
+        accepts = exc_info.value.payment_required["accepts"]
+        assert len(accepts) == 1 and accepts[0]["planId"] == ""
 
 
 # ---------------------------------------------------------------------------
@@ -499,6 +529,31 @@ class TestDispatcherInBand:
         assert any("deprecated" in m.lower() for m in logs)
         assert not result.isError
 
+    @pytest.mark.asyncio
+    async def test_inband_preserves_non_auth_request_headers(self):
+        # Regression: the in-band path must override ONLY the Authorization
+        # header and forward the rest of the request context to the user handler
+        # (tenant/tracing/custom headers), mirroring the TS sibling. Replacing
+        # `extra` wholesale silently dropped them on the in-band transport.
+        payments = _make_dispatch_payments(_FakeSettlement(success=True))
+        manager, recorded = await _build_dispatch_manager(payments)
+
+        result = await _invoke_call_tool(
+            manager,
+            inband_payload=SAMPLE_PAYLOAD,
+            session_headers={"x-tenant-id": "acme", "x-trace-id": "t-1"},
+        )
+
+        headers = recorded["extra"]["requestInfo"]["headers"]
+        # In-band token is injected as the Authorization header...
+        assert headers["authorization"] == "Bearer " + encode_access_token(
+            SAMPLE_PAYLOAD
+        )
+        # ...without dropping the rest of the request context.
+        assert headers["x-tenant-id"] == "acme"
+        assert headers["x-trace-id"] == "t-1"
+        assert not result.isError
+
 
 # ---------------------------------------------------------------------------
 # (ix) onRedeemError "propagate" raises Misconfiguration
@@ -529,3 +584,108 @@ class TestOnRedeemErrorPropagate:
             await protected({"q": "x"}, {"requestInfo": {"headers": {}}})
 
         assert getattr(exc_info.value, "code", None) == ERROR_CODES["Misconfiguration"]
+
+
+# ---------------------------------------------------------------------------
+# (x) settle primary->fallback retry uses the HTTP URL, not the verb
+# ---------------------------------------------------------------------------
+
+
+class TestSettleFallbackRetry:
+    @pytest.mark.asyncio
+    async def test_fallback_uses_http_url_not_verb(self):
+        http_url = "https://api.example.com/tools/premium"
+        settle_mock = MagicMock(
+            side_effect=[RuntimeError("primary boom"), _FakeSettlement(success=True)]
+        )
+        payments = MagicMock()
+        payments.environment_name = "staging_sandbox"
+        payments.facilitator.settle_permissions = settle_mock
+
+        authenticator = MagicMock()
+        authenticator.authenticate = AsyncMock(
+            return_value={
+                "token": "tok-abc",
+                "agent_id": "agent-9",
+                "logical_url": "mcp://srv/tools/premium",
+                "http_url": http_url,
+                "plan_id": "plan-123",
+                "subscriber_address": "0x123",
+            }
+        )
+        credits_context = MagicMock()
+        credits_context.resolve = MagicMock(return_value=5)
+
+        decorator = PaywallDecorator(payments, authenticator, credits_context)
+        decorator.configure({"agentId": "agent-9", "serverName": "srv"})
+
+        def handler(args, extra, ctx):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+        protected = decorator.protect(handler, {"name": "premium", "kind": "tool"})
+        result = await protected({"q": "x"}, {"requestInfo": {"headers": {}}})
+
+        # Primary (logical) settle threw; the fallback retried against the HTTP
+        # URL — not the literal verb. Guards the swapped fallbackEndpoint/httpVerb
+        # arg-order regression the TS sibling fixed.
+        assert settle_mock.call_count == 2
+        fallback_pr = settle_mock.call_args_list[1].kwargs["payment_required"]
+        assert fallback_pr.resource.url == http_url
+        assert fallback_pr.resource.url != "POST"
+        assert result["content"][0]["text"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# (xi) streaming redeem-on-close (settlement for streaming tools)
+# ---------------------------------------------------------------------------
+
+
+class TestStreamingRedeemOnClose:
+    @pytest.mark.asyncio
+    async def test_redeem_runs_on_stream_completion(self):
+        calls = []
+
+        async def src():
+            yield 1
+            yield 2
+
+        async def on_finally():
+            calls.append(1)
+            return {"success": True, "creditsRedeemed": "5"}
+
+        it = _RedeemOnCloseAsyncIterator(src(), on_finally)
+        assert [x async for x in it] == [1, 2]
+        assert calls == [1]
+        assert it._credits_result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_redeem_runs_once_on_early_close(self):
+        calls = []
+
+        async def src():
+            yield 1
+            yield 2
+            yield 3
+
+        async def on_finally():
+            calls.append(1)
+            return {"success": True}
+
+        it = _RedeemOnCloseAsyncIterator(src(), on_finally)
+        async for _ in it:
+            break
+        await it.aclose()
+        # Settled exactly once — not redeemed twice on early close.
+        assert calls == [1]
+
+
+# ---------------------------------------------------------------------------
+# (xii) in-band payload size bound (defense-in-depth on untrusted input)
+# ---------------------------------------------------------------------------
+
+
+class TestReadPaymentPayloadSizeBound:
+    def test_oversized_payload_rejected(self):
+        big = {"x402Version": 2, "blob": "A" * (64 * 1024 + 100)}
+        server = _FakeServer(_meta_with({X402_PAYMENT_META_KEY: big}))
+        assert read_payment_payload(server) is None

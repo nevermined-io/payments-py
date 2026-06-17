@@ -59,7 +59,13 @@ def read_payment_payload(mcp_server: Any) -> Optional[Dict[str, Any]]:
         return None
     extra = getattr(meta, "model_extra", None) or {}
     value = extra.get(X402_PAYMENT_META_KEY)
-    return value if isinstance(value, dict) else None
+    if not isinstance(value, dict):
+        return None
+    # Defense-in-depth: bound the size of the client-supplied payload before it
+    # is decoded/re-encoded into a token (the payload is untrusted input).
+    if len(json.dumps(value)) > 64 * 1024:
+        return None
+    return value
 
 
 def payment_required_result(payment_required: Dict[str, Any]) -> CallToolResult:
