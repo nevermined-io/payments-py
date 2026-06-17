@@ -369,9 +369,10 @@ class McpServerManager:
         self._log = config.get("onLog")
 
         try:
-            # Validate configuration
-            if not config.get("agentId"):
-                raise ValueError("agentId is required")
+            # Validate configuration. planId is required; agentId is optional
+            # (informational only — the facilitator resolves from the plan).
+            if not config.get("planId"):
+                raise ValueError("planId is required")
             if not config.get("port"):
                 raise ValueError("port is required")
 
@@ -408,7 +409,7 @@ class McpServerManager:
                 {
                     "payments": self._payments,
                     "baseUrl": base_url,
-                    "agentId": config["agentId"],
+                    "agentId": config.get("agentId"),
                     "environment": environment,
                     "serverName": config["serverName"],
                     "tools": list(self._tools.keys()),
@@ -544,9 +545,13 @@ class McpServerManager:
 
         config = self._config
 
-        # Configure MCP integration
+        # Configure MCP integration (planId required; agentId optional)
         self._payments.mcp.configure(
-            {"agentId": config["agentId"], "serverName": config["serverName"]}
+            {
+                "planId": config["planId"],
+                "agentId": config.get("agentId"),
+                "serverName": config["serverName"],
+            }
         )
 
         # Get the with_paywall function
@@ -847,7 +852,8 @@ class McpServerManager:
   Tools: {tools_list}
   Resources: {resources_list}
   Prompts: {prompts_list}
-  Agent ID: {config['agentId']}""")
+  Plan ID: {config['planId']}{f"""
+  Agent ID: {config['agentId']}""" if config.get('agentId') else ''}""")
 
 
 # =============================================================================

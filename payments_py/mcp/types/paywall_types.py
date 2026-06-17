@@ -9,7 +9,7 @@ class AuthResult(TypedDict, total=False):
     """Result returned by authentication routines using x402 tokens."""
 
     token: str
-    agentId: str
+    agentId: Optional[str]
     logicalUrl: str
     httpUrl: Optional[str]
     plan_id: str

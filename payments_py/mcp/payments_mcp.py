@@ -149,6 +149,7 @@ class PaymentsMCP:
         self,
         payments: Any,
         name: str = "payments-mcp-server",
+        plan_id: Optional[str] = None,
         agent_id: Optional[str] = None,
         version: str = "1.0.0",
         description: Optional[str] = None,
@@ -158,12 +159,15 @@ class PaymentsMCP:
         Args:
             payments: Initialized Payments instance.
             name: Server name (default: "payments-mcp-server").
-            agent_id: Nevermined agent DID for authentication.
+            plan_id: Nevermined plan ID the server charges against (required at start).
+            agent_id: Optional Nevermined agent DID (informational; the facilitator
+                resolves access from the plan + token).
             version: Server version (default: "1.0.0").
             description: Server description.
         """
         self.payments = payments
         self.name = name
+        self.plan_id = plan_id
         self.agent_id = agent_id
         self.version = version
         self.description = description
@@ -551,12 +555,13 @@ class PaymentsMCP:
             >>> # Later...
             >>> await result["stop"]()
         """
-        if not self.agent_id:
-            raise ValueError("agent_id is required. Set it in the constructor.")
+        if not self.plan_id:
+            raise ValueError("plan_id is required. Set it in the constructor.")
 
         config = {
             "port": port,
             "host": host,
+            "planId": self.plan_id,
             "agentId": self.agent_id,
             "serverName": self.name,
             "version": self.version,

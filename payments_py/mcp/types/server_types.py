@@ -153,7 +153,9 @@ class McpServerConfig(TypedDict, total=False):
 
     Attributes:
         port: Port to listen on (required).
-        agentId: Agent ID (DID) for Nevermined (required).
+        planId: Plan ID the server charges against (required).
+        agentId: Agent ID (DID) for Nevermined (optional; informational only —
+            the facilitator resolves access from the plan + token).
         serverName: Human-readable server name (required).
         baseUrl: Base URL of the server. Defaults to http://localhost:{port}.
         host: Host to bind to. Defaults to '0.0.0.0'.
@@ -170,7 +172,8 @@ class McpServerConfig(TypedDict, total=False):
     """
 
     port: int  # Required
-    agentId: str  # Required
+    planId: str  # Required
+    agentId: Optional[str]  # Optional (informational)
     serverName: str  # Required
     baseUrl: Optional[str]
     host: Optional[str]

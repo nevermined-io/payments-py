@@ -120,8 +120,9 @@ async def main():
     # Start the MCP server
     result = await payments.mcp.start({
         "port": 5001,
-        "agentId": "your-agent-id",
+        "planId": "your-plan-id",  # required
         "serverName": "my-mcp-server",
+        # "agentId": "your-agent-id",  # optional (informational only)
         "version": "1.0.0",
         "description": "My MCP server with Nevermined payments"
     })
@@ -142,9 +143,9 @@ For more control, use the advanced API:
 ### Configure and Protect Handlers
 
 ```python
-# Configure shared options
+# Configure shared options (planId required; agentId optional/informational)
 payments.mcp.configure({
-    "agentId": "your-agent-id",
+    "planId": "your-plan-id",
     "serverName": "my-mcp-server"
 })
 
@@ -284,7 +285,7 @@ payments.mcp.register_prompt(
 async def main():
     result = await payments.mcp.start({
         "port": 5001,
-        "agentId": "agent-123",
+        "planId": "plan-123",
         "serverName": "code-assistant-mcp",
         "version": "1.0.0"
     })
@@ -309,8 +310,9 @@ asyncio.run(main())
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `port` | `int` | Yes | Server port |
-| `agentId` | `str` | Yes | Nevermined agent DID |
+| `planId` | `str` | Yes | Nevermined plan ID the server charges against |
 | `serverName` | `str` | Yes | Human-readable name |
+| `agentId` | `str` | No | Nevermined agent DID (informational; the facilitator resolves access from the plan + token) |
 | `baseUrl` | `str` | No | Base URL (default: localhost) |
 | `version` | `str` | No | Server version |
 | `description` | `str` | No | Server description |

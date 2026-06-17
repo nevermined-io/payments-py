@@ -102,7 +102,9 @@ def test_validates_and_burns_with_minimal_mocks():
 def test_integration_edge_not_subscriber_triggers_payment_required():
     payments = PaymentsMinimal(subscriber=False)
     mcp = build_mcp_integration(payments)
-    mcp.configure({"agentId": "agent_id_hex", "serverName": "mcp-int"})
+    mcp.configure(
+        {"agentId": "agent_id_hex", "planId": "plan-123", "serverName": "mcp-int"}
+    )
 
     async def handler(_args):
         return {"content": [{"type": "text", "text": "hello"}]}
