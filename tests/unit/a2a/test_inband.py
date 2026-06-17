@@ -13,9 +13,6 @@ from a2a.types import Task, TaskState, TaskStatus, TaskStatusUpdateEvent
 from payments_py.a2a.inband import (
     extract_inband_token,
     get_inband_payment_payload,
-    get_inband_payment_status,
-    is_payment_submission,
-    resolve_token_for_message,
 )
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import HttpRequestContext
@@ -49,7 +46,7 @@ def _message_with_payload() -> SimpleNamespace:
 # ---------------------------------------------------------------------------
 # Helper extraction
 # ---------------------------------------------------------------------------
-def test_get_inband_payment_payload_and_status_from_dict_message():
+def test_get_inband_payment_payload_from_dict_message():
     msg = {
         "metadata": {
             x402Metadata.STATUS_KEY: "payment-submitted",
@@ -57,15 +54,12 @@ def test_get_inband_payment_payload_and_status_from_dict_message():
         }
     }
     assert get_inband_payment_payload(msg) == _payload()
-    assert get_inband_payment_status(msg) == "payment-submitted"
-    assert is_payment_submission(msg) is True
 
 
 def test_get_inband_payment_payload_absent_returns_none():
     assert get_inband_payment_payload(SimpleNamespace(metadata={})) is None
     assert get_inband_payment_payload(SimpleNamespace(metadata=None)) is None
     assert get_inband_payment_payload(None) is None
-    assert is_payment_submission(SimpleNamespace(metadata={})) is False
 
 
 # ---------------------------------------------------------------------------
@@ -89,28 +83,6 @@ def test_extract_inband_token_roundtrips_through_decode():
 
 def test_extract_inband_token_none_when_no_payload():
     assert extract_inband_token(SimpleNamespace(metadata={})) is None
-
-
-def test_resolve_token_prefers_inband_over_header():
-    msg = _message_with_payload()
-    http_ctx = SimpleNamespace(bearer_token="HEADER_TOKEN")
-    token, from_inband = resolve_token_for_message(msg, http_ctx)
-    assert from_inband is True
-    assert decode_access_token(token) == _payload()
-
-
-def test_resolve_token_falls_back_to_header():
-    msg = SimpleNamespace(metadata={})
-    http_ctx = SimpleNamespace(bearer_token="HEADER_TOKEN")
-    token, from_inband = resolve_token_for_message(msg, http_ctx)
-    assert from_inband is False
-    assert token == "HEADER_TOKEN"
-
-
-def test_resolve_token_none_when_neither_present():
-    token, from_inband = resolve_token_for_message(SimpleNamespace(metadata={}), None)
-    assert token is None
-    assert from_inband is False
 
 
 # ---------------------------------------------------------------------------

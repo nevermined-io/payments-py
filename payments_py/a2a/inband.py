@@ -31,7 +31,7 @@ over the base64 envelope, so the round-trip is byte-safe for the facilitator).
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 from payments_py.x402.a2a import x402Metadata
 from payments_py.x402.token import encode_access_token
@@ -67,15 +67,6 @@ def get_inband_payment_payload(message: Any) -> Optional[dict]:
     return payload if isinstance(payload, dict) else None
 
 
-def get_inband_payment_status(message: Any) -> Optional[str]:
-    """Extract the in-band ``x402.payment.status`` value from a message."""
-    meta = _message_metadata(message)
-    if not meta:
-        return None
-    status = meta.get(x402Metadata.STATUS_KEY)
-    return status if isinstance(status, str) else None
-
-
 def extract_inband_token(message: Any) -> Optional[str]:
     """Re-encode the in-band ``PaymentPayload`` into a base64 access token.
 
@@ -104,45 +95,7 @@ def extract_inband_token(message: Any) -> Optional[str]:
         return None
 
 
-def is_payment_submission(message: Any) -> bool:
-    """Whether a message carries an in-band x402 payment submission.
-
-    True when ``message.metadata`` contains the ``x402.payment.payload`` object,
-    regardless of whether the explicit ``payment-submitted`` status is set
-    (the payload presence is the load-bearing signal per the spec example).
-    """
-    return get_inband_payment_payload(message) is not None
-
-
-def resolve_token_for_message(
-    message: Any, http_ctx: Any
-) -> Tuple[Optional[str], bool]:
-    """Resolve the x402 access token for an incoming message.
-
-    Precedence (matches the MCP in-band transport): the in-band
-    ``x402.payment.payload`` wins; the deprecated ``payment-signature`` HTTP
-    header (carried on ``http_ctx``) is the fallback for one release.
-
-    Args:
-        message: The incoming A2A message.
-        http_ctx: The :class:`HttpRequestContext` for the request (may be None).
-
-    Returns:
-        A ``(token, from_inband)`` tuple. ``token`` is the base64 access token
-        (or None if neither source is available); ``from_inband`` indicates the
-        in-band path was used (so the server should emit spec receipts).
-    """
-    inband_token = extract_inband_token(message)
-    if inband_token is not None:
-        return inband_token, True
-    header_token = getattr(http_ctx, "bearer_token", None) if http_ctx else None
-    return header_token, False
-
-
 __all__ = [
     "get_inband_payment_payload",
-    "get_inband_payment_status",
     "extract_inband_token",
-    "is_payment_submission",
-    "resolve_token_for_message",
 ]
