@@ -342,6 +342,35 @@ class TestAuthBuildsPaymentRequired:
         assert "Basic" in str(exc_info.value)
 
     @pytest.mark.asyncio
+    async def test_no_agent_id_builds_accepts_from_configured_plan(self):
+        """agentId optional: with NO agentId + a configured planId, the real auth
+        path advertises the configured plan and the error stays 'payment required'
+        (not 'plans unavailable'); get_agent_plans must NOT be called."""
+        payments = MagicMock()
+        payments.environment_name = "staging_sandbox"
+        payments.agents.get_agent_plans = MagicMock(
+            side_effect=AssertionError(
+                "get_agent_plans must not be called without agentId"
+            )
+        )
+        auth = PaywallAuthenticator(payments)
+
+        with pytest.raises(PaymentRequiredError) as exc_info:
+            await auth.authenticate(
+                {"requestInfo": {"headers": {}}},  # no auth header -> payment-required
+                {"planId": "plan-x"},
+                None,  # no agentId
+                "srv",
+                "premium",
+                "tool",
+                {},
+            )
+
+        pr = exc_info.value.payment_required
+        assert [a.get("planId") for a in pr["accepts"]] == ["plan-x"]
+        assert pr["error"] == "payment required"
+
+    @pytest.mark.asyncio
     async def test_plan_lookup_error_still_valid_and_logged(self, caplog):
         payments = MagicMock()
         payments.environment_name = "staging_sandbox"

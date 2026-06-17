@@ -167,6 +167,17 @@ class TestProcessClientRegistration:
         assert response["client_id"] == "unit_agent_id_hex"
 
     @pytest.mark.asyncio
+    async def test_generates_client_id_when_no_agent_id(self):
+        """Plan-centric: with no agentId, mint a fresh string client_id.
+        RFC 7591 requires a string id — must never return None."""
+        response = await process_client_registration(
+            {"redirect_uris": ["http://localhost:3000/callback"]},
+            {"baseUrl": "http://localhost:3000", "environment": "sandbox"},
+        )
+        assert isinstance(response["client_id"], str) and response["client_id"]
+        assert response["client_id"].startswith("nvm-mcp-client-")
+
+    @pytest.mark.asyncio
     async def test_returns_redirect_uris(self, base_config):
         """Should return redirect_uris from request."""
         redirect_uris = [

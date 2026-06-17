@@ -247,9 +247,12 @@ async def process_client_registration(
     # Validate the request
     validate_client_registration_request(request)
 
-    # Use agentId as client_id (consistent for this MCP server)
-    client_id = config["agentId"]
     issued_at = int(time.time())
+    # agentId is optional under the plan-centric model; when absent, mint a fresh
+    # client_id for OAuth dynamic registration (RFC 7591 requires a string id).
+    client_id = (
+        config.get("agentId") or f"nvm-mcp-client-{issued_at}-{secrets.token_hex(8)}"
+    )
 
     # Determine auth method and if secret is needed
     auth_method = request.get("token_endpoint_auth_method") or "none"

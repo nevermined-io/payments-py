@@ -243,6 +243,13 @@ class TestBuildServerInfoResponse:
         assert info["endpoints"]["health"] == "http://localhost:3000/health"
         assert info["endpoints"]["register"] == "http://localhost:3000/register"
 
+    def test_omits_client_id_when_no_agent_id(self, base_config):
+        """Plan-centric: server-info OAuth omits client_id when no agentId is set
+        (must not advertise client_id: null)."""
+        cfg = {k: v for k, v in base_config.items() if k != "agentId"}
+        info = build_server_info_response(cfg)
+        assert "client_id" not in info["oauth"]
+
     def test_includes_oauth_endpoints(self, base_config):
         """Should include OAuth endpoints."""
         info = build_server_info_response(base_config)
