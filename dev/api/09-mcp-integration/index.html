@@ -1556,26 +1556,27 @@
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="c1"># Start the MCP server</span>
 <a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">payments</span><span class="o">.</span><span class="n">mcp</span><span class="o">.</span><span class="n">start</span><span class="p">({</span>
 <a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="mi">5001</span><span class="p">,</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="s2">&quot;agentId&quot;</span><span class="p">:</span> <span class="s2">&quot;your-agent-id&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="s2">&quot;planId&quot;</span><span class="p">:</span> <span class="s2">&quot;your-plan-id&quot;</span><span class="p">,</span>  <span class="c1"># required</span>
 <a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="s2">&quot;serverName&quot;</span><span class="p">:</span> <span class="s2">&quot;my-mcp-server&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;My MCP server with Nevermined payments&quot;</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="p">})</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Server running at: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;info&#39;</span><span class="p">][</span><span class="s1">&#39;baseUrl&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tools: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;info&#39;</span><span class="p">][</span><span class="s1">&#39;tools&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    <span class="c1"># Server runs until stopped</span>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="c1"># To stop: await payments.mcp.stop()</span>
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>        <span class="c1"># &quot;agentId&quot;: &quot;your-agent-id&quot;,  # optional (informational only)</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;My MCP server with Nevermined payments&quot;</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="p">})</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Server running at: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;info&#39;</span><span class="p">][</span><span class="s1">&#39;baseUrl&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tools: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;info&#39;</span><span class="p">][</span><span class="s1">&#39;tools&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>    <span class="c1"># Server runs until stopped</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    <span class="c1"># To stop: await payments.mcp.stop()</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div>
 <h2 id="advanced-api">Advanced API<a class="headerlink" href="#advanced-api" title="Permanent link">&para;</a></h2>
 <p>For more control, use the advanced API:</p>
 <h3 id="configure-and-protect-handlers">Configure and Protect Handlers<a class="headerlink" href="#configure-and-protect-handlers" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Configure shared options</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Configure shared options (planId required; agentId optional/informational)</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">payments</span><span class="o">.</span><span class="n">mcp</span><span class="o">.</span><span class="n">configure</span><span class="p">({</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="s2">&quot;agentId&quot;</span><span class="p">:</span> <span class="s2">&quot;your-agent-id&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="s2">&quot;planId&quot;</span><span class="p">:</span> <span class="s2">&quot;your-plan-id&quot;</span><span class="p">,</span>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="s2">&quot;serverName&quot;</span><span class="p">:</span> <span class="s2">&quot;my-mcp-server&quot;</span>
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="p">})</span>
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
@@ -1709,7 +1710,7 @@
 <a id="__codelineno-7-89" name="__codelineno-7-89" href="#__codelineno-7-89"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
 <a id="__codelineno-7-90" name="__codelineno-7-90" href="#__codelineno-7-90"></a>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">payments</span><span class="o">.</span><span class="n">mcp</span><span class="o">.</span><span class="n">start</span><span class="p">({</span>
 <a id="__codelineno-7-91" name="__codelineno-7-91" href="#__codelineno-7-91"></a>        <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="mi">5001</span><span class="p">,</span>
-<a id="__codelineno-7-92" name="__codelineno-7-92" href="#__codelineno-7-92"></a>        <span class="s2">&quot;agentId&quot;</span><span class="p">:</span> <span class="s2">&quot;agent-123&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-92" name="__codelineno-7-92" href="#__codelineno-7-92"></a>        <span class="s2">&quot;planId&quot;</span><span class="p">:</span> <span class="s2">&quot;plan-123&quot;</span><span class="p">,</span>
 <a id="__codelineno-7-93" name="__codelineno-7-93" href="#__codelineno-7-93"></a>        <span class="s2">&quot;serverName&quot;</span><span class="p">:</span> <span class="s2">&quot;code-assistant-mcp&quot;</span><span class="p">,</span>
 <a id="__codelineno-7-94" name="__codelineno-7-94" href="#__codelineno-7-94"></a>        <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;1.0.0&quot;</span>
 <a id="__codelineno-7-95" name="__codelineno-7-95" href="#__codelineno-7-95"></a>    <span class="p">})</span>
@@ -1746,16 +1747,22 @@
 <td>Server port</td>
 </tr>
 <tr>
-<td><code>agentId</code></td>
+<td><code>planId</code></td>
 <td><code>str</code></td>
 <td>Yes</td>
-<td>Nevermined agent DID</td>
+<td>Nevermined plan ID the server charges against</td>
 </tr>
 <tr>
 <td><code>serverName</code></td>
 <td><code>str</code></td>
 <td>Yes</td>
 <td>Human-readable name</td>
+</tr>
+<tr>
+<td><code>agentId</code></td>
+<td><code>str</code></td>
+<td>No</td>
+<td>Nevermined agent DID (informational; the facilitator resolves access from the plan + token)</td>
 </tr>
 <tr>
 <td><code>baseUrl</code></td>
