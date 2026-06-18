@@ -1802,7 +1802,7 @@
 <tr>
 <td><code>planId</code></td>
 <td><code>str</code></td>
-<td>Optional override for the plan ID (otherwise inferred from token)</td>
+<td>Per-handler plan ID override. A server-level <code>planId</code> (set via <code>configure</code>/<code>start</code>) is required; set this only to charge a different plan for this handler.</td>
 </tr>
 <tr>
 <td><code>maxAmount</code></td>
@@ -1812,13 +1812,13 @@
 <tr>
 <td><code>onRedeemError</code></td>
 <td><code>str</code></td>
-<td><code>"ignore"</code> (default) or <code>"propagate"</code> to raise on redemption failure</td>
+<td>On post-execution settlement failure: <code>"ignore"</code> (default) returns the in-band payment error; <code>"propagate"</code> raises a JSON-RPC error. Tool content is always suppressed either way (a paid result is never delivered without settlement).</td>
 </tr>
 </tbody>
 </table>
 <h2 id="in-band-x402-signaling-_meta">In-band x402 signaling (<code>_meta</code>)<a class="headerlink" href="#in-band-x402-signaling-_meta" title="Permanent link">&para;</a></h2>
 <p>The MCP transport follows the <a href="https://github.com/coinbase/x402/blob/main/specs/transports-v2/mcp.md">x402 v2 MCP transport specification</a>: payments are signalled <strong>in band</strong> through the MCP tool-call machinery, not via HTTP status codes or headers.</p>
-<p><strong>Request — payment payload.</strong> The client sends the x402 <code>PaymentPayload</code> as plain JSON in the tool-call request params under <code>_meta["x402/payment"]</code>:</p>
+<p><strong>Request — payment payload.</strong> The client sends the x402 <code>PaymentPayload</code> as plain JSON in the tool-call request params under <code>_meta["x402/payment"]</code>. This is the <strong>payment</strong> channel — separate from session auth: the MCP session is an OAuth-protected resource, so the client must also send an <code>Authorization: Bearer &lt;access_token&gt;</code> header when opening the transport to establish the session (<code>initialize</code> returns <code>401</code> without it).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p">{</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">&quot;method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tools/call&quot;</span><span class="p">,</span>
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
