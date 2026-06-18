@@ -116,7 +116,7 @@ class BasePaymentsAPI:
     @staticmethod
     def _resolve_environment(
         nvm_api_key: Optional[str], environment_option: Optional[str]
-    ) -> EnvironmentName:
+    ) -> str:
         """Resolve the effective SDK environment.
 
         Precedence (non-breaking deprecation of the ``environment`` option):
@@ -128,12 +128,16 @@ class BasePaymentsAPI:
            use emits a deprecation warning.
         3. Otherwise :data:`_DEFAULT_ENVIRONMENT` (``"custom"``).
 
+        Returns ``str`` rather than :data:`EnvironmentName`: a recognized prefix
+        yields a valid ``EnvironmentName``, but the deprecated-option fallback is
+        arbitrary caller input that :func:`get_environment` validates at runtime.
+
         Args:
             nvm_api_key: The NVM API key (its prefix drives resolution).
             environment_option: The deprecated ``environment`` init option.
 
         Returns:
-            The resolved :data:`EnvironmentName`.
+            The resolved environment name.
         """
         derived = environment_from_api_key(nvm_api_key)
         if derived is not None:

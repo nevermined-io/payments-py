@@ -105,9 +105,13 @@ def environment_from_api_key(nvm_api_key: Optional[str]) -> Optional[Environment
     return _API_KEY_PREFIX_TO_ENVIRONMENT.get(prefix)
 
 
-def get_environment(name: EnvironmentName) -> EnvironmentInfo:
+def get_environment(name: str) -> EnvironmentInfo:
     """
     Get the environment configuration by name.
+
+    Accepts ``str`` because the name may come from the deprecated, free-form
+    ``environment`` option (not just a known :data:`EnvironmentName`); unknown
+    names are rejected at runtime below.
 
     Args:
         name: The name of the environment.
