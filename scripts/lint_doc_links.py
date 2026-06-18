@@ -47,6 +47,14 @@ CONVERTIBLE_BASENAMES = set(LINK_MAPPING.keys())
 # which may carry an optional "title" we discard.
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
+# Reference-style link definition: `[label]: destination "optional title"` at
+# line start. The escaping target lives on the definition line (the `[text][ref]`
+# usage only names the label), so scanning definitions catches that target.
+REF_DEF_RE = re.compile(r"^\s{0,3}\[[^\]]+\]:\s+(\S+)")
+
+# HTML anchor: <a href="destination"> (single or double quoted).
+HTML_HREF_RE = re.compile(r"""<a\s[^>]*\bhref\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
+
 # Fenced code blocks open/close with ``` or ~~~ (optionally indented). Links
 # inside fences are code samples, not navigation — skip them.
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
@@ -82,7 +90,11 @@ def is_violation(destination: str) -> bool:
 
 
 def check_file(path: Path) -> list[tuple[int, str]]:
-    """Return [(line_number, destination), ...] for each violating link."""
+    """Return [(line_number, destination), ...] for each violating link.
+
+    Scans inline links ``[t](dest)``, reference-style definitions
+    ``[ref]: dest``, and HTML ``<a href="dest">`` — skipping fenced code.
+    """
     violations: list[tuple[int, str]] = []
     in_fence = False
     for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -91,8 +103,12 @@ def check_file(path: Path) -> list[tuple[int, str]]:
             continue
         if in_fence:
             continue
-        for match in LINK_RE.finditer(line):
-            destination = match.group(1)
+        destinations = [m.group(1) for m in LINK_RE.finditer(line)]
+        destinations += [m.group(1) for m in HTML_HREF_RE.finditer(line)]
+        ref_def = REF_DEF_RE.match(line)
+        if ref_def:
+            destinations.append(ref_def.group(1))
+        for destination in destinations:
             if is_violation(destination):
                 violations.append((lineno, destination.strip().split()[0]))
     return violations
@@ -104,8 +120,15 @@ def main() -> int:
         print(f"Error: docs directory not found at {docs_dir}", file=sys.stderr)
         return 1
 
+    md_files = sorted(docs_dir.glob("*.md"))
+    if not md_files:
+        # Fail closed: an empty docs/api/ means the layout moved or the glob is
+        # wrong — never report "clean" on zero inspected files.
+        print(f"Error: no markdown files found in {docs_dir}", file=sys.stderr)
+        return 1
+
     total = 0
-    for md_file in sorted(docs_dir.glob("*.md")):
+    for md_file in md_files:
         for lineno, destination in check_file(md_file):
             rel = md_file.relative_to(docs_dir.parent.parent)
             print(

@@ -62,7 +62,7 @@ python3 scripts/lint_doc_links.py
 
 # Full check — converts the docs, drops them into a clone of the docs site, and
 # runs the same `mintlify broken-links` the docs repo uses (internal links only).
-# Needs network (clones nevermined-io/docs) + Node/npx.
+# Needs network (clones nevermined-io/docs_mintlify) + Node/npx.
 bash scripts/check_synced_doc_links.sh
 ```
 
@@ -71,4 +71,9 @@ flakes). The staged Mintlify check runs the real checker against the whole site
 but fails **only on broken links sourced from the staged python pages**, so
 pre-existing breakage elsewhere on the docs site never fails your PR. Only
 **internal** links are gated; external-URL liveness is not (it is network-flaky).
+
+> **Repo admin note:** the `lint-links` (and `staged-mintlify-check`) jobs only
+> enforce once added to the branch-protection **required status checks** for
+> `main`. Until then the gate runs but is advisory — a red check won't block
+> merge. Add both to the required checks to make the gate binding.
 The same staged check is a hard gate in the release pipeline.

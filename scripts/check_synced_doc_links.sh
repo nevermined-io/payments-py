@@ -42,7 +42,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOURCE_DIR="$PROJECT_ROOT/docs/api"
 
-DOCS_REPO="${DOCS_REPO:-nevermined-io/docs}"
+# Canonical docs-site repo. Matches the publish-mintlify-docs.yml convention
+# (it checks out nevermined-io/docs_mintlify); GitHub redirects the alias to the
+# current name, so cloning works either way.
+DOCS_REPO="${DOCS_REPO:-nevermined-io/docs_mintlify}"
 DOCS_REF="${DOCS_REF:-main}"
 # Pin Mintlify for reproducibility. The docs repo itself installs floating
 # latest (npm i -g mintlify); bump this when that materially changes.
@@ -76,6 +79,15 @@ else
   echo "Cloning $DOCS_REPO@$DOCS_REF (shallow) …"
   git clone --depth 1 --branch "$DOCS_REF" \
     "https://github.com/$DOCS_REPO.git" "$DOCS_DIR"
+fi
+
+# Fail closed if the Mintlify project config is missing: `mintlify broken-links`
+# silently no-ops to exit 0 when run with no docs.json/mint.json at its root, so
+# without this assertion a docs-site layout change would make the gate pass
+# vacuously (symmetric to the api-reference/python guard below).
+if [ ! -f "$DOCS_DIR/docs.json" ] && [ ! -f "$DOCS_DIR/mint.json" ]; then
+  echo "Error: no docs.json/mint.json at $DOCS_DIR — docs-site layout changed?" >&2
+  exit 1
 fi
 
 TARGET_DIR="$DOCS_DIR/docs/api-reference/python"
