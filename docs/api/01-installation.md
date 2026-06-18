@@ -36,7 +36,8 @@ poetry add payments-py
 
 ### With Optional Dependencies
 
-For FastAPI/x402 middleware support:
+For FastAPI/x402 middleware and MCP server support (installs `fastapi`,
+`starlette`, and `uvicorn`):
 
 ```bash
 # Using pip
