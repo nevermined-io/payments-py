@@ -75,7 +75,11 @@ async def create_and_start_server(port: int = TEST_PORT, start_options=None):
 
     # Configure MCP
     mock_payments.mcp.configure(
-        {"agentId": "test-agent-123", "serverName": "test-mcp-server"}
+        {
+            "planId": "plan-123",
+            "agentId": "test-agent-123",
+            "serverName": "test-mcp-server",
+        }
     )
 
     # Register a test tool
@@ -130,6 +134,7 @@ async def create_and_start_server(port: int = TEST_PORT, start_options=None):
     # Start the server
     options = {
         "port": port,
+        "planId": "plan-123",
         "agentId": "test-agent-123",
         "serverName": "test-mcp-server",
         "version": "0.1.0",

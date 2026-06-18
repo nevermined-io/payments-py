@@ -26,7 +26,7 @@ class CreditsContextProvider:
             credits_option: Fixed integer or callable to compute credits.
             args: Handler arguments (tools/prompts) or variables (resources).
             result: Handler result value.
-            auth_result: Authentication metadata including token and logicalUrl.
+            auth_result: Authentication metadata including token and logical_url.
 
         Returns:
             The number of credits to redeem (defaults to 1 when not provided).
@@ -39,9 +39,9 @@ class CreditsContextProvider:
                 "result": result,
                 "request": {
                     "authHeader": f"Bearer {auth_result.get('token', '')}",
-                    "logicalUrl": auth_result.get("logicalUrl", ""),
+                    "logicalUrl": auth_result.get("logical_url", ""),
                     "toolName": self._extract_tool_name_from_url(
-                        auth_result.get("logicalUrl", "")
+                        auth_result.get("logical_url", "")
                     ),
                 },
             }

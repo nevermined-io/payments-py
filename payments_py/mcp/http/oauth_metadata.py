@@ -324,9 +324,12 @@ def build_server_info_response(
         "authorization_endpoint": oauth_urls["authorizationUri"],
         "token_endpoint": oauth_urls["tokenUri"],
         "jwks_uri": oauth_urls["jwksUri"],
-        "client_id": config["agentId"],
         "scopes": scopes,
     }
+    # agentId is optional under the plan-centric model; omit client_id when absent.
+    agent_id = config.get("agentId")
+    if agent_id:
+        oauth_info["client_id"] = agent_id
     if enable_oauth_discovery:
         oauth_info.update(
             {

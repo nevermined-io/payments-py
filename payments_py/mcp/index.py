@@ -158,10 +158,10 @@ class MCPIntegration:
             Authentication result dict
         """
         cfg: Dict[str, Any] = getattr(self._decorator, "config", {})  # type: ignore[assignment]
-        agent_id = cfg.get("agentId", "")
+        agent_id = cfg.get("agentId") or None
         server_name = cfg.get("serverName", "mcp-server")
         return await self._authenticator.authenticate_meta(
-            extra, {}, agent_id, server_name, method
+            extra, {"planId": cfg.get("planId")}, agent_id, server_name, method
         )
 
     def attach(self, server: _AttachableServer):
@@ -366,7 +366,9 @@ class MCPIntegration:
         Args:
             config: Server configuration dict (McpServerConfig) with:
                 - port: Port number (required)
-                - agentId: Nevermined agent DID (required)
+                - planId: Nevermined plan ID to charge against (required)
+                - agentId: Nevermined agent DID (optional; informational only —
+                  the facilitator resolves access from the plan + token)
                 - serverName: Human-readable server name (required)
                 - baseUrl: Base URL (optional, defaults to http://localhost:{port})
                 - version: Server version (optional, defaults to '1.0.0')

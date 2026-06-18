@@ -36,7 +36,11 @@ class PaywallDecorator:
         self._payments = payments
         self._auth = authenticator
         self._credits = credits_context
-        self.config: Dict[str, Any] = {"agentId": "", "serverName": "mcp-server"}
+        self.config: Dict[str, Any] = {
+            "agentId": "",
+            "planId": "",
+            "serverName": "mcp-server",
+        }
 
     def configure(self, options: Dict[str, Any]) -> None:
         """Configure decorator defaults.
@@ -53,6 +57,7 @@ class PaywallDecorator:
         merged.update(
             {
                 "agentId": options.get("agentId", merged.get("agentId", "")),
+                "planId": options.get("planId", merged.get("planId", "")),
                 "serverName": options.get(
                     "serverName", merged.get("serverName", "mcp-server")
                 ),
@@ -60,7 +65,7 @@ class PaywallDecorator:
         )
         # Carry any additional configuration keys (e.g., getContext, fastmcp)
         for k, v in options.items():
-            if k not in ("agentId", "serverName"):
+            if k not in ("agentId", "planId", "serverName"):
                 merged[k] = v
         self.config = merged
 
@@ -82,10 +87,13 @@ class PaywallDecorator:
         """
 
         async def wrapped(*all_args: Any) -> Any:
-            if not self.config.get("agentId"):
+            # planId is required (server-level config or per-tool override);
+            # agentId is optional (informational — the facilitator is plan-centric).
+            effective_plan_id = options.get("planId") or self.config.get("planId")
+            if not effective_plan_id:
                 raise create_rpc_error(
                     ERROR_CODES["Misconfiguration"],
-                    "Server misconfiguration: missing agentId",
+                    "Server misconfiguration: missing planId",
                 )
 
             kind = options.get("kind", "tool")
@@ -154,8 +162,8 @@ class PaywallDecorator:
 
             auth_result = await self._auth.authenticate(
                 extra,
-                options,
-                self.config["agentId"],
+                {**options, "planId": effective_plan_id},
+                self.config.get("agentId") or None,
                 self.config["serverName"],
                 name,
                 kind,

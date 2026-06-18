@@ -139,7 +139,9 @@ def _make_decorator(settlement):
     credits_context.resolve = MagicMock(return_value=5)
 
     decorator = PaywallDecorator(payments, authenticator, credits_context)
-    decorator.configure({"agentId": "agent-9", "serverName": "srv"})
+    decorator.configure(
+        {"agentId": "agent-9", "planId": "plan-123", "serverName": "srv"}
+    )
     return decorator
 
 
@@ -340,6 +342,35 @@ class TestAuthBuildsPaymentRequired:
         assert "Basic" in str(exc_info.value)
 
     @pytest.mark.asyncio
+    async def test_no_agent_id_builds_accepts_from_configured_plan(self):
+        """agentId optional: with NO agentId + a configured planId, the real auth
+        path advertises the configured plan and the error stays 'payment required'
+        (not 'plans unavailable'); get_agent_plans must NOT be called."""
+        payments = MagicMock()
+        payments.environment_name = "staging_sandbox"
+        payments.agents.get_agent_plans = MagicMock(
+            side_effect=AssertionError(
+                "get_agent_plans must not be called without agentId"
+            )
+        )
+        auth = PaywallAuthenticator(payments)
+
+        with pytest.raises(PaymentRequiredError) as exc_info:
+            await auth.authenticate(
+                {"requestInfo": {"headers": {}}},  # no auth header -> payment-required
+                {"planId": "plan-x"},
+                None,  # no agentId
+                "srv",
+                "premium",
+                "tool",
+                {},
+            )
+
+        pr = exc_info.value.payment_required
+        assert [a.get("planId") for a in pr["accepts"]] == ["plan-x"]
+        assert pr["error"] == "payment required"
+
+    @pytest.mark.asyncio
     async def test_plan_lookup_error_still_valid_and_logged(self, caplog):
         payments = MagicMock()
         payments.environment_name = "staging_sandbox"
@@ -433,7 +464,7 @@ async def _build_dispatch_manager(payments, *, on_log=None, on_redeem_error="ign
         return {"content": [{"type": "text", "text": "secret-paid-result"}]}
 
     manager = McpServerManager(payments)
-    manager._config = {"agentId": "agent-9", "serverName": "srv"}
+    manager._config = {"agentId": "agent-9", "planId": "plan-123", "serverName": "srv"}
     manager._log = on_log
     manager.register_tool(
         "premium",
@@ -617,7 +648,9 @@ class TestSettleFallbackRetry:
         credits_context.resolve = MagicMock(return_value=5)
 
         decorator = PaywallDecorator(payments, authenticator, credits_context)
-        decorator.configure({"agentId": "agent-9", "serverName": "srv"})
+        decorator.configure(
+            {"agentId": "agent-9", "planId": "plan-123", "serverName": "srv"}
+        )
 
         def handler(args, extra, ctx):
             return {"content": [{"type": "text", "text": "ok"}]}
@@ -689,3 +722,42 @@ class TestReadPaymentPayloadSizeBound:
         big = {"x402Version": 2, "blob": "A" * (64 * 1024 + 100)}
         server = _FakeServer(_meta_with({X402_PAYMENT_META_KEY: big}))
         assert read_payment_payload(server) is None
+
+
+# ---------------------------------------------------------------------------
+# (xiii) agentId optional — planId is the required server config (plan-centric)
+# ---------------------------------------------------------------------------
+
+
+class TestAgentIdOptional:
+    @pytest.mark.asyncio
+    async def test_works_with_plan_id_and_no_agent_id(self):
+        # A server configured with planId and NO agentId must NOT raise the
+        # misconfiguration error; verify/settle run plan-only (the facilitator is
+        # plan-centric — proven against staging).
+        decorator = _make_decorator(_FakeSettlement(success=True))
+        decorator.config = {"planId": "plan-123", "agentId": "", "serverName": "srv"}
+
+        def handler(args, extra, ctx):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+        protected = decorator.protect(handler, {"name": "premium", "kind": "tool"})
+        result = await protected({"q": "x"}, {"requestInfo": {"headers": {}}})
+
+        assert result["content"][0]["text"] == "ok"
+        assert result["_meta"][X402_PAYMENT_RESPONSE_META_KEY]["success"] is True
+        assert result["_meta"][NEVERMINED_CREDITS_META_KEY]["planId"] == "plan-123"
+
+    @pytest.mark.asyncio
+    async def test_missing_plan_id_raises_misconfiguration(self):
+        # No planId anywhere (config or per-tool) -> Misconfiguration "missing planId".
+        decorator = _make_decorator(_FakeSettlement(success=True))
+        decorator.config = {"planId": "", "agentId": "agent-9", "serverName": "srv"}
+
+        def handler(args, extra, ctx):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+        protected = decorator.protect(handler, {"name": "premium", "kind": "tool"})
+        with pytest.raises(Exception) as exc_info:
+            await protected({"q": "x"}, {"requestInfo": {"headers": {}}})
+        assert "missing planId" in str(exc_info.value)
