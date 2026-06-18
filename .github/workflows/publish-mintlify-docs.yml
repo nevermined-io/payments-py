@@ -112,6 +112,21 @@ jobs:
           COPIED_COUNT=$(find "$TARGET_DIR" -name "*.mdx" | wc -l)
           echo "✓ Copied $COPIED_COUNT documentation files"
 
+      # Backstop: run the real Mintlify link checker against the staged site
+      # BEFORE opening the docs PR, so a dead internal link (the class that
+      # broke nevermined-io/docs#234) fails the release here instead of leaving
+      # the auto-merged docs PR stuck. Internal links only — no --check-external
+      # (external liveness is network-flaky and must not block a release). The
+      # same check runs at PR time in docs-link-check.yml.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check staged docs for broken internal links
+        working-directory: docs_mintlify
+        run: npx --yes mintlify@4.2.629 broken-links
+
       - name: Get version and target info
         id: version
         run: |
