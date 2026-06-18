@@ -322,15 +322,15 @@ asyncio.run(main())
 | Option | Type | Description |
 |--------|------|-------------|
 | `credits` | `int` or `callable` | Credits to consume per call |
-| `planId` | `str` | Optional override for the plan ID (otherwise inferred from token) |
+| `planId` | `str` | Per-handler plan ID override. A server-level `planId` (set via `configure`/`start`) is required; set this only to charge a different plan for this handler. |
 | `maxAmount` | `int` | Max credits to verify during authentication (default: `1`) |
-| `onRedeemError` | `str` | `"ignore"` (default) or `"propagate"` to raise on redemption failure |
+| `onRedeemError` | `str` | On post-execution settlement failure: `"ignore"` (default) returns the in-band payment error; `"propagate"` raises a JSON-RPC error. Tool content is always suppressed either way (a paid result is never delivered without settlement). |
 
 ## In-band x402 signaling (`_meta`)
 
 The MCP transport follows the [x402 v2 MCP transport specification](https://github.com/coinbase/x402/blob/main/specs/transports-v2/mcp.md): payments are signalled **in band** through the MCP tool-call machinery, not via HTTP status codes or headers.
 
-**Request — payment payload.** The client sends the x402 `PaymentPayload` as plain JSON in the tool-call request params under `_meta["x402/payment"]`:
+**Request — payment payload.** The client sends the x402 `PaymentPayload` as plain JSON in the tool-call request params under `_meta["x402/payment"]`. This is the **payment** channel — separate from session auth: the MCP session is an OAuth-protected resource, so the client must also send an `Authorization: Bearer <access_token>` header when opening the transport to establish the session (`initialize` returns `401` without it).
 
 ```json
 {
