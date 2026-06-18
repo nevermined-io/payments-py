@@ -22,11 +22,10 @@ Before using the SDK, you need a Nevermined API Key:
 ```python
 from payments_py import Payments, PaymentOptions
 
-# Initialize with API key and environment
+# The environment is derived from your API key's prefix — just pass the key.
 payments = Payments.get_instance(
     PaymentOptions(
-        nvm_api_key="nvm:your-api-key-here",
-        environment="sandbox"
+        nvm_api_key="sandbox:your-api-key-here",
     )
 )
 
@@ -34,6 +33,15 @@ payments = Payments.get_instance(
 print(f"Connected to: {payments.environment.backend}")
 print(f"Account: {payments.account_address}")
 ```
+
+!!! note "`environment` is deprecated"
+    The `environment` option is **deprecated**. The SDK now derives the
+    environment from the API-key prefix (`<prefix>:<jwt>`) — a key minted for
+    sandbox starts with `sandbox:`, for production with `live:`, and so on. When
+    the prefix is recognized it always wins; passing `environment` is ignored
+    (with a warning). It is still accepted only as a fallback for local/custom
+    keys whose prefix the SDK doesn't recognize (see
+    [Custom Environment](#custom-environment)).
 
 ### Using Environment Variables
 
@@ -44,7 +52,6 @@ from payments_py import Payments, PaymentOptions
 payments = Payments.get_instance(
     PaymentOptions(
         nvm_api_key=os.getenv("NVM_API_KEY"),
-        environment=os.getenv("NVM_ENVIRONMENT", "sandbox")
     )
 )
 ```
@@ -55,8 +62,8 @@ The `PaymentOptions` class accepts the following parameters:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `nvm_api_key` | `str` | Yes | Your Nevermined API key |
-| `environment` | `str` | Yes | Environment name (see below) |
+| `nvm_api_key` | `str` | Yes | Your Nevermined API key (its prefix sets the environment) |
+| `environment` | `str` | No | **Deprecated.** Derived from the API-key prefix; only used as a fallback for unrecognized (local/custom) prefixes (see below) |
 | `app_id` | `str` | No | Application identifier |
 | `version` | `str` | No | Application version |
 | `api_version` | `str` | No | Backend API version sent as the `Nevermined-Version` header. Defaults to the version this SDK release targets (see below) |
@@ -68,8 +75,7 @@ from payments_py import Payments, PaymentOptions
 
 payments = Payments.get_instance(
     PaymentOptions(
-        nvm_api_key="nvm:your-api-key",
-        environment="sandbox",
+        nvm_api_key="sandbox:your-api-key",
         app_id="my-app",
         version="1.0.0",
         headers={"X-Custom-Header": "value"}
@@ -88,8 +94,7 @@ different backend contract explicitly:
 ```python
 payments = Payments.get_instance(
     PaymentOptions(
-        nvm_api_key="nvm:your-api-key",
-        environment="sandbox",
+        nvm_api_key="sandbox:your-api-key",
         api_version="1.1",  # override the pinned backend API version
     )
 )
@@ -100,15 +105,24 @@ for the list of versions and the changes between them.
 
 ## Environments
 
+The environment is determined by your API key's prefix — you don't select it
+explicitly. The prefix-to-environment mapping is:
+
+| API-key prefix | Environment |
+|----------------|-------------|
+| `sandbox:` | `sandbox` |
+| `live:` | `live` |
+| `sandbox-staging:` | `staging_sandbox` |
+| `live-staging:` | `staging_live` |
+
 ### Sandbox Environment (Testing)
 
-Use `sandbox` for development and testing:
+A key minted for sandbox starts with `sandbox:`:
 
 ```python
 payments = Payments.get_instance(
     PaymentOptions(
-        nvm_api_key="nvm:your-api-key",
-        environment="sandbox"
+        nvm_api_key="sandbox:your-api-key",
     )
 )
 ```
@@ -119,13 +133,12 @@ payments = Payments.get_instance(
 
 ### Live Environment (Production)
 
-Use `live` for production:
+A key minted for production starts with `live:`:
 
 ```python
 payments = Payments.get_instance(
     PaymentOptions(
-        nvm_api_key="nvm:your-api-key",
-        environment="live"
+        nvm_api_key="live:your-api-key",
     )
 )
 ```
@@ -136,7 +149,10 @@ payments = Payments.get_instance(
 
 ### Custom Environment
 
-For self-hosted or development setups:
+For self-hosted or local development setups, the API key's prefix won't be one
+the SDK recognizes, so it falls back to the (still-accepted) `environment`
+option. Pass `environment="custom"` to point the SDK at URLs from environment
+variables:
 
 ```python
 import os
@@ -147,8 +163,8 @@ os.environ["NVM_PROXY_URL"] = "http://localhost:443"
 
 payments = Payments.get_instance(
     PaymentOptions(
-        nvm_api_key="nvm:your-api-key",
-        environment="custom"
+        nvm_api_key="local:your-api-key",
+        environment="custom",  # fallback for unrecognized key prefixes
     )
 )
 ```
@@ -159,6 +175,8 @@ payments = Payments.get_instance(
 |-------------|-------------|
 | `sandbox` | Production sandbox (testing) |
 | `live` | Production mainnet |
+| `staging_sandbox` | Staging sandbox |
+| `staging_live` | Staging mainnet |
 | `custom` | Custom URLs via environment variables |
 
 ## Accessing Sub-APIs
