@@ -212,7 +212,7 @@ payment-required: eyJ4NDAy... (base64-encoded X402PaymentRequired)
 
 ## In-Band x402 v2 Payments (Standards Flow)
 
-Payment is signalled **in band** following the [Coinbase x402 v2 A2A transport spec](https://github.com/coinbase/x402/blob/main/specs/transports-v2/a2a.md) and the official [a2a-x402 extension](https://github.com/google-agentic-commerce/a2a-x402). The `X402A2AUtils` helpers (see [x402 README](../../payments_py/x402/README.md)) now power this live server flow — `PaymentsA2AServer` stamps and reads the metadata automatically, so the executor is unchanged. The handshake rides on A2A task/message metadata, correlated by `taskId` — no HTTP 402 is exchanged.
+Payment is signalled **in band** following the [Coinbase x402 v2 A2A transport spec](https://github.com/coinbase/x402/blob/main/specs/transports-v2/a2a.md) and the official [a2a-x402 extension](https://github.com/google-agentic-commerce/a2a-x402). The `X402A2AUtils` helpers (see [x402 README](https://github.com/nevermined-io/payments-py/blob/main/payments_py/x402/README.md)) now power this live server flow — `PaymentsA2AServer` stamps and reads the metadata automatically, so the executor is unchanged. The handshake rides on A2A task/message metadata, correlated by `taskId` — no HTTP 402 is exchanged.
 
 Lifecycle:
 
