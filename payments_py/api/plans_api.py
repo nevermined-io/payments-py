@@ -18,6 +18,7 @@ from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.organizations_api import resolve_publication_headers
 from payments_py.api.nvm_api import (
     API_URL_REGISTER_PLAN,
+    API_URL_GET_USER_PLANS,
     API_URL_GET_PLAN,
     API_URL_PLAN_BALANCE,
     API_URL_ORDER_PLAN,
@@ -292,6 +293,64 @@ class PlansAPI(BasePaymentsAPI):
             raise PaymentsError.validation(
                 f"Plan not found. {response.status_code} - {response.text}"
             )
+        return response.json()
+
+    def get_user_plans(
+        self,
+        org_id: Optional[str] = None,
+        pagination: Optional[PaginationOptions] = None,
+    ) -> Dict[str, Any]:
+        """
+        List the payment plans published by the current user.
+
+        Returns only the plans the authenticated account created — this is
+        account management ("my plans"), not a marketplace search, and never
+        returns other users' plans. Pass ``org_id`` to list every plan in an
+        organization you are a member of instead.
+
+        Analogous to ``plans.getPlans()`` in the TypeScript SDK; this method
+        also accepts ``org_id`` to scope the listing to an organization.
+
+        Args:
+            org_id: Optional organization id. When set, returns every plan in
+                that organization (the backend rejects orgs you are not an
+                active member of); when omitted, returns the plans authored by
+                the caller.
+            pagination: Optional pagination options (page, offset, sort_by,
+                sort_order).
+
+        Returns:
+            A paginated result of the shape
+            ``{"total", "page", "offset", "plans": [...]}``.
+
+        Raises:
+            PaymentsError: If the request fails.
+        """
+        if pagination is None:
+            pagination = PaginationOptions()
+
+        url = f"{self.environment.backend}{API_URL_GET_USER_PLANS}"
+        params: Dict[str, Any] = {
+            "page": pagination.page,
+            "offset": pagination.offset,
+        }
+        if pagination.sort_by:
+            params["sortBy"] = pagination.sort_by
+        if pagination.sort_order:
+            params["sortOrder"] = pagination.sort_order
+        if org_id:
+            params["orgId"] = org_id
+
+        response = requests.get(
+            url, params=params, **self.get_backend_http_options("GET")
+        )
+        if not response.ok:
+            try:
+                error = response.json()
+            except ValueError:
+                # Non-JSON error body (e.g. a gateway HTML 502).
+                error = {"message": response.text, "code": response.status_code}
+            raise PaymentsError.from_backend("Unable to get user plans", error)
         return response.json()
 
     def get_plan_balance(

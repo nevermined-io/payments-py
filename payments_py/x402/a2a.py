@@ -18,7 +18,7 @@ from typing import Optional, Union
 from a2a.types import Message, Task, TaskState, TaskStatus, TextPart
 
 # NOTE: PaymentStatus and x402Metadata are defined by the A2A x402 specification:
-# https://github.com/google-a2a/a2a-x402/blob/main/spec/v0.1/spec.md
+# https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2/spec.md
 #
 # These constants are also defined in x402_a2a.types.state, but we cannot import
 # from x402_a2a here as it would create a circular dependency (x402_a2a depends
@@ -28,12 +28,20 @@ from a2a.types import Message, Task, TaskState, TaskStatus, TextPart
 
 from enum import Enum
 
+# Official A2A x402 extension URI (v0.2). Declared in the agent card's
+# ``capabilities.extensions`` so generic, spec-compliant A2A clients can detect
+# and activate the in-band x402 payment flow. Matches the Coinbase x402 v2 A2A
+# transport spec: https://github.com/coinbase/x402/blob/main/specs/transports-v2/a2a.md
+A2A_X402_EXTENSION_URI = (
+    "https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2"
+)
+
 
 class PaymentStatus(str, Enum):
     """
     Protocol-defined payment states for A2A x402 flow.
 
-    As defined in: https://github.com/google-a2a/a2a-x402/blob/main/spec/v0.1/spec.md
+    As defined in: https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2/spec.md
     Section 6: State Management
 
     These values are part of the A2A x402 specification and must not be changed.
@@ -51,7 +59,7 @@ class x402Metadata:
     """
     Spec-defined metadata key constants for A2A x402 protocol.
 
-    As defined in: https://github.com/google-a2a/a2a-x402/blob/main/spec/v0.1/spec.md
+    As defined in: https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2/spec.md
     Section 6: State Management
 
     These keys are part of the A2A x402 specification and must not be changed.
@@ -462,4 +470,5 @@ __all__ = [
     "X402Metadata",  # Alias for x402Metadata
     "x402Metadata",  # Original protocol-defined name
     "PaymentStatus",  # Protocol-defined enum
+    "A2A_X402_EXTENSION_URI",  # Official v0.2 extension URI
 ]

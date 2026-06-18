@@ -105,14 +105,12 @@ def test_agent_card_endpoint(agent_card, dummy_payments, base_path):  # noqa: D4
     )
 
     client = TestClient(srv.app)
-    url = (
-        f"{base_path.rstrip('/')}/.well-known/agent.json"
-        if base_path != "/"
-        else "/.well-known/agent.json"
-    )
-    resp = client.get(url)
-    assert resp.status_code == 200
-    assert resp.json()["name"] == "PyAgent"
+    prefix = base_path.rstrip("/") if base_path != "/" else ""
+    # Canonical path (A2A >= 0.3) and legacy alias must both serve the card.
+    for well_known in (".well-known/agent-card.json", ".well-known/agent.json"):
+        resp = client.get(f"{prefix}/{well_known}")
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "PyAgent"
 
 
 flag = {"before": False, "after": False, "error": False}

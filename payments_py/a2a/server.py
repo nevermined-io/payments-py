@@ -14,6 +14,11 @@ from a2a.server.apps.jsonrpc.fastapi_app import A2AFastAPIApplication
 from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
 
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
+from payments_py.a2a.agent_card import (
+    AGENT_CARD_WELL_KNOWN_PATH,
+    LEGACY_AGENT_CARD_WELL_KNOWN_PATH,
+)
+from payments_py.a2a.inband import extract_inband_token
 from payments_py.a2a.types import AgentCard, HttpRequestContext
 from payments_py.payments import Payments
 from payments_py.x402.helpers import build_payment_required_for_plans
@@ -241,26 +246,8 @@ class PaymentsA2AServer:  # noqa: D101
                 environment=getattr(payments_service, "environment_name", None),
             )
 
-            bearer_token = request.headers.get("payment-signature")
-            if not bearer_token:
-                return _send_payment_required(
-                    payment_required, "Missing payment-signature header."
-                )
-
-            validation: Any
-            try:
-                validation = await handler.validate_request(
-                    agent_id=agent_id,
-                    bearer_token=bearer_token,
-                    url_requested=absolute_url,
-                    http_method_requested=request.method,
-                )
-            except Exception as exc:  # noqa: BLE001
-                return _send_payment_required(
-                    payment_required, f"Validation error: {exc}"
-                )
-
-            # Parse JSON body early to capture method / messageId / taskId
+            # Parse JSON body early to capture method / messageId / taskId and the
+            # in-band x402 payment payload (x402 v2 A2A transport).
             try:
                 body = await request.body()
             except Exception:  # noqa: BLE001
@@ -277,16 +264,95 @@ class PaymentsA2AServer:  # noqa: D101
                 body_json = {}
 
             method_name = body_json.get("method")
-            task_id = body_json.get("params", {}).get("message", {}).get(
-                "taskId"
-            ) or body_json.get("params", {}).get("taskId")
-            message_id = body_json.get("params", {}).get("message", {}).get("messageId")
+            params = body_json.get("params", {}) or {}
+            message_obj = params.get("message", {}) or {}
+            task_id = message_obj.get("taskId") or params.get("taskId")
+            message_id = message_obj.get("messageId")
+
+            # In-band token (x402 v2 A2A): re-encode the x402.payment.payload
+            # object into the base64 access token the facilitator consumes. The
+            # deprecated ``payment-signature`` header is the one-release fallback.
+            inband_token = extract_inband_token(message_obj)
+            header_token = request.headers.get("payment-signature")
+            # The in-band task lifecycle (input-required / payment-failed task)
+            # is the non-streaming ``message/send`` shape per the spec. Streaming
+            # keeps its prior behaviour (it can still settle an in-band token, but
+            # falls back to the HTTP-402 challenge when no token is present).
+            is_send = method_name == "message/send"
+
+            bearer_token = inband_token or header_token
+            from_inband = inband_token is not None
+
+            if not bearer_token:
+                # No token at all. For a standards-compliant in-band message/send
+                # this is the FIRST contact: let it reach the handler so the
+                # handler can answer with an ``input-required`` payment-required
+                # task (NOT an HTTP 402). Anything else keeps the deprecated
+                # HTTP-402 header challenge for one release.
+                if is_send:
+                    ctx = HttpRequestContext(
+                        bearer_token="",
+                        url_requested=absolute_url,
+                        http_method_requested=request.method,
+                        validation={},
+                        inband=True,
+                    )
+                    if task_id:
+                        handler.set_http_ctx_for_task(task_id, ctx)
+                    elif message_id:
+                        handler.set_http_ctx_for_message(message_id, ctx)
+
+                    if hooks and callable(hooks.get("beforeRequest")):
+                        await hooks["beforeRequest"](method_name, params, request)
+                    request._body = body  # restore consumed body for downstream
+                    try:
+                        response = await call_next(request)
+                        if hooks and callable(hooks.get("afterRequest")):
+                            await hooks["afterRequest"](method_name, response, request)
+                        return response
+                    except Exception as exc:  # noqa: BLE001
+                        if hooks and callable(hooks.get("onError")):
+                            await hooks["onError"](method_name, exc, request)
+                        raise
+                return _send_payment_required(
+                    payment_required, "Missing payment-signature header."
+                )
+
+            validation: Any
+            try:
+                validation = await handler.validate_request(
+                    agent_id=agent_id,
+                    bearer_token=bearer_token,
+                    url_requested=absolute_url,
+                    http_method_requested=request.method,
+                )
+            except Exception as exc:  # noqa: BLE001
+                # In-band clients expect the failure as a ``payment-failed`` task,
+                # not an HTTP 402. Reach the handler so it can emit one.
+                if from_inband and is_send:
+                    ctx = HttpRequestContext(
+                        bearer_token=bearer_token,
+                        url_requested=absolute_url,
+                        http_method_requested=request.method,
+                        validation={"verify_error": str(exc)},
+                        inband=True,
+                    )
+                    if task_id:
+                        handler.set_http_ctx_for_task(task_id, ctx)
+                    elif message_id:
+                        handler.set_http_ctx_for_message(message_id, ctx)
+                    request._body = body
+                    return await call_next(request)
+                return _send_payment_required(
+                    payment_required, f"Validation error: {exc}"
+                )
 
             ctx = HttpRequestContext(
                 bearer_token=bearer_token,
                 url_requested=absolute_url,
                 http_method_requested=request.method,
                 validation=validation,
+                inband=from_inband,
             )
 
             if task_id:
@@ -300,6 +366,7 @@ class PaymentsA2AServer:  # noqa: D101
                     method_name, body_json.get("params"), request
                 )
 
+            request._body = body  # restore consumed body for downstream handler
             try:
                 response = await call_next(request)
                 if hooks and callable(hooks.get("afterRequest")):
@@ -310,15 +377,15 @@ class PaymentsA2AServer:  # noqa: D101
                     await hooks["onError"](method_name, exc, request)
                 raise
 
-        # Basic .well-known/agent.json endpoint
+        # Agent card discovery: canonical path (A2A >= 0.3) + legacy alias, so
+        # both pre-spec and current A2A clients can discover the card.
         if expose_agent_card:
-            route_path = (
-                f"{base_path.rstrip('/')}/.well-known/agent.json"
-                if base_path != "/"
-                else "/.well-known/agent.json"
-            )
+            prefix = base_path.rstrip("/") if base_path != "/" else ""
 
-            @app.get(route_path, include_in_schema=False)
+            @app.get(f"{prefix}/{AGENT_CARD_WELL_KNOWN_PATH}", include_in_schema=False)
+            @app.get(
+                f"{prefix}/{LEGACY_AGENT_CARD_WELL_KNOWN_PATH}", include_in_schema=False
+            )
             async def get_agent_card() -> Any:  # noqa: D401, ANN201
                 return agent_card
 

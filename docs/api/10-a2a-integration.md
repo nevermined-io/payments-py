@@ -64,7 +64,7 @@ agent_card = build_payment_agent_card(
 
 ### Agent Card Structure
 
-The agent card includes a payment extension:
+The agent card declares two extensions: the Nevermined payment extension (pricing metadata) and the official a2a-x402 extension (`https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2`), which signals support for the standards-compliant in-band x402 v2 flow (see [In-Band x402 v2 Payments](#in-band-x402-v2-payments-standards-flow)). Both ship for one release; `urn:nevermined:payment` is dropped once clients use v0.2 only.
 
 ```json
 {
@@ -82,6 +82,9 @@ The agent card includes a payment extension:
           "planIds": ["plan-basic", "plan-premium"],
           "costDescription": "1-5 credits depending on review depth"
         }
+      },
+      {
+        "uri": "https://github.com/google-agentic-commerce/a2a-x402/blob/main/spec/v0.2"
       }
     ]
   }
@@ -185,7 +188,7 @@ asyncio.run(result.server.serve())
 | `port` | `int` | No | Server port (default: 8080) |
 | `task_store` | `TaskStore` | No | Task storage implementation |
 | `base_path` | `str` | No | Base URL path (default: "/") |
-| `expose_agent_card` | `bool` | No | Expose /.well-known/agent.json |
+| `expose_agent_card` | `bool` | No | Expose /.well-known/agent-card.json (+ legacy /.well-known/agent.json alias) |
 | `hooks` | `dict` | No | Request lifecycle hooks |
 | `async_execution` | `bool` | No | Enable async task execution |
 
@@ -207,6 +210,36 @@ payment-required: eyJ4NDAy... (base64-encoded X402PaymentRequired)
 {"error": {"code": -32001, "message": "Missing bearer token."}}
 ```
 
+## In-Band x402 v2 Payments (Standards Flow)
+
+Payment is signalled **in band** following the [Coinbase x402 v2 A2A transport spec](https://github.com/coinbase/x402/blob/main/specs/transports-v2/a2a.md) and the official [a2a-x402 extension](https://github.com/google-agentic-commerce/a2a-x402). The `X402A2AUtils` helpers (see [x402 README](../../payments_py/x402/README.md)) now power this live server flow — `PaymentsA2AServer` stamps and reads the metadata automatically, so the executor is unchanged. The handshake rides on A2A task/message metadata, correlated by `taskId` — no HTTP 402 is exchanged.
+
+Lifecycle:
+
+1. **Payment required** — a payment-gated `message/send` arrives with no payment. The server returns a Task with `status.state = "input-required"` and `status.message.metadata`:
+
+   ```json
+   {
+     "x402.payment.status": "payment-required",
+     "x402.payment.required": { "...": "X402PaymentRequired (accepts[] of plans)" }
+   }
+   ```
+
+2. **Payment submitted** — the client replies with a follow-up `message/send` whose `message.metadata` carries the payload, correlated via `message.taskId`:
+
+   ```json
+   {
+     "x402.payment.status": "payment-submitted",
+     "x402.payment.payload": { "...": "PaymentPayload" }
+   }
+   ```
+
+3. **Completed / failed** — on success the final Task carries `x402.payment.status: "payment-completed"` plus `x402.payment.receipts`. On failure it is `failed` / `payment-failed` with the error under `x402.payment.error`, and paid content is suppressed.
+
+Metadata keys: `x402.payment.status`, `x402.payment.required`, `x402.payment.payload`, `x402.payment.receipts`, `x402.payment.error`.
+
+> **Note:** The legacy `payment-signature` HTTP header flow still works but is now a **deprecated fallback, kept for one release**. New integrations should use the in-band metadata flow above.
+
 ## Client Usage
 
 ### Discovering Plans from the Agent Card
@@ -217,7 +250,8 @@ Consumers can fetch the agent card to discover available plans:
 import httpx
 
 async with httpx.AsyncClient() as client:
-    resp = await client.get("http://agent-url/.well-known/agent.json")
+    # Canonical path (A2A 0.3+); /.well-known/agent.json still works as a legacy alias
+    resp = await client.get("http://agent-url/.well-known/agent-card.json")
     card = resp.json()
 
 extensions = card["capabilities"]["extensions"]

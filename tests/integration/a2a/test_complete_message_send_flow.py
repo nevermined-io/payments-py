@@ -353,7 +353,12 @@ async def test_message_send_with_validation_failure():
 
 @pytest.mark.asyncio
 async def test_message_send_with_missing_bearer_token():
-    """Test message/send without bearer token."""
+    """message/send without a token yields an in-band payment-required task.
+
+    Standards path (x402 v2 A2A): no header token and no in-band payload on a
+    ``message/send`` returns an ``input-required`` task with the
+    ``X402PaymentRequired`` object in metadata — not an HTTP 402.
+    """
     mock_payments = MockPaymentsService()
 
     agent_card = {
@@ -402,14 +407,13 @@ async def test_message_send_with_missing_bearer_token():
     # No Authorization header
     response = client.post("/rpc", json=payload)
 
-    # Should return 402 (payment required) with payment-required header
-    assert response.status_code == 402
-    response_data = response.json()
-    assert "error" in response_data
-    assert "Missing payment-signature header" in response_data["error"]["message"]
-    assert "payment-required" in response.headers
-    # Verify the payment-required header contains planId and agentId
-    pr_data = json.loads(base64.b64decode(response.headers["payment-required"]))
+    # Should return an in-band payment-required task (not HTTP 402).
+    assert response.status_code == 200
+    task = response.json()["result"]
+    assert task["status"]["state"] == "input-required"
+    meta = task["status"]["message"]["metadata"]
+    assert meta["x402.payment.status"] == "payment-required"
+    pr_data = meta["x402.payment.required"]
     assert pr_data["accepts"][0]["planId"] == "test-plan"
     assert pr_data["accepts"][0]["extra"]["agentId"] == "test-agent-789"
 
