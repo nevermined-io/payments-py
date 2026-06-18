@@ -149,6 +149,7 @@ class PaymentsMCP:
         self,
         payments: Any,
         name: str = "payments-mcp-server",
+        *,
         plan_id: Optional[str] = None,
         agent_id: Optional[str] = None,
         version: str = "1.0.0",
