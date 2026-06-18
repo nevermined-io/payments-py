@@ -66,6 +66,9 @@ python3 scripts/lint_doc_links.py
 bash scripts/check_synced_doc_links.sh
 ```
 
-The lint is the blocking gate (deterministic, never flakes). The staged Mintlify
-check is a non-blocking PR backstop and a hard gate in the release pipeline. Only
+Both gates block. The lint is the first, always-on gate (deterministic, never
+flakes). The staged Mintlify check runs the real checker against the whole site
+but fails **only on broken links sourced from the staged python pages**, so
+pre-existing breakage elsewhere on the docs site never fails your PR. Only
 **internal** links are gated; external-URL liveness is not (it is network-flaky).
+The same staged check is a hard gate in the release pipeline.

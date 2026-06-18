@@ -23,11 +23,19 @@
 # by default and only pings external URLs with --check-external (NOT passed —
 # external liveness is network-flaky and must not block a release).
 #
+# Scoped to OUR breakage: the whole site may carry pre-existing broken links we
+# don't own. We replace ALL python pages with freshly-converted ones, so any
+# broken link whose SOURCE file is under docs/api-reference/python/ is breakage
+# introduced by these staged pages. We parse the checker output and fail ONLY on
+# python-sourced broken links — pre-existing breakage elsewhere on the site does
+# not fail this gate. (See the scoped-parse step at the end of this script.)
+#
 # Env knobs (all optional):
 #   DOCS_REPO       default nevermined-io/docs
 #   DOCS_REF        default main
 #   MINTLIFY_VERSION default 4.2.629 (pin; the docs repo tracks latest)
 #   DOCS_CHECKOUT   pre-cloned docs repo to reuse instead of cloning
+#   SCOPE_PREFIX    site path whose broken links we own (default the python tree)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,6 +47,8 @@ DOCS_REF="${DOCS_REF:-main}"
 # Pin Mintlify for reproducibility. The docs repo itself installs floating
 # latest (npm i -g mintlify); bump this when that materially changes.
 MINTLIFY_VERSION="${MINTLIFY_VERSION:-4.2.629}"
+# Broken links whose source file starts with this site path are ours to fix.
+SCOPE_PREFIX="${SCOPE_PREFIX:-docs/api-reference/python/}"
 
 if [ ! -d "$SOURCE_DIR" ]; then
   echo "Error: source docs not found at $SOURCE_DIR" >&2
@@ -92,5 +102,72 @@ fi
 echo "Running mintlify@$MINTLIFY_VERSION broken-links (internal links only) on the staged site …"
 echo ""
 cd "$DOCS_DIR"
-# Exits non-zero when it finds broken internal links.
-"${MINTLIFY[@]}" broken-links
+
+# Capture the full report (strip ANSI/spinner CRs), then scope to our pages.
+# Do not let mintlify's own non-zero exit abort the script — we decide pass/fail
+# from the SCOPED parse, since pre-existing site breakage must not fail us.
+REPORT="$WORK_DIR/broken-links.txt"
+set +e
+"${MINTLIFY[@]}" broken-links 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g' | tr -d '\r' > "$REPORT"
+set -e
+
+cat "$REPORT"
+echo ""
+
+# Parse the report and fail ONLY on broken links sourced from our staged pages.
+# Output shape (one source block per file with broken links):
+#   docs/api-reference/python/a2a-module.mdx
+#    ⎿  ../../payments_py/x402/README.md
+SCOPE_PREFIX="$SCOPE_PREFIX" python3 - "$REPORT" <<'PY'
+import os, re, sys
+
+prefix = os.environ["SCOPE_PREFIX"]
+source_re = re.compile(r"^(\S+\.mdx)\s*$")
+broken_re = re.compile(r"^\s*⎿\s+(.+?)\s*$")
+# Header the checker prints, e.g. "found 2 broken links in 2 files".
+header_re = re.compile(r"found\s+(\d+)\s+broken\s+links?\b")
+
+reported = None  # broken-link count from the checker's own summary line
+total = 0  # broken links our parser attributed to ANY source file
+scoped, current = [], None
+with open(sys.argv[1], encoding="utf-8") as fh:
+    for line in fh:
+        line = line.rstrip("\n")
+        h = header_re.search(line)
+        if h:
+            reported = int(h.group(1))
+            continue
+        m = source_re.match(line)
+        if m:
+            current = m.group(1)
+            continue
+        b = broken_re.match(line)
+        if b and current:
+            total += 1
+            if current.startswith(prefix):
+                scoped.append((current, b.group(1)))
+
+# False-green guard: the checker reported broken links but our parser attributed
+# none to any source — the output format drifted (e.g. a mintlify bump changed
+# the glyph/layout). Fail loudly rather than pass silently on an unparsed report.
+if reported and reported > 0 and total == 0:
+    print(
+        "✗ mintlify reported broken links but this script parsed none — the "
+        "broken-links output format has likely changed. Update the parser in "
+        "scripts/check_synced_doc_links.sh (the source/⎿ line patterns).",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+if scoped:
+    print(f"✗ {len(scoped)} broken internal link(s) introduced by the staged "
+          f"pages ({prefix}):")
+    for src, target in scoped:
+        print(f"  {src} -> {target}")
+    print("\nThese links resolve in-repo but are dead on the docs site. Use a "
+          "chapter link the converter rewrites, a site-relative /docs/... path, "
+          "or an absolute https://github.com/... URL. See CONTRIBUTING.md.")
+    sys.exit(1)
+
+print(f"✓ No broken internal links sourced from the staged pages ({prefix}).")
+PY
