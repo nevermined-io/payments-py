@@ -5,13 +5,31 @@ Provides common functionality such as parsing the NVM API Key and getting the ac
 
 import jwt
 import json
+import logging
+import warnings
 from typing import Optional, Dict, Any
 from enum import Enum
 from payments_py.common.api_version import API_VERSION_HEADER, LOCKED_API_VERSION
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
-from payments_py.environments import get_environment
+from payments_py.environments import (
+    EnvironmentName,
+    environment_from_api_key,
+    get_environment,
+)
 from payments_py.common.helper import dict_keys_to_camel
+
+logger = logging.getLogger(__name__)
+
+# Default environment when neither the API-key prefix nor the deprecated
+# ``environment`` option resolves one (e.g. a local/custom dev key with an
+# unrecognized prefix and no ``environment`` passed).
+_DEFAULT_ENVIRONMENT: EnvironmentName = "custom"
+
+# Guards the once-per-process stdlib logging nudge for the deprecated
+# ``environment`` option (``warnings.warn`` already dedupes by message+location;
+# this keeps the logging channel from repeating on every sub-API construction).
+_environment_deprecation_logged = False
 
 # Default timeout for HTTP requests in seconds (connect, read)
 DEFAULT_HTTP_TIMEOUT = (10, 30)
@@ -74,8 +92,15 @@ class BasePaymentsAPI:
         """
         self.nvm_api_key = options.nvm_api_key
         self.return_url = options.return_url or ""
-        self.environment = get_environment(options.environment)
-        self.environment_name = options.environment
+        # Preserve the raw (possibly None) ``environment`` option so internal
+        # re-inits (e.g. ``Payments._build_options``) reproduce the caller's
+        # intent without re-deriving ``custom`` into a spurious deprecation
+        # warning.
+        self._environment_option = options.environment
+        self.environment_name = self._resolve_environment(
+            options.nvm_api_key, options.environment
+        )
+        self.environment = get_environment(self.environment_name)
         self.app_id = options.app_id
         self.version = options.version
         # Backend API version (monorepo MAJOR.MINOR) declared on every
@@ -87,6 +112,75 @@ class BasePaymentsAPI:
         self.is_browser_instance = True
         self.current_organization_id: Optional[str] = options.organization_id
         self._parse_nvm_api_key()
+
+    @staticmethod
+    def _resolve_environment(
+        nvm_api_key: Optional[str], environment_option: Optional[str]
+    ) -> str:
+        """Resolve the effective SDK environment.
+
+        Precedence (non-breaking deprecation of the ``environment`` option):
+
+        1. The API-key prefix (``<prefix>:<jwt>``) when recognized — it always
+           wins. If ``environment_option`` was also passed it is ignored, and a
+           warning notes the override.
+        2. Otherwise the deprecated ``environment`` option, if provided — its
+           use emits a deprecation warning.
+        3. Otherwise :data:`_DEFAULT_ENVIRONMENT` (``"custom"``).
+
+        Returns ``str`` rather than :data:`EnvironmentName`: a recognized prefix
+        yields a valid ``EnvironmentName``, but the deprecated-option fallback is
+        arbitrary caller input that :func:`get_environment` validates at runtime.
+
+        Args:
+            nvm_api_key: The NVM API key (its prefix drives resolution).
+            environment_option: The deprecated ``environment`` init option.
+
+        Returns:
+            The resolved environment name.
+        """
+        derived = environment_from_api_key(nvm_api_key)
+        if derived is not None:
+            if environment_option is not None:
+                # Key prefix wins; the passed option is ignored. Note the
+                # override explicitly when the two disagree.
+                detail = (
+                    f"ignoring the passed '{environment_option}'"
+                    if environment_option != derived
+                    else "the passed value matched and was redundant"
+                )
+                BasePaymentsAPI._warn_environment_deprecated(
+                    "The 'environment' option is deprecated and is now derived "
+                    f"from the API-key prefix. Using '{derived}' from the API "
+                    f"key ({detail}). Remove the 'environment' option."
+                )
+            return derived
+
+        if environment_option is not None:
+            BasePaymentsAPI._warn_environment_deprecated(
+                "The 'environment' option is deprecated; the environment is now "
+                "derived from the API-key prefix. The key prefix was not "
+                f"recognized, so falling back to the passed '{environment_option}'."
+            )
+            return environment_option
+
+        return _DEFAULT_ENVIRONMENT
+
+    @staticmethod
+    def _warn_environment_deprecated(message: str) -> None:
+        """Emit the ``environment``-deprecation nudge.
+
+        Uses ``FutureWarning`` (not ``DeprecationWarning``) for runtime
+        visibility — ``DeprecationWarning`` is filtered out by default outside
+        ``__main__``, so agents under FastAPI / gunicorn / Docker workers would
+        never see it (same rationale as ``payments_py/x402/token.py``). Also
+        logs once per process so the nudge reaches log-based observability.
+        """
+        global _environment_deprecation_logged
+        warnings.warn(message, FutureWarning, stacklevel=3)
+        if not _environment_deprecation_logged:
+            logger.warning(message)
+            _environment_deprecation_logged = True
 
     def _parse_nvm_api_key(self) -> None:
         """

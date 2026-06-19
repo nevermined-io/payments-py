@@ -178,7 +178,11 @@ class Payments(BasePaymentsAPI):
         """Build PaymentOptions from current state."""
         return PaymentOptions(
             nvm_api_key=self.nvm_api_key,
-            environment=self.environment_name,
+            # Pass through the caller's original ``environment`` option (often
+            # None) rather than the resolved name — the key prefix re-derives
+            # the environment, and re-passing the resolved name would surface a
+            # spurious deprecation warning on this internal re-init.
+            environment=self._environment_option,
             app_id=self.app_id,
             version=self.version,
             api_version=self.api_version,
