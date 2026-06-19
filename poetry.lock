@@ -4462,7 +4462,7 @@ markers = {main = "extra == \"langchain\" or extra == \"langsmith\""}
 cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and python_version < \"3.14\"", "cffi (>=2.0.0b) ; platform_python_implementation != \"PyPy\" and python_version >= \"3.14\""]
 
 [extras]
-fastapi = ["fastapi", "starlette"]
+fastapi = ["fastapi", "starlette", "uvicorn"]
 langchain = ["langchain-core"]
 langsmith = ["fastapi", "langsmith", "starlette"]
 strands = ["strands-agents"]
@@ -4470,4 +4470,4 @@ strands = ["strands-agents"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "46e0eaa0ff5f06bafcbccc29e3ca3caf24dff099d50454d01c1b34055231c392"
+content-hash = "3cea49787ab8fc8656a783277dc7be42e7f56b911565c7a51d7dbb562a454683"
