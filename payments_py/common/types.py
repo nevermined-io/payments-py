@@ -15,7 +15,12 @@ class PaymentOptions(BaseModel):
     Options for initializing the Payments class.
 
     Args:
-        environment: Nevermined environment (e.g. ``"sandbox"``, ``"live"``).
+        environment: **Deprecated.** Nevermined environment (e.g.
+            ``"sandbox"``, ``"live"``). The environment is now derived from the
+            ``nvm_api_key`` prefix (``<prefix>:<jwt>``); when the prefix is
+            recognized it always wins and this option is ignored (with a
+            warning). Still accepted as a fallback for local/custom dev keys
+            whose prefix is unrecognized. Will be removed in a future release.
         nvm_api_key: NVM API key used to authenticate against the backend.
         return_url: Optional URL to return to after login (browser flows).
         app_id: Optional application identifier stamped on registered assets.
@@ -41,7 +46,7 @@ class PaymentOptions(BaseModel):
             via the ``organization_id`` argument on publish methods.
     """
 
-    environment: str
+    environment: Optional[str] = None
     nvm_api_key: Optional[str] = None
     return_url: Optional[str] = None
     app_id: Optional[str] = None

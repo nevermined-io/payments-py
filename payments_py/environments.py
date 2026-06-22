@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Optional
 
 
 @dataclass
@@ -68,9 +68,50 @@ Environments = {
 }
 
 
-def get_environment(name: EnvironmentName) -> EnvironmentInfo:
+# Known API-key prefixes mapped to their SDK environment name. This is the
+# inverse of the backend's ``addPrefixToToken`` (nvm-monorepo
+# ``apps/api/src/common/helpers/utils.ts``), which builds the prefix as
+# ``{environment}`` or ``{environment}-{deploymentName}`` (the deployment
+# segment is omitted for ``production``). So ``sandbox-staging`` is the
+# ``staging`` deployment of the ``sandbox`` environment → ``staging_sandbox``.
+# Keep this table in sync with the TS SDK (payments#399) — both must map the
+# same prefixes to the same environment names.
+_API_KEY_PREFIX_TO_ENVIRONMENT: dict[str, EnvironmentName] = {
+    "sandbox-staging": "staging_sandbox",
+    "live-staging": "staging_live",
+    "sandbox": "sandbox",
+    "live": "live",
+}
+
+
+def environment_from_api_key(nvm_api_key: Optional[str]) -> Optional[EnvironmentName]:
+    """Derive the SDK environment from an NVM API key's prefix.
+
+    Keys are ``<prefix>:<jwt>``. The prefix encodes the environment the key was
+    minted for (see ``_API_KEY_PREFIX_TO_ENVIRONMENT``). Returns the mapped
+    :data:`EnvironmentName`, or ``None`` when the key is missing, has no prefix,
+    or carries an unrecognized prefix (e.g. local/custom dev keys) — callers
+    fall back to the deprecated ``environment`` option in that case.
+
+    Args:
+        nvm_api_key: The NVM API key, or ``None``.
+
+    Returns:
+        The mapped environment name, or ``None`` if it cannot be derived.
+    """
+    if not nvm_api_key or ":" not in nvm_api_key:
+        return None
+    prefix = nvm_api_key.split(":", 1)[0].lower()
+    return _API_KEY_PREFIX_TO_ENVIRONMENT.get(prefix)
+
+
+def get_environment(name: str) -> EnvironmentInfo:
     """
     Get the environment configuration by name.
+
+    Accepts ``str`` because the name may come from the deprecated, free-form
+    ``environment`` option (not just a known :data:`EnvironmentName`); unknown
+    names are rejected at runtime below.
 
     Args:
         name: The name of the environment.
