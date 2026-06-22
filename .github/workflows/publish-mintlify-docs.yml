@@ -46,8 +46,8 @@ jobs:
           FILE_COUNT=$(find payments-py/docs/api -name "*.md" | wc -l)
           echo "Found $FILE_COUNT documentation files"
 
-          if [ "$FILE_COUNT" -lt 12 ]; then
-            echo "Error: Expected at least 12 documentation files, found $FILE_COUNT"
+          if [ "$FILE_COUNT" -lt 13 ]; then
+            echo "Error: Expected at least 13 documentation files, found $FILE_COUNT"
             exit 1
           fi
 
@@ -112,6 +112,24 @@ jobs:
           COPIED_COUNT=$(find "$TARGET_DIR" -name "*.mdx" | wc -l)
           echo "✓ Copied $COPIED_COUNT documentation files"
 
+      # Backstop: run the same scoped link check the PR gate uses against the
+      # staged site BEFORE opening the docs PR, so a dead internal link (the
+      # class that broke nevermined-io/docs#234) fails the release here instead
+      # of leaving the auto-merged docs PR stuck. The script reuses the docs site
+      # we already checked out (DOCS_CHECKOUT), re-converts docs/api/** with the
+      # same transform, and fails ONLY on broken links sourced from the staged
+      # python pages — internal links only, pre-existing site breakage ignored.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check staged docs for broken internal links
+        working-directory: payments-py
+        env:
+          DOCS_CHECKOUT: ${{ github.workspace }}/docs_mintlify
+        run: bash scripts/check_synced_doc_links.sh
+
       - name: Get version and target info
         id: version
         run: |
@@ -151,7 +169,7 @@ jobs:
             This PR updates the Python SDK documentation for version `${{ steps.version.outputs.version }}`.
 
             ### Changes
-            - ✅ Updated all 12 documentation files
+            - ✅ Updated all 13 documentation files
             - 📦 Source: [nevermined-io/payments-py@${{ github.sha }}](https://github.com/nevermined-io/payments-py/commit/${{ github.sha }})
             - 🏷️ Version: `${{ steps.version.outputs.version }}`
             - 🎯 Target Branch: `${{ steps.version.outputs.target_branch }}`
@@ -169,6 +187,7 @@ jobs:
             - `a2a-module.mdx`
             - `x402-module.mdx`
             - `langchain-module.mdx`
+            - `langsmith-deployment-module.mdx`
 
             ### Conversion Details
             - Converted from Markdown to Mintlify MDX format

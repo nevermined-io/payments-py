@@ -1,0 +1,61 @@
+name: Docs link check
+
+# Catch docs link-rot BEFORE release. The release pipeline
+# (publish-mintlify-docs.yml) converts docs/api/**.md into the docs site's
+# docs/api-reference/python/**.mdx and opens a PR against nevermined-io/docs.
+# A link that resolves in this repo but is dead on the site (e.g.
+# `](../../payments_py/x402/README.md)`) only fails AFTER release, when the
+# bot's PR trips Mintlify link-rot — it bit nevermined-io/docs#234 (v1.15.0).
+# These jobs fail fast at PR time instead.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/api/**'
+      - 'scripts/convert_to_mintlify.py'
+      - 'scripts/lint_doc_links.py'
+      - 'scripts/check_synced_doc_links.sh'
+      - '.github/workflows/docs-link-check.yml'
+  pull_request:
+    paths:
+      - 'docs/api/**'
+      - 'scripts/convert_to_mintlify.py'
+      - 'scripts/lint_doc_links.py'
+      - 'scripts/check_synced_doc_links.sh'
+      - '.github/workflows/docs-link-check.yml'
+
+jobs:
+  # HARD GATE: deterministic, network-free escaping-link lint. Rejects the exact
+  # class that broke the docs site (relative links escaping the synced tree /
+  # pointing at repo source). Runs in milliseconds, never flakes.
+  lint-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10.x'
+      - name: Lint synced-doc links (escaping / unmapped relative links)
+        run: python3 scripts/lint_doc_links.py
+
+  # FULL CHECK: replicate the docs-site sync, then run the REAL Mintlify checker
+  # against the whole staged site. Internal links only (no --check-external —
+  # external liveness is flaky and must not block). Fails ONLY on broken links
+  # sourced from the staged python pages (docs/api-reference/python/), so
+  # pre-existing breakage elsewhere on the site never fails this PR. Clones the
+  # public docs repo unauthenticated (no token). The deterministic lint above is
+  # the first, always-on gate; the release pipeline runs the same check too.
+  staged-mintlify-check:
+    runs-on: ubuntu-latest
+    needs: lint-links
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run staged Mintlify broken-links against the docs site
+        run: bash scripts/check_synced_doc_links.sh
