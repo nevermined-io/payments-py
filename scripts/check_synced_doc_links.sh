@@ -31,7 +31,7 @@
 # not fail this gate. (See the scoped-parse step at the end of this script.)
 #
 # Env knobs (all optional):
-#   DOCS_REPO       default nevermined-io/docs
+#   DOCS_REPO       default nevermined-io/docs_mintlify
 #   DOCS_REF        default main
 #   MINTLIFY_VERSION default 4.2.629 (pin; the docs repo tracks latest)
 #   DOCS_CHECKOUT   pre-cloned docs repo to reuse instead of cloning
@@ -121,6 +121,10 @@ cd "$DOCS_DIR"
 REPORT="$WORK_DIR/broken-links.txt"
 set +e
 "${MINTLIFY[@]}" broken-links 2>&1 | sed 's/\x1b\[[0-9;]*[A-Za-z]//g' | tr -d '\r' > "$REPORT"
+# The pipe's exit status is tr's (always 0), so grab mintlify's REAL exit code
+# from PIPESTATUS — used below to fail closed if mintlify crashed without
+# producing a parseable report.
+mintlify_rc="${PIPESTATUS[0]}"
 set -e
 
 cat "$REPORT"
@@ -130,7 +134,7 @@ echo ""
 # Output shape (one source block per file with broken links):
 #   docs/api-reference/python/a2a-module.mdx
 #    ⎿  ../../payments_py/x402/README.md
-SCOPE_PREFIX="$SCOPE_PREFIX" python3 - "$REPORT" <<'PY'
+SCOPE_PREFIX="$SCOPE_PREFIX" MINTLIFY_RC="$mintlify_rc" python3 - "$REPORT" <<'PY'
 import os, re, sys
 
 prefix = os.environ["SCOPE_PREFIX"]
@@ -158,6 +162,20 @@ with open(sys.argv[1], encoding="utf-8") as fh:
             total += 1
             if current.startswith(prefix):
                 scoped.append((current, b.group(1)))
+
+# Fail-closed guard: a non-zero mintlify exit with no broken-links header means
+# mintlify did not actually run (npx install failure, exec error, OOM) rather
+# than "ran and found links". Without this, an empty report → reported=None →
+# total==0 → the script would print "✓ no broken links" and exit 0 (fail-OPEN).
+# This is the sibling of the missing-docs.json / empty-dir / format-drift guards.
+rc = int(os.environ["MINTLIFY_RC"])
+if rc != 0 and reported is None:
+    print(
+        f"✗ mintlify broken-links produced no parseable report (exit {rc}) — "
+        "it likely failed to run. Failing closed.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
 
 # False-green guard: the checker reported broken links but our parser attributed
 # none to any source — the output format drifted (e.g. a mintlify bump changed

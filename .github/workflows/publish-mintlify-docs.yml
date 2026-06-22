@@ -46,8 +46,8 @@ jobs:
           FILE_COUNT=$(find payments-py/docs/api -name "*.md" | wc -l)
           echo "Found $FILE_COUNT documentation files"
 
-          if [ "$FILE_COUNT" -lt 12 ]; then
-            echo "Error: Expected at least 12 documentation files, found $FILE_COUNT"
+          if [ "$FILE_COUNT" -lt 13 ]; then
+            echo "Error: Expected at least 13 documentation files, found $FILE_COUNT"
             exit 1
           fi
 
@@ -169,7 +169,7 @@ jobs:
             This PR updates the Python SDK documentation for version `${{ steps.version.outputs.version }}`.
 
             ### Changes
-            - ✅ Updated all 12 documentation files
+            - ✅ Updated all 13 documentation files
             - 📦 Source: [nevermined-io/payments-py@${{ github.sha }}](https://github.com/nevermined-io/payments-py/commit/${{ github.sha }})
             - 🏷️ Version: `${{ steps.version.outputs.version }}`
             - 🎯 Target Branch: `${{ steps.version.outputs.target_branch }}`
@@ -187,6 +187,7 @@ jobs:
             - `a2a-module.mdx`
             - `x402-module.mdx`
             - `langchain-module.mdx`
+            - `langsmith-deployment-module.mdx`
 
             ### Conversion Details
             - Converted from Markdown to Mintlify MDX format
