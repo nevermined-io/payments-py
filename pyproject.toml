@@ -18,7 +18,7 @@ mkdocstrings = {version = "^0.29.0", extras = ["python"]}
 mike = "^2.1.0"
 pydantic = "^2.8.2"
 pyjwt = "^2.9.0"
-python-socketio = "5.14.3"
+python-socketio = "5.16.2"
 aiohttp = "^3.10.8"
 pytest-asyncio = "^1.2.0"
 websocket-client = "^1.8.0"
