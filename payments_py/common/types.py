@@ -682,6 +682,27 @@ class CreateUserResponse(BaseModel):
     already_member: bool = Field(default=False, alias="alreadyMember")
 
 
+class CustomerOnboardingResponse(BaseModel):
+    """Result of :meth:`OrganizationsAPI.onboard_customer` (nvm-monorepo #2418).
+
+    A white-label customer onboarded via ``POST /organizations/account`` with
+    ``as='customer'``. For a new account, or the org's returning customer, a
+    usable, scoped ``nvm_api_key`` is returned (``is_customer`` is ``True``). For
+    an existing account the org does NOT own, ``consent_required`` is ``True``
+    and no key or identity is surfaced — an email consent challenge was sent to
+    the owner; retry once they consent.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    consent_required: bool = Field(default=False, alias="consentRequired")
+    nvm_api_key: Optional[str] = Field(default=None, alias="nvmApiKey")
+    user_id: Optional[str] = Field(default=None, alias="userId")
+    user_wallet: Optional[str] = Field(default=None, alias="userWallet")
+    is_customer: bool = Field(default=False, alias="isCustomer")
+    customer_recorded: Optional[bool] = Field(default=None, alias="customerRecorded")
+
+
 class StripeAccountConnectResult(BaseModel):
     """Result of :meth:`OrganizationsAPI.connect_stripe_account`.
 
