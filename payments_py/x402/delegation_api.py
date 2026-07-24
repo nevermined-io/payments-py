@@ -41,7 +41,8 @@ class PaymentMethodSummary(BaseModel):
             address (erc4337), or email/username (PayPal/Venmo)
         exp_month: Expiration month (None / 0 for non-card methods)
         exp_year: Expiration year (None / 0 for non-card methods)
-        provider: One of 'stripe' | 'braintree' | 'visa' | 'erc4337'
+        provider: One of 'stripe' | 'braintree' | 'visa' | 'vgs' | 'erc4337'
+            ('vgs' = a card tokenised in the VGS vault, e.g. Visa Agentic)
     """
 
     id: str

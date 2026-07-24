@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 # Literals are validated at runtime by Pydantic on model construction.
 CardProvider = Literal["stripe", "braintree", "visa"]
 # All delegation providers — card providers above plus the crypto path.
-DelegationProvider = Literal["stripe", "braintree", "visa", "erc4337"]
+DelegationProvider = Literal["stripe", "braintree", "visa", "vgs", "erc4337"]
 # Currencies accepted by POST /api/v1/delegation/create. Mirrors the backend
 # DTO enum (apps/api/src/delegation/dto/create-delegation.dto.ts, #1677): fiat
 # 'usd'/'eur' for Stripe/Braintree/Visa, stablecoin 'usdc'/'eurc' for erc4337.
