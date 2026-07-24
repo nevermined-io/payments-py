@@ -299,9 +299,28 @@ class OrganizationsAPI(BasePaymentsAPI):
                 "Unable to onboard customer",
                 {"message": "missing walletResult in response"},
             )
-        # `model_validate` maps by JSON alias and tolerates both shapes: the
-        # keyed customer outcome and the opaque `{consentRequired: true}` (202).
-        return CustomerOnboardingResponse.model_validate(wallet)
+
+        result = CustomerOnboardingResponse.model_validate(wallet)
+        # Existing, non-owned account: opaque consent-pending outcome. The
+        # backend signals it with HTTP 202 and ``walletResult.consentRequired``;
+        # treat either as authoritative and return a clean object so no identity
+        # or key can leak even if the backend regresses.
+        if response.status_code == 202 or result.consent_required:
+            return CustomerOnboardingResponse(consent_required=True)
+        # New account or returning customer: a usable key MUST be present. A 2xx
+        # without one means a partial/unexpected payload — fail loudly rather
+        # than return a "success" carrying missing credentials.
+        if not result.nvm_api_key:
+            raise PaymentsError.from_backend(
+                "Unable to onboard customer",
+                {
+                    "message": (
+                        "onboarding completed but no API key was returned "
+                        "(unexpected backend response)"
+                    )
+                },
+            )
+        return result
 
     def get_members(
         self,

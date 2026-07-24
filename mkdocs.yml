@@ -92,6 +92,7 @@ nav:
     - 11. x402 Protocol: api/11-x402.md
     - 12. LangChain Integration: api/12-langchain-integration.md
     - 13. LangSmith Deployment: api/13-langsmith-deployment.md
+    - 14. Onboarding Customers: api/14-onboarding-customers.md
   - Reference:
     - Payments Class: reference/payments.md
     - Data Models: reference/data_models.md

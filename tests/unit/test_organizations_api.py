@@ -653,6 +653,34 @@ class TestOnboardCustomer:
         assert result.user_id is None
         assert result.user_wallet is None
 
+    def test_202_status_drives_consent_even_without_body_flag(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=202,
+                json={"success": True, "walletResult": {"alreadyMember": False}},
+            )
+            result = payments.organizations.onboard_customer("stranger@example.com")
+
+        assert result.consent_required is True
+        assert result.nvm_api_key is None
+
+    def test_raises_when_2xx_completes_without_a_usable_key(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=201,
+                # Partial/regressed payload: not consent-pending, yet no key.
+                json={
+                    "success": True,
+                    "walletResult": {"userId": "us-1", "isCustomer": True},
+                },
+            )
+            with pytest.raises(PaymentsError, match="no API key"):
+                payments.organizations.onboard_customer("customer@example.com")
+
     def test_raises_on_5xx(self):
         payments = _make_payments()
         with requests_mock.Mocker() as m:
