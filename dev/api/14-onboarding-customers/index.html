@@ -12,25 +12,31 @@
         <meta name="author" content="Nevermined">
       
       
+        <link rel="canonical" href="https://nevermined-io.github.io/payments-py/dev/api/14-onboarding-customers/">
       
+      
+        <link rel="prev" href="../13-langsmith-deployment/">
+      
+      
+        <link rel="next" href="../../reference/payments/">
       
       
         
       
       
-      <link rel="icon" href="/payments-py/dev/assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
-        <title>Nevermined Payments Python SDK</title>
+        <title>14. Onboarding Customers - Nevermined Payments Python SDK</title>
       
     
     
-      <link rel="stylesheet" href="/payments-py/dev/assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="/payments-py/dev/assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -49,11 +55,11 @@
       
     
     
-      <link rel="stylesheet" href="/payments-py/dev/assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="/payments-py/dev/overrides/extra.css">
+      <link rel="stylesheet" href="../../overrides/extra.css">
     
-    <script>__md_scope=new URL("/payments-py/dev",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -77,6 +83,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#onboarding-white-label-customers" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -91,7 +102,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="/payments-py/dev/." title="Nevermined Payments Python SDK" class="md-header__button md-logo" aria-label="Nevermined Payments Python SDK" data-md-component="logo">
+    <a href="../.." title="Nevermined Payments Python SDK" class="md-header__button md-logo" aria-label="Nevermined Payments Python SDK" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -111,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              
+              14. Onboarding Customers
             
           </span>
         </div>
@@ -224,7 +235,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="/payments-py/dev/." class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   
@@ -241,11 +252,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="/payments-py/dev/api/01-installation/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../01-installation/" class="md-tabs__link">
           
   
   
@@ -265,7 +278,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="/payments-py/dev/reference/payments/" class="md-tabs__link">
+        <a href="../../reference/payments/" class="md-tabs__link">
           
   
   
@@ -299,7 +312,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="/payments-py/dev/." title="Nevermined Payments Python SDK" class="md-nav__button md-logo" aria-label="Nevermined Payments Python SDK" data-md-component="logo">
+    <a href="../.." title="Nevermined Payments Python SDK" class="md-nav__button md-logo" aria-label="Nevermined Payments Python SDK" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -329,7 +342,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -353,28 +366,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
             
   
   
@@ -392,7 +408,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -410,7 +426,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/01-installation/" class="md-nav__link">
+      <a href="../01-installation/" class="md-nav__link">
         
   
   
@@ -438,7 +454,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/02-initializing-the-library/" class="md-nav__link">
+      <a href="../02-initializing-the-library/" class="md-nav__link">
         
   
   
@@ -466,7 +482,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/03-payment-plans/" class="md-nav__link">
+      <a href="../03-payment-plans/" class="md-nav__link">
         
   
   
@@ -494,7 +510,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/04-agents/" class="md-nav__link">
+      <a href="../04-agents/" class="md-nav__link">
         
   
   
@@ -522,7 +538,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/05-publishing-static-resources/" class="md-nav__link">
+      <a href="../05-publishing-static-resources/" class="md-nav__link">
         
   
   
@@ -550,7 +566,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/06-payments-and-balance/" class="md-nav__link">
+      <a href="../06-payments-and-balance/" class="md-nav__link">
         
   
   
@@ -578,7 +594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/07-querying-an-agent/" class="md-nav__link">
+      <a href="../07-querying-an-agent/" class="md-nav__link">
         
   
   
@@ -606,7 +622,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/08-validation-of-requests/" class="md-nav__link">
+      <a href="../08-validation-of-requests/" class="md-nav__link">
         
   
   
@@ -634,7 +650,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/09-mcp-integration/" class="md-nav__link">
+      <a href="../09-mcp-integration/" class="md-nav__link">
         
   
   
@@ -662,7 +678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/10-a2a-integration/" class="md-nav__link">
+      <a href="../10-a2a-integration/" class="md-nav__link">
         
   
   
@@ -690,7 +706,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/11-x402/" class="md-nav__link">
+      <a href="../11-x402/" class="md-nav__link">
         
   
   
@@ -718,7 +734,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/12-langchain-integration/" class="md-nav__link">
+      <a href="../12-langchain-integration/" class="md-nav__link">
         
   
   
@@ -746,7 +762,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/api/13-langsmith-deployment/" class="md-nav__link">
+      <a href="../13-langsmith-deployment/" class="md-nav__link">
         
   
   
@@ -771,10 +787,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="/payments-py/dev/api/14-onboarding-customers/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Onboarding Customers
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -790,6 +833,81 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#two-outcomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two outcomes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scoped-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scoped permissions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -863,7 +981,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/reference/payments/" class="md-nav__link">
+      <a href="../../reference/payments/" class="md-nav__link">
         
   
   
@@ -891,7 +1009,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/reference/data_models/" class="md-nav__link">
+      <a href="../../reference/data_models/" class="md-nav__link">
         
   
   
@@ -919,7 +1037,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/reference/environments/" class="md-nav__link">
+      <a href="../../reference/environments/" class="md-nav__link">
         
   
   
@@ -947,7 +1065,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/payments-py/dev/reference/langsmith/" class="md-nav__link">
+      <a href="../../reference/langsmith/" class="md-nav__link">
         
   
   
@@ -992,6 +1110,71 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#two-outcomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two outcomes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scoped-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scoped permissions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Errors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1004,8 +1187,104 @@
               
               <article class="md-content__inner md-typeset">
                 
-  <h1>404 - Not found</h1>
+                  
 
+
+  
+  
+
+
+<h1 id="onboarding-white-label-customers">Onboarding White-Label Customers<a class="headerlink" href="#onboarding-white-label-customers" title="Permanent link">&para;</a></h1>
+<p><code>payments.organizations.onboard_customer(email)</code> provisions a Nevermined
+account for one of your <strong>customers</strong> under your organization — without
+consuming a member seat — and returns a usable, scoped API key your
+organization can use to act on that customer's behalf (purchase plans, redeem
+credits). The customer is recorded in your organization's Customers list.</p>
+<p>This is the white-label counterpart to <code>create_member</code>: a member is a person
+who logs into your organization; a customer is an end user you transact for.
+Unlike <code>create_member</code> (which returns a non-usable lookup hash), this returns
+the <strong>real</strong> usable key.</p>
+<blockquote>
+<p>Admin-only. The call authenticates with your organization's API key.</p>
+</blockquote>
+<h2 id="two-outcomes">Two outcomes<a class="headerlink" href="#two-outcomes" title="Permanent link">&para;</a></h2>
+<p><code>onboard_customer</code> wraps <code>POST /api/v1/organizations/account</code> with
+<code>as="customer"</code> and returns a <code>CustomerOnboardingResponse</code> in one of two shapes:</p>
+<table>
+<thead>
+<tr>
+<th>Outcome</th>
+<th>When</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Key issued</strong></td>
+<td>The email is new, or already your organization's customer</td>
+<td><code>consent_required=False</code>, plus <code>nvm_api_key</code>, <code>user_id</code>, <code>user_wallet</code>, <code>is_customer</code>, <code>customer_recorded</code></td>
+</tr>
+<tr>
+<td><strong>Consent required</strong></td>
+<td>The email belongs to an account your organization does <strong>not</strong> own</td>
+<td><code>consent_required=True</code> only — no key, no identity. An email challenge is sent to the owner</td>
+</tr>
+</tbody>
+</table>
+<p>The consent path is deliberately opaque: the SDK surfaces neither the key nor
+the account's identity, so the call cannot be used to probe which emails have
+Nevermined accounts. Once the owner consents (via the emailed challenge), call
+<code>onboard_customer</code> again with the same email to complete onboarding and receive
+the key.</p>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py</span><span class="w"> </span><span class="kn">import</span> <span class="n">Payments</span><span class="p">,</span> <span class="n">PaymentOptions</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="n">ORG_ADMIN_API_KEY</span><span class="p">)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">organizations</span><span class="o">.</span><span class="n">onboard_customer</span><span class="p">(</span><span class="s2">&quot;customer@example.com&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">consent_required</span><span class="p">:</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="c1"># Existing account not owned by this org — a consent email was sent.</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="c1"># Retry once the owner approves.</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Consent pending — ask the customer to check their email.&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="c1"># Store this key; use it to transact for the customer.</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Onboarded:&quot;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">customer_payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        <span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">nvm_api_key</span><span class="p">)</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="p">)</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="c1"># customer_payments can now purchase plans and redeem credits.</span>
+</code></pre></div>
+<h2 id="scoped-permissions">Scoped permissions<a class="headerlink" href="#scoped-permissions" title="Permanent link">&para;</a></h2>
+<p>The issued key is intentionally limited: it can <strong>purchase and redeem credits</strong>,
+but cannot register agents or mint credits. This keeps a customer credential
+useful for consumption flows while withholding the builder-side capabilities
+that belong to your organization's own members.</p>
+<h2 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">&para;</a></h2>
+<p><code>onboard_customer</code> raises <code>PaymentsError</code> when <code>email</code> is empty, when the
+backend call fails, or when a completed (non-consent) onboarding returns no
+usable key — the SDK fails loudly rather than hand back a result with missing
+credentials.</p>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../06-payments-and-balance/">Payments and Balance</a> - Purchase plans and redeem credits with the issued key</li>
+<li><a href="../03-payment-plans/">Payment Plans</a> - The plans a customer can be onboarded onto</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
               </article>
             </div>
           
@@ -1048,10 +1327,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "/payments-py/dev", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "/payments-py/dev/assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="/payments-py/dev/assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
