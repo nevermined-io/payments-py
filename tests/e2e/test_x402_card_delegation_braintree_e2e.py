@@ -38,7 +38,13 @@ from payments_py.x402 import (
 from tests.e2e.utils import retry_with_backoff, wait_for_condition
 from tests.e2e.conftest import TEST_TIMEOUT
 
-# Skip unless explicitly enabled
+# Requires a Braintree sandbox card enrolled on the buyer's test account.
+# Disabled until a valid Braintree test card is available (staging test
+# accounts were rotated 2026-07-24). Re-enable by removing this pytestmark.
+pytestmark = pytest.mark.skip(
+    reason="Braintree card delegation needs a valid sandbox card enrolled on "
+    "the buyer test account (staging accounts rotated 2026-07-24)"
+)
 
 
 def _find_braintree_method(payment_methods):

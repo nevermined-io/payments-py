@@ -21,6 +21,7 @@ from payments_py.common.types import (
     AgentAPIAttributes,
     AgentMetadata,
     CreateUserResponse,
+    CustomerOnboardingResponse,
     MyMembership,
     OrganizationActivityEventType,
     OrganizationActivityFilters,
@@ -596,3 +597,102 @@ class TestConnectStripeAccount:
                 payments.organizations.connect_stripe_account(
                     "alice@example.com", "ZZ", "https://example.com/return"
                 )
+
+
+class TestOnboardCustomer:
+    def test_new_customer_returns_real_key_and_sends_as_customer(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=201,
+                json={
+                    "success": True,
+                    "message": "Customer onboarded",
+                    "walletResult": {
+                        "hash": "lookup-hash",
+                        "userId": "us-123",
+                        "userWallet": "0xabc",
+                        "nvmApiKey": "nvm-real-usable-key",
+                        "isCustomer": True,
+                        "customerRecorded": True,
+                        "alreadyMember": False,
+                    },
+                },
+            )
+            result = payments.organizations.onboard_customer("customer@example.com")
+            body = m.last_request.json()
+
+        # Opts into the customer outcome.
+        assert body == {"email": "customer@example.com", "as": "customer"}
+        assert isinstance(result, CustomerOnboardingResponse)
+        # The USABLE key is returned — not the (non-usable) lookup hash.
+        assert result.nvm_api_key == "nvm-real-usable-key"
+        assert result.is_customer is True
+        assert result.customer_recorded is True
+        assert result.user_id == "us-123"
+        assert result.consent_required is False
+
+    def test_existing_non_owned_account_requires_consent_opaque(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=202,
+                json={
+                    "success": True,
+                    "message": "Account already exists — consent email sent",
+                    "walletResult": {"alreadyMember": False, "consentRequired": True},
+                },
+            )
+            result = payments.organizations.onboard_customer("stranger@example.com")
+
+        # Opaque: consent pending, no key or identity disclosed.
+        assert result.consent_required is True
+        assert result.nvm_api_key is None
+        assert result.user_id is None
+        assert result.user_wallet is None
+
+    def test_202_status_drives_consent_even_without_body_flag(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=202,
+                json={"success": True, "walletResult": {"alreadyMember": False}},
+            )
+            result = payments.organizations.onboard_customer("stranger@example.com")
+
+        assert result.consent_required is True
+        assert result.nvm_api_key is None
+
+    def test_raises_when_2xx_completes_without_a_usable_key(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=201,
+                # Partial/regressed payload: not consent-pending, yet no key.
+                json={
+                    "success": True,
+                    "walletResult": {"userId": "us-1", "isCustomer": True},
+                },
+            )
+            with pytest.raises(PaymentsError, match="no API key"):
+                payments.organizations.onboard_customer("customer@example.com")
+
+    def test_raises_on_5xx(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=500,
+                json={"message": "boom"},
+            )
+            with pytest.raises(PaymentsError):
+                payments.organizations.onboard_customer("customer@example.com")
+
+    def test_rejects_empty_email(self):
+        payments = _make_payments()
+        with pytest.raises(PaymentsError):
+            payments.organizations.onboard_customer("")

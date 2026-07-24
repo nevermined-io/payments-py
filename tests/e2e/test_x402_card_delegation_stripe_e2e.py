@@ -30,6 +30,15 @@ from payments_py.x402 import (
 from tests.e2e.utils import retry_with_backoff, wait_for_condition
 from tests.e2e.conftest import TEST_TIMEOUT
 
+# Requires a Stripe-provider card enrolled on the buyer test account, which the
+# rotated staging accounts (2026-07-24) don't have — the enrolled card is a VGS
+# token (provider='vgs'), not 'stripe'. Skipped for parity with the already
+# `describe.skip`'d TS Stripe suite, until a Stripe test card is enrolled.
+pytestmark = pytest.mark.skip(
+    reason="Stripe card delegation needs a Stripe-provider card on the buyer "
+    "test account (staging accounts rotated 2026-07-24); parity with TS skip"
+)
+
 
 def _find_stripe_card(payment_methods):
     """Find the first Stripe payment method of type 'card'."""

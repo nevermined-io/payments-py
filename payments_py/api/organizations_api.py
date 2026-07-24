@@ -41,6 +41,7 @@ from payments_py.api.nvm_api import (
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import (
     CreateUserResponse,
+    CustomerOnboardingResponse,
     MyMembership,
     OrganizationActivityEvent,
     OrganizationActivityFilters,
@@ -247,6 +248,79 @@ class OrganizationsAPI(BasePaymentsAPI):
             user_wallet=wallet["userWallet"],
             already_member=bool(wallet.get("alreadyMember", False)),
         )
+
+    def onboard_customer(self, email: str) -> CustomerOnboardingResponse:
+        """Onboard a white-label customer into the caller's organization (#2418).
+
+        Wraps ``POST /api/v1/organizations/account`` with ``as='customer'``.
+        Admin-only on the backend. Provisions a Nevermined account for the
+        customer **without consuming a member seat** and returns a usable,
+        scoped NVM API key the org can use to transparently act on the
+        customer's behalf (purchase plans / redeem credits). Unlike
+        :meth:`create_member`, this returns the **real** usable key
+        (``walletResult.nvmApiKey``), not the non-usable lookup hash.
+
+        If the email already belongs to an account the org does NOT own, no key
+        is issued: the backend replies ``202`` and the result carries
+        ``consent_required=True`` (an email challenge was sent to the owner, and
+        the account's identity is deliberately not disclosed). Call again once
+        the owner has consented to complete onboarding.
+
+        Args:
+            email: The customer's email address.
+
+        Returns:
+            A :class:`CustomerOnboardingResponse` — either the issued key
+            (``nvm_api_key``, ``user_id``, ``user_wallet``, ``is_customer``,
+            ``customer_recorded``) or ``consent_required=True``.
+
+        Raises:
+            PaymentsError: If ``email`` is empty, the backend call fails, or the
+                response is missing the expected ``walletResult`` envelope.
+        """
+        if not email:
+            raise PaymentsError.validation("email is required")
+
+        body: Dict[str, Any] = {"email": email, "as": "customer"}
+        url = f"{self.environment.backend}{API_URL_CREATE_USER}"
+        options = self.get_backend_http_options("POST", body)
+        response = requests.post(url, **options)
+        if not response.ok:
+            try:
+                error = response.json()
+            except (ValueError, requests.exceptions.JSONDecodeError):
+                error = {"message": response.text, "code": response.status_code}
+            raise PaymentsError.from_backend("Unable to onboard customer", error)
+
+        data: Dict[str, Any] = response.json() or {}
+        wallet = data.get("walletResult")
+        if not isinstance(wallet, dict):
+            raise PaymentsError.from_backend(
+                "Unable to onboard customer",
+                {"message": "missing walletResult in response"},
+            )
+
+        result = CustomerOnboardingResponse.model_validate(wallet)
+        # Existing, non-owned account: opaque consent-pending outcome. The
+        # backend signals it with HTTP 202 and ``walletResult.consentRequired``;
+        # treat either as authoritative and return a clean object so no identity
+        # or key can leak even if the backend regresses.
+        if response.status_code == 202 or result.consent_required:
+            return CustomerOnboardingResponse(consent_required=True)
+        # New account or returning customer: a usable key MUST be present. A 2xx
+        # without one means a partial/unexpected payload — fail loudly rather
+        # than return a "success" carrying missing credentials.
+        if not result.nvm_api_key:
+            raise PaymentsError.from_backend(
+                "Unable to onboard customer",
+                {
+                    "message": (
+                        "onboarding completed but no API key was returned "
+                        "(unexpected backend response)"
+                    )
+                },
+            )
+        return result
 
     def get_members(
         self,
