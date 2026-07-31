@@ -5,7 +5,7 @@
 #
 # Why staged against the real site, not in-repo: the release pipeline
 # (publish-mintlify-docs.yml) converts docs/api/NN-*.md into
-# docs/api-reference/python/<slug>.mdx via scripts/convert_to_mintlify.py and
+# api-reference/python/<slug>.mdx via scripts/convert_to_mintlify.py and
 # opens a PR against nevermined-io/docs. A plain mkdocs build here would PASS and
 # miss site-only breakage, because relative links resolve differently once the
 # files live under api-reference/python/ on the site (this broke
@@ -13,11 +13,11 @@
 #
 # Unlike the TypeScript sibling (payments#401), the Python pages legitimately
 # link to OTHER docs-site sections via site-relative paths (e.g.
-# /docs/integrate/add-to-your-agent/langchain). Those resolve only against the
+# /integrate/add-to-your-agent/langchain). Those resolve only against the
 # *whole* site, so a self-contained mini-site of just the 13 python pages would
 # false-positive on the clean tree. We therefore clone the real (public)
 # nevermined-io/docs, drop the freshly-converted pages into
-# docs/api-reference/python/, and run `mintlify broken-links` on the whole site.
+# api-reference/python/, and run `mintlify broken-links` on the whole site.
 #
 # Hard-gates INTERNAL links only: `mintlify broken-links` checks internal links
 # by default and only pings external URLs with --check-external (NOT passed —
@@ -25,7 +25,7 @@
 #
 # Scoped to OUR breakage: the whole site may carry pre-existing broken links we
 # don't own. We replace ALL python pages with freshly-converted ones, so any
-# broken link whose SOURCE file is under docs/api-reference/python/ is breakage
+# broken link whose SOURCE file is under api-reference/python/ is breakage
 # introduced by these staged pages. We parse the checker output and fail ONLY on
 # python-sourced broken links — pre-existing breakage elsewhere on the site does
 # not fail this gate. (See the scoped-parse step at the end of this script.)
@@ -150,7 +150,7 @@ echo ""
 
 # Parse the report and fail ONLY on broken links sourced from our staged pages.
 # Output shape (one source block per file with broken links):
-#   docs/api-reference/python/a2a-module.mdx
+#   api-reference/python/a2a-module.mdx
 #    ⎿  ../../payments_py/x402/README.md
 SCOPE_PREFIX="$SCOPE_PREFIX" MINTLIFY_RC="$mintlify_rc" python3 - "$REPORT" <<'PY'
 import os, re, sys
@@ -213,7 +213,7 @@ if scoped:
     for src, target in scoped:
         print(f"  {src} -> {target}")
     print("\nThese links resolve in-repo but are dead on the docs site. Use a "
-          "chapter link the converter rewrites, a site-relative /docs/... path, "
+          "chapter link the converter rewrites, a site-relative /... path, "
           "or an absolute https://github.com/... URL. See CONTRIBUTING.md.")
     sys.exit(1)
 

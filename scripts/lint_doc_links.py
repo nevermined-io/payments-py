@@ -2,7 +2,7 @@
 """Cheap, deterministic, network-free escaping-link lint for docs/api/**.
 
 The release pipeline (`publish-mintlify-docs.yml`) converts every
-``docs/api/NN-*.md`` into ``docs/api-reference/python/<slug>.mdx`` on the docs
+``docs/api/NN-*.md`` into ``api-reference/python/<slug>.mdx`` on the docs
 site via ``scripts/convert_to_mintlify.py``. A link that resolves fine *inside
 this repo* — e.g. ``](../../payments_py/x402/README.md)`` — is dead once synced,
 because the site has no parent dirs and no repo source. This bit the docs site
@@ -15,7 +15,7 @@ from the transform it is guarding: add a chapter to ``LINK_MAPPING`` and the
 lint accepts a relative link to it automatically.
 
 A markdown link in ``docs/api/**`` is FLAGGED when its destination is a
-relative path (not an anchor, a site-relative ``/docs/...`` path, or an absolute
+relative path (not an anchor, a site-relative ``/...`` path, or an absolute
 URL) that the converter will NOT rewrite — i.e. it escapes the synced tree
 (contains a ``/``, including any ``../``) or its basename is not one of the
 chapter files in ``LINK_MAPPING``.
@@ -142,11 +142,11 @@ def main() -> int:
         print()
         print(
             "Synced docs (docs/api/**) are converted to the docs site under\n"
-            "  docs/api-reference/python/. A relative link that escapes that tree\n"
+            "  api-reference/python/. A relative link that escapes that tree\n"
             "  (../…) or points at repo source resolves in-repo but is dead on the\n"
             "  site (this broke nevermined-io/docs#234). Use a chapter link the\n"
             "  converter rewrites (e.g. 11-x402.md — see LINK_MAPPING in\n"
-            "  scripts/convert_to_mintlify.py), a site-relative path (/docs/…), or\n"
+            "  scripts/convert_to_mintlify.py), a site-relative path (/…), or\n"
             "  an absolute https://github.com/… URL instead. See CONTRIBUTING.md."
         )
         return 1
