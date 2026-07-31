@@ -91,12 +91,29 @@ jobs:
       - name: Copy documentation files
         run: |
           SOURCE_DIR="mintlify-output"
-          TARGET_DIR="docs_mintlify/docs/api-reference/python"
+
+          # Locate the python tree. The docs site used to nest its pages under a
+          # top-level `docs/`; nevermined-io/docs#257 flattened that to the repo
+          # root for base-path hosting. Detect the layout rather than hard-code
+          # it — and never mkdir the target, since creating a missing tree is how
+          # a layout change ends up silently publishing into a dead directory.
+          PYTHON_TREE=""
+          for candidate in "api-reference/python" "docs/api-reference/python"; do
+            if [ -d "docs_mintlify/$candidate" ]; then
+              PYTHON_TREE="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$PYTHON_TREE" ]; then
+            echo "Error: docs_mintlify has no api-reference/python (looked at the repo root and under docs/) — site layout changed?"
+            exit 1
+          fi
+
+          TARGET_DIR="docs_mintlify/$PYTHON_TREE"
+          echo "python_tree=$PYTHON_TREE" >> $GITHUB_ENV
 
           echo "Copying documentation from $SOURCE_DIR to $TARGET_DIR"
-
-          # Create target directory if it doesn't exist
-          mkdir -p "$TARGET_DIR"
 
           # Remove old mdx files (keep any other files that might exist)
           rm -f "$TARGET_DIR"/*.mdx
@@ -228,7 +245,7 @@ jobs:
           echo "- **Source Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Target Repository**: nevermined-io/docs_mintlify" >> $GITHUB_STEP_SUMMARY
           echo "- **Target Branch**: ${{ steps.version.outputs.target_branch }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Target Path**: docs/api-reference/python/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Path**: ${{ env.python_tree }}/" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.create_pr.outputs.pull-request-number }}" != "" ]; then

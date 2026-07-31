@@ -35,7 +35,8 @@
 #   DOCS_REF        default main
 #   MINTLIFY_VERSION default 4.2.629 (pin; the docs repo tracks latest)
 #   DOCS_CHECKOUT   pre-cloned docs repo to reuse instead of cloning
-#   SCOPE_PREFIX    site path whose broken links we own (default the python tree)
+#   SCOPE_PREFIX    site path whose broken links we own (default: the python
+#                   tree, auto-detected from the checkout's layout)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -50,8 +51,9 @@ DOCS_REF="${DOCS_REF:-main}"
 # Pin Mintlify for reproducibility. The docs repo itself installs floating
 # latest (npm i -g mintlify); bump this when that materially changes.
 MINTLIFY_VERSION="${MINTLIFY_VERSION:-4.2.629}"
-# Broken links whose source file starts with this site path are ours to fix.
-SCOPE_PREFIX="${SCOPE_PREFIX:-docs/api-reference/python/}"
+# SCOPE_PREFIX (broken links whose source file starts with this site path are
+# ours to fix) defaults to the python tree, resolved after the checkout — see
+# PYTHON_TREE below.
 
 if [ ! -d "$SOURCE_DIR" ]; then
   echo "Error: source docs not found at $SOURCE_DIR" >&2
@@ -90,11 +92,27 @@ if [ ! -f "$DOCS_DIR/docs.json" ] && [ ! -f "$DOCS_DIR/mint.json" ]; then
   exit 1
 fi
 
-TARGET_DIR="$DOCS_DIR/docs/api-reference/python"
-if [ ! -d "$TARGET_DIR" ]; then
-  echo "Error: $DOCS_REPO has no docs/api-reference/python — site layout changed?" >&2
+# Locate the python tree. The docs site used to nest its pages under a
+# top-level `docs/`; nevermined-io/docs#257 flattened that to the repo root for
+# base-path hosting. Detect the layout instead of hard-coding either one, so a
+# future move fails loudly rather than silently staging into the wrong place.
+PYTHON_TREE=""
+for candidate in "api-reference/python" "docs/api-reference/python"; do
+  if [ -d "$DOCS_DIR/$candidate" ]; then
+    PYTHON_TREE="$candidate"
+    break
+  fi
+done
+if [ -z "$PYTHON_TREE" ]; then
+  echo "Error: $DOCS_REPO has no api-reference/python (looked at the repo root" \
+       "and under docs/) — site layout changed?" >&2
   exit 1
 fi
+TARGET_DIR="$DOCS_DIR/$PYTHON_TREE"
+# Mintlify reports broken-link sources as paths relative to the project root,
+# so the scope prefix tracks whichever layout we just found.
+SCOPE_PREFIX="${SCOPE_PREFIX:-$PYTHON_TREE/}"
+echo "Docs-site python tree: $PYTHON_TREE"
 
 # 3. Replace the python pages with the freshly-converted ones (mirror the bot:
 #    rm old *.mdx, copy new). Other sections stay so site-relative links resolve.

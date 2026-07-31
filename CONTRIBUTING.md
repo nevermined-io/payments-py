@@ -41,7 +41,7 @@ In `docs/api/**`, use only:
   (`/docs/api-reference/python/x402-module`). The set of rewritable chapters is
   `LINK_MAPPING` in [`scripts/convert_to_mintlify.py`](./scripts/convert_to_mintlify.py);
   add a chapter there when you add a page.
-- ✅ **Site-relative links** to other docs-site pages — `[LangChain](/docs/integrate/add-to-your-agent/langchain)`.
+- ✅ **Site-relative links** to other docs-site pages — `[LangChain](/integrate/add-to-your-agent/langchain)`.
 - ✅ **In-page anchors** — `[Credits](#credits-semantics)`.
 - ✅ **Absolute GitHub URLs** for anything in the repo (source, tests, READMEs,
   other directories) — `[x402 README](https://github.com/nevermined-io/payments-py/blob/main/payments_py/x402/README.md)`.

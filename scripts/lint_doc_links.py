@@ -23,7 +23,7 @@ chapter files in ``LINK_MAPPING``.
 It intentionally ALLOWS:
   - convertible chapter links: ``](11-x402.md)``, ``](./11-x402.md#anchor)``
     (basename in LINK_MAPPING, no path separator) — rewritten to the site URL.
-  - site-relative paths: ``](/docs/integrate/...)`` — resolve on the site.
+  - site-relative paths: ``](/integrate/...)`` — resolve on the site.
   - in-page anchors: ``](#section)``.
   - absolute URLs: ``](https://...)``, ``](mailto:...)``.
 
