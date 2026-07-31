@@ -64,5 +64,5 @@ Detailed API documentation:
 ## Support
 
 - [GitHub Repository](https://github.com/nevermined-io/payments-py)
-- [Nevermined Documentation](https://docs.nevermined.app)
+- [Nevermined Documentation](https://nevermined.ai/docs)
 - [Nevermined App](https://nevermined.app)

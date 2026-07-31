@@ -7,7 +7,7 @@ against via the ``Nevermined-Version`` header, so the backend can keep
 serving the pinned contract (or reject the call) instead of silently
 changing response shapes under the SDK.
 
-See https://docs.nevermined.app/api-reference/versioning and
+See https://nevermined.ai/docs/development-guide/api-versioning and
 nvm-monorepo#1535 / nvm-monorepo#1938.
 """
 

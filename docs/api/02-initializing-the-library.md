@@ -100,7 +100,7 @@ payments = Payments.get_instance(
 )
 ```
 
-See the [API versioning reference](https://docs.nevermined.app/api-reference/versioning)
+See the [API versioning reference](https://nevermined.ai/docs/development-guide/api-versioning)
 for the list of versions and the changes between them.
 
 ## Environments

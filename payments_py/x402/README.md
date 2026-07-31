@@ -1036,7 +1036,7 @@ export NVM_ENVIRONMENT="sandbox"  # or "live"
 
 ## See Also
 
-- [Nevermined Documentation](https://docs.nevermined.app/) - Complete platform documentation
+- [Nevermined Documentation](https://nevermined.ai/docs) - Complete platform documentation
 - [X402 Protocol Specification](https://github.com/coinbase/x402) - X402 payment protocol
 - [A2A Protocol](https://github.com/google-a2a/a2a) - Agent-to-Agent communication
 - [A2A X402 Specification](https://github.com/google-a2a/a2a-x402) - X402 with A2A

@@ -180,7 +180,7 @@ use one of the two builders — never hand-build headers. Constants live in
 - `LOCKED_API_VERSION` (`"1.1"`) — the **backend API version** (nvm-monorepo
   `MAJOR.MINOR`) this SDK release is built and tested against. It is **not**
   the package version in `pyproject.toml`; the two move independently. See
-  https://docs.nevermined.app/api-reference/versioning and
+  https://nevermined.ai/docs/development-guide/api-versioning and
   nvm-monorepo#1535 / nvm-monorepo#1938.
 - `API_VERSION_HEADER` (`"Nevermined-Version"`) — the request header name.
 
