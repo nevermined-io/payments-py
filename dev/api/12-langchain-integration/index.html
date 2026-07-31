@@ -1742,7 +1742,7 @@
 
 <h1 id="langchain-integration">LangChain Integration<a class="headerlink" href="#langchain-integration" title="Permanent link">&para;</a></h1>
 <p>This guide covers the LangChain and LangGraph integration shipped in the <code>[langchain]</code> optional extra of <code>payments-py</code>. The module <code>payments_py.x402.langchain</code> provides the decorator, helpers, and exceptions for monetizing LangChain tools with the x402 protocol.</p>
-<p>For the conceptual walk-through (two integration approaches, the discovery-first flow, dynamic credits patterns), see the <a href="/docs/integrate/add-to-your-agent/langchain">LangChain integration guide</a>. For a runnable end-to-end demo, see the <a href="https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py"><code>langchain-paid-agent-py</code></a> tutorial.</p>
+<p>For the conceptual walk-through (two integration approaches, the discovery-first flow, dynamic credits patterns), see the <a href="/integrate/add-to-your-agent/langchain">LangChain integration guide</a>. For a runnable end-to-end demo, see the <a href="https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py"><code>langchain-paid-agent-py</code></a> tutorial.</p>
 <blockquote>
 <p>Looking to gate a <strong>LangSmith Deployment</strong> entry point (<code>/threads/{id}/runs/wait</code> etc.) rather than individual tools? See <a href="../13-langsmith-deployment/">LangSmith Deployment Middleware</a>. The two integrations are complementary: the decorator covered here protects tools the agent calls; the LangSmith Deployment middleware protects the agent's HTTP entry point.</p>
 </blockquote>
@@ -1894,7 +1894,7 @@
 </tr>
 </tbody>
 </table>
-<p>For the discovery → acquire → retry flow, see the <a href="/docs/integrate/add-to-your-agent/langchain">LangChain integration guide</a>.</p>
+<p>For the discovery → acquire → retry flow, see the <a href="/integrate/add-to-your-agent/langchain">LangChain integration guide</a>.</p>
 <h2 id="last_settlement"><code>last_settlement</code><a class="headerlink" href="#last_settlement" title="Permanent link">&para;</a></h2>
 <p>Returns the most recent <code>SettleResponse</code> produced by <code>@requires_payment</code> in this process. Use this after invoking a LangGraph runnable to recover the settlement receipt — <code>credits_redeemed</code>, <code>remaining_balance</code>, <code>transaction</code>, <code>network</code>, <code>payer</code> — without threading it back through <code>RunnableConfig.configurable</code> (which LangGraph copies per node, so the SDK's in-place write is not visible to the outer caller).</p>
 <h3 id="signature_1">Signature<a class="headerlink" href="#signature_1" title="Permanent link">&para;</a></h3>
@@ -2203,7 +2203,7 @@
 <p>Span emission failures are caught internally — observability is best-effort and will not interfere with the payment flow.</p>
 <h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="/docs/integrate/add-to-your-agent/langchain">LangChain integration guide</a> — conceptual walk-through, the two integration approaches (decorator vs. HTTP middleware), and the TypeScript variant.</li>
+<li><a href="/integrate/add-to-your-agent/langchain">LangChain integration guide</a> — conceptual walk-through, the two integration approaches (decorator vs. HTTP middleware), and the TypeScript variant.</li>
 <li><a href="../11-x402/">x402 Protocol</a> — token generation, delegation config, scheme resolution.</li>
 <li><a href="https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py"><code>tutorials/langchain-paid-agent-py</code></a> — the minimal end-to-end demo.</li>
 </ul>
