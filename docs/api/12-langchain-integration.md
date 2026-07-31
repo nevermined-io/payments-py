@@ -2,7 +2,7 @@
 
 This guide covers the LangChain and LangGraph integration shipped in the `[langchain]` optional extra of `payments-py`. The module `payments_py.x402.langchain` provides the decorator, helpers, and exceptions for monetizing LangChain tools with the x402 protocol.
 
-For the conceptual walk-through (two integration approaches, the discovery-first flow, dynamic credits patterns), see the [LangChain integration guide](/docs/integrate/add-to-your-agent/langchain). For a runnable end-to-end demo, see the [`langchain-paid-agent-py`](https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py) tutorial.
+For the conceptual walk-through (two integration approaches, the discovery-first flow, dynamic credits patterns), see the [LangChain integration guide](/integrate/add-to-your-agent/langchain). For a runnable end-to-end demo, see the [`langchain-paid-agent-py`](https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py) tutorial.
 
 > Looking to gate a **LangSmith Deployment** entry point (`/threads/{id}/runs/wait` etc.) rather than individual tools? See [LangSmith Deployment Middleware](./13-langsmith-deployment.md). The two integrations are complementary: the decorator covered here protects tools the agent calls; the LangSmith Deployment middleware protects the agent's HTTP entry point.
 
@@ -125,7 +125,7 @@ except PaymentRequiredError as err:
 |-----------|------|-------------|
 | `payment_required` | `X402PaymentRequired \| None` | The full x402 v2 payment-required payload. `accepts[0]` carries scheme / network / plan_id / agent_id. |
 
-For the discovery → acquire → retry flow, see the [LangChain integration guide](/docs/integrate/add-to-your-agent/langchain).
+For the discovery → acquire → retry flow, see the [LangChain integration guide](/integrate/add-to-your-agent/langchain).
 
 ## `last_settlement`
 
@@ -386,6 +386,6 @@ Span emission failures are caught internally — observability is best-effort an
 
 ## Related
 
-- [LangChain integration guide](/docs/integrate/add-to-your-agent/langchain) — conceptual walk-through, the two integration approaches (decorator vs. HTTP middleware), and the TypeScript variant.
+- [LangChain integration guide](/integrate/add-to-your-agent/langchain) — conceptual walk-through, the two integration approaches (decorator vs. HTTP middleware), and the TypeScript variant.
 - [x402 Protocol](11-x402.md) — token generation, delegation config, scheme resolution.
 - [`tutorials/langchain-paid-agent-py`](https://github.com/nevermined-io/tutorials/tree/main/langchain-paid-agent-py) — the minimal end-to-end demo.

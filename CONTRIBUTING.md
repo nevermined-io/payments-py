@@ -20,7 +20,7 @@ numbered chapters (`NN-<slug>.md`). On release, `publish-mintlify-docs.yml`
 converts them to Mintlify MDX via
 [`scripts/convert_to_mintlify.py`](./scripts/convert_to_mintlify.py) and opens a
 PR against the docs site (`nevermined-io/docs`), publishing them at
-`docs/api-reference/python/<slug>`.
+`api-reference/python/<slug>`.
 
 When you change a public API, update the matching chapter in `docs/api/` (see
 [`CLAUDE.md`](./CLAUDE.md) for which files map to which APIs) and rebuild with
@@ -38,10 +38,10 @@ In `docs/api/**`, use only:
 
 - ✅ **Chapter links** to other `docs/api/` pages, by filename — `[x402](11-x402.md)`
   or `[x402](./11-x402.md#section)`. The converter rewrites these to the site URL
-  (`/docs/api-reference/python/x402-module`). The set of rewritable chapters is
+  (`/api-reference/python/x402-module`). The set of rewritable chapters is
   `LINK_MAPPING` in [`scripts/convert_to_mintlify.py`](./scripts/convert_to_mintlify.py);
   add a chapter there when you add a page.
-- ✅ **Site-relative links** to other docs-site pages — `[LangChain](/docs/integrate/add-to-your-agent/langchain)`.
+- ✅ **Site-relative links** to other docs-site pages — `[LangChain](/integrate/add-to-your-agent/langchain)`.
 - ✅ **In-page anchors** — `[Credits](#credits-semantics)`.
 - ✅ **Absolute GitHub URLs** for anything in the repo (source, tests, READMEs,
   other directories) — `[x402 README](https://github.com/nevermined-io/payments-py/blob/main/payments_py/x402/README.md)`.

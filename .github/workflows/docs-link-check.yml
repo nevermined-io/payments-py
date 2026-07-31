@@ -2,7 +2,7 @@ name: Docs link check
 
 # Catch docs link-rot BEFORE release. The release pipeline
 # (publish-mintlify-docs.yml) converts docs/api/**.md into the docs site's
-# docs/api-reference/python/**.mdx and opens a PR against nevermined-io/docs.
+# api-reference/python/**.mdx and opens a PR against nevermined-io/docs.
 # A link that resolves in this repo but is dead on the site (e.g.
 # `](../../payments_py/x402/README.md)`) only fails AFTER release, when the
 # bot's PR trips Mintlify link-rot — it bit nevermined-io/docs#234 (v1.15.0).
@@ -42,7 +42,7 @@ jobs:
   # FULL CHECK: replicate the docs-site sync, then run the REAL Mintlify checker
   # against the whole staged site. Internal links only (no --check-external —
   # external liveness is flaky and must not block). Fails ONLY on broken links
-  # sourced from the staged python pages (docs/api-reference/python/), so
+  # sourced from the staged python pages (api-reference/python/), so
   # pre-existing breakage elsewhere on the site never fails this PR. Clones the
   # public docs repo unauthenticated (no token). The deterministic lint above is
   # the first, always-on gate; the release pipeline runs the same check too.

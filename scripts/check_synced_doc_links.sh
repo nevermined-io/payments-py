@@ -5,7 +5,7 @@
 #
 # Why staged against the real site, not in-repo: the release pipeline
 # (publish-mintlify-docs.yml) converts docs/api/NN-*.md into
-# docs/api-reference/python/<slug>.mdx via scripts/convert_to_mintlify.py and
+# api-reference/python/<slug>.mdx via scripts/convert_to_mintlify.py and
 # opens a PR against nevermined-io/docs. A plain mkdocs build here would PASS and
 # miss site-only breakage, because relative links resolve differently once the
 # files live under api-reference/python/ on the site (this broke
@@ -13,11 +13,11 @@
 #
 # Unlike the TypeScript sibling (payments#401), the Python pages legitimately
 # link to OTHER docs-site sections via site-relative paths (e.g.
-# /docs/integrate/add-to-your-agent/langchain). Those resolve only against the
+# /integrate/add-to-your-agent/langchain). Those resolve only against the
 # *whole* site, so a self-contained mini-site of just the 13 python pages would
 # false-positive on the clean tree. We therefore clone the real (public)
 # nevermined-io/docs, drop the freshly-converted pages into
-# docs/api-reference/python/, and run `mintlify broken-links` on the whole site.
+# api-reference/python/, and run `mintlify broken-links` on the whole site.
 #
 # Hard-gates INTERNAL links only: `mintlify broken-links` checks internal links
 # by default and only pings external URLs with --check-external (NOT passed —
@@ -25,7 +25,7 @@
 #
 # Scoped to OUR breakage: the whole site may carry pre-existing broken links we
 # don't own. We replace ALL python pages with freshly-converted ones, so any
-# broken link whose SOURCE file is under docs/api-reference/python/ is breakage
+# broken link whose SOURCE file is under api-reference/python/ is breakage
 # introduced by these staged pages. We parse the checker output and fail ONLY on
 # python-sourced broken links — pre-existing breakage elsewhere on the site does
 # not fail this gate. (See the scoped-parse step at the end of this script.)
@@ -35,7 +35,8 @@
 #   DOCS_REF        default main
 #   MINTLIFY_VERSION default 4.2.629 (pin; the docs repo tracks latest)
 #   DOCS_CHECKOUT   pre-cloned docs repo to reuse instead of cloning
-#   SCOPE_PREFIX    site path whose broken links we own (default the python tree)
+#   SCOPE_PREFIX    site path whose broken links we own (default: the python
+#                   tree, auto-detected from the checkout's layout)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -50,8 +51,9 @@ DOCS_REF="${DOCS_REF:-main}"
 # Pin Mintlify for reproducibility. The docs repo itself installs floating
 # latest (npm i -g mintlify); bump this when that materially changes.
 MINTLIFY_VERSION="${MINTLIFY_VERSION:-4.2.629}"
-# Broken links whose source file starts with this site path are ours to fix.
-SCOPE_PREFIX="${SCOPE_PREFIX:-docs/api-reference/python/}"
+# SCOPE_PREFIX (broken links whose source file starts with this site path are
+# ours to fix) defaults to the python tree, resolved after the checkout — see
+# PYTHON_TREE below.
 
 if [ ! -d "$SOURCE_DIR" ]; then
   echo "Error: source docs not found at $SOURCE_DIR" >&2
@@ -90,11 +92,27 @@ if [ ! -f "$DOCS_DIR/docs.json" ] && [ ! -f "$DOCS_DIR/mint.json" ]; then
   exit 1
 fi
 
-TARGET_DIR="$DOCS_DIR/docs/api-reference/python"
-if [ ! -d "$TARGET_DIR" ]; then
-  echo "Error: $DOCS_REPO has no docs/api-reference/python — site layout changed?" >&2
+# Locate the python tree. The docs site used to nest its pages under a
+# top-level `docs/`; nevermined-io/docs#257 flattened that to the repo root for
+# base-path hosting. Detect the layout instead of hard-coding either one, so a
+# future move fails loudly rather than silently staging into the wrong place.
+PYTHON_TREE=""
+for candidate in "api-reference/python" "docs/api-reference/python"; do
+  if [ -d "$DOCS_DIR/$candidate" ]; then
+    PYTHON_TREE="$candidate"
+    break
+  fi
+done
+if [ -z "$PYTHON_TREE" ]; then
+  echo "Error: $DOCS_REPO has no api-reference/python (looked at the repo root" \
+       "and under docs/) — site layout changed?" >&2
   exit 1
 fi
+TARGET_DIR="$DOCS_DIR/$PYTHON_TREE"
+# Mintlify reports broken-link sources as paths relative to the project root,
+# so the scope prefix tracks whichever layout we just found.
+SCOPE_PREFIX="${SCOPE_PREFIX:-$PYTHON_TREE/}"
+echo "Docs-site python tree: $PYTHON_TREE"
 
 # 3. Replace the python pages with the freshly-converted ones (mirror the bot:
 #    rm old *.mdx, copy new). Other sections stay so site-relative links resolve.
@@ -132,7 +150,7 @@ echo ""
 
 # Parse the report and fail ONLY on broken links sourced from our staged pages.
 # Output shape (one source block per file with broken links):
-#   docs/api-reference/python/a2a-module.mdx
+#   api-reference/python/a2a-module.mdx
 #    ⎿  ../../payments_py/x402/README.md
 SCOPE_PREFIX="$SCOPE_PREFIX" MINTLIFY_RC="$mintlify_rc" python3 - "$REPORT" <<'PY'
 import os, re, sys
@@ -195,7 +213,7 @@ if scoped:
     for src, target in scoped:
         print(f"  {src} -> {target}")
     print("\nThese links resolve in-repo but are dead on the docs site. Use a "
-          "chapter link the converter rewrites, a site-relative /docs/... path, "
+          "chapter link the converter rewrites, a site-relative /... path, "
           "or an absolute https://github.com/... URL. See CONTRIBUTING.md.")
     sys.exit(1)
 

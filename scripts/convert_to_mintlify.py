@@ -94,19 +94,19 @@ FILE_MAPPING = {
 
 # Link mapping for internal references
 LINK_MAPPING = {
-    "01-installation.md": "/docs/api-reference/python/installation",
-    "02-initializing-the-library.md": "/docs/api-reference/python/payments-class",
-    "03-payment-plans.md": "/docs/api-reference/python/plans-module",
-    "04-agents.md": "/docs/api-reference/python/agents-module",
-    "05-publishing-static-resources.md": "/docs/api-reference/python/resources-module",
-    "06-payments-and-balance.md": "/docs/api-reference/python/balance-module",
-    "07-querying-an-agent.md": "/docs/api-reference/python/requests-module",
-    "08-validation-of-requests.md": "/docs/api-reference/python/validation-module",
-    "09-mcp-integration.md": "/docs/api-reference/python/mcp-module",
-    "10-a2a-integration.md": "/docs/api-reference/python/a2a-module",
-    "11-x402.md": "/docs/api-reference/python/x402-module",
-    "12-langchain-integration.md": "/docs/api-reference/python/langchain-module",
-    "13-langsmith-deployment.md": "/docs/api-reference/python/langsmith-deployment-module",
+    "01-installation.md": "/api-reference/python/installation",
+    "02-initializing-the-library.md": "/api-reference/python/payments-class",
+    "03-payment-plans.md": "/api-reference/python/plans-module",
+    "04-agents.md": "/api-reference/python/agents-module",
+    "05-publishing-static-resources.md": "/api-reference/python/resources-module",
+    "06-payments-and-balance.md": "/api-reference/python/balance-module",
+    "07-querying-an-agent.md": "/api-reference/python/requests-module",
+    "08-validation-of-requests.md": "/api-reference/python/validation-module",
+    "09-mcp-integration.md": "/api-reference/python/mcp-module",
+    "10-a2a-integration.md": "/api-reference/python/a2a-module",
+    "11-x402.md": "/api-reference/python/x402-module",
+    "12-langchain-integration.md": "/api-reference/python/langchain-module",
+    "13-langsmith-deployment.md": "/api-reference/python/langsmith-deployment-module",
 }
 
 

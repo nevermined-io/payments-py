@@ -21,21 +21,21 @@ _spec.loader.exec_module(convert)
 def test_unanchored_internal_link_is_rewritten():
     md = "- [MCP Integration](09-mcp-integration.md) - x402 with MCP servers"
     out = convert.convert_internal_links(md)
-    assert "(/docs/api-reference/python/mcp-module)" in out
+    assert "(/api-reference/python/mcp-module)" in out
     assert "09-mcp-integration.md" not in out
 
 
 def test_anchored_internal_link_keeps_its_fragment():
     md = "[MCP OAuth and x402 Discovery](09-mcp-integration.md#mcp-oauth-and-x402-discovery)"
     out = convert.convert_internal_links(md)
-    assert "(/docs/api-reference/python/mcp-module#mcp-oauth-and-x402-discovery)" in out
+    assert "(/api-reference/python/mcp-module#mcp-oauth-and-x402-discovery)" in out
     assert "09-mcp-integration.md" not in out
 
 
 def test_relative_path_prefix_with_anchor_is_rewritten():
     md = "see [rel](../api/09-mcp-integration.md#mcp-oauth-and-x402-discovery) here"
     out = convert.convert_internal_links(md)
-    assert "(/docs/api-reference/python/mcp-module#mcp-oauth-and-x402-discovery)" in out
+    assert "(/api-reference/python/mcp-module#mcp-oauth-and-x402-discovery)" in out
 
 
 def test_next_steps_anchored_link_becomes_card_with_docs_site_href():
@@ -49,8 +49,5 @@ def test_next_steps_anchored_link_becomes_card_with_docs_site_href():
         " - Experimental MCP payment discovery metadata\n"
     )
     out = convert.convert_next_steps_to_cards(convert.convert_internal_links(md))
-    assert (
-        'href="/docs/api-reference/python/mcp-module#mcp-oauth-and-x402-discovery"'
-        in out
-    )
+    assert 'href="/api-reference/python/mcp-module#mcp-oauth-and-x402-discovery"' in out
     assert "09-mcp-integration.md" not in out
