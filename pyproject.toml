@@ -17,7 +17,7 @@ mkdocs-material = "^9.5.0"
 mkdocstrings = {version = "^0.29.0", extras = ["python"]}
 mike = "^2.1.0"
 pydantic = "^2.8.2"
-pyjwt = "^2.9.0"
+pyjwt = "^2.13.0"
 python-socketio = "5.14.3"
 aiohttp = "^3.10.8"
 pytest-asyncio = "^1.2.0"
