@@ -42,6 +42,24 @@ _AUTH_PARAM_START = re.compile(rf"^{_TOKEN}\s*=")
 _PAYMENT_SCHEME_BOUNDARY = re.compile(r"(?:^|,)\s*(Payment\s+)", re.IGNORECASE)
 
 _PAYMENT_PREFIX = re.compile(r"^Payment\s+", re.IGNORECASE)
+
+
+def _looks_like_structured_challenge(value: str) -> bool:
+    """Whether ``value`` opens with a ``key=`` auth-param, i.e. it is a
+    structured challenge rather than a bare token68 credential.
+
+    Base64url PADDING is stripped before the test, and that is the whole point:
+    ``=`` is both the padding character and what ends an auth-param key, so a
+    padded credential (``…MH0=``) matched ``^{token}=`` and was classified as a
+    challenge. RFC 7235 defines token68 as explicitly permitting trailing ``=``,
+    so such a credential is well-formed on the wire — and the backend decodes it
+    fine, which removes the justification for refusing it without a round-trip.
+    A first-party buyer never hit this because :func:`build_credential_header`
+    emits unpadded, so every test built its input the same way.
+    """
+    return bool(_AUTH_PARAM_START.match(value.rstrip("=")))
+
+
 _TRAILING_COMMA = re.compile(r",\s*$")
 _KEY_CHARS = re.compile(r"[a-zA-Z0-9_-]")
 _SPACE_OR_COMMA = re.compile(r"[\s,]")
@@ -124,7 +142,7 @@ def extract_payment_scheme(header_value: str) -> Optional[str]:
     start = content_start - len(keyword)
     rest = header_value[content_start:]
 
-    if not _AUTH_PARAM_START.match(rest):
+    if not _looks_like_structured_challenge(rest):
         # Bare token68 credential: bounded by its first top-level comma, since a
         # token68 cannot itself contain one (or a quote, so no quote-tracking is
         # needed here).
@@ -169,8 +187,18 @@ def extract_credential_challenge_id(credential: str) -> Optional[str]:
     lets the caller refuse them without a round-trip rather than fall back to a
     key it cannot trust.
     """
+    challenge = _decode_credential_challenge(credential)
+    if challenge is None:
+        return None
+    challenge_id = challenge.get("id")
+    return challenge_id if isinstance(challenge_id, str) and challenge_id else None
+
+
+def _decode_credential_challenge(credential: str) -> Optional[Dict[str, Any]]:
+    """The ``challenge`` object inside a token68 credential, or ``None`` when the
+    credential cannot be decoded into one."""
     token68 = _PAYMENT_PREFIX.sub("", credential).strip()
-    if not token68 or _AUTH_PARAM_START.match(token68):
+    if not token68 or _looks_like_structured_challenge(token68):
         return None
 
     try:
@@ -181,11 +209,28 @@ def extract_credential_challenge_id(credential: str) -> Optional[str]:
         return None
 
     challenge = decoded.get("challenge")
-    if not isinstance(challenge, dict):
-        return None
+    return challenge if isinstance(challenge, dict) else None
 
-    challenge_id = challenge.get("id")
-    return challenge_id if isinstance(challenge_id, str) and challenge_id else None
+
+def extract_credential_challenge_expires(credential: str) -> Optional[str]:
+    """The ``expires`` the credential's own sealed challenge carries, if any.
+
+    Read for one purpose: the seller's single-use store has to remember a
+    credential for at least as long as the backend would still honour it, and
+    the challenge states that itself. Pinning the store to a constant copied
+    from the backend instead means nothing here notices if that TTL is raised —
+    the store would forget a credential the backend still accepts, and
+    "single use" quietly becomes "replayable after the local TTL".
+
+    Like :func:`extract_credential_challenge_id`, this trusts nothing: the value
+    is buyer-supplied and unsigned, so its only use is to EXTEND how long we
+    refuse a credential, never to shorten it.
+    """
+    challenge = _decode_credential_challenge(credential)
+    if challenge is None:
+        return None
+    expires = challenge.get("expires")
+    return expires if isinstance(expires, str) and expires else None
 
 
 def _read_quoted_value(input_str: str, start: int) -> Tuple[str, int]:
@@ -463,6 +508,7 @@ def parse_receipt_header(header_value: str) -> MppReceipt:
 
 __all__ = [
     "build_credential_header",
+    "extract_credential_challenge_expires",
     "extract_credential_challenge_id",
     "extract_payment_scheme",
     "parse_challenge_header",

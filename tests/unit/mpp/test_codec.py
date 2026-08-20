@@ -6,6 +6,7 @@ The fixtures are shared from :mod:`tests.unit.mpp.fixtures` — see that module
 for why they stand in for an ``mppx`` dependency.
 """
 
+import base64
 import json
 
 import pytest
@@ -404,6 +405,47 @@ class TestExtractCredentialChallengeId:
         )
         assert reordered != self.credential
         assert extract_credential_challenge_id(reordered) == CHALLENGE_ID
+
+    def test_reads_the_id_out_of_a_PADDED_credential(self):
+        # RFC 7235 lets a token68 carry trailing '=', and base64url padding is
+        # '='. Since an auth-param key also ends in '=', a padded credential
+        # matched the structured-challenge test and was refused forever — while
+        # the backend would have decoded it fine, which is the whole
+        # justification for refusing without a round-trip. First-party buyers
+        # never hit it because build_credential_header emits unpadded.
+        # Grow one field until the encoding actually pads — base64 only emits
+        # '=' when the payload length is not a multiple of 3, so a fixed
+        # fixture would silently stop exercising the bug.
+        for filler in range(1, 4):
+            wire = json.dumps(
+                {
+                    "challenge": {
+                        "id": CHALLENGE_ID,
+                        "realm": "r" * filler,
+                        "method": "nevermined",
+                        "intent": "charge",
+                        "request": "x",
+                    },
+                    "payload": {"accessToken": "T"},
+                },
+                separators=(",", ":"),
+            ).encode("utf-8")
+            padded = base64.urlsafe_b64encode(wire).decode("ascii")
+            if padded.endswith("="):
+                break
+        assert padded.endswith("=")
+
+        assert extract_credential_challenge_id(f"Payment {padded}") == CHALLENGE_ID
+        assert (
+            extract_credential_challenge_id(f"Payment {padded.rstrip('=')}")
+            == CHALLENGE_ID
+        )
+
+    def test_a_padded_credential_still_stops_at_a_trailing_scheme(self):
+        padded = base64.urlsafe_b64encode(b'{"challenge":{"id":"c1"}}').decode("ascii")
+        assert extract_payment_scheme(f"Payment {padded}, Bearer jwt") == (
+            f"Payment {padded}"
+        )
 
     @pytest.mark.parametrize(
         "credential",

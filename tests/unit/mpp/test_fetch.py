@@ -7,6 +7,7 @@ minted, what the retry gate decides, and what every exit reports about credits
 that may already have burned.
 """
 
+import io
 import json
 
 import pytest
@@ -478,6 +479,60 @@ class TestGuardsArePaymentsErrors:
             mpp_fetch(minter, "POST", DEFAULT_URL, options(), data=body_stream())
         assert minter.count == 0
         assert "cannot retry a single-read request body" in str(excinfo.value)
+
+    @pytest.mark.parametrize(
+        "files",
+        [
+            {"doc": io.BytesIO(b"PAYLOAD")},
+            {"doc": ("a.txt", io.BytesIO(b"PAYLOAD"))},
+            {"doc": ("a.txt", io.BytesIO(b"PAYLOAD"), "text/plain")},
+            {"doc": ("a.txt", io.BytesIO(b"PAYLOAD"), "text/plain", {})},
+            [("doc", ("a.txt", io.BytesIO(b"PAYLOAD")))],
+        ],
+        ids=["bare-fp", "name-fp", "name-fp-ctype", "name-fp-ctype-headers", "pairs"],
+    )
+    def test_refuses_an_open_handle_in_files_once_a_retry_is_required(
+        self, transport, minter, files
+    ):
+        # requests encodes files= through _encode_files, which calls fp.read();
+        # the SECOND encode gets an exhausted handle. Left unguarded, the buyer
+        # mints a credential, burns credits and retries with an EMPTY multipart
+        # part — paid=True, no error, nothing delivered.
+        transport([challenged()])
+
+        with pytest.raises(PaymentsError) as excinfo:
+            mpp_fetch(minter, "POST", DEFAULT_URL, options(), files=files)
+
+        assert minter.count == 0
+        assert "cannot retry a single-read request body" in str(excinfo.value)
+
+    def test_allows_a_files_payload_that_is_replayable_bytes(self, transport, minter):
+        # A bytes/str payload survives a second encode, so it must keep working.
+        transport([challenged(), paid_ok()])
+
+        result = mpp_fetch(
+            minter, "POST", DEFAULT_URL, options(), files={"doc": ("a.txt", b"bytes")}
+        )
+
+        assert result.paid is True
+        assert minter.count == 1
+
+    def test_passes_an_open_handle_through_when_never_challenged(
+        self, transport, minter
+    ):
+        fake = transport([make_response(200, body=b'{"ok":1}')])
+
+        result = mpp_fetch(
+            minter,
+            "POST",
+            DEFAULT_URL,
+            options(),
+            files={"doc": ("a.txt", io.BytesIO(b"PAYLOAD"))},
+        )
+
+        # Never challenged: sent exactly once, like a plain requests call.
+        assert fake.count == 1
+        assert result.response.status_code == 200
 
     def test_passes_a_single_read_body_through_when_never_challenged(
         self, transport, minter

@@ -51,3 +51,26 @@ def test_next_steps_anchored_link_becomes_card_with_docs_site_href():
     out = convert.convert_next_steps_to_cards(convert.convert_internal_links(md))
     assert 'href="/api-reference/python/mcp-module#mcp-oauth-and-x402-discovery"' in out
     assert "09-mcp-integration.md" not in out
+
+
+def test_danger_admonition_becomes_a_warning_callout():
+    """A `!!! danger` block must convert like every other admonition.
+
+    Without a `danger` case the literal `!!! danger "..."` line survives into the
+    .mdx and its 4-space-indented body renders as a CODE BLOCK — invisible to
+    `mkdocs build` and only visible after publish, which is the same class of
+    defect PR #202 fixed retroactively for chapter 13. Mintlify has no <Danger>,
+    so <Warning> (its strongest callout) is the target.
+    """
+    md = '!!! danger "Both guards are process-local"\n    They live in memory.\n'
+    out = convert.convert_admonitions(md)
+    assert '<Warning title="Both guards are process-local">' in out
+    assert "They live in memory." in out
+    assert "!!! danger" not in out
+
+
+def test_untitled_danger_admonition_converts_too():
+    md = "!!! danger\n    The burn may already have committed.\n"
+    out = convert.convert_admonitions(md)
+    assert "<Warning>" in out
+    assert "!!! danger" not in out

@@ -49,6 +49,7 @@ from payments_py.x402.fastapi.mpp_support import (
     extract_credential,
     is_credential_spent,
     mark_credential_spent,
+    mpp_credential_expires,
     mpp_credential_id,
     mpp_resource,
     mpp_verb,
@@ -64,19 +65,28 @@ async def _maybe_await(value: Any) -> Any:
 
 
 async def _read_and_replay_body(request: Request) -> bytes:
-    """Read the raw request body and make it readable again downstream.
+    """Read the raw request body, leaving the handler's view identical.
 
-    ``BaseHTTPMiddleware`` gives the handler its own ``Request`` built from the
-    same ASGI ``receive`` channel, which is single-use — so reading the body here
-    would otherwise leave the handler with an empty one. Re-arming ``receive``
-    with the bytes just read keeps the handler's view identical to the buyer's.
+    On the Starlette this SDK depends on, the handler is NOT served by the
+    re-arm below: ``BaseHTTPMiddleware`` hands the downstream app a
+    ``_CachedRequest`` whose ``wrapped_receive`` replays the ``_body`` that
+    ``await request.body()`` on the next line already populated — caching the
+    body for exactly this case is what that class is for.
+
+    The ``_receive`` assignment is therefore belt-and-braces, not the
+    load-bearing mechanism: it keeps the read replayable for anything that
+    builds a plain ``Request`` from this scope instead, and would carry the body
+    on a Starlette that stops caching. What actually pins the behaviour is the
+    test that asserts the handler still sees the buyer's bytes
+    (``test_the_handler_still_receives_the_body_the_buyer_sent``), not this
+    line.
     """
     body = await request.body()
 
     async def replay() -> dict:
         return {"type": "http.request", "body": body, "more_body": False}
 
-    request._receive = replay  # noqa: SLF001 — the documented re-arm
+    request._receive = replay  # noqa: SLF001 — defensive; see the docstring
     return body
 
 
@@ -466,7 +476,7 @@ class MppFlow:
         # 2xx has bought its response, and leaving it unspent until the settle
         # resolves would let a concurrent replay slip through the very window the
         # claim above exists to close.
-        mark_credential_spent(credential_id)
+        mark_credential_spent(credential_id, mpp_credential_expires(credential))
 
         body = b""
         async for chunk in response.body_iterator:

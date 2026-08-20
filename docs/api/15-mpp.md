@@ -107,15 +107,20 @@ drown the rejections the hook exists to surface. It *is* called when an
 `Authorization` header arrives carrying no `Payment` scheme, which means an
 intermediary is rewriting it and the buyer is stuck in a silent retry loop.
 
-`on_after_settle` receives what the backend says it **burned**, not what this
-request would charge — and `0` for a settlement that failed. It fires for all
-three settlement outcomes, so a ledger built on it can count them apart:
+`on_after_settle` fires for all three settlement outcomes, so a ledger built on
+it can count them apart:
 
 | Outcome | `credits` | Third argument |
 |---|---|---|
-| Settled | what the backend burned | the settlement response |
+| Settled, amount reported | what the backend says it **burned** | the settlement response |
+| Settled, no usable amount reported | the charged amount — a **guess**, and logged as one | the settlement response |
 | Unknown — may have burned | the charged amount | `MppSettlementOutcomeUnknown` |
 | Definitely not paid | `0` | `MppSettlementFailed` |
+
+Only the first row is a measurement. The charged amount is recomputed on the
+settling request, so whenever `credits` is a callable it is free to differ from
+what the challenge sealed on the request that minted the credential — do not
+record rows two and three as if the backend had confirmed them.
 
 The third row is the one worth wiring: the resource was delivered and the seller
 was not paid. Were it reported only as an absence, it would be indistinguishable
@@ -186,22 +191,29 @@ Check `is_retryable_mpp_code(code)` rather than hardcoding that list.
 ### Errors, and knowing whether money left
 
 ```python
+import logging
+
 from payments_py.mpp import MppError, mpp_spend_of
 from payments_py.common.payments_error import PaymentsError
+
+logger = logging.getLogger(__name__)
 
 try:
     result = payments.mpp.fetch(...)
 except PaymentsError as err:
-    # A guard refused to even attempt the call: a bad argument, a challenge
-    # naming another plan, a body that cannot be replayed.
-    ...
+    # A guard refused the call: a bad argument, a challenge naming another
+    # plan, a body that cannot be replayed. Usually nothing was spent — but a
+    # max_credits or plan_id guard can fire on the RE-CHALLENGE turn, after a
+    # credential has already gone out, so the report is checked here too.
+    if mpp_spend_of(err):
+        logger.warning("guard fired after a credential was presented: %s", err)
 except MppError as err:
     # What the wire actually said: a rejected credential, a malformed
     # challenge, an MPP-disabled environment.
     spend = mpp_spend_of(err)
     if spend:
         # A credential was already on the wire. Do NOT blindly retry.
-        log.warning("up to %s credits may have burned", spend.credits_presented)
+        logger.warning("up to %s credits may have burned", spend.credits_presented)
 ```
 
 `mpp_spend_of` returns a report **only** when at least one credential was

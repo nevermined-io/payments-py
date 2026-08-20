@@ -33,6 +33,23 @@ The main entry point for the Nevermined Payments Python SDK.
       show_root_heading: true
       show_source: true
 
+## MPP API
+
+::: payments_py.mpp.mpp_api.MppAPI
+    options:
+      show_root_heading: true
+      show_source: true
+
+::: payments_py.mpp.fetch.MppFetchOptions
+    options:
+      show_root_heading: true
+      show_source: true
+
+::: payments_py.mpp.fetch.MppFetchResult
+    options:
+      show_root_heading: true
+      show_source: true
+
 ## X402 Token API
 
 ::: payments_py.x402.token.X402TokenAPI

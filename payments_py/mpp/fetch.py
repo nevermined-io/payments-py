@@ -95,10 +95,11 @@ class MppFetchOptions:
        release.
 
     A request body must be replayable **if the endpoint may challenge the
-    request**: a generator, iterator or file-like ``data=`` raises a typed
-    :class:`PaymentsError` once a 402 challenge actually requires a retry, since
-    it cannot be resent. A request that is never challenged sends such a body
-    exactly once, exactly like a plain ``requests`` call.
+    request**: a generator, iterator or file-like ``data=``, or an open handle
+    inside ``files=``, raises a typed :class:`PaymentsError` once a 402 challenge
+    actually requires a retry, since it cannot be resent. A request that is never
+    challenged sends such a body exactly once, exactly like a plain ``requests``
+    call.
 
     This helper mints ``nvm:erc4337`` access tokens only in this release — a
     buyer holding an ``nvm:card-delegation`` delegation cannot use it yet.
@@ -185,22 +186,66 @@ class MppFetchResult:
     receipt: Optional[MppReceipt] = field(default=None)
 
 
+def _is_one_shot_stream(value: Any) -> bool:
+    """Whether ``value`` is consumed by being read once."""
+    if isinstance(value, (str, bytes, bytearray)):
+        return False
+    return hasattr(value, "read") or hasattr(value, "__next__")
+
+
+def _files_hold_a_stream(files: Any) -> bool:
+    """Whether any ``files=`` entry carries an open handle rather than bytes.
+
+    ``requests`` encodes ``files=`` through ``RequestEncodingMixin._encode_files``,
+    which calls ``fp.read()`` on each handle — so the SECOND encode gets an
+    exhausted one and sends an empty part. Measured on this SDK's own dependency:
+    the same ``{"f": ("a.txt", BytesIO(b"PAYLOAD…"))}`` encodes to 161 bytes with
+    the payload and then 138 bytes without it.
+
+    Every documented shape is walked, since the handle can sit at any of them:
+    a bare ``fp``, or the ``(name, fp)`` / ``(name, fp, content_type)`` /
+    ``(name, fp, content_type, headers)`` tuples, in either the dict or the
+    list-of-pairs form. A ``bytes``/``str`` payload is replayable and stays
+    allowed — that is the common case for a small in-memory upload.
+    """
+    if not files:
+        return False
+    entries = files.items() if isinstance(files, dict) else files
+    for entry in entries:
+        value = (
+            entry[1] if isinstance(entry, (tuple, list)) and len(entry) == 2 else entry
+        )
+        if isinstance(value, (tuple, list)):
+            # (name, fp[, content_type[, headers]]) — the handle is element 1.
+            candidate = value[1] if len(value) > 1 else None
+        else:
+            candidate = value
+        if candidate is not None and _is_one_shot_stream(candidate):
+            return True
+    return False
+
+
 def _is_non_replayable_body(request_kwargs: Dict[str, Any]) -> bool:
     """Whether the request body can only be sent once.
 
     ``requests`` accepts a generator, an iterator or a file-like object as
-    ``data=``; all three are consumed by the first send, so replaying them on
-    the retry would silently transmit an empty (or partial) body rather than
-    raise. Every other shape — ``str``, ``bytes``, a dict/list of form fields,
-    ``json=``, ``files=`` — can be sent again, so a retry is safe.
+    ``data=``, and open handles inside ``files=``; all of them are consumed by
+    the first send, so replaying them on the retry would silently transmit an
+    empty (or partial) body rather than raise — on the request that costs
+    credits. ``str``, ``bytes``, a dict/list of form fields, ``json=`` and a
+    ``files=`` whose payloads are ``bytes``/``str`` can all be sent again, so a
+    retry is safe.
+
+    ``files=`` used to be listed among the safe shapes and was not inspected at
+    all, which is the narrower claim that let a buyer mint a credential, burn
+    credits, and retry with an empty multipart part — ``paid=True``, no error,
+    nothing delivered.
     """
     body = request_kwargs.get("data")
-    if body is None:
-        return False
-    if isinstance(body, (str, bytes, bytearray, dict, list, tuple)):
-        return False
-    # A file object or any other one-shot stream.
-    return hasattr(body, "read") or hasattr(body, "__next__")
+    if body is not None and not isinstance(body, (dict, list, tuple)):
+        if _is_one_shot_stream(body):
+            return True
+    return _files_hold_a_stream(request_kwargs.get("files"))
 
 
 def _states_failure(receipt: Optional[MppReceipt]) -> bool:

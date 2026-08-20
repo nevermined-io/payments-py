@@ -18,12 +18,14 @@ the credential itself is still forwarded verbatim.
 import base64
 import hashlib
 import time
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Set, Union
 
 from starlette.requests import Request
 
 from payments_py.mpp.codec import (
+    extract_credential_challenge_expires,
     extract_credential_challenge_id,
     extract_payment_scheme,
 )
@@ -126,6 +128,11 @@ def extract_credential(request: Request) -> Optional[str]:
     return extract_payment_scheme(header)
 
 
+def mpp_credential_expires(credential: str) -> Optional[str]:
+    """The ``expires`` the credential's sealed challenge states, if any."""
+    return extract_credential_challenge_expires(credential)
+
+
 def mpp_credential_id(credential: str) -> Optional[str]:
     """The key the middleware's single-use and in-flight sets are keyed on: the
     credential's challenge id, never the header bytes.
@@ -169,11 +176,25 @@ EMPTY_BODY_DIGEST = compute_body_digest(b"")
 #: applies to an ordinary production setup, not only to a scaled-out cluster.
 _in_flight_mpp_credentials: Set[str] = set()
 
-#: How long a settled credential stays refused. Matches the backend's
-#: ``MPP_CHALLENGE_TTL_SECONDS`` (300): past it the challenge itself is expired,
-#: so the credential is refused by the backend anyway and there is nothing left
-#: for this map to protect.
+#: FLOOR on how long a settled credential stays refused, in seconds. Matches the
+#: backend's ``MPP_CHALLENGE_TTL_SECONDS`` (300): past it the challenge itself is
+#: expired, so the credential is refused by the backend anyway and there is
+#: nothing left for this map to protect.
+#:
+#: It is a floor rather than the whole rule because nothing here could otherwise
+#: notice the backend raising that TTL — the map would forget a credential the
+#: backend still honours, and the advertised "single use" would quietly become
+#: "replayable after 300 seconds", which is exactly the replay the backend
+#: cannot refuse on its own. :func:`mark_credential_spent` therefore prefers the
+#: ``expires`` the challenge itself states.
 SPENT_CREDENTIAL_TTL_SECONDS = 300.0
+
+#: CEILING on the same, in seconds. The ``expires`` used to extend the floor is
+#: buyer-supplied and unsigned, so a crafted far-future value would otherwise
+#: pin an entry in memory indefinitely. Refusing a buyer's own credential for
+#: longer harms nobody but them; retaining it forever is our problem, so the
+#: window is bounded.
+SPENT_CREDENTIAL_MAX_TTL_SECONDS = 3600.0
 
 #: Challenge ids of the credentials whose settlement has already been started,
 #: and the instant each stops being worth remembering.
@@ -193,19 +214,49 @@ SPENT_CREDENTIAL_TTL_SECONDS = 300.0
 _spent_mpp_credentials: Dict[str, float] = {}
 
 
-def mark_credential_spent(credential_id: str) -> None:
+def _ttl_for(challenge_expires: Optional[str]) -> float:
+    """How long to remember a credential, given the ``expires`` its challenge
+    states.
+
+    Only ever EXTENDS :data:`SPENT_CREDENTIAL_TTL_SECONDS`, never shortens it:
+    the value is buyer-supplied and unsigned, and the seller's clock may be
+    skewed against the backend's, so a value that reads as already-expired must
+    not shrink the window a replay has to get through. Bounded above by
+    :data:`SPENT_CREDENTIAL_MAX_TTL_SECONDS`.
+    """
+    if not challenge_expires:
+        return SPENT_CREDENTIAL_TTL_SECONDS
+    try:
+        expires_at = datetime.fromisoformat(challenge_expires.replace("Z", "+00:00"))
+    except ValueError:
+        return SPENT_CREDENTIAL_TTL_SECONDS
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    remaining = (expires_at - datetime.now(timezone.utc)).total_seconds()
+    return min(
+        max(remaining, SPENT_CREDENTIAL_TTL_SECONDS), SPENT_CREDENTIAL_MAX_TTL_SECONDS
+    )
+
+
+def mark_credential_spent(
+    credential_id: str, challenge_expires: Optional[str] = None
+) -> None:
     """Mark a credential spent, and drop the entries that have aged out.
 
-    Every entry gets the same TTL, so insertion order IS expiry order: the sweep
-    can stop at the first entry still alive instead of walking the whole map on
-    every settlement.
+    ``challenge_expires`` is the ``expires`` the credential's own challenge
+    carries (:func:`extract_credential_challenge_expires`). Passing it keeps the
+    store honest if the backend's challenge TTL is ever raised — see
+    :data:`SPENT_CREDENTIAL_TTL_SECONDS`.
+
+    The sweep walks every expired entry rather than stopping at the first live
+    one: entries no longer share a single TTL, so insertion order is no longer
+    expiry order and an early long-lived entry would otherwise block the sweep
+    behind it.
     """
     now = time.monotonic()
-    for spent, expires_at in list(_spent_mpp_credentials.items()):
-        if expires_at > now:
-            break
+    for spent in [k for k, exp in _spent_mpp_credentials.items() if exp <= now]:
         del _spent_mpp_credentials[spent]
-    _spent_mpp_credentials[credential_id] = now + SPENT_CREDENTIAL_TTL_SECONDS
+    _spent_mpp_credentials[credential_id] = now + _ttl_for(challenge_expires)
 
 
 def is_credential_spent(credential_id: str) -> bool:
@@ -247,6 +298,7 @@ def _reset_stores_for_tests() -> None:
 
 __all__ = [
     "EMPTY_BODY_DIGEST",
+    "SPENT_CREDENTIAL_MAX_TTL_SECONDS",
     "MPP_HEADERS",
     "MppRouteOptions",
     "ResolvedMppOption",
@@ -256,6 +308,7 @@ __all__ = [
     "extract_credential",
     "is_credential_spent",
     "mark_credential_spent",
+    "mpp_credential_expires",
     "mpp_credential_id",
     "mpp_resource",
     "mpp_verb",

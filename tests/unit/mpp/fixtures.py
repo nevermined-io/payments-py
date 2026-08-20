@@ -20,7 +20,7 @@ of one.
 
 import base64
 import json
-from typing import Any
+from typing import Any, Optional
 
 REQUEST_ENCODED = (
     "eyJjcmVkaXRzIjoiMiIsInBsYW5JZCI6IjQ0NzQyNzYzMDc2MDQ3NDk3NjQwMDgwMjMwMjM2Nzgx"
@@ -76,7 +76,7 @@ def decode_credential(credential: str) -> Any:
     return json.loads(base64.urlsafe_b64decode(padded))
 
 
-def mpp_credential_fixture(challenge_id: str) -> str:
+def mpp_credential_fixture(challenge_id: str, expires: Optional[str] = None) -> str:
     """Build a real MPP credential for the middleware tests.
 
     The middleware keys single-use and the in-flight guard on the credential's
@@ -93,6 +93,8 @@ def mpp_credential_fixture(challenge_id: str) -> str:
         },
         "payload": {"accessToken": "BASE64_MPP_TOKEN"},
     }
+    if expires:
+        wire["challenge"]["expires"] = expires
     return f"Payment {b64url(json.dumps(wire, separators=(',', ':')).encode('utf-8'))}"
 
 

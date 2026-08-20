@@ -8,6 +8,7 @@ body binding, and which failures still hand the buyer a fresh challenge.
 
 import hashlib
 import base64
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock
 
@@ -605,6 +606,70 @@ class TestRouteOptionValidation:
         build_app(
             payments, {"plan_id": "plan-1", "credits": 2, "mpp": option}
         ).build_middleware_stack()
+
+
+class TestSingleUseTtl:
+    """The spent-store window follows the challenge, not a copied constant."""
+
+    def iso(self, seconds_from_now: float) -> str:
+        return (
+            (datetime.now(timezone.utc) + timedelta(seconds=seconds_from_now))
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+
+    def test_defaults_to_the_floor_when_the_challenge_states_no_expiry(self):
+        assert mpp_support._ttl_for(None) == mpp_support.SPENT_CREDENTIAL_TTL_SECONDS
+
+    def test_follows_a_backend_ttl_longer_than_the_floor(self):
+        # This is the drift the constant alone could not notice: if the backend
+        # raises MPP_CHALLENGE_TTL_SECONDS, a store pinned to 300 forgets a
+        # credential the backend still honours, and "single use" quietly becomes
+        # "replayable after 300 seconds".
+        assert 550 < mpp_support._ttl_for(self.iso(600)) <= 600
+
+    @pytest.mark.parametrize(
+        "expires", [None, "not-a-date", ""], ids=["absent", "garbage", "empty"]
+    )
+    def test_never_drops_below_the_floor_on_an_unusable_value(self, expires):
+        assert mpp_support._ttl_for(expires) == mpp_support.SPENT_CREDENTIAL_TTL_SECONDS
+
+    def test_never_drops_below_the_floor_on_an_already_past_expiry(self):
+        # The value is buyer-supplied and the seller's clock may be skewed, so a
+        # value that reads as expired must not shrink the replay window.
+        assert (
+            mpp_support._ttl_for(self.iso(-9999))
+            == mpp_support.SPENT_CREDENTIAL_TTL_SECONDS
+        )
+
+    def test_is_bounded_above_so_a_crafted_expiry_cannot_pin_memory(self):
+        assert (
+            mpp_support._ttl_for(self.iso(10**7))
+            == mpp_support.SPENT_CREDENTIAL_MAX_TTL_SECONDS
+        )
+
+    def test_the_seller_passes_the_credentials_own_expiry_through(
+        self, payments, monkeypatch
+    ):
+        seen: List[Any] = []
+        real = mpp_support.mark_credential_spent
+        monkeypatch.setattr(
+            mpp_support,
+            "mark_credential_spent",
+            lambda cid, expires=None: (seen.append(expires), real(cid, expires))[1],
+        )
+        monkeypatch.setattr(
+            "payments_py.x402.fastapi.mpp_flow.mark_credential_spent",
+            mpp_support.mark_credential_spent,
+        )
+
+        expires = self.iso(600)
+        credential = mpp_credential_fixture("chal-ttl", expires=expires)
+        client(payments).post(
+            "/ask", json={"q": "hi"}, headers={"Authorization": credential}
+        )
+
+        assert seen == [expires]
 
 
 class TestProtocolRouting:

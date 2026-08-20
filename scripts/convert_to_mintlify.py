@@ -138,6 +138,19 @@ def convert_admonitions(content: str) -> str:
             r"!!!\s+warning\n((?:\s{4}.+\n?)+)",
             lambda m: f"<Warning>\n{dedent_content(m.group(1))}</Warning>\n",
         ),
+        # !!! danger "Title" — Mintlify has no <Danger>; <Warning> is its
+        # strongest callout. Without this case the literal `!!! danger` line
+        # survives into the .mdx and its indented body renders as a CODE BLOCK,
+        # which is invisible in `mkdocs build` and only shows up after publish.
+        (
+            r'!!!\s+danger\s+"([^"]+)"\n((?:\s{4}.+\n?)+)',
+            lambda m: f'<Warning title="{m.group(1)}">\n{dedent_content(m.group(2))}</Warning>\n',
+        ),
+        # !!! danger (no title)
+        (
+            r"!!!\s+danger\n((?:\s{4}.+\n?)+)",
+            lambda m: f"<Warning>\n{dedent_content(m.group(1))}</Warning>\n",
+        ),
         # !!! note "Title"
         (
             r'!!!\s+note\s+"([^"]+)"\n((?:\s{4}.+\n?)+)',
