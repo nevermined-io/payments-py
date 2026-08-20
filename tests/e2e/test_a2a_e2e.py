@@ -31,6 +31,7 @@ from tests.e2e.helpers.a2a_setup_helpers import create_a2a_test_agent_and_plan
 from tests.e2e.conftest import (
     SUBSCRIBER_API_KEY,
     BUILDER_API_KEY,
+    TEST_BUILDER_ORG_ID,
     TEST_ENVIRONMENT,
 )
 
@@ -687,12 +688,31 @@ class TestA2AE2EFlow:
     @classmethod
     def setup_class(cls):
         """Setup once for all test methods in the class."""
-        # Create Payments instances using shared configuration
+        # Create Payments instances using shared configuration.
+        #
+        # `organization_id` is not optional here, even though this class builds
+        # its own instances instead of using the conftest fixtures: without it
+        # the publisher writes into its PERSONAL workspace, whose tier caps
+        # publishing at 10 plans / 20 agents. The cap counts LISTED resources
+        # and there is no delete endpoint for a plan or an agent (both are
+        # on-chain registry entries), so the slots a previous run occupied are
+        # never returned and every later run 403s with BCK.ENTITLEMENTS.0001 —
+        # an error that names the workspace but not which one, and so reads
+        # like an auth or backend fault. Every other e2e file gets this pin from
+        # the conftest fixtures; this one was the only place it was missing.
         cls.payments_publisher = Payments(
-            PaymentOptions(nvm_api_key=BUILDER_API_KEY, environment=TEST_ENVIRONMENT)
+            PaymentOptions(
+                nvm_api_key=BUILDER_API_KEY,
+                environment=TEST_ENVIRONMENT,
+                organization_id=TEST_BUILDER_ORG_ID,
+            )
         )
         cls.payments_subscriber = Payments(
-            PaymentOptions(nvm_api_key=SUBSCRIBER_API_KEY, environment=TEST_ENVIRONMENT)
+            PaymentOptions(
+                nvm_api_key=SUBSCRIBER_API_KEY,
+                environment=TEST_ENVIRONMENT,
+                organization_id=TEST_BUILDER_ORG_ID,
+            )
         )
 
         print(f"Publisher address: {cls.payments_publisher.account_address}")
