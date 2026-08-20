@@ -112,8 +112,20 @@ class TestMppFlow:
         TestMppFlow.agent_id = result.get("agentId")
         assert self.agent_id is not None
 
+        def agent_is_indexed() -> bool:
+            # get_agent raises `Agent not found` until the write is indexed, and
+            # an exception escaping the predicate ends the wait on the FIRST poll
+            # instead of retrying for the full window — which is what this
+            # (correctly registered) agent hit in CI. Same shape the x402 e2e
+            # uses for the same reason.
+            try:
+                agent = payments_agent.agents.get_agent(self.agent_id)
+            except Exception:
+                return False
+            return agent is not None and agent.get("id") == self.agent_id
+
         assert wait_for_condition(
-            lambda: payments_agent.agents.get_agent(self.agent_id) is not None,
+            agent_is_indexed,
             label="Agent Availability",
             timeout_secs=30.0,
             poll_interval_secs=2.0,
