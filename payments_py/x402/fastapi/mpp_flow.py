@@ -31,6 +31,7 @@ from starlette.responses import JSONResponse, Response
 from payments_py.mpp.errors import (
     MppCredentialRejectedError,
     MppError,
+    MppSettlementFailed,
     MppSettlementOutcomeUnknown,
     MppSettlementOutcomeUnknownError,
     is_retryable_mpp_code,
@@ -53,7 +54,7 @@ from payments_py.x402.fastapi.mpp_support import (
     mpp_verb,
     release_credential,
 )
-from payments_py.x402.types import PaymentContext
+from payments_py.x402.types import MppPaymentFraming, PaymentContext
 
 logger = logging.getLogger("payments_py.x402.fastapi.middleware")
 
@@ -160,9 +161,14 @@ class MppFlow:
             )
             challenge = issued["challenge"]
         except Exception as challenge_error:  # noqa: BLE001
-            await self._notify_payment_error(challenge_error)
+            taken_over = await self._notify_payment_error(challenge_error)
             logger.error("MPP challenge issuance failed: %s", challenge_error)
-            return JSONResponse(
+            # A hook that answered the request wins here as it does everywhere
+            # else on this path. Dropping it made challenge issuance the one
+            # server-side failure a seller could not shape — while the credits
+            # callable next door, reachable from the same BCK.MPP.0002
+            # condition, honoured the same hook.
+            return taken_over or JSONResponse(
                 status_code=500,
                 content={
                     "error": "Internal Server Error",
@@ -440,11 +446,11 @@ class MppFlow:
             credits_to_settle=self.credits_to_charge,
             verified=True,
             agent_request_id=_agent_request_id(self.verification),
-            mpp={
-                "credential": credential,
-                "resource": self.resource,
-                "http_verb": self.http_verb,
-            },
+            mpp=MppPaymentFraming(
+                credential=credential,
+                resource=self.resource,
+                http_verb=self.http_verb,
+            ),
         )
         self.request.state.payment_context = payment_context
 
@@ -509,6 +515,16 @@ class MppFlow:
             payment_context.credits_to_settle = 0
             await self._notify_payment_error(settle_error)
             logger.error("MPP settlement failed: %s", settle_error)
+            # on_after_settle runs here too, with 0 credits and a typed outcome.
+            # It is where a seller writes its usage or revenue record, so firing
+            # only for settled and unknown would leave the delivered-but-unpaid
+            # case as an ABSENCE — and an absence is indistinguishable from a
+            # request that was never an MPP request, which is exactly the count
+            # a seller needs this branch for. Three positive signals, not two
+            # and a silence.
+            await self._run_after_settle_hook(
+                0, MppSettlementFailed(reason=str(settle_error))
+            )
             return served
 
         receipt = settlement.get("paymentReceipt")

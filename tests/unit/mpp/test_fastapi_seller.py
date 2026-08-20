@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from payments_py.mpp.errors import (
     MppChallengeExpiredError,
     MppError,
+    MppSettlementFailed,
     MppSettlementOutcomeUnknown,
     MppSettlementOutcomeUnknownError,
 )
@@ -326,6 +327,31 @@ class TestSettlement:
         assert "payment-receipt" not in response.headers
         assert len(seen) == 1
 
+    def test_reports_a_definite_settlement_failure_to_the_after_settle_hook(
+        self, payments
+    ):
+        payments.mpp.settle_error = MppError("settle refused", "BCK.MPP.0003")
+        settlements: List[Any] = []
+
+        async def on_after_settle(request, credits, settlement):
+            settlements.append((credits, settlement))
+
+        response = client(
+            payments,
+            options=PaymentMiddlewareOptions(on_after_settle=on_after_settle),
+        ).post("/ask", json={"q": "hi"}, headers={"Authorization": CREDENTIAL})
+
+        assert response.status_code == 200
+        # Delivered and definitely not paid is the count a seller most needs.
+        # Reporting only settled and unknown would leave it as an ABSENCE from
+        # the hook their ledger is built on — indistinguishable from a request
+        # that was never an MPP request at all.
+        assert len(settlements) == 1
+        credits, settlement = settlements[0]
+        assert isinstance(settlement, MppSettlementFailed)
+        assert settlement.outcome == "failed"
+        assert credits == 0
+
     def test_reports_an_unknown_settlement_outcome_to_the_after_settle_hook(
         self, payments
     ):
@@ -522,6 +548,65 @@ class TestHookPolicy:
         assert payments.mpp.settled == []
 
 
+class TestHookOwnershipOnFailurePaths:
+    def test_a_hook_that_answers_wins_when_challenge_issuance_fails(self, payments):
+        payments.mpp.issue_error = MppError("MPP is not configured", "BCK.MPP.0002")
+
+        async def on_payment_error(error, request):
+            return JSONResponse({"branded": True}, status_code=503)
+
+        response = client(
+            payments,
+            options=PaymentMiddlewareOptions(on_payment_error=on_payment_error),
+        ).post("/ask", json={"q": "hi"})
+
+        # The credits callable next door honours the same hook, and both are
+        # reachable from the same BCK.MPP.0002 condition — issuance was the one
+        # server-side failure a seller could not shape.
+        assert response.status_code == 503
+        assert response.json() == {"branded": True}
+
+    def test_a_hook_that_answers_wins_when_the_credits_callable_throws(self, payments):
+        def credits(request):
+            raise RuntimeError("rate table down")
+
+        async def on_payment_error(error, request):
+            return JSONResponse({"branded": True}, status_code=503)
+
+        response = client(
+            payments,
+            {"plan_id": "plan-1", "credits": credits, "mpp": True},
+            options=PaymentMiddlewareOptions(on_payment_error=on_payment_error),
+        ).post("/ask", json={"q": "hi"})
+
+        assert response.status_code == 503
+
+
+class TestRouteOptionValidation:
+    @pytest.mark.parametrize(
+        "option",
+        [{"bindBody": True}, {"bind-body": True}, {"bind_body": "true"}],
+        ids=["camelCase-key", "kebab-key", "string-value"],
+    )
+    def test_refuses_a_mistyped_mpp_option_at_startup(self, payments, option):
+        # Silently resolving these to bind_body=False turns OFF a security
+        # control: with no digest bound the backend skips the comparison, so the
+        # buyer decides whether body binding applies — mint against an empty
+        # request, attach any body to the paid retry. The outer route dict
+        # already raises for an unknown key; this was the one nested place that
+        # accepted anything.
+        with pytest.raises(TypeError):
+            build_app(
+                payments, {"plan_id": "plan-1", "credits": 2, "mpp": option}
+            ).build_middleware_stack()
+
+    @pytest.mark.parametrize("option", [True, False, None, {"bind_body": True}, {}])
+    def test_accepts_every_supported_shape(self, payments, option):
+        build_app(
+            payments, {"plan_id": "plan-1", "credits": 2, "mpp": option}
+        ).build_middleware_stack()
+
+
 class TestProtocolRouting:
     def test_leaves_the_x402_path_alone_when_mpp_is_not_enabled(self, payments):
         response = client(payments, {"plan_id": "plan-1", "credits": 2}).post(
@@ -571,7 +656,7 @@ class TestPaymentContext:
 
         context = seen[0]
         assert context.verified is True
-        assert context.mpp["resource"] == "/ask"
-        assert context.mpp["http_verb"] == "POST"
-        assert context.mpp["credential"].startswith("Payment ")
+        assert context.mpp.resource == "/ask"
+        assert context.mpp.http_verb == "POST"
+        assert context.mpp.credential.startswith("Payment ")
         assert context.agent_request_id == "req-1"

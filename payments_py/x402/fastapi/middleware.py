@@ -240,6 +240,12 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                 self.routes[key] = value
             else:
                 self.routes[key] = RouteConfig(**value)
+            # Validate the nested `mpp` option HERE rather than on the first
+            # request, so a typo behaves like a typo in the outer route dict:
+            # `RouteConfig(**value)` above already raises at startup for an
+            # unknown key, and the one thing that used to accept anything
+            # silently is what turns body binding off.
+            resolve_mpp_option(self.routes[key].mpp)
         self.options = options or PaymentMiddlewareOptions()
 
     async def dispatch(

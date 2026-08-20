@@ -46,7 +46,8 @@ app.add_middleware(
 @app.post("/ask")
 async def ask(request: Request):
     context = request.state.payment_context
-    # context.mpp is present only when the request was paid over MPP.
+    # context.mpp is present only when the request was paid over MPP. It is an
+    # MppPaymentFraming with three attributes: credential, resource, http_verb.
     return {"answer": "...", "paid_over": "mpp" if context.mpp else "x402"}
 ```
 
@@ -58,6 +59,11 @@ the challenge, so the paid retry must carry the same bytes:
 ```python
 routes={"POST /ask": {"plan_id": PLAN_ID, "credits": 2, "mpp": {"bind_body": True}}}
 ```
+
+`bind_body` is the only key the option accepts, and a typo raises at startup
+rather than resolving to `False`: `{"bindBody": True}` would otherwise turn the
+binding off silently, which is not a missing nicety — see the paragraph below for
+what an unbound challenge lets a buyer do.
 
 A request with **no body** binds the digest of zero bytes rather than nothing at
 all. Leaving it unbound would let a buyer mint against an empty request and
@@ -102,7 +108,18 @@ drown the rejections the hook exists to surface. It *is* called when an
 intermediary is rewriting it and the buyer is stuck in a silent retry loop.
 
 `on_after_settle` receives what the backend says it **burned**, not what this
-request would charge — and `0` for a settlement that failed.
+request would charge — and `0` for a settlement that failed. It fires for all
+three settlement outcomes, so a ledger built on it can count them apart:
+
+| Outcome | `credits` | Third argument |
+|---|---|---|
+| Settled | what the backend burned | the settlement response |
+| Unknown — may have burned | the charged amount | `MppSettlementOutcomeUnknown` |
+| Definitely not paid | `0` | `MppSettlementFailed` |
+
+The third row is the one worth wiring: the resource was delivered and the seller
+was not paid. Were it reported only as an absence, it would be indistinguishable
+from a request that was never an MPP request at all.
 
 ---
 

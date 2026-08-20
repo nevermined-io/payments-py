@@ -19,12 +19,14 @@ from payments_py.common.types import PaymentOptions
 from payments_py.mpp.errors import (
     RETRYABLE_BCK_MPP_CODES,
     MPP_SETTLEMENT_OUTCOME_UNKNOWN_CODE,
+    MPP_SPEND_OUTCOME_UNKNOWN_CODE,
     MppBodyDigestMismatchError,
     MppChallengeExpiredError,
     MppCredentialRejectedError,
     MppError,
     MppNotConfiguredError,
     MppSettlementOutcomeUnknownError,
+    MppSpendOutcomeUnknownError,
     MppSpendReport,
     is_retryable_mpp_code,
     mpp_spend_of,
@@ -384,8 +386,19 @@ class TestErrorHierarchy:
     def test_everything_else_is_terminal(self, code):
         assert is_retryable_mpp_code(code) is False
 
-    def test_the_sdk_invented_codes_can_never_collide_with_a_backend_one(self):
-        assert not MPP_SETTLEMENT_OUTCOME_UNKNOWN_CODE.startswith("BCK.MPP.")
+    @pytest.mark.parametrize(
+        "code", [MPP_SETTLEMENT_OUTCOME_UNKNOWN_CODE, MPP_SPEND_OUTCOME_UNKNOWN_CODE]
+    )
+    def test_the_sdk_invented_codes_can_never_collide_with_a_backend_one(self, code):
+        # This is the assertion that gives either constant its purpose: `code` is
+        # the only data-level discriminant on the hierarchy, so a value that
+        # could collide with a backend one would make the two indistinguishable
+        # across a process or serialization boundary.
+        assert not code.startswith("BCK.MPP.")
+
+    def test_the_spend_outcome_error_carries_its_own_code(self):
+        error = MppSpendOutcomeUnknownError("credential was on the wire")
+        assert error.code == MPP_SPEND_OUTCOME_UNKNOWN_CODE
 
     def test_mpp_spend_of_reads_the_report_off_any_error(self):
         report = MppSpendReport(credentials_presented=1, credits_presented="2")

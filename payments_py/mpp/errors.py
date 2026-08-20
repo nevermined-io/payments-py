@@ -194,6 +194,28 @@ class MppSettlementOutcomeUnknown:
     outcome: str = "unknown"
 
 
+@dataclass
+class MppSettlementFailed:
+    """What ``payment_middleware``'s ``on_after_settle`` hook receives as its
+    third argument when settlement failed **definitely** — the backend rejected
+    it, or the call could not reach a backend that might have burned anything.
+
+    The sibling :class:`MppSettlementOutcomeUnknown` exists because a burn that
+    may have happened must not vanish from the seller's accounting. The same
+    argument applies here and is easy to miss: ``on_after_settle`` is where a
+    seller writes its usage or revenue record, so reporting only *settled* and
+    *unknown* leaves the delivered-but-definitely-unpaid case as an ABSENCE —
+    indistinguishable from a request that was never an MPP request at all, which
+    is the one outcome a seller most needs to count.
+
+    The credits are reported as ``0`` alongside this, because a definite failure
+    burned nothing.
+    """
+
+    reason: str
+    outcome: str = "failed"
+
+
 #: ``BCK.MPP.*`` codes a buyer can retry by minting a fresh credential against
 #: the NEW challenge the same 402 carries alongside them — as opposed to
 #: ``BCK.MPP.0003``, which means the credential itself was refused and paying
@@ -243,6 +265,7 @@ __all__ = [
     "MppChallengeExpiredError",
     "MppBodyDigestMismatchError",
     "MppSettlementOutcomeUnknownError",
+    "MppSettlementFailed",
     "MppSettlementOutcomeUnknown",
     "MppSpendOutcomeUnknownError",
     "MppSpendReport",

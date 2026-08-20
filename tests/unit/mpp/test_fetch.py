@@ -23,7 +23,7 @@ from payments_py.mpp.errors import (
 from payments_py.mpp.fetch import MAX_ERROR_BODY_BYTES, MppFetchOptions, mpp_fetch
 from payments_py.x402.types import DelegationConfig
 
-from .conftest import DEFAULT_URL, make_response
+from .conftest import DEFAULT_URL, FakeMinter, make_response
 from .fixtures import b64url, b64url_json
 
 PLAN_ID = "plan-123"
@@ -606,8 +606,6 @@ class TestEveryExitReportsWhatMayHaveBeenSpent:
         assert mpp_spend_of(excinfo.value) is None
 
     def test_reports_no_spend_when_the_mint_itself_fails(self, transport):
-        from .conftest import FakeMinter
-
         failing = FakeMinter(error=PaymentsError.validation("mint refused"))
         transport([challenged()])
 

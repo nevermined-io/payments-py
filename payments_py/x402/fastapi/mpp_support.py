@@ -47,18 +47,59 @@ class ResolvedMppOption:
     bind_body: bool
 
 
+@dataclass
+class MppRouteOptions:
+    """The dict form of the per-route ``mpp`` option.
+
+    Constructed as ``MppRouteOptions(**option)`` so an unknown key raises
+    ``TypeError``, exactly as ``RouteConfig(**value)`` already does for the
+    outer route dict — the nested ``mpp`` dict was the one place that accepted
+    anything and kept going.
+
+    That silence mattered because of WHAT it turned off: ``{"bindBody": True}``
+    resolved to ``bind_body=False`` with no error, no warning and no log, and an
+    unbound challenge is not a missing nicety — the backend skips the digest
+    comparison when the challenge carries none, so the BUYER decides whether
+    body binding applies. Mint against an empty request, attach any body to the
+    paid retry.
+    """
+
+    bind_body: bool = False
+
+
 def resolve_mpp_option(
     option: Optional[Union[bool, Dict[str, Any]]],
 ) -> ResolvedMppOption:
     """Normalize the per-route ``mpp`` option. ``True`` is shorthand for
-    ``{"bind_body": False}``."""
+    ``{"bind_body": False}``.
+
+    Raises:
+        TypeError: if the dict form carries a key other than ``bind_body``, or
+            a ``bind_body`` that is not a bool. Both are typos that would
+            otherwise ship an unbound challenge on a route whose author asked
+            for a bound one.
+    """
     if option is None or option is False:
         return ResolvedMppOption(enabled=False, bind_body=False)
     if option is True:
         return ResolvedMppOption(enabled=True, bind_body=False)
-    return ResolvedMppOption(
-        enabled=True, bind_body=option.get("bind_body", False) is True
-    )
+
+    try:
+        options = MppRouteOptions(**option)
+    except TypeError as error:
+        raise TypeError(
+            f"Unsupported key in the route's `mpp` option: {error}. "
+            "Supported keys: bind_body."
+        ) from error
+    # The dataclass gives no runtime type enforcement, and `{"bind_body": "true"}`
+    # is the same class of typo as a misspelled key: truthy to a reader, and off
+    # under the identity check this used to do.
+    if not isinstance(options.bind_body, bool):
+        raise TypeError(
+            "The route's `mpp.bind_body` must be a bool, got "
+            f"{type(options.bind_body).__name__}."
+        )
+    return ResolvedMppOption(enabled=True, bind_body=options.bind_body)
 
 
 def mpp_resource(request: Request) -> str:
@@ -207,6 +248,7 @@ def _reset_stores_for_tests() -> None:
 __all__ = [
     "EMPTY_BODY_DIGEST",
     "MPP_HEADERS",
+    "MppRouteOptions",
     "ResolvedMppOption",
     "SPENT_CREDENTIAL_TTL_SECONDS",
     "claim_credential",
