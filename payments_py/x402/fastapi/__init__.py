@@ -48,6 +48,19 @@ Example with dynamic credits:
     )
     ```
 
+Example opting a route into MPP as well (additive, default off):
+    ```python
+    app.add_middleware(
+        PaymentMiddleware,
+        payments=payments,
+        routes={
+            # Accepts both x402 and MPP. Add {"bind_body": True} instead of True
+            # to seal the challenge to a digest of the request body.
+            "POST /ask": {"plan_id": "123", "credits": 1, "mpp": True},
+        },
+    )
+    ```
+
 For full documentation, see the middleware module.
 """
 
@@ -60,6 +73,7 @@ from .middleware import (
     payment_middleware,
     CreditsCallable,
 )
+from .mpp_support import MPP_HEADERS
 
 __all__ = [
     "X402_HEADERS",
@@ -69,4 +83,5 @@ __all__ = [
     "PaymentMiddleware",
     "payment_middleware",
     "CreditsCallable",
+    "MPP_HEADERS",
 ]
