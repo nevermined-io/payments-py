@@ -35,9 +35,29 @@ from .errors import (
     # package or every consumer reaches into ``__dict__``.
     mpp_spend_of,
 )
+
+# ``mpp_fetch`` itself is deliberately NOT re-exported: ``payments.mpp.fetch``
+# (via ``MppAPI``) is the intended public surface — it routes through
+# ``MppAPI._post``'s error translation and the ``Nevermined-Version`` pinning.
+# Exporting the free function would hand consumers a supported way to bypass
+# both, which could not be withdrawn later without a major bump. Tests import
+# ``payments_py.mpp.fetch`` directly.
+from .fetch import MppFetchOptions, MppFetchResult
+from .mpp_api import (
+    IssueMppChallengeParams,
+    MppAPI,
+    RedeemMppParams,
+    normalize_credits,
+)
 from .types import MppChallenge, MppChallengeRequest, MppReceipt
 
 __all__ = [
+    "normalize_credits",
+    "RedeemMppParams",
+    "MppFetchResult",
+    "MppFetchOptions",
+    "MppAPI",
+    "IssueMppChallengeParams",
     "MPP_SETTLEMENT_OUTCOME_UNKNOWN_CODE",
     "MPP_SPEND_OUTCOME_UNKNOWN_CODE",
     "MppBodyDigestMismatchError",

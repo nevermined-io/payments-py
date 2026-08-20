@@ -27,6 +27,7 @@ from payments_py.x402.token_request import build_x402_token_request_body
 from payments_py.x402.types import X402TokenOptions
 
 from .errors import MppError, MppSettlementOutcomeUnknownError, to_mpp_error
+from .fetch import MppFetchOptions, MppFetchResult, mpp_fetch
 
 # Only whole, non-negative decimal digits — no sign, no leading/trailing
 # whitespace, no underscore separators, no fractional part. ``int(x)`` silently
@@ -213,6 +214,67 @@ class MppAPI(BasePaymentsAPI):
         )
         return self._post(API_URL_MPP_CREATE_PERMISSION, body)
 
+    def fetch(
+        self,
+        method: str,
+        url: str,
+        options: MppFetchOptions,
+        **request_kwargs: Any,
+    ) -> MppFetchResult:
+        """Perform an HTTP request, paying an MPP challenge if the endpoint
+        returns one.
+
+        The buyer needs no new plan, delegation or credential: the delegation
+        that works for x402 works here unchanged. ``request_kwargs`` are handed
+        to :func:`requests.request` unchanged (``headers``, ``json``, ``data``,
+        ``params``, ``timeout``, ``stream``, …).
+
+        A request body must be replayable **if the endpoint may challenge the
+        request**: a generator, iterator or file-like ``data=`` raises a typed
+        :class:`PaymentsError` once a 402 challenge actually requires a retry,
+        since it cannot be resent. A request that is never challenged sends such
+        a body exactly once, exactly like a plain ``requests`` call — the
+        ``paid=False`` / untouched-response guarantee still holds.
+
+        ``options.delegation_config`` must carry a ``delegation_id`` — this call
+        refuses the deprecated inline create-on-the-fly shape (no
+        ``delegation_id``) that
+        :meth:`X402TokenAPI.get_x402_access_token` otherwise tolerates with a
+        warning: the retry loop here can mint an access token twice per call, so
+        that shape could silently create two delegations as a side effect of
+        paying.
+
+        Example:
+            ```python
+            result = payments.mpp.fetch(
+                "POST",
+                "https://agent.example/ask",
+                MppFetchOptions(
+                    delegation_config=DelegationConfig(delegation_id=delegation_id),
+                    plan_id=plan_id,
+                ),
+                json={"q": "hello"},
+            )
+            print(result.paid, result.receipt)
+            ```
+        """
+        delegation_config = getattr(options, "delegation_config", None)
+        if not delegation_config or not getattr(
+            delegation_config, "delegation_id", None
+        ):
+            raise PaymentsError.validation(
+                "payments.mpp.fetch requires delegation_config.delegation_id. "
+                "Create a delegation first with "
+                "payments.delegation.create_delegation(), then pass "
+                "DelegationConfig(delegation_id=...). An inline "
+                "create-on-the-fly delegation_config (no delegation_id) is not "
+                "accepted here — the retry loop can mint against it twice per "
+                "call, which would create two delegations."
+            )
+        return mpp_fetch(
+            self.get_mpp_access_token, method, url, options, **request_kwargs
+        )
+
     def _redeem_body(self, params: RedeemMppParams) -> Dict[str, Any]:
         body: Dict[str, Any] = {
             "credential": params.credential,
@@ -319,6 +381,8 @@ class MppAPI(BasePaymentsAPI):
 
 __all__ = [
     "IssueMppChallengeParams",
+    "MppFetchOptions",
+    "MppFetchResult",
     "MppAPI",
     "RedeemMppParams",
     "normalize_credits",

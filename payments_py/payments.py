@@ -14,6 +14,7 @@ from payments_py.api.observability_api import ObservabilityAPI
 from payments_py.api.organizations_api import OrganizationsAPI
 from payments_py.api.contracts_api import ContractsAPI
 from payments_py.x402.facilitator_api import FacilitatorAPI
+from payments_py.mpp.mpp_api import MppAPI
 from payments_py.x402.token import X402TokenAPI
 
 # A2A integration
@@ -94,6 +95,9 @@ class Payments(BasePaymentsAPI):
         self.observability = ObservabilityAPI.get_instance(options)
         self.organizations = OrganizationsAPI.get_instance(options)
         self.facilitator = FacilitatorAPI.get_instance(options)
+        # MPP: a second payment framing over the same plans/credits/
+        # delegations core. Namespaced next to ``x402`` for symmetry.
+        self.mpp = MppAPI.get_instance(options)
         self.x402 = X402TokenAPI.get_instance(options)
         self.contracts_api = ContractsAPI(options)
 
