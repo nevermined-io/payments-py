@@ -11,6 +11,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Dict,
     List,
     Literal,
     Optional,
@@ -313,6 +314,10 @@ class PaymentContext:
     verified: bool
     agent_request_id: Optional[str] = None
     agent_request: Optional[Any] = None
+    # MPP framing details, present only when the route was paid over MPP.
+    # The credential is the opaque ``Payment …`` value the buyer presented;
+    # resource and http_verb are what the challenge was bound to.
+    mpp: Optional[Dict[str, str]] = None
 
 
 class DelegationConfig(BaseModel):
@@ -499,6 +504,12 @@ class RouteConfig:
     description: Optional[str] = None
     # Expected response MIME type (e.g., "application/json")
     mime_type: Optional[str] = None
+    # Accept MPP (Machine Payments Protocol) on this route in addition to
+    # x402. Additive and default-off: with ``mpp`` unset the x402 path is
+    # unchanged. ``True`` is shorthand for ``{"bind_body": False}``;
+    # ``{"bind_body": True}`` seals the challenge to a digest of the request
+    # body, so the paid retry must carry the same bytes.
+    mpp: Optional[Union[bool, Dict[str, Any]]] = None
 
 
 class PaymentRequiredError(Exception):

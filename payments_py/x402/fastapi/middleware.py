@@ -71,6 +71,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from payments_py.x402.fastapi.mpp_flow import MppFlow
+from payments_py.x402.fastapi.mpp_support import (
+    extract_credential,
+    resolve_mpp_option,
+)
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
 from payments_py.x402.types import (
@@ -273,6 +278,23 @@ class PaymentMiddleware(BaseHTTPMiddleware):
 
         # Extract token from headers
         token = _extract_token(request, self.options.token_header)
+
+        # The 402 an MPP-enabled route sends advertises both a WWW-Authenticate
+        # challenge and the x402 payment-required header, so both protocols must
+        # be payable, not just the one that minted the 402. An MPP credential
+        # always takes the MPP path; with no MPP credential but an x402 token
+        # present, fall through to the x402 flow below unchanged. With neither
+        # present, the MPP path still runs so the 402 keeps advertising both.
+        mpp_option = resolve_mpp_option(route_config.mpp)
+        if mpp_option.enabled and (extract_credential(request) or not token):
+            return await MppFlow(
+                request=request,
+                payments=self.payments,
+                route_config=route_config,
+                payment_required=payment_required,
+                bind_body=mpp_option.bind_body,
+                options=self.options,
+            ).run(call_next)
         if not token:
             error = Exception("Payment required: missing x402 access token")
             if self.options.on_payment_error:
