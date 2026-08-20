@@ -242,6 +242,12 @@ settle as a single burn.
     failure silently corrupts your own accounting. A connect timeout, a refused
     connection and any 4xx are definite: nothing burned.
 
+    Settlement gets a longer read deadline (90s) than every other SDK call,
+    because it waits on an on-chain burn — a settle exceeding the generic 30s
+    default was measured on staging. If it times out anyway, the recovery is to
+    settle the same credential again: the challenge id doubles as the burn key,
+    so a repeat settles onto the same single burn rather than charging twice.
+
 ---
 
 ## What the SDK never holds

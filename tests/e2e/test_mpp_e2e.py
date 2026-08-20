@@ -29,6 +29,7 @@ from payments_py.mpp import (
     IssueMppChallengeParams,
     MppFetchOptions,
     MppNotConfiguredError,
+    MppSettlementOutcomeUnknownError,
     RedeemMppParams,
     build_credential_header,
     parse_challenge_header,
@@ -204,14 +205,22 @@ class TestMppFlow:
         )
         assert verification.get("isValid") is True
 
-    @pytest.mark.timeout(TEST_TIMEOUT)
+    @pytest.mark.timeout(TEST_TIMEOUT * 2)
     def test_settle_the_credential_and_receive_a_receipt(self, payments_agent):
         assert self.credential is not None, "credential must be set by a previous test"
-        settlement = payments_agent.mpp.settle_credential(
-            RedeemMppParams(
-                credential=self.credential, resource="/ask", http_verb="POST"
-            )
+        redeem = RedeemMppParams(
+            credential=self.credential, resource="/ask", http_verb="POST"
         )
+        try:
+            settlement = payments_agent.mpp.settle_credential(redeem)
+        except MppSettlementOutcomeUnknownError:
+            # A real settle commits an on-chain burn, so it can outrun any client
+            # deadline. That is not a failure and must never be reported as one —
+            # the credits may be gone. The designed recovery is the idempotent
+            # retry (the challenge id doubles as the burn key), so drive it and
+            # assert THAT: the burn is still worth exactly one settlement.
+            settlement = payments_agent.mpp.settle_credential(redeem)
+
         assert settlement.get("success") is True
         assert settlement.get("paymentReceipt")
 

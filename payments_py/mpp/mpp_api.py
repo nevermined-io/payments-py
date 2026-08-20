@@ -35,6 +35,23 @@ from .fetch import MppFetchOptions, MppFetchResult, mpp_fetch
 # is 10), which a decimal-string contract must reject rather than accept quietly.
 _DECIMAL_INTEGER_STRING = re.compile(r"^\d+$")
 
+# Read deadline for the one call that BURNS, in seconds.
+#
+# Deliberately longer than the SDK's generic backend default (30s): a settle
+# commits an on-chain burn, and a staging settle was measured exceeding that
+# default — which surfaces as MppSettlementOutcomeUnknownError even though the
+# burn went through. That is the honest classification, but it is a bad steady
+# state: the seller never attaches a receipt, so the buyer reads paid=False on a
+# request that was paid for, and every slow burn looks like an incident.
+#
+# The trade-off is real in the other direction too — the seller middleware
+# settles before answering, so a hung backend can hold that request for this
+# long. A deadline shorter than a real settle is the worse of the two: it turns
+# routine latency into unknown outcomes on the one call that cannot be replayed
+# for free. The connect deadline is left at the SDK default; a connection that
+# never opens has burned nothing.
+_SETTLE_READ_TIMEOUT_SECONDS = 90
+
 
 def normalize_credits(credits: Union[str, int, float]) -> str:
     """Normalize ``credits`` to the exact decimal-string amount that gets sealed
@@ -305,6 +322,9 @@ class MppAPI(BasePaymentsAPI):
         """
         url = f"{self.environment.backend}{path}"
         options = self.get_backend_http_options("POST", body)
+        if burns:
+            connect_timeout = options["timeout"][0]
+            options["timeout"] = (connect_timeout, _SETTLE_READ_TIMEOUT_SECONDS)
 
         try:
             response = requests.post(url, **options)

@@ -230,6 +230,27 @@ class TestSettleCredentialBurns:
 
         assert json.loads(calls[0]["data"])["bodyDigest"] == "sha-256=abc"
 
+    def test_gives_the_burning_call_a_longer_read_deadline_than_the_default(
+        self, api, post
+    ):
+        # A settle commits an on-chain burn and was measured exceeding the SDK's
+        # generic 30s read default on staging. Inheriting that default makes every
+        # slow-but-successful burn look like an unknown outcome, so the seller
+        # never attaches a receipt and the buyer reads paid=False on a request
+        # that was paid for.
+        settle_calls = post(make_response(200, body=json.dumps({"success": True})))
+        api.settle_credential(self.redeem())
+        connect, read = settle_calls[0]["timeout"]
+        assert read == 90
+
+        verify_calls = post(make_response(200, body=json.dumps({"isValid": True})))
+        api.verify_credential(self.redeem())
+        # Only the burning call gets it — nothing else needs the extra rope.
+        assert verify_calls[0]["timeout"][1] < read
+        # The connect deadline is untouched: a connection that never opens has
+        # burned nothing.
+        assert verify_calls[0]["timeout"][0] == connect
+
     def test_a_read_timeout_is_an_unknown_outcome(self, api, post):
         # The request was written and the answer never arrived: the burn may
         # have committed.
