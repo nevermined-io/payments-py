@@ -11,6 +11,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Dict,
     List,
     Literal,
     Optional,
@@ -279,6 +280,28 @@ class SettleResponse(BaseModel):
     )
 
 
+@dataclass(frozen=True)
+class MppPaymentFraming:
+    """How an MPP-paid request was framed, exposed on
+    :attr:`PaymentContext.mpp`.
+
+    A dict carried no key names, and the snake/camel split in this SDK made that
+    more than a documentation gap: the same concept goes over the wire as
+    ``httpVerb`` (``RedeemMppParams`` serializes it that way), so
+    ``context.mpp["httpVerb"]`` is the natural thing for a seller to write and it
+    raised ``KeyError`` inside their handler. Attributes make the three names
+    discoverable from the type and turn that mistake into an error at author
+    time.
+    """
+
+    #: The opaque ``Payment …`` credential the buyer presented.
+    credential: str
+    #: The resource the challenge was bound to, query string included.
+    resource: str
+    #: The HTTP verb that binding covers.
+    http_verb: str
+
+
 @dataclass
 class PaymentContext:
     """
@@ -313,6 +336,8 @@ class PaymentContext:
     verified: bool
     agent_request_id: Optional[str] = None
     agent_request: Optional[Any] = None
+    # MPP framing details, present only when the route was paid over MPP.
+    mpp: Optional["MppPaymentFraming"] = None
 
 
 class DelegationConfig(BaseModel):
@@ -499,6 +524,12 @@ class RouteConfig:
     description: Optional[str] = None
     # Expected response MIME type (e.g., "application/json")
     mime_type: Optional[str] = None
+    # Accept MPP (Machine Payments Protocol) on this route in addition to
+    # x402. Additive and default-off: with ``mpp`` unset the x402 path is
+    # unchanged. ``True`` is shorthand for ``{"bind_body": False}``;
+    # ``{"bind_body": True}`` seals the challenge to a digest of the request
+    # body, so the paid retry must carry the same bytes.
+    mpp: Optional[Union[bool, Dict[str, Any]]] = None
 
 
 class PaymentRequiredError(Exception):

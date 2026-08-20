@@ -46,6 +46,14 @@ API_URL_CREATE_PERMISSION = "/api/v1/x402/permissions"
 API_URL_VERIFY_PERMISSIONS = "/api/v1/x402/verify"
 API_URL_SETTLE_PERMISSIONS = "/api/v1/x402/settle"
 
+# MPP seller/buyer surface. Sibling routes of /api/v1/x402, never children:
+# an MPP access token is byte-identical to an x402 one on the wire, so the
+# routes are what keep the two protocols isolated.
+API_URL_MPP_CREATE_PERMISSION = "/api/v1/mpp/permissions"
+API_URL_MPP_CHALLENGE = "/api/v1/mpp/challenge"
+API_URL_MPP_VERIFY = "/api/v1/mpp/verify"
+API_URL_MPP_SETTLE = "/api/v1/mpp/settle"
+
 # Stripe endpoints
 API_URL_STRIPE_CHECKOUT = "/api/v1/fiat/stripe/payment"
 

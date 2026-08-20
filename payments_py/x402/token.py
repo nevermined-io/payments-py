@@ -7,39 +7,14 @@ Tokens are used to authorize payment verification and settlement.
 
 import base64
 import json
-import warnings
 import requests
 from typing import Dict, Any, Optional
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.nvm_api import API_URL_CREATE_PERMISSION
-from payments_py.x402.schemes import get_default_network
-from payments_py.x402.types import DelegationConfig, X402TokenOptions
-
-
-def _is_inline_create(delegation_config: DelegationConfig) -> bool:
-    """Whether a delegation config asks the backend to create a delegation
-    on the fly (the deprecated path) rather than reusing an existing one.
-
-    The supported flow is create-first: create the delegation via
-    ``POST /delegation/create`` and pass only ``delegation_id`` here. A config
-    that carries no ``delegation_id`` but does carry an inline-create signal
-    (a payment-method reference or spending limits) triggers the backend's
-    deprecated create-on-the-fly path, which logs its own deprecation warning
-    server-side (#1674) and will be removed in a future release.
-    """
-    if delegation_config.delegation_id:
-        return False
-    return any(
-        value is not None
-        for value in (
-            delegation_config.card_id,
-            delegation_config.provider_payment_method_id,
-            delegation_config.spending_limit_cents,
-            delegation_config.duration_secs,
-        )
-    )
+from payments_py.x402.token_request import build_x402_token_request_body
+from payments_py.x402.types import X402TokenOptions
 
 
 def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
@@ -173,69 +148,15 @@ class X402TokenAPI(BasePaymentsAPI):
         """
         url = f"{self.environment.backend}{API_URL_CREATE_PERMISSION}"
 
-        # Extract scheme/network from token_options or defaults
-        scheme = (
-            token_options.scheme
-            if token_options and token_options.scheme
-            else "nvm:erc4337"
+        # Body shape is shared with the MPP mint (`payments.mpp`): same
+        # inputs, same delegation rules, different EIP-712 domain at the
+        # backend. Kept in one place so the two cannot drift.
+        body = build_x402_token_request_body(
+            plan_id=plan_id,
+            agent_id=agent_id,
+            token_options=token_options,
+            environment_name=self.environment_name,
         )
-        network = (
-            token_options.network
-            if token_options and token_options.network
-            else get_default_network(scheme, self.environment_name)
-        )
-
-        # Build x402-aligned request body
-        extra: Dict[str, Any] = {}
-        if agent_id is not None:
-            extra["agentId"] = agent_id
-
-        body: Dict[str, Any] = {
-            "accepted": {
-                "scheme": scheme,
-                "network": network,
-                "planId": plan_id,
-                "extra": extra,
-            },
-        }
-
-        # Add delegation config for both erc4337 and card-delegation schemes
-        if token_options and token_options.delegation_config:
-            delegation_config = token_options.delegation_config
-            # An empty- or whitespace-only delegation_id is neither a valid
-            # reuse (it's not a UUID) nor "absent": model_dump(exclude_none=True)
-            # keeps it (it is not None), so it would serialize a blank
-            # `delegationId` and 4xx at the backend, while _is_inline_create
-            # would (mis)read it as inline. Fail fast with a clear client-input
-            # error instead. Strip first to match the TS SDK guard's
-            # `.trim() === ''` (payments#379) — exact cross-SDK symmetry.
-            if (
-                delegation_config.delegation_id is not None
-                and delegation_config.delegation_id.strip() == ""
-            ):
-                raise PaymentsError.validation(
-                    "delegation_id must not be an empty string — pass a valid "
-                    "delegation UUID or omit the field."
-                )
-            if _is_inline_create(delegation_config):
-                # FutureWarning (not DeprecationWarning): DeprecationWarning is
-                # filtered out by default outside __main__, so agents running
-                # under FastAPI / gunicorn / Celery / Docker workers would never
-                # see the nudge. FutureWarning is shown by default → true runtime
-                # parity with the TS SDK's console.warn.
-                warnings.warn(
-                    "Passing spending limits / a payment method to "
-                    "get_x402_access_token (inline delegation create-on-the-fly) "
-                    "is deprecated and will be removed in a future release. "
-                    "Create the delegation first with "
-                    "payments.delegation.create_delegation(...) and pass only "
-                    "DelegationConfig(delegation_id=...) here.",
-                    FutureWarning,
-                    stacklevel=2,
-                )
-            body["delegationConfig"] = delegation_config.model_dump(
-                by_alias=True, exclude_none=True
-            )
 
         options = self.get_backend_http_options("POST", body)
 

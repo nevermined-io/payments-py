@@ -90,6 +90,11 @@ FILE_MAPPING = {
         "icon": "graduation-cap",
         "description": "Starlette middleware for gating a LangGraph agent deployed to LangSmith Deployment with x402",
     },
+    "15-mpp.md": {
+        "target": "mpp-module.mdx",
+        "icon": "handshake",
+        "description": "Accept and pay MPP (Machine Payments Protocol) with the Python SDK",
+    },
 }
 
 # Link mapping for internal references
@@ -107,6 +112,7 @@ LINK_MAPPING = {
     "11-x402.md": "/api-reference/python/x402-module",
     "12-langchain-integration.md": "/api-reference/python/langchain-module",
     "13-langsmith-deployment.md": "/api-reference/python/langsmith-deployment-module",
+    "15-mpp.md": "/api-reference/python/mpp-module",
 }
 
 
@@ -130,6 +136,19 @@ def convert_admonitions(content: str) -> str:
         # !!! warning (no title)
         (
             r"!!!\s+warning\n((?:\s{4}.+\n?)+)",
+            lambda m: f"<Warning>\n{dedent_content(m.group(1))}</Warning>\n",
+        ),
+        # !!! danger "Title" — Mintlify has no <Danger>; <Warning> is its
+        # strongest callout. Without this case the literal `!!! danger` line
+        # survives into the .mdx and its indented body renders as a CODE BLOCK,
+        # which is invisible in `mkdocs build` and only shows up after publish.
+        (
+            r'!!!\s+danger\s+"([^"]+)"\n((?:\s{4}.+\n?)+)',
+            lambda m: f'<Warning title="{m.group(1)}">\n{dedent_content(m.group(2))}</Warning>\n',
+        ),
+        # !!! danger (no title)
+        (
+            r"!!!\s+danger\n((?:\s{4}.+\n?)+)",
             lambda m: f"<Warning>\n{dedent_content(m.group(1))}</Warning>\n",
         ),
         # !!! note "Title"
