@@ -701,6 +701,10 @@ class CustomerOnboardingResponse(BaseModel):
     user_wallet: Optional[str] = Field(default=None, alias="userWallet")
     is_customer: bool = Field(default=False, alias="isCustomer")
     customer_recorded: Optional[bool] = Field(default=None, alias="customerRecorded")
+    # ISO-8601 expiry of the credential (#2924). Track it and re-onboard to
+    # refresh before it lapses. Optional: returned for the credential outcome,
+    # but an older backend may omit it.
+    expires_at: Optional[str] = Field(default=None, alias="expiresAt")
 
 
 class StripeAccountConnectResult(BaseModel):

@@ -600,7 +600,7 @@ class TestConnectStripeAccount:
 
 
 class TestOnboardCustomer:
-    def test_new_customer_returns_real_key_and_sends_as_customer(self):
+    def test_new_customer_returns_hash_as_bearer_and_sends_as_customer(self):
         payments = _make_payments()
         with requests_mock.Mocker() as m:
             m.post(
@@ -610,12 +610,17 @@ class TestOnboardCustomer:
                     "success": True,
                     "message": "Customer onboarded",
                     "walletResult": {
-                        "hash": "lookup-hash",
+                        # ``hash`` is the Bearer credential (``<prefix>:<jwt>``) —
+                        # the value to send as ``Authorization: Bearer …``.
+                        "hash": "sandbox:jwt-bearer-token",
                         "userId": "us-123",
                         "userWallet": "0xabc",
-                        "nvmApiKey": "nvm-real-usable-key",
+                        # ``nvmApiKey`` is the encrypted server-side blob — NOT a
+                        # Bearer; it must never leak through as a credential.
+                        "nvmApiKey": "encrypted-blob-not-a-bearer",
                         "isCustomer": True,
                         "customerRecorded": True,
+                        "expiresAt": "2026-09-27T12:00:00.000Z",
                         "alreadyMember": False,
                     },
                 },
@@ -626,12 +631,15 @@ class TestOnboardCustomer:
         # Opts into the customer outcome.
         assert body == {"email": "customer@example.com", "as": "customer"}
         assert isinstance(result, CustomerOnboardingResponse)
-        # The USABLE key is returned — not the (non-usable) lookup hash.
-        assert result.nvm_api_key == "nvm-real-usable-key"
+        # The USABLE Bearer (``hash``) is surfaced as ``nvm_api_key`` (mirroring
+        # create_member) — the raw ``nvmApiKey`` blob must never leak through.
+        assert result.nvm_api_key == "sandbox:jwt-bearer-token"
         assert result.is_customer is True
         assert result.customer_recorded is True
         assert result.user_id == "us-123"
         assert result.consent_required is False
+        # The credential expiry the paired docs tell integrators to track.
+        assert result.expires_at == "2026-09-27T12:00:00.000Z"
 
     def test_existing_non_owned_account_requires_consent_opaque(self):
         payments = _make_payments()
@@ -676,6 +684,25 @@ class TestOnboardCustomer:
                 json={
                     "success": True,
                     "walletResult": {"userId": "us-1", "isCustomer": True},
+                },
+            )
+            with pytest.raises(PaymentsError, match="no API key"):
+                payments.organizations.onboard_customer("customer@example.com")
+
+    def test_raises_when_hash_is_not_a_string(self):
+        # model_copy does not validate, so a non-string truthy hash must be
+        # rejected before it reaches Payments as the Bearer.
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=201,
+                json={
+                    "success": True,
+                    "walletResult": {
+                        "hash": {"unexpected": "object"},
+                        "userId": "us-1",
+                    },
                 },
             )
             with pytest.raises(PaymentsError, match="no API key"):
