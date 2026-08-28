@@ -317,8 +317,11 @@ class OrganizationsAPI(BasePaymentsAPI):
         # exactly as create_member does. A 2xx without a hash means a
         # partial/unexpected payload — fail loudly rather than return a "success"
         # carrying no usable credential.
+        # ``model_copy(update=…)`` below does not validate, so assert the shape
+        # here: the backend contract is ``<env>:<JWT>`` — a non-string truthy
+        # ``hash`` must never reach ``Payments`` as the Bearer.
         hash_key = wallet.get("hash")
-        if not hash_key:
+        if not isinstance(hash_key, str) or not hash_key:
             raise PaymentsError.from_backend(
                 "Unable to onboard customer",
                 {

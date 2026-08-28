@@ -689,6 +689,25 @@ class TestOnboardCustomer:
             with pytest.raises(PaymentsError, match="no API key"):
                 payments.organizations.onboard_customer("customer@example.com")
 
+    def test_raises_when_hash_is_not_a_string(self):
+        # model_copy does not validate, so a non-string truthy hash must be
+        # rejected before it reaches Payments as the Bearer.
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=201,
+                json={
+                    "success": True,
+                    "walletResult": {
+                        "hash": {"unexpected": "object"},
+                        "userId": "us-1",
+                    },
+                },
+            )
+            with pytest.raises(PaymentsError, match="no API key"):
+                payments.organizations.onboard_customer("customer@example.com")
+
     def test_raises_on_5xx(self):
         payments = _make_payments()
         with requests_mock.Mocker() as m:
