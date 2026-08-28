@@ -256,9 +256,11 @@ class OrganizationsAPI(BasePaymentsAPI):
         Admin-only on the backend. Provisions a Nevermined account for the
         customer **without consuming a member seat** and returns a usable,
         scoped NVM API key the org can use to transparently act on the
-        customer's behalf (purchase plans / redeem credits). Unlike
-        :meth:`create_member`, this returns the **real** usable key
-        (``walletResult.nvmApiKey``), not the non-usable lookup hash.
+        customer's behalf (purchase plans / redeem credits). Like
+        :meth:`create_member`, the usable Bearer is ``walletResult.hash``
+        (``<prefix>:<jwt>``) and is surfaced as ``nvm_api_key``; the sibling
+        ``walletResult.nvmApiKey`` is the encrypted server-side blob and is
+        **not** a valid Bearer.
 
         If the email already belongs to an account the org does NOT own, no key
         is issued: the backend replies ``202`` and the result carries
@@ -307,10 +309,16 @@ class OrganizationsAPI(BasePaymentsAPI):
         # or key can leak even if the backend regresses.
         if response.status_code == 202 or result.consent_required:
             return CustomerOnboardingResponse(consent_required=True)
-        # New account or returning customer: a usable key MUST be present. A 2xx
-        # without one means a partial/unexpected payload — fail loudly rather
-        # than return a "success" carrying missing credentials.
-        if not result.nvm_api_key:
+        # New account or returning customer: the Bearer MUST be present. The
+        # backend returns the usable credential as ``walletResult.hash``
+        # (``<prefix>:<jwt>``); the sibling ``nvmApiKey`` — which the
+        # ``model_validate`` above mapped into ``nvm_api_key`` — is the encrypted
+        # server-side blob and is NOT a valid Bearer. Surface ``hash`` instead,
+        # exactly as create_member does. A 2xx without a hash means a
+        # partial/unexpected payload — fail loudly rather than return a "success"
+        # carrying no usable credential.
+        hash_key = wallet.get("hash")
+        if not hash_key:
             raise PaymentsError.from_backend(
                 "Unable to onboard customer",
                 {
@@ -320,7 +328,7 @@ class OrganizationsAPI(BasePaymentsAPI):
                     )
                 },
             )
-        return result
+        return result.model_copy(update={"nvm_api_key": hash_key})
 
     def get_members(
         self,

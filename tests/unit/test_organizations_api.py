@@ -600,7 +600,7 @@ class TestConnectStripeAccount:
 
 
 class TestOnboardCustomer:
-    def test_new_customer_returns_real_key_and_sends_as_customer(self):
+    def test_new_customer_returns_hash_as_bearer_and_sends_as_customer(self):
         payments = _make_payments()
         with requests_mock.Mocker() as m:
             m.post(
@@ -610,10 +610,14 @@ class TestOnboardCustomer:
                     "success": True,
                     "message": "Customer onboarded",
                     "walletResult": {
-                        "hash": "lookup-hash",
+                        # ``hash`` is the Bearer credential (``<prefix>:<jwt>``) —
+                        # the value to send as ``Authorization: Bearer …``.
+                        "hash": "sandbox:jwt-bearer-token",
                         "userId": "us-123",
                         "userWallet": "0xabc",
-                        "nvmApiKey": "nvm-real-usable-key",
+                        # ``nvmApiKey`` is the encrypted server-side blob — NOT a
+                        # Bearer; it must never leak through as a credential.
+                        "nvmApiKey": "encrypted-blob-not-a-bearer",
                         "isCustomer": True,
                         "customerRecorded": True,
                         "alreadyMember": False,
@@ -626,8 +630,9 @@ class TestOnboardCustomer:
         # Opts into the customer outcome.
         assert body == {"email": "customer@example.com", "as": "customer"}
         assert isinstance(result, CustomerOnboardingResponse)
-        # The USABLE key is returned — not the (non-usable) lookup hash.
-        assert result.nvm_api_key == "nvm-real-usable-key"
+        # The USABLE Bearer (``hash``) is surfaced as ``nvm_api_key`` (mirroring
+        # create_member) — the raw ``nvmApiKey`` blob must never leak through.
+        assert result.nvm_api_key == "sandbox:jwt-bearer-token"
         assert result.is_customer is True
         assert result.customer_recorded is True
         assert result.user_id == "us-123"
