@@ -620,6 +620,7 @@ class TestOnboardCustomer:
                         "nvmApiKey": "encrypted-blob-not-a-bearer",
                         "isCustomer": True,
                         "customerRecorded": True,
+                        "expiresAt": "2026-09-27T12:00:00.000Z",
                         "alreadyMember": False,
                     },
                 },
@@ -637,6 +638,8 @@ class TestOnboardCustomer:
         assert result.customer_recorded is True
         assert result.user_id == "us-123"
         assert result.consent_required is False
+        # The credential expiry the paired docs tell integrators to track.
+        assert result.expires_at == "2026-09-27T12:00:00.000Z"
 
     def test_existing_non_owned_account_requires_consent_opaque(self):
         payments = _make_payments()
