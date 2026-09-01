@@ -54,7 +54,6 @@ from payments_py.x402.langchain import (
     last_settlement,
     requires_payment,
 )
-from payments_py.x402.langchain import decorator as decorator_module
 from payments_py.x402.types import SettleResponse, VerifyResponse
 
 create_deep_agent = pytest.importorskip(
@@ -99,14 +98,6 @@ def mock_payments():
         remaining_balance="95",
     )
     return payments
-
-
-@pytest.fixture(autouse=True)
-def reset_last_settlement():
-    """Reset the module-level holder between tests so they don't bleed state."""
-    decorator_module._LAST_SETTLEMENT["value"] = None
-    yield
-    decorator_module._LAST_SETTLEMENT["value"] = None
 
 
 def _delegating_script() -> list[AIMessage]:
