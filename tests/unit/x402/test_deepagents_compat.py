@@ -23,14 +23,21 @@ delegate.
 
 .. note::
 
-   ``deepagents`` requires the LangChain v1 stack (``langchain>=1.3.18``,
-   ``langchain-core>=1.6.1``), which is newer than this repo's test
-   environment pins. These tests therefore ``importorskip`` and are
-   **skipped in the default test run** — they guard the contract only
-   where ``deepagents`` is actually installed::
+   ``deepagents`` requires Python >=3.11 and the LangChain v1 stack
+   (``langchain>=1.3.18``, ``langgraph>=1.2.11``). The default
+   ``unit_integration`` CI job pins Python 3.10 — the floor this package
+   declares — and the test group pins ``langgraph = "^0.6.0"``, which is
+   disjoint from what deepagents needs. So these tests ``importorskip``
+   and are skipped there.
 
-       poetry run pip install deepagents
-       poetry run pytest tests/unit/x402/test_deepagents_compat.py
+   They are **not** unguarded: the ``deepagents_compat`` job in
+   ``.github/workflows/test.yaml`` runs them on Python 3.11 with a pip
+   install of the v1 stack. To reproduce that locally::
+
+       python3.11 -m venv .venv-deepagents
+       .venv-deepagents/bin/pip install -e ".[langchain,langsmith]"
+       .venv-deepagents/bin/pip install deepagents pytest
+       .venv-deepagents/bin/pytest tests/unit/x402/test_deepagents_compat.py
 """
 
 from typing import Any, Sequence

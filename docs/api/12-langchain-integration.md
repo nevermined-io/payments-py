@@ -482,12 +482,15 @@ the deep agent its own virtualenv.
 
 Compatibility is pinned by `tests/unit/x402/test_deepagents_compat.py`, which
 drives a real deep agent through a scripted fake model (no network, no LLM) and
-asserts the token reaches a subagent's tool. Those tests `importorskip` and are
-**skipped unless `deepagents` is installed**:
+asserts the token reaches a subagent's tool. They run in CI under the dedicated
+`deepagents_compat` job — separate from the main test job, which pins the
+Python 3.10 floor that `deepagents` cannot install on. To reproduce locally:
 
 ```bash
-poetry run pip install deepagents
-poetry run pytest tests/unit/x402/test_deepagents_compat.py
+python3.11 -m venv .venv-deepagents
+.venv-deepagents/bin/pip install -e ".[langchain,langsmith]"
+.venv-deepagents/bin/pip install deepagents pytest
+.venv-deepagents/bin/pytest tests/unit/x402/test_deepagents_compat.py
 ```
 
 ## Related
