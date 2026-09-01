@@ -39,14 +39,6 @@ def mock_payments():
     return payments
 
 
-@pytest.fixture(autouse=True)
-def reset_last_settlement():
-    """Reset the module-level holder between tests so they don't bleed state."""
-    decorator_module._LAST_SETTLEMENT["value"] = None
-    yield
-    decorator_module._LAST_SETTLEMENT["value"] = None
-
-
 def _make_protected_tool(mock_payments, *, credits=1):
     """Build a minimal @tool wrapped with @requires_payment."""
 
