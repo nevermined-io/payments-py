@@ -67,6 +67,88 @@ def encode_access_token(payload: Dict[str, Any]) -> str:
     return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 
 
+#: The access-token version the backend still mints by default. Its EIP-712
+#: signature covers ``[from, sessionKeysProvider, sessionKeys, planId]`` only —
+#: ``agentId``, ``resourceUrl`` and ``httpVerb`` sit outside it and there is no
+#: nonce — so a v2 token is a bearer credential that settles more than once.
+X402_TOKEN_VERSION_V2 = 2
+
+#: The seller/resource-bound, single-use access token (nvm-monorepo#2646). Its
+#: signature additionally covers ``agentId``, ``resourceUrl``, ``httpVerb`` and
+#: a one-time ``nonce``; the FIRST ``POST /x402/settle`` consumes it and a
+#: second settle of the same token fails with ``BCK.X402.0059``. ``verify()``
+#: never consumes, so verify-then-settle is unchanged.
+X402_TOKEN_VERSION_V3 = 3
+
+
+def is_single_use_access_token(access_token: Optional[str]) -> bool:
+    """Whether the token is consumed by its first successful settlement.
+
+    True exactly for v3 (single-use, seller/resource-bound) tokens. A caller
+    that caches an access token must test this before reusing one: settling a
+    spent v3 token fails with ``BCK.X402.0059``
+    (see :func:`payments_py.x402.errors.is_access_token_already_used`).
+
+    Read from the token that came BACK, never from the ``token_version`` that
+    was asked for: the backend's ``ValidationPipe`` runs with ``whitelist: True``
+    and without ``forbidNonWhitelisted``, so ``tokenVersion: 3`` sent to a
+    backend that predates nvm-monorepo#2646 is dropped **without an error** and
+    the caller gets a v2 token back. Inferring the version from the request
+    would therefore treat a reusable v2 token as single-use (harmless) or, worse,
+    let a caller believe replay protection is on when it is not.
+
+    The discriminant is the one field only v3 carries: a non-empty
+    ``payload.authorization.nonce``.
+    """
+    if not access_token:
+        return False
+    decoded = decode_access_token(access_token)
+    if not isinstance(decoded, dict):
+        return False
+    payload = decoded.get("payload")
+    if not isinstance(payload, dict):
+        return False
+    authorization = payload.get("authorization")
+    if not isinstance(authorization, dict):
+        return False
+    nonce = authorization.get("nonce")
+    return isinstance(nonce, str) and nonce.strip() != ""
+
+
+def detect_access_token_version(access_token: Optional[str]) -> int:
+    """The EIP-712 version the given access token was actually signed under.
+
+    Nothing here is verified — it answers "which settle semantics does this
+    token have", which only the backend's signature check ultimately enforces.
+
+    Returns :data:`X402_TOKEN_VERSION_V3` for a token carrying a non-empty
+    ``authorization.nonce``, :data:`X402_TOKEN_VERSION_V2` otherwise (including
+    for a token that cannot be decoded — the reusable, non-single-use reading is
+    the safe default, since it never makes a caller skip a re-mint).
+    """
+    return (
+        X402_TOKEN_VERSION_V3
+        if is_single_use_access_token(access_token)
+        else X402_TOKEN_VERSION_V2
+    )
+
+
+def with_detected_token_version(response: Dict[str, Any]) -> Dict[str, Any]:
+    """Add the detected ``tokenVersion`` to a mint response, in place.
+
+    Shared by the x402 and MPP mints so both expose the version the same way
+    and neither can start reporting what it requested instead of what it got.
+    A response without an ``accessToken`` string is left untouched — there is
+    no token to read a version from, and inventing one would be a lie.
+    """
+    if not isinstance(response, dict):
+        return response
+    access_token = response.get("accessToken")
+    if isinstance(access_token, str) and access_token:
+        response["tokenVersion"] = detect_access_token_version(access_token)
+    return response
+
+
 class X402TokenAPI(BasePaymentsAPI):
     """
     X402 Token API for generating access tokens.
@@ -110,19 +192,32 @@ class X402TokenAPI(BasePaymentsAPI):
         ``FutureWarning`` and the backend logs its own deprecation warning.
         The inline path will be removed in a future release.
 
+        A **v3** token (single-use, bound to one seller and one endpoint) is
+        requested with ``token_options.token_version=3`` plus the
+        ``resource`` / ``http_verb`` it should be bound to. Requesting v3 does
+        not guarantee v3: a backend predating nvm-monorepo#2646 strips the
+        field silently and returns v2. Read the ``tokenVersion`` key of the
+        result — it is detected from the token that came back, never from what
+        was asked for.
+
         Args:
             plan_id: The unique identifier of the payment plan
             agent_id: The unique identifier of the AI agent (optional)
-            token_options: Options controlling scheme and delegation behavior (optional)
+            token_options: Options controlling scheme, delegation, the
+                resource/verb the token is bound to, and the requested token
+                version (optional)
 
         Returns:
             A dictionary containing:
                 - accessToken: The X402 access token string
+                - tokenVersion: ``2`` or ``3``, detected from the returned
+                  token's ``authorization.nonce``
 
         Raises:
             PaymentsError: If the request fails, or (``code='validation'``) if
                 ``delegation_config.delegation_id`` is an empty string — pass a
-                valid delegation UUID or omit the field.
+                valid delegation UUID or omit the field — or if
+                ``token_options.resource`` carries a blank URL.
 
         Example:
             ```python
@@ -144,6 +239,21 @@ class X402TokenAPI(BasePaymentsAPI):
                     )
                 )
             )
+
+            # Single-use, bound to one seller endpoint (v3):
+            result = payments.x402.get_x402_access_token(
+                plan_id, agent_id,
+                token_options=X402TokenOptions(
+                    delegation_config=DelegationConfig(
+                        delegation_id=delegation.delegation_id
+                    ),
+                    resource="https://seller.example/api/v1/tasks",
+                    http_verb="POST",
+                    token_version=3,
+                ),
+            )
+            if result["tokenVersion"] == 3:
+                ...  # single-use: mint a fresh token for the next paid request
             ```
         """
         url = f"{self.environment.backend}{API_URL_CREATE_PERMISSION}"
@@ -163,7 +273,11 @@ class X402TokenAPI(BasePaymentsAPI):
         try:
             response = requests.post(url, **options)
             response.raise_for_status()
-            return response.json()
+            # Report the version of the token we GOT, not the one we asked for:
+            # `tokenVersion` is silently stripped by a backend that predates
+            # nvm-monorepo#2646, so echoing the request would claim replay
+            # protection that is not there.
+            return with_detected_token_version(response.json())
         except requests.HTTPError as err:
             raise PaymentsError.from_response(
                 response, "Failed to create X402 delegation token"
@@ -174,4 +288,13 @@ class X402TokenAPI(BasePaymentsAPI):
             ) from err
 
 
-__all__ = ["X402TokenAPI", "decode_access_token", "encode_access_token"]
+__all__ = [
+    "X402TokenAPI",
+    "X402_TOKEN_VERSION_V2",
+    "X402_TOKEN_VERSION_V3",
+    "decode_access_token",
+    "encode_access_token",
+    "detect_access_token_version",
+    "is_single_use_access_token",
+    "with_detected_token_version",
+]

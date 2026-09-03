@@ -56,6 +56,7 @@ from payments_py.api.nvm_api import (
     API_URL_VERIFY_PERMISSIONS,
     API_URL_SETTLE_PERMISSIONS,
 )
+from payments_py.x402.errors import x402_error_from_response
 from payments_py.x402.types import VerifyResponse, SettleResponse, X402PaymentRequired
 
 
@@ -124,7 +125,7 @@ class FacilitatorAPI(BasePaymentsAPI):
             response.raise_for_status()
             return VerifyResponse.model_validate(response.json())
         except requests.HTTPError as err:
-            raise PaymentsError.from_response(
+            raise x402_error_from_response(
                 response, "Permission verification failed"
             ) from err
         except Exception as err:
@@ -184,7 +185,12 @@ class FacilitatorAPI(BasePaymentsAPI):
             response.raise_for_status()
             return SettleResponse.model_validate(response.json())
         except requests.HTTPError as err:
-            raise PaymentsError.from_response(
+            # A v3 token is single-use: the FIRST settle consumes it, and a
+            # replay comes back as BCK.X402.0059. x402_error_from_response
+            # promotes that one code to AccessTokenAlreadyUsedError so the
+            # caller's remedy ("mint a new token") is not buried in the same
+            # generic PaymentsError as a declined plan or a forged envelope.
+            raise x402_error_from_response(
                 response, "Permission settlement failed"
             ) from err
         except Exception as err:

@@ -300,6 +300,44 @@ async with httpx.AsyncClient() as client:
     result = resp.json()
 ```
 
+### Using `PaymentsClient` (managed tokens)
+
+`payments.a2a["get_client"](...)` returns a `PaymentsClient` that mints and
+attaches the access token for you:
+
+```python
+client = payments.a2a["get_client"](
+    agent_base_url="http://agent-url/",
+    agent_id=agent_id,
+    plan_id=plan_ids[0],
+    delegation_config=DelegationConfig(delegation_id=delegation_id),
+)
+
+await client.send_message(params)
+```
+
+The client mints a **v2** token once and caches it for its lifetime — a v2
+token is a reusable bearer credential. Pass `token_version=3` to request the
+single-use, seller/resource-bound token instead:
+
+```python
+client = payments.a2a["get_client"](
+    agent_base_url="http://agent-url/",
+    agent_id=agent_id,
+    plan_id=plan_ids[0],
+    delegation_config=DelegationConfig(delegation_id=delegation_id),
+    token_version=3,
+)
+```
+
+A v3 token is consumed by the seller's first settle, so the client mints one
+**per paid request** and never caches it — replaying one fails with
+`BCK.X402.0059`. Which of the two behaviours applies is decided by the token
+that came back, not by `token_version`: a backend that predates v3 support
+strips the field silently and returns a (cached) v2 token. `clear_token()` is
+therefore a no-op on the v3 path. See
+[Access Token Versions](11-x402.md#access-token-versions-v2-and-v3).
+
 ## Hooks
 
 Add custom logic at request lifecycle points:
@@ -334,6 +372,7 @@ result = PaymentsA2AServer.start(
 | -32001 | 402 | Payment validation failed |
 | -32001 | 402 | Agent ID missing from card |
 | -32001 | 402 | Plan ID missing from card |
+| `BCK.X402.0059` | 4xx | v3 access token already spent — mint a new one (`AccessTokenAlreadyUsedError`) |
 
 ## Next Steps
 

@@ -64,3 +64,119 @@ async def test_payment_signature_header_injected(payments_client):  # noqa: D401
     headers = kwargs["http_kwargs"]["headers"]
     assert "payment-signature" in headers
     assert headers["payment-signature"] == "XYZ"
+
+
+# ---------------------------------------------------------------------------
+# v3 access tokens (single-use) — nvm-monorepo#2646
+# ---------------------------------------------------------------------------
+
+
+def _encode_token(**authorization) -> str:
+    from payments_py.x402.token import encode_access_token
+
+    return encode_access_token(
+        {"payload": {"authorization": authorization, "signature": "0xsig"}}
+    )
+
+
+V2_TOKEN = _encode_token(**{"from": "0xabc", "planId": "1"})
+
+
+def _v3_token(nonce: str) -> str:
+    return _encode_token(
+        **{
+            "from": "0xabc",
+            "planId": "1",
+            "agentId": "agent1",
+            "resourceUrl": "https://agent.example/",
+            "httpVerb": "POST",
+            "nonce": nonce,
+        }
+    )
+
+
+def _client_with_tokens(tokens, token_version=None):
+    """A PaymentsClient whose mint returns ``tokens`` in order."""
+
+    class StubClient:  # noqa: D101
+        def __init__(self):
+            self.send_message = AsyncMock(return_value={"ok": True})
+
+    get_token_mock = AsyncMock(side_effect=[{"accessToken": token} for token in tokens])
+    dummy_payments = SimpleNamespace(
+        x402=SimpleNamespace(get_x402_access_token=get_token_mock),
+        agents=SimpleNamespace(),
+        requests=SimpleNamespace(),
+    )
+    client = PaymentsClient(
+        agent_base_url="https://agent.example",
+        payments=dummy_payments,  # type: ignore[arg-type]
+        agent_id="agent1",
+        plan_id="1",
+        delegation_config=DelegationConfig(delegation_id="test-delegation"),
+        token_version=token_version,
+    )
+    client._client = StubClient()  # type: ignore[attr-defined]
+    return client, get_token_mock
+
+
+def _sent_tokens(client):
+    return [
+        call.kwargs["http_kwargs"]["headers"]["payment-signature"]
+        for call in client._client.send_message.call_args_list  # type: ignore[attr-defined]
+    ]
+
+
+@pytest.mark.asyncio()
+async def test_v3_token_is_minted_per_paid_request():
+    """A v3 token is consumed by the seller's first settle, so the
+    client-lifetime cache must never serve one twice — the second call would
+    settle against a spent nonce (BCK.X402.0059)."""
+    client, get_token_mock = _client_with_tokens([_v3_token("n1"), _v3_token("n2")])
+
+    await client.send_message({})  # type: ignore[arg-type]
+    await client.send_message({})  # type: ignore[arg-type]
+
+    assert get_token_mock.await_count == 2
+    first, second = _sent_tokens(client)
+    assert first != second
+    # Nothing was cached, so clear_token() has nothing to clear.
+    assert client._access_token is None  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio()
+async def test_v2_token_is_still_cached():
+    """Existing v2 behaviour is unchanged: one mint for the client's lifetime."""
+    client, get_token_mock = _client_with_tokens([V2_TOKEN])
+
+    await client.send_message({})  # type: ignore[arg-type]
+    await client.send_message({})  # type: ignore[arg-type]
+
+    assert get_token_mock.await_count == 1
+    assert _sent_tokens(client) == [V2_TOKEN, V2_TOKEN]
+    assert client._access_token == V2_TOKEN  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio()
+async def test_caching_follows_the_returned_token_not_the_request():
+    """token_version=3 against a backend that predates #2646 is stripped
+    silently and yields a v2 token — which must then be cached as usual, not
+    re-minted on every call because of what was asked for."""
+    client, get_token_mock = _client_with_tokens([V2_TOKEN], token_version=3)
+
+    await client.send_message({})  # type: ignore[arg-type]
+    await client.send_message({})  # type: ignore[arg-type]
+
+    assert get_token_mock.await_count == 1
+    assert get_token_mock.await_args.kwargs["token_options"].token_version == 3
+
+
+@pytest.mark.asyncio()
+async def test_default_client_requests_no_explicit_token_version():
+    """Opt-in: without token_version the SDK asks for nothing and the backend
+    default (today v2) applies."""
+    client, get_token_mock = _client_with_tokens([V2_TOKEN])
+
+    await client.send_message({})  # type: ignore[arg-type]
+
+    assert get_token_mock.await_args.kwargs["token_options"].token_version is None

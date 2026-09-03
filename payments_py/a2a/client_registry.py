@@ -27,8 +27,16 @@ class ClientRegistry:  # noqa: D101
         agent_id: str,
         plan_id: str,
         delegation_config: Optional["DelegationConfig"] = None,
+        token_version: Optional[int] = None,
     ) -> PaymentsClient:
-        """Return a cached or newly created PaymentsClient instance."""
+        """Return a cached or newly created PaymentsClient instance.
+
+        ``token_version`` is the access-token version the client REQUESTS
+        (``3`` for the single-use, seller/resource-bound token of
+        nvm-monorepo#2646). It is not part of the cache key: the key identifies
+        the endpoint being talked to, and the client re-reads the version off
+        every token it mints anyway.
+        """
         if not agent_base_url or not agent_id or not plan_id:
             raise ValueError("agent_base_url, agent_id and plan_id are required")
         key = f"{agent_base_url}::{agent_id}::{plan_id}"
@@ -39,5 +47,6 @@ class ClientRegistry:  # noqa: D101
                 agent_id=agent_id,
                 plan_id=plan_id,
                 delegation_config=delegation_config,
+                token_version=token_version,
             )
         return self._clients[key]

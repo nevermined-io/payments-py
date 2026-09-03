@@ -41,6 +41,10 @@ DelegationProvider = Literal["stripe", "braintree", "visa", "vgs", "erc4337"]
 # 'usd'/'eur' for Stripe/Braintree/Visa, stablecoin 'usdc'/'eurc' for erc4337.
 # Validated at runtime by Pydantic on model construction.
 DelegationCurrency = Literal["usd", "eur", "usdc", "eurc"]
+# EIP-712 struct versions the mint endpoints accept. Mirrors the backend DTO
+# (`@IsIn([2, 3])` on GenerateX402TokenDto.tokenVersion) and the TS SDK's
+# `X402TokenVersion`, so an out-of-range value fails here instead of 400ing.
+X402TokenVersion = Literal[2, 3]
 
 
 class X402Resource(BaseModel):
@@ -454,10 +458,28 @@ class X402TokenOptions(BaseModel):
     """
     Options for x402 token generation that control scheme and delegation behavior.
 
+    ``resource``, ``http_verb`` and ``token_version`` exist for the **v3**
+    access token (nvm-monorepo#2646): a v3 token's EIP-712 signature covers
+    ``agentId``, ``resourceUrl``, ``httpVerb`` and a one-time ``nonce``, which
+    is what binds it to one seller and one endpoint and makes it single-use at
+    settle. They are harmless on v2 — the backend simply signs less.
+
     Attributes:
         scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
         network: Network identifier (auto-derived from scheme if omitted)
         delegation_config: Delegation configuration for both erc4337 and card-delegation schemes
+        resource: The protected resource the token is minted for, as a URL
+            string or an :class:`X402Resource`. Load-bearing for v3 (it is the
+            signed ``resourceUrl``); without it the backend logs
+            ``resource.url not provided in token … skipping endpoint validation``.
+        http_verb: HTTP verb of that resource (e.g. ``"POST"``). Sent as
+            ``accepted.extra.httpVerb`` and signed on v3.
+        token_version: Access-token version to request (``2`` — the backend
+            default — or ``3``). **Never** infer the version you got from this
+            value: a backend predating nvm-monorepo#2646 silently drops the
+            field and returns v2. Read it back with
+            :func:`payments_py.x402.token.detect_access_token_version`, or from the
+            ``tokenVersion`` key the mint adds to its response.
     """
 
     scheme: Optional[str] = None
@@ -465,6 +487,9 @@ class X402TokenOptions(BaseModel):
     delegation_config: Optional[DelegationConfig] = Field(
         None, alias="delegationConfig"
     )
+    resource: Optional[Union[str, X402Resource]] = None
+    http_verb: Optional[str] = Field(None, alias="httpVerb")
+    token_version: Optional[X402TokenVersion] = Field(None, alias="tokenVersion")
 
     model_config = ConfigDict(
         populate_by_name=True,

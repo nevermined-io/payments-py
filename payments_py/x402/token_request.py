@@ -6,11 +6,11 @@ under differs — so the body is built in one place to keep them from drifting.
 """
 
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 from payments_py.common.payments_error import PaymentsError
 from payments_py.x402.schemes import get_default_network
-from payments_py.x402.types import DelegationConfig, X402TokenOptions
+from payments_py.x402.types import DelegationConfig, X402Resource, X402TokenOptions
 
 
 def _is_inline_create(delegation_config: DelegationConfig) -> bool:
@@ -37,6 +37,41 @@ def _is_inline_create(delegation_config: DelegationConfig) -> bool:
     )
 
 
+def _resolve_resource(
+    resource: Optional[Union[str, X402Resource]],
+) -> Optional[Dict[str, Any]]:
+    """Normalize ``token_options.resource`` into the ``{"url": …}`` object the
+    mint endpoints accept.
+
+    A bare URL string is the common case and is accepted directly; an
+    :class:`X402Resource` carries the optional ``description`` / ``mimeType``
+    alongside it.
+
+    Raises:
+        PaymentsError: (``code='validation'``) if the URL is empty or
+            whitespace-only. On a v3 token the URL is *signed*: a blank one is
+            signed as the empty string, which is indistinguishable from "field
+            absent" and then makes the seller's own ``resource.url`` disagree
+            with the signature at settle — rejected as forgery
+            (``BCK.X402.0005``) long after the mistake was made. Same fail-fast
+            rationale as the blank ``delegation_id`` guard below.
+    """
+    if resource is None:
+        return None
+    if isinstance(resource, str):
+        payload: Dict[str, Any] = {"url": resource}
+    else:
+        payload = resource.model_dump(by_alias=True, exclude_none=True)
+
+    url = payload.get("url")
+    if not isinstance(url, str) or url.strip() == "":
+        raise PaymentsError.validation(
+            "resource.url must not be empty — pass the URL of the protected "
+            "resource the token is minted for, or omit the field."
+        )
+    return payload
+
+
 def build_x402_token_request_body(
     plan_id: str,
     agent_id: Optional[str] = None,
@@ -46,10 +81,24 @@ def build_x402_token_request_body(
     """Build the body both ``POST /api/v1/x402/permissions`` and
     ``POST /api/v1/mpp/permissions`` accept.
 
+    ``resource``, ``accepted.extra.httpVerb`` and ``tokenVersion`` are what a
+    **v3** token (nvm-monorepo#2646) is signed over on top of v2's
+    ``[from, sessionKeysProvider, sessionKeys, planId]``. They are sent
+    whenever the caller supplies them, on every version: a v2 mint ignores
+    them, and sending ``resource.url`` on v2 also stops the backend logging
+    ``resource.url not provided in token … skipping endpoint validation``.
+
+    ``tokenVersion`` is a *request*, never a guarantee — the backend's
+    ``ValidationPipe`` silently strips unknown fields, so a deployment
+    predating #2646 returns a v2 token without complaining. Detect what you
+    actually got with
+    :func:`payments_py.x402.token.detect_access_token_version`.
+
     Raises:
         PaymentsError: (``code='validation'``) if
             ``token_options.delegation_config.delegation_id`` is an empty or
-            whitespace-only string.
+            whitespace-only string, or if ``token_options.resource`` carries a
+            blank URL.
     """
     scheme = (
         token_options.scheme
@@ -65,6 +114,8 @@ def build_x402_token_request_body(
     extra: Dict[str, Any] = {}
     if agent_id is not None:
         extra["agentId"] = agent_id
+    if token_options and token_options.http_verb is not None:
+        extra["httpVerb"] = token_options.http_verb
 
     body: Dict[str, Any] = {
         "accepted": {
@@ -74,6 +125,13 @@ def build_x402_token_request_body(
             "extra": extra,
         },
     }
+
+    resource = _resolve_resource(token_options.resource if token_options else None)
+    if resource is not None:
+        body["resource"] = resource
+
+    if token_options and token_options.token_version is not None:
+        body["tokenVersion"] = token_options.token_version
 
     # Add delegation config for both erc4337 and card-delegation schemes
     if token_options and token_options.delegation_config:

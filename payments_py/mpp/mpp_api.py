@@ -23,6 +23,7 @@ from payments_py.api.nvm_api import (
 )
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
+from payments_py.x402.token import with_detected_token_version
 from payments_py.x402.token_request import build_x402_token_request_body
 from payments_py.x402.types import X402TokenOptions
 
@@ -222,6 +223,20 @@ class MppAPI(BasePaymentsAPI):
         :meth:`X402TokenAPI.get_x402_access_token`; the token verifies only on
         the MPP routes, which is what keeps the two protocols isolated even
         though the tokens are byte-identical on the wire.
+
+        ``token_options.token_version`` behaves exactly as it does on the x402
+        mint — the backend applies nvm-monorepo#2646 identically to both
+        protocols and defaults to v2 here too.
+
+        **Do not request v3 on this route.** One MPP access token is reused
+        across MANY challenges, which are distinct operations; a v3 token's
+        one-time nonce is consumed by the first settle, so it would kill the
+        buyer's second challenge. ``payments.mpp.fetch`` accordingly never asks
+        for v3.
+
+        Returns:
+            The mint response, with an added ``tokenVersion`` key (``2`` or
+            ``3``) detected from the returned token's ``authorization.nonce``.
         """
         body = build_x402_token_request_body(
             plan_id=plan_id,
@@ -229,7 +244,9 @@ class MppAPI(BasePaymentsAPI):
             token_options=token_options,
             environment_name=self.environment_name,
         )
-        return self._post(API_URL_MPP_CREATE_PERMISSION, body)
+        return with_detected_token_version(
+            self._post(API_URL_MPP_CREATE_PERMISSION, body)
+        )
 
     def fetch(
         self,

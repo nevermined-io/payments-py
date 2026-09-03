@@ -31,6 +31,7 @@ class PaymentsClient:  # noqa: D101
         agent_id: str,
         plan_id: str,
         delegation_config: Optional["DelegationConfig"] = None,
+        token_version: Optional[int] = None,
     ) -> None:
         # Preserve trailing slash to avoid JSON-RPC 307 redirects between /a2a and /a2a/
         self._agent_base_url = (
@@ -40,6 +41,10 @@ class PaymentsClient:  # noqa: D101
         self._agent_id = agent_id
         self._plan_id = plan_id
         self._delegation_config = delegation_config
+        # Access-token version to REQUEST (None = whatever the backend mints by
+        # default, today v2). Never used to decide how the token is handled —
+        # see _get_access_token.
+        self._token_version = token_version
         self._access_token: str | None = None
         self._client = None  # Lazily created to ease unit testing
 
@@ -47,46 +52,77 @@ class PaymentsClient:  # noqa: D101
     # Internal helpers
     # ------------------------------------------------------------------
     async def _get_access_token(self) -> str:
-        if self._access_token is None:
-            from payments_py.x402.resolve_scheme import resolve_scheme
-            from payments_py.x402.types import X402TokenOptions
+        """The access token for the next paid call.
 
-            # Resolve scheme from plan metadata
-            scheme = resolve_scheme(self._payments, self._plan_id)
+        A **v2** token is a reusable bearer credential, so it is minted once and
+        cached for the client's lifetime — unchanged behaviour.
 
-            # Delegation config is required for all schemes
-            if not self._delegation_config:
-                from payments_py.common.payments_error import PaymentsError
+        A **v3** token (nvm-monorepo#2646) is single-use: the seller's first
+        ``POST /x402/settle`` consumes its nonce, and presenting it again fails
+        with ``BCK.X402.0059``. Caching one would therefore break every call
+        after the first, so a v3 token is minted **per paid request** and never
+        stored.
 
-                raise PaymentsError.validation(
-                    f"{scheme} scheme requires delegation_config. "
-                    "Pass it to PaymentsClient() or get_client()."
-                )
+        Which of the two applies is read off the token that came back, never
+        off ``self._token_version``: a backend predating #2646 drops
+        ``tokenVersion: 3`` silently and mints v2, and a backend that later
+        flips its default to v3 would hand out single-use tokens to a client
+        that asked for nothing at all. Detection covers both directions.
+        """
+        if self._access_token is not None:
+            return self._access_token
 
-            # Build token options with resolved scheme
-            if scheme != "nvm:erc4337":
-                token_options = X402TokenOptions(
-                    scheme=scheme, delegation_config=self._delegation_config
-                )
-            else:
-                token_options = X402TokenOptions(
-                    delegation_config=self._delegation_config
-                )
+        from payments_py.x402.token import is_single_use_access_token
 
-            getter = self._payments.x402.get_x402_access_token
-            if inspect.iscoroutinefunction(getter):
-                token_resp = await getter(
-                    self._plan_id, self._agent_id, token_options=token_options
-                )
-            else:
-                token_resp = await asyncio.to_thread(
-                    getter,
-                    self._plan_id,
-                    self._agent_id,
-                    token_options=token_options,
-                )
-            self._access_token = token_resp["accessToken"]
-        return self._access_token
+        access_token = await self._mint_access_token()
+        if is_single_use_access_token(access_token):
+            # Single-use — deliberately NOT cached.
+            return access_token
+        self._access_token = access_token
+        return access_token
+
+    async def _mint_access_token(self) -> str:
+        from payments_py.x402.resolve_scheme import resolve_scheme
+        from payments_py.x402.types import X402TokenOptions
+
+        # Resolve scheme from plan metadata
+        scheme = resolve_scheme(self._payments, self._plan_id)
+
+        # Delegation config is required for all schemes
+        if not self._delegation_config:
+            from payments_py.common.payments_error import PaymentsError
+
+            raise PaymentsError.validation(
+                f"{scheme} scheme requires delegation_config. "
+                "Pass it to PaymentsClient() or get_client()."
+            )
+
+        # Build token options with resolved scheme
+        if scheme != "nvm:erc4337":
+            token_options = X402TokenOptions(
+                scheme=scheme,
+                delegation_config=self._delegation_config,
+                token_version=self._token_version,
+            )
+        else:
+            token_options = X402TokenOptions(
+                delegation_config=self._delegation_config,
+                token_version=self._token_version,
+            )
+
+        getter = self._payments.x402.get_x402_access_token
+        if inspect.iscoroutinefunction(getter):
+            token_resp = await getter(
+                self._plan_id, self._agent_id, token_options=token_options
+            )
+        else:
+            token_resp = await asyncio.to_thread(
+                getter,
+                self._plan_id,
+                self._agent_id,
+                token_options=token_options,
+            )
+        return token_resp["accessToken"]
 
     def _auth_headers(self, token: str) -> dict[str, str]:
         return {"payment-signature": token}
@@ -244,5 +280,8 @@ class PaymentsClient:  # noqa: D101
 
     # Utilities --------------------------------------------------------
     def clear_token(self) -> None:  # noqa: D401
-        """Clear cached access-token forcing a refresh on next call."""
+        """Clear cached access-token forcing a refresh on next call.
+
+        A no-op for a v3 token, which is never cached in the first place.
+        """
         self._access_token = None

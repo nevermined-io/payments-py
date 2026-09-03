@@ -29,6 +29,7 @@ result = payments.x402.get_x402_access_token(
 
 access_token = result['accessToken']
 print(f"Access Token: {access_token[:50]}...")
+print(f"Token version: {result['tokenVersion']}")  # 2 or 3
 ```
 
 ### Token Generation Parameters
@@ -37,7 +38,25 @@ print(f"Access Token: {access_token[:50]}...")
 |-----------|------|----------|-------------|
 | `plan_id` | `str` | Yes | The payment plan ID |
 | `agent_id` | `str` | No | Target agent ID (recommended) |
-| `token_options` | `X402TokenOptions` | No | Scheme and delegation configuration |
+| `token_options` | `X402TokenOptions` | No | Scheme, delegation, resource binding and requested token version |
+
+`X402TokenOptions` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `scheme` | `str` | x402 scheme (defaults to `nvm:erc4337`) |
+| `network` | `str` | Network identifier (auto-derived from the scheme if omitted) |
+| `delegation_config` | `DelegationConfig` | Delegation to mint against |
+| `resource` | `str` \| `X402Resource` | The protected resource the token is minted for. Signed on v3 |
+| `http_verb` | `str` | HTTP verb of that resource (e.g. `"POST"`). Signed on v3 |
+| `token_version` | `int` | Access-token version to **request** (`2` or `3`). Never read it back from here — see below |
+
+The result is a dict with:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `accessToken` | `str` | The access token to send in `payment-signature` |
+| `tokenVersion` | `int` | `2` or `3`, **detected from the returned token**, not from what was requested |
 
 ### Token Generation with Delegation
 
@@ -75,6 +94,36 @@ result = payments.x402.get_x402_access_token(
 > method) directly to `get_x402_access_token` — inline "create-on-the-fly" —
 > still works but emits a `DeprecationWarning` and will be removed in a future
 > release. Create the delegation first as shown above.
+
+### Single-Use Tokens (v3)
+
+By default the backend mints a **v2** token: a reusable bearer credential you
+can keep for the lifetime of your client. Opt into a **v3** token to get one
+that is bound to a single seller endpoint and is **consumed by its first
+settle**:
+
+```python
+result = payments.x402.get_x402_access_token(
+    plan_id="your-plan-id",
+    agent_id="agent-id",
+    token_options=X402TokenOptions(
+        delegation_config=DelegationConfig(delegation_id=delegation.delegation_id),
+        resource="https://seller.example/api/v1/tasks",
+        http_verb="POST",
+        token_version=3,
+    ),
+)
+
+if result["tokenVersion"] == 3:
+    ...  # do NOT reuse: mint a fresh token for the next paid request
+```
+
+Requesting v3 is not a guarantee of getting v3 — a backend that predates v3
+support drops the field silently and returns v2. Always read
+`result["tokenVersion"]` (or `is_single_use_access_token(access_token)`), never the
+value you passed in. Full details, including the `BCK.X402.0059`
+"already used" error, are in
+[x402 Payment Protocol](11-x402.md#access-token-versions-v2-and-v3).
 
 ## Make Requests to Agents
 
@@ -130,6 +179,21 @@ if decoded:
     print(f"Subscriber: {authorization.get('from')}")
     print(f"Plan ID: {authorization.get('planId')}")
     print(f"Agent ID: {authorization.get('agentId')}")
+
+    # v3 tokens additionally carry the signed binding and a one-time nonce.
+    print(f"Resource URL: {authorization.get('resourceUrl')}")
+    print(f"HTTP verb: {authorization.get('httpVerb')}")
+    print(f"Nonce: {authorization.get('nonce')}")
+```
+
+The `nonce` is what distinguishes the two versions — but use the helpers rather
+than reading it yourself:
+
+```python
+from payments_py.x402 import detect_access_token_version, is_single_use_access_token
+
+detect_access_token_version(access_token)  # 2 or 3
+is_single_use_access_token(access_token)        # True / False
 ```
 
 ## Complete Example

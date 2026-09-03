@@ -568,3 +568,74 @@ class TestDynamicCredits:
         assert config.plan_id == "test-plan"
         assert callable(config.credits)
         # We can't easily test the callable without a request, but we verify it's stored
+
+
+class TestV3TokenRelay:
+    """The seller relays the access token unchanged — no protocol change for v3.
+
+    A v3 token (nvm-monorepo#2646) is signed over ``agentId`` / ``resourceUrl``
+    / ``httpVerb`` / ``nonce``, so ANY mutation on the way to verify or settle
+    — re-encoding, trimming, normalising — turns it into a forgery
+    (``BCK.X402.0005``). The middleware must hand the facilitator the exact
+    bytes it received.
+    """
+
+    @pytest.fixture
+    def v3_token(self):
+        token_data = {
+            "x402Version": 2,
+            "accepted": {
+                "scheme": "nvm:erc4337",
+                "network": "eip155:84532",
+                "planId": "test-plan-123",
+            },
+            "payload": {
+                "signature": "0xtest",
+                "authorization": {
+                    "from": "0xsubscriber",
+                    "agentId": "agent-1",
+                    "resourceUrl": "http://testserver/ask",
+                    "httpVerb": "POST",
+                    "nonce": "0x0123456789abcdef",
+                },
+            },
+        }
+        return base64.b64encode(json.dumps(token_data).encode()).decode()
+
+    def test_v3_token_reaches_verify_and_settle_byte_for_byte(
+        self, client, mock_payments, v3_token
+    ):
+        response = client.post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: v3_token},
+        )
+
+        assert response.status_code == 200
+
+        verify_token = mock_payments.facilitator.verify_permissions.call_args.kwargs[
+            "x402_access_token"
+        ]
+        settle_token = mock_payments.facilitator.settle_permissions.call_args.kwargs[
+            "x402_access_token"
+        ]
+        assert verify_token == v3_token
+        assert settle_token == v3_token
+        # And the relayed bytes still decode to the same signed authorization.
+        assert (
+            json.loads(base64.b64decode(settle_token))["payload"]["authorization"][
+                "nonce"
+            ]
+            == "0x0123456789abcdef"
+        )
+
+    def test_settle_is_called_once_per_request(self, client, mock_payments, v3_token):
+        """A v3 token is consumed by its FIRST settle, so the seller must not
+        settle the same token twice within one request."""
+        client.post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: v3_token},
+        )
+
+        assert mock_payments.facilitator.settle_permissions.call_count == 1

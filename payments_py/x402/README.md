@@ -750,7 +750,7 @@ token_result = payments.x402.get_x402_access_token(plan_id, agent_id)
 
 #### Methods
 
-##### `get_x402_access_token(plan_id, agent_id) -> Dict[str, Any]`
+##### `get_x402_access_token(plan_id, agent_id, token_options=None) -> Dict[str, Any]`
 
 Generate X402 access token.
 
@@ -761,9 +761,68 @@ result = payments.x402.get_x402_access_token(
 )
 
 token = result["accessToken"]
+version = result["tokenVersion"]  # 2 or 3
 ```
 
-**Returns:** Dictionary with `accessToken` key and metadata
+**Returns:** Dictionary with `accessToken`, `tokenVersion` and metadata
+
+---
+
+##### Access token versions: v2 (reusable) and v3 (single-use)
+
+A **v2** token — the backend default — signs only
+`[from, sessionKeysProvider, sessionKeys, planId]`. It is a bearer credential:
+any seller on the same plan can present it, and it settles more than once.
+
+A **v3** token additionally signs `agentId`, `resourceUrl`, `httpVerb` and a
+one-time `nonce`. It is bound to one seller endpoint and is **single-use** —
+the first `POST /x402/settle` consumes it. `verify()` never consumes, so
+verify-then-settle is unchanged.
+
+```python
+from payments_py.x402 import (
+    DelegationConfig,
+    X402TokenOptions,
+    detect_access_token_version,
+    is_single_use_access_token,
+)
+
+result = payments.x402.get_x402_access_token(
+    plan_id="your-plan-id",
+    agent_id="your-agent-id",
+    token_options=X402TokenOptions(
+        delegation_config=DelegationConfig(delegation_id=delegation_id),
+        resource="https://seller.example/api/v1/tasks",  # signed on v3
+        http_verb="POST",                                 # signed on v3
+        token_version=3,                                  # opt-in
+    ),
+)
+
+result["tokenVersion"]                       # 2 or 3 — detected, not requested
+is_single_use_access_token(result["accessToken"])    # same answer, standalone
+detect_access_token_version(result["accessToken"])
+```
+
+**Never infer the version from `token_version`.** The backend strips unknown
+fields silently, so a deployment predating v3 returns a v2 token with no error.
+
+Replaying a spent v3 token fails with `BCK.X402.0059`, raised as
+`AccessTokenAlreadyUsedError` (a `PaymentsError` subclass):
+
+```python
+from payments_py.x402 import AccessTokenAlreadyUsedError
+
+try:
+    payments.facilitator.settle_permissions(
+        payment_required=payment_required,
+        x402_access_token=token,
+    )
+except AccessTokenAlreadyUsedError:
+    ...  # mint a NEW token; retrying this one can only fail again
+```
+
+Sellers relay the token unchanged — never re-encode, trim or normalise it, or
+the envelope stops matching the signature (`BCK.X402.0005`).
 
 ---
 
