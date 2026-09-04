@@ -62,6 +62,7 @@ from .types import (
     CreateDelegationResponse,
     MppTokenOptions,
     X402TokenOptions,
+    X402TokenVersion,
 )
 from .helpers import build_payment_required, build_payment_required_for_plans
 from .networks import SupportedNetworks
@@ -121,6 +122,7 @@ __all__ = [
     "CreateDelegationResponse",
     "MppTokenOptions",
     "X402TokenOptions",
+    "X402TokenVersion",
     # Helper functions
     "build_payment_required",
     "build_payment_required_for_plans",
