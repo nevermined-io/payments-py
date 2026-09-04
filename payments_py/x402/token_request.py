@@ -10,7 +10,11 @@ from typing import Any, Dict, Optional, Union
 
 from payments_py.common.payments_error import PaymentsError
 from payments_py.x402.schemes import get_default_network
-from payments_py.x402.types import DelegationConfig, X402Resource, X402TokenOptions
+from payments_py.x402.types import (
+    DelegationConfig,
+    MppTokenOptions,
+    X402Resource,
+)
 
 
 def _is_inline_create(delegation_config: DelegationConfig) -> bool:
@@ -75,8 +79,9 @@ def _resolve_resource(
 def build_x402_token_request_body(
     plan_id: str,
     agent_id: Optional[str] = None,
-    token_options: Optional[X402TokenOptions] = None,
+    token_options: Optional[MppTokenOptions] = None,
     environment_name: Optional[str] = None,
+    protocol: str = "x402",
 ) -> Dict[str, Any]:
     """Build the body both ``POST /api/v1/x402/permissions`` and
     ``POST /api/v1/mpp/permissions`` accept.
@@ -94,11 +99,20 @@ def build_x402_token_request_body(
     actually got with
     :func:`payments_py.x402.token.detect_access_token_version`.
 
+    Args:
+        protocol: Which mint this body is for, ``"x402"`` (default) or
+            ``"mpp"``. MPP has no token version at all — it is not "x402 v2
+            by another name": the two protocols stopped sharing a version
+            ladder (nvm-monorepo#3266) and ``MppService.createPermission``
+            refuses ANY ``tokenVersion`` with ``BCK.MPP.0007``, ``2``
+            included. Sending one would 400 the mint, so it is refused here
+            instead, where the caller can be told why.
+
     Raises:
         PaymentsError: (``code='validation'``) if
             ``token_options.delegation_config.delegation_id`` is an empty or
-            whitespace-only string, or if ``token_options.resource`` carries a
-            blank URL.
+            whitespace-only string, if ``token_options.resource`` carries a
+            blank URL, or if a ``token_version`` is set on an MPP mint.
     """
     scheme = (
         token_options.scheme
@@ -130,8 +144,25 @@ def build_x402_token_request_body(
     if resource is not None:
         body["resource"] = resource
 
-    if token_options and token_options.token_version is not None:
-        body["tokenVersion"] = token_options.token_version
+    # `token_version` lives on X402TokenOptions only; a plain MppTokenOptions
+    # has no such attribute, hence getattr rather than a direct read.
+    token_version = getattr(token_options, "token_version", None)
+    if token_version is not None:
+        # MPP's single-use unit is the CHALLENGE, not the token: one MPP access
+        # token is presented across many challenges by design, so the x402 v3
+        # per-token nonce would kill every buyer's second challenge. The backend
+        # refuses the field outright; refuse it here too rather than let the
+        # caller discover it as a 400 whose cause is a field they set two layers
+        # up.
+        if protocol == "mpp":
+            raise PaymentsError.validation(
+                "token_version is not supported on MPP access tokens: MPP and "
+                "x402 no longer share a token version ladder, and the backend "
+                "refuses any tokenVersion on an MPP mint (BCK.MPP.0007). Omit "
+                "the field — an MPP token is reusable across challenges, and "
+                "the challenge is what is single-use."
+            )
+        body["tokenVersion"] = token_version
 
     # Add delegation config for both erc4337 and card-delegation schemes
     if token_options and token_options.delegation_config:

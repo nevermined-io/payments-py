@@ -23,9 +23,8 @@ from payments_py.api.nvm_api import (
 )
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
-from payments_py.x402.token import with_detected_token_version
 from payments_py.x402.token_request import build_x402_token_request_body
-from payments_py.x402.types import X402TokenOptions
+from payments_py.x402.types import MppTokenOptions
 
 from .errors import MppError, MppSettlementOutcomeUnknownError, to_mpp_error
 from .fetch import MppFetchOptions, MppFetchResult, mpp_fetch
@@ -215,38 +214,38 @@ class MppAPI(BasePaymentsAPI):
         self,
         plan_id: str,
         agent_id: Optional[str] = None,
-        token_options: Optional[X402TokenOptions] = None,
+        token_options: Optional[MppTokenOptions] = None,
     ) -> Dict[str, Any]:
         """Mint an access token signed under the ``Nevermined-MPP`` EIP-712 domain.
 
         Same inputs and same settlement rail as
-        :meth:`X402TokenAPI.get_x402_access_token`; the token verifies only on
-        the MPP routes, which is what keeps the two protocols isolated even
-        though the tokens are byte-identical on the wire.
+        :meth:`X402TokenAPI.get_x402_access_token` **minus** ``token_version``;
+        the token verifies only on the MPP routes, which is what keeps the two
+        protocols isolated.
 
-        ``token_options.token_version`` behaves exactly as it does on the x402
-        mint — the backend applies nvm-monorepo#2646 identically to both
-        protocols and defaults to v2 here too.
-
-        **Do not request v3 on this route.** One MPP access token is reused
-        across MANY challenges, which are distinct operations; a v3 token's
-        one-time nonce is consumed by the first settle, so it would kill the
-        buyer's second challenge. ``payments.mpp.fetch`` accordingly never asks
-        for v3.
+        MPP carries **no token version** (nvm-monorepo#3266): its single-use
+        unit is the challenge, not the token, so one MPP token is presented
+        across many challenges by design. The parameter type says so, and a
+        caller that sets ``token_version`` on an :class:`X402TokenOptions` and
+        passes it here is refused before the request — the backend answers
+        ``BCK.MPP.0007`` for any value, ``2`` included.
 
         Returns:
-            The mint response, with an added ``tokenVersion`` key (``2`` or
-            ``3``) detected from the returned token's ``authorization.nonce``.
+            The mint response. Unlike the x402 mint it carries no
+            ``tokenVersion`` key: there is no version to report.
+
+        Raises:
+            PaymentsError: (``code='validation'``) if ``token_options`` carries
+                a ``token_version``.
         """
         body = build_x402_token_request_body(
             plan_id=plan_id,
             agent_id=agent_id,
             token_options=token_options,
             environment_name=self.environment_name,
+            protocol="mpp",
         )
-        return with_detected_token_version(
-            self._post(API_URL_MPP_CREATE_PERMISSION, body)
-        )
+        return self._post(API_URL_MPP_CREATE_PERMISSION, body)
 
     def fetch(
         self,

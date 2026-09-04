@@ -824,6 +824,13 @@ except AccessTokenAlreadyUsedError:
 Sellers relay the token unchanged — never re-encode, trim or normalise it, or
 the envelope stops matching the signature (`BCK.X402.0005`).
 
+The version ladder is **x402-only**. MPP carries no token version
+(nvm-monorepo#3266): its single-use unit is the challenge, not the token, so one
+MPP token is presented across many challenges. `get_mpp_access_token` takes an
+`MppTokenOptions` (the same fields minus `token_version`), refuses any version
+before the request — the backend answers `BCK.MPP.0007` for any value, `2`
+included — and returns no `tokenVersion` key.
+
 ---
 
 ### Extension Helpers (Nevermined)

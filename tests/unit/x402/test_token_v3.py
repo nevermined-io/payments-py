@@ -30,6 +30,7 @@ from payments_py.x402.token import (
 )
 from payments_py.x402.types import (
     DelegationConfig,
+    MppTokenOptions,
     X402Resource,
     X402TokenOptions,
 )
@@ -247,39 +248,76 @@ class TestMintResponseVersion:
         assert result["tokenVersion"] == 2
 
 
-class TestMppMintReportsVersion:
-    """The MPP mint shares the builder, so it reports its version the same way.
+class TestMppHasNoTokenVersion:
+    """MPP carries no token version at all (nvm-monorepo#3266).
 
-    MPP does NOT pin v3 (nvm-monorepo v1.30.0): one MPP token is reused across
-    many challenges, so a one-time nonce would break the buyer's second
-    challenge. The version is still detected and reported here — the point is
-    that the two mints cannot drift, not that MPP is single-use.
+    The two protocols stopped sharing a version ladder because their single-use
+    unit differs: for x402 it is the TOKEN (the v3 one-time nonce), for MPP it
+    is the CHALLENGE, whose id doubles as the burn idempotency key. One MPP
+    access token is presented across many challenges by design, so a per-token
+    nonce would kill every buyer's second challenge. The backend refuses ANY
+    ``tokenVersion`` on an MPP mint with ``BCK.MPP.0007`` — ``2`` included,
+    since that ordinal belongs to x402's ladder.
     """
 
+    @pytest.mark.parametrize("version", [2, 3])
     @patch("payments_py.mpp.mpp_api.requests.post")
-    def test_mpp_mint_annotates_token_version(self, mock_post, mock_options):
+    def test_mpp_mint_refuses_any_token_version(self, mock_post, mock_options, version):
+        """Refused client-side, before the request: the caller would otherwise
+        meet a 400 whose cause is a field they set two layers up."""
         from payments_py.mpp.mpp_api import MppAPI
 
+        with pytest.raises(PaymentsError) as excinfo:
+            MppAPI(mock_options).get_mpp_access_token(
+                "plan-1",
+                "agent-1",
+                token_options=X402TokenOptions(token_version=version),
+            )
+
+        assert excinfo.value.code == "validation"
+        assert "BCK.MPP.0007" in str(excinfo.value)
+        mock_post.assert_not_called()
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_x402_mint_still_accepts_token_version(self, mock_post, mock_options):
+        """The guard is scoped to the MPP mint — x402 keeps its ladder."""
         _mock_mint(mock_post, V3_TOKEN)
+
+        X402TokenAPI(mock_options).get_x402_access_token(
+            "plan-1", token_options=X402TokenOptions(token_version=3)
+        )
+
+        assert _sent_body(mock_post)["tokenVersion"] == 3
+
+    @patch("payments_py.mpp.mpp_api.requests.post")
+    def test_mpp_mint_reports_no_token_version(self, mock_post, mock_options):
+        """There is no version to report, so the key must be absent rather than
+        defaulted to 2 — MPP is not "x402 v2 by another name"."""
+        from payments_py.mpp.mpp_api import MppAPI
+
+        _mock_mint(mock_post, V2_TOKEN)
         mock_post.return_value.ok = True
         mock_post.return_value.status_code = 200
 
         result = MppAPI(mock_options).get_mpp_access_token("plan-1", "agent-1")
 
-        assert result["tokenVersion"] == 3
+        assert "tokenVersion" not in result
+        assert "tokenVersion" not in _sent_body(mock_post)
 
     @patch("payments_py.mpp.mpp_api.requests.post")
-    def test_mpp_mint_sends_resource_and_verb(self, mock_post, mock_options):
+    def test_mpp_mint_still_sends_resource_and_verb(self, mock_post, mock_options):
+        """Only the version split; ``resource`` / ``httpVerb`` are still
+        accepted by the MPP mint DTO (an OmitType of the x402 one)."""
         from payments_py.mpp.mpp_api import MppAPI
 
-        _mock_mint(mock_post, V3_TOKEN)
+        _mock_mint(mock_post, V2_TOKEN)
         mock_post.return_value.ok = True
         mock_post.return_value.status_code = 200
 
         MppAPI(mock_options).get_mpp_access_token(
             "plan-1",
             "agent-1",
-            token_options=X402TokenOptions(
+            token_options=MppTokenOptions(
                 resource="https://seller.example/ask", http_verb="POST"
             ),
         )
@@ -287,6 +325,13 @@ class TestMppMintReportsVersion:
         body = _sent_body(mock_post)
         assert body["resource"] == {"url": "https://seller.example/ask"}
         assert body["accepted"]["extra"]["httpVerb"] == "POST"
+
+    def test_mpp_token_options_has_no_version_field(self):
+        """The type is the first line of defence: MppTokenOptions mirrors the
+        TS twin's ``Omit<X402TokenOptions, 'tokenVersion'>``, and
+        X402TokenOptions stays assignable to it so existing callers work."""
+        assert "token_version" not in MppTokenOptions.model_fields
+        assert issubclass(X402TokenOptions, MppTokenOptions)
 
 
 class TestAlreadyUsedError:

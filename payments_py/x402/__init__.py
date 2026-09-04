@@ -60,6 +60,7 @@ from .types import (
     DelegationConfig,
     CreateDelegationPayload,
     CreateDelegationResponse,
+    MppTokenOptions,
     X402TokenOptions,
 )
 from .helpers import build_payment_required, build_payment_required_for_plans
@@ -118,6 +119,7 @@ __all__ = [
     "DelegationConfig",
     "CreateDelegationPayload",
     "CreateDelegationResponse",
+    "MppTokenOptions",
     "X402TokenOptions",
     # Helper functions
     "build_payment_required",

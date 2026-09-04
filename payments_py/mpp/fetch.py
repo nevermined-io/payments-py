@@ -29,7 +29,7 @@ from urllib.parse import urlsplit
 import requests
 
 from payments_py.common.payments_error import PaymentsError
-from payments_py.x402.types import DelegationConfig, X402TokenOptions
+from payments_py.x402.types import DelegationConfig, MppTokenOptions
 
 from .codec import build_credential_header, parse_challenge_header, parse_receipt_header
 from .errors import (
@@ -623,7 +623,10 @@ def mpp_fetch(
             minted = mint_token(
                 plan_id,
                 options.agent_id or challenge.request.agent_id,
-                X402TokenOptions(delegation_config=options.delegation_config),
+                # No resource/verb binding and no token_version here: an MPP
+                # token is reusable across challenges, and MPP has no version
+                # ladder at all (nvm-monorepo#3266).
+                MppTokenOptions(delegation_config=options.delegation_config),
             )
             access_token = minted["accessToken"]
 

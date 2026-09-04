@@ -302,7 +302,7 @@ async with httpx.AsyncClient() as client:
 
 ### Using `PaymentsClient` (managed tokens)
 
-`payments.a2a["get_client"](...)` returns a `PaymentsClient` that mints and
+`payments.a2a["get_client"]` returns a `PaymentsClient` that mints and
 attaches the access token for you:
 
 ```python

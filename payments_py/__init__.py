@@ -53,6 +53,7 @@ from payments_py.x402 import (
     X402TokenAPI,
     # Delegation
     DelegationConfig,
+    MppTokenOptions,
     X402TokenOptions,
     X402SchemeType,
     X402_SCHEME_NETWORKS,
@@ -179,6 +180,7 @@ __all__ = [
     "NeverminedFacilitator",
     # Delegation
     "DelegationConfig",
+    "MppTokenOptions",
     "X402TokenOptions",
     "X402SchemeType",
     "X402_SCHEME_NETWORKS",

@@ -263,6 +263,25 @@ Each `issue_challenge` returns a distinct challenge even for identical inputs �
 the id doubles as the burn idempotency key, so two requests sharing one would
 settle as a single burn.
 
+`payments.mpp.get_mpp_access_token(plan_id, agent_id, token_options)` mints the
+buyer's credential directly, for a buyer not using `payments.mpp.fetch`. It
+takes an `MppTokenOptions` — the same fields as `X402TokenOptions` **minus**
+`token_version`.
+
+!!! note "MPP has no token version"
+    x402 and MPP no longer share a version ladder (nvm-monorepo#3266). x402's
+    single-use unit is the **token** — a v3 token carries a one-time nonce and
+    is consumed by its first settle. MPP's is the **challenge**, whose id is the
+    burn idempotency key, and one MPP access token is presented across many
+    challenges by design. A per-token nonce would therefore kill every buyer's
+    second challenge.
+
+    The backend refuses **any** `tokenVersion` on an MPP mint with
+    `BCK.MPP.0007` — `2` included, since that ordinal belongs to x402's ladder.
+    The SDK refuses it before the request, so you get a `PaymentsError`
+    (`code='validation'`) naming the cause rather than an opaque 400. The mint
+    response carries no `tokenVersion` key either.
+
 !!! danger "Settlement failures are not all the same"
     `settle_credential` raises `MppSettlementOutcomeUnknownError` when the call
     ended without a definite answer — a read timeout, a connection torn down

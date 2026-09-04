@@ -454,7 +454,49 @@ class CreateDelegationResponse(BaseModel):
     )
 
 
-class X402TokenOptions(BaseModel):
+class MppTokenOptions(BaseModel):
+    """
+    Options for MPP access-token generation.
+
+    The same inputs as :class:`X402TokenOptions` **minus** ``token_version``:
+    MPP carries no token version at all (nvm-monorepo#3266). The two protocols
+    stopped sharing a version ladder because their single-use unit differs —
+    for x402 it is the TOKEN (the v3 one-time nonce), for MPP it is the
+    CHALLENGE, whose id doubles as the burn idempotency key. One MPP access
+    token is presented across many challenges by design, so a per-token nonce
+    would kill every buyer's second challenge.
+
+    ``X402TokenOptions`` subclasses this, so an existing caller passing one to
+    the MPP mint still type-checks — mirroring the TS twin's
+    ``Omit<X402TokenOptions, 'tokenVersion'>``. Setting ``token_version`` on it
+    is refused at the mint rather than silently dropped: the backend answers
+    ``BCK.MPP.0007`` for **any** value, ``2`` included.
+
+    Attributes:
+        scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
+        network: Network identifier (auto-derived from scheme if omitted)
+        delegation_config: Delegation configuration for both erc4337 and card-delegation schemes
+        resource: The protected resource the token is minted for, as a URL
+            string or an :class:`X402Resource`.
+        http_verb: HTTP verb of that resource (e.g. ``"POST"``). Sent as
+            ``accepted.extra.httpVerb``.
+    """
+
+    scheme: Optional[str] = None
+    network: Optional[str] = None
+    delegation_config: Optional[DelegationConfig] = Field(
+        None, alias="delegationConfig"
+    )
+    resource: Optional[Union[str, X402Resource]] = None
+    http_verb: Optional[str] = Field(None, alias="httpVerb")
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+class X402TokenOptions(MppTokenOptions):
     """
     Options for x402 token generation that control scheme and delegation behavior.
 
@@ -475,26 +517,15 @@ class X402TokenOptions(BaseModel):
         http_verb: HTTP verb of that resource (e.g. ``"POST"``). Sent as
             ``accepted.extra.httpVerb`` and signed on v3.
         token_version: Access-token version to request (``2`` — the backend
-            default — or ``3``). **Never** infer the version you got from this
-            value: a backend predating nvm-monorepo#2646 silently drops the
-            field and returns v2. Read it back with
+            default — or ``3``). **x402 only**; the MPP mint refuses it. **Never**
+            infer the version you got from this value: a backend predating
+            nvm-monorepo#2646 silently drops the field and returns v2. Read it
+            back with
             :func:`payments_py.x402.token.detect_access_token_version`, or from the
             ``tokenVersion`` key the mint adds to its response.
     """
 
-    scheme: Optional[str] = None
-    network: Optional[str] = None
-    delegation_config: Optional[DelegationConfig] = Field(
-        None, alias="delegationConfig"
-    )
-    resource: Optional[Union[str, X402Resource]] = None
-    http_verb: Optional[str] = Field(None, alias="httpVerb")
     token_version: Optional[X402TokenVersion] = Field(None, alias="tokenVersion")
-
-    model_config = ConfigDict(
-        populate_by_name=True,
-        from_attributes=True,
-    )
 
 
 # Sync or async callable that resolves credits dynamically from a request.
