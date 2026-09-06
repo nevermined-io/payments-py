@@ -12,6 +12,7 @@ from payments_py.api.agents_api import AgentsAPI
 from payments_py.api.requests_api import AgentRequestsAPI
 from payments_py.api.observability_api import ObservabilityAPI
 from payments_py.api.organizations_api import OrganizationsAPI
+from payments_py.api.orders_api import OrdersAPI
 from payments_py.api.contracts_api import ContractsAPI
 from payments_py.x402.facilitator_api import FacilitatorAPI
 from payments_py.mpp.mpp_api import MppAPI
@@ -31,6 +32,7 @@ class Payments(BasePaymentsAPI):
 
     Each of these functionalities is encapsulated in its own API class:
     - `plans`: Manages AI Plans, including registration and ordering and retrieving plan details.
+    - `orders`: Browser-fiat Orders - merchant-initiated, off-plan charges for an arbitrary amount.
     - `agents`: Handles AI Agents, including registration of AI Agents and access token generation.
     - `requests`: Manages requests received by AI Agents, including validation and tracking.
     - `facilitator`: Handles X402 permission verification and settlement for AI Agents acting as facilitators.
@@ -94,6 +96,7 @@ class Payments(BasePaymentsAPI):
         self.query = AIQueryApi.get_instance()
         self.observability = ObservabilityAPI.get_instance(options)
         self.organizations = OrganizationsAPI.get_instance(options)
+        self.orders = OrdersAPI.get_instance(options)
         self.facilitator = FacilitatorAPI.get_instance(options)
         # MPP: a second payment framing over the same plans/credits/
         # delegations core. Namespaced next to ``x402`` for symmetry.

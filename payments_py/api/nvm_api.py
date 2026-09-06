@@ -20,6 +20,12 @@ API_URL_BURN_PLAN = "/api/v1/protocol/plans/burn"
 API_URL_GET_PLAN_AGENTS = "/api/v1/protocol/plans/{plan_id}/agents"
 API_URL_REDEEM_PLAN = "/api/v1/protocol/plans/redeem"
 
+# Order endpoints
+# Browser-fiat Orders (nvm-monorepo epic #3238). POST is merchant-authenticated
+# (org-scoped NVM API key); GET is anonymous - the unguessable id is the access control.
+API_URL_CREATE_ORDER = "/api/v1/orders"
+API_URL_GET_ORDER = "/api/v1/orders/{order_id}"
+
 # Agent endpoints
 API_URL_REGISTER_AGENT = "/api/v1/protocol/agents"
 # GET: the caller's own agents (?orgId= scopes to an org the caller belongs to).
