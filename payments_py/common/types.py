@@ -726,3 +726,50 @@ class StripeAccountConnectResult(BaseModel):
     user_country_code: str = Field(alias="userCountryCode")
     link_created_at: int = Field(alias="linkCreatedAt")
     link_expires_at: int = Field(alias="linkExpiresAt")
+
+
+class CreateOrderResult(BaseModel):
+    """Result of :meth:`OrdersAPI.create_order` (``POST /api/v1/orders``).
+
+    Mirrors ``CreateOrderResponseDto`` in the Nevermined backend
+    (``apps/api/src/orders/dto/create-order-response.dto.ts``).
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    #: Unguessable Order id — the buyer-facing access control for ``get_order``.
+    order_id: str = Field(alias="orderId")
+    #: Buyer-facing lifecycle status: ``requires_payment``, ``paid``,
+    #: ``refunded``, ``partially_refunded``, ``disputed`` or ``failed``.
+    status: str
+    #: Stripe PaymentIntent client secret the browser confirms against.
+    #: Present only while the Order is payable.
+    client_secret: Optional[str] = Field(default=None, alias="clientSecret")
+
+
+class Order(BaseModel):
+    """Buyer-safe view of an Order returned by :meth:`OrdersAPI.get_order`.
+
+    Mirrors ``OrderResponseDto`` (``apps/api/src/orders/dto/order-response.dto.ts``).
+    It never carries the merchant identity, the Connect account or the fee.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    #: Unguessable Order id.
+    id: str
+    #: Charge amount in USD cents.
+    amount_minor: int = Field(alias="amountMinor")
+    currency: str
+    #: Same value set as :attr:`CreateOrderResult.status`.
+    status: str
+    #: Total refunded so far, in cents.
+    amount_refunded_minor: int = Field(default=0, alias="amountRefundedMinor")
+    description: Optional[str] = None
+    buyer_ref: Optional[str] = Field(default=None, alias="buyerRef")
+    #: The Stripe PaymentIntent backing this Order; ``None`` until it is created.
+    payment_intent_id: Optional[str] = Field(default=None, alias="paymentIntentId")
+    #: ISO-8601 instant when the Order stops being payable; ``None`` if it never expires.
+    expires_at: Optional[str] = Field(default=None, alias="expiresAt")
+    #: Present only while the Order is payable.
+    client_secret: Optional[str] = Field(default=None, alias="clientSecret")

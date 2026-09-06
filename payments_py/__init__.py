@@ -28,6 +28,8 @@ from payments_py.common.types import (
     OrganizationMembersResponse,
     OrganizationType,
     StripeAccountConnectResult,
+    CreateOrderResult,
+    Order,
 )
 from payments_py.common.payments_error import PaymentsError
 from payments_py.api.query_api import AIQueryApi
@@ -37,6 +39,7 @@ from payments_py.api.requests_api import AgentRequestsAPI
 from payments_py.api.base_payments import BasePaymentsAPI, CURRENT_ORG_ID_HEADER
 from payments_py.api.observability_api import ObservabilityAPI
 from payments_py.api.organizations_api import OrganizationsAPI
+from payments_py.api.orders_api import OrdersAPI
 
 # X402 Payment Protocol Module
 from payments_py.x402 import (
@@ -145,6 +148,9 @@ __all__ = [
     "OrganizationMembersResponse",
     "OrganizationType",
     "StripeAccountConnectResult",
+    "OrdersAPI",
+    "CreateOrderResult",
+    "Order",
     # X402 APIs
     "FacilitatorAPI",
     "X402TokenAPI",
