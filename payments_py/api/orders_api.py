@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from payments_py.api.base_payments import BasePaymentsAPI
+from payments_py.api.base_payments import BasePaymentsAPI, _stringify_unsafe_ints
 from payments_py.api.nvm_api import API_URL_CREATE_ORDER, API_URL_GET_ORDER
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import CreateOrderResult, Order, PaymentOptions
@@ -110,11 +110,14 @@ class OrdersAPI(BasePaymentsAPI):
         # Serialised here rather than via ``get_backend_http_options(body=...)``:
         # that helper camelCases dict keys RECURSIVELY, which would rewrite the
         # merchant's opaque ``metadata`` / ``line_items`` keys. The wire keys
-        # above are already camelCase and the amount is DTO-bounded far below
-        # the JS safe-integer range, so a plain ``json.dumps`` is the exact body.
+        # above are already camelCase. The SDK-wide unsafe-int policy still
+        # applies: an int above 2**53-1 anywhere in the payload is sent as a
+        # decimal string, since the Node backend's JSON parser would otherwise
+        # round it.
         options = self.get_backend_http_options("POST")
         url = f"{self.environment.backend}{API_URL_CREATE_ORDER}"
-        response = requests.post(url, data=json.dumps(body), **options)
+        payload = json.dumps(_stringify_unsafe_ints(body))
+        response = requests.post(url, data=payload, **options)
         if not response.ok:
             raise PaymentsError.from_response(response, "Unable to create order")
         return CreateOrderResult.model_validate(response.json())

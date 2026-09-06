@@ -30,6 +30,7 @@ from payments_py.common.types import (
     StripeAccountConnectResult,
     CreateOrderResult,
     Order,
+    OrderStatus,
 )
 from payments_py.common.payments_error import PaymentsError
 from payments_py.api.query_api import AIQueryApi
@@ -151,6 +152,7 @@ __all__ = [
     "OrdersAPI",
     "CreateOrderResult",
     "Order",
+    "OrderStatus",
     # X402 APIs
     "FacilitatorAPI",
     "X402TokenAPI",

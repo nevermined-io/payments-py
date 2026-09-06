@@ -728,6 +728,23 @@ class StripeAccountConnectResult(BaseModel):
     link_expires_at: int = Field(alias="linkExpiresAt")
 
 
+class OrderStatus(str, Enum):
+    """Buyer-facing lifecycle status of an Order — the wire ``WireOrderStatus``
+    in nvm-monorepo ``apps/api/src/orders/order-status.ts``.
+
+    Model fields are typed ``Union[OrderStatus, str]`` so a value the backend
+    adds before the SDK ships an enum update validates as a bare string instead
+    of raising (the :attr:`MyMembership.org_type` forward-compat pattern).
+    """
+
+    REQUIRES_PAYMENT = "requires_payment"
+    PAID = "paid"
+    REFUNDED = "refunded"
+    PARTIALLY_REFUNDED = "partially_refunded"
+    DISPUTED = "disputed"
+    FAILED = "failed"
+
+
 class CreateOrderResult(BaseModel):
     """Result of :meth:`OrdersAPI.create_order` (``POST /api/v1/orders``).
 
@@ -739,9 +756,10 @@ class CreateOrderResult(BaseModel):
 
     #: Unguessable Order id — the buyer-facing access control for ``get_order``.
     order_id: str = Field(alias="orderId")
-    #: Buyer-facing lifecycle status: ``requires_payment``, ``paid``,
-    #: ``refunded``, ``partially_refunded``, ``disputed`` or ``failed``.
-    status: str
+    #: Buyer-facing lifecycle status — see :class:`OrderStatus`. Left-to-right
+    #: union so a known value parses to the enum and an unknown one to ``str``
+    #: (smart mode would pick ``str`` for every string input).
+    status: Union[OrderStatus, str] = Field(union_mode="left_to_right")
     #: Stripe PaymentIntent client secret the browser confirms against.
     #: Present only while the Order is payable.
     client_secret: Optional[str] = Field(default=None, alias="clientSecret")
@@ -761,15 +779,21 @@ class Order(BaseModel):
     #: Charge amount in USD cents.
     amount_minor: int = Field(alias="amountMinor")
     currency: str
-    #: Same value set as :attr:`CreateOrderResult.status`.
-    status: str
-    #: Total refunded so far, in cents.
-    amount_refunded_minor: int = Field(default=0, alias="amountRefundedMinor")
-    description: Optional[str] = None
-    buyer_ref: Optional[str] = Field(default=None, alias="buyerRef")
+    #: Buyer-facing lifecycle status — see :class:`OrderStatus`. Left-to-right
+    #: union so a known value parses to the enum and an unknown one to ``str``
+    #: (smart mode would pick ``str`` for every string input).
+    status: Union[OrderStatus, str] = Field(union_mode="left_to_right")
+    #: Total refunded so far, in cents. Always present on the wire — a money
+    #: field with no default, so a missing value fails loudly rather than
+    #: silently reading as ``0``.
+    amount_refunded_minor: int = Field(alias="amountRefundedMinor")
+    # The four fields below are always present but may be ``None``
+    # (required-but-nullable, exactly as the DTO), so they carry no default.
+    description: Optional[str]
+    buyer_ref: Optional[str] = Field(alias="buyerRef")
     #: The Stripe PaymentIntent backing this Order; ``None`` until it is created.
-    payment_intent_id: Optional[str] = Field(default=None, alias="paymentIntentId")
+    payment_intent_id: Optional[str] = Field(alias="paymentIntentId")
     #: ISO-8601 instant when the Order stops being payable; ``None`` if it never expires.
-    expires_at: Optional[str] = Field(default=None, alias="expiresAt")
+    expires_at: Optional[str] = Field(alias="expiresAt")
     #: Present only while the Order is payable.
     client_secret: Optional[str] = Field(default=None, alias="clientSecret")

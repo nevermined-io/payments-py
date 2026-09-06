@@ -16,11 +16,17 @@ import os
 
 import pytest
 import requests_mock
+from pydantic import ValidationError
 
 from payments_py.api.base_payments import CURRENT_ORG_ID_HEADER
 from payments_py.common.api_version import API_VERSION_HEADER, LOCKED_API_VERSION
 from payments_py.common.payments_error import PaymentsError
-from payments_py.common.types import CreateOrderResult, Order, PaymentOptions
+from payments_py.common.types import (
+    CreateOrderResult,
+    Order,
+    OrderStatus,
+    PaymentOptions,
+)
 from payments_py.environments import Environments
 from payments_py.payments import Payments
 
@@ -107,6 +113,23 @@ class TestCreateOrder:
             body = json.loads(m.request_history[0].body)
         assert body == {"amountMinor": 100, "currency": "usd"}
 
+    def test_stringifies_unsafe_ints_in_opaque_payloads(self):
+        # Ints above 2**53-1 would be rounded by the Node backend's JSON
+        # parser; the SDK-wide policy (``_stringify_unsafe_ints``) is to send
+        # them as decimal strings. Keys stay verbatim, safe ints stay ints.
+        payments = _make_payments()
+        big = 1_725_600_000_000_000_000  # a nanosecond timestamp
+        with requests_mock.Mocker() as m:
+            m.post(f"{BACKEND}/api/v1/orders", status_code=201, json=CREATED)
+            payments.orders.create_order(
+                100,
+                metadata={"ts_ns": big, "n": 7},
+                line_items=[{"unit_price": big}],
+            )
+            body = json.loads(m.request_history[0].body)
+        assert body["metadata"] == {"ts_ns": str(big), "n": 7}
+        assert body["lineItems"] == [{"unit_price": str(big)}]
+
     def test_omits_client_secret_when_backend_withholds_it(self):
         payments = _make_payments()
         with requests_mock.Mocker() as m:
@@ -158,6 +181,32 @@ class TestGetOrder:
         # The id IS the access control — never leak the merchant key on the read.
         assert "Authorization" not in req.headers
         assert req.headers[API_VERSION_HEADER] == LOCKED_API_VERSION
+
+    def test_parses_status_into_the_enum_and_tolerates_unknown_values(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.get(f"{BACKEND}/api/v1/orders/{ORDER_ID}", json=ORDER)
+            known = payments.orders.get_order(ORDER_ID).status
+            m.get(
+                f"{BACKEND}/api/v1/orders/{ORDER_ID}",
+                json={**ORDER, "status": "canceled"},
+            )
+            unknown = payments.orders.get_order(ORDER_ID).status
+        assert known == OrderStatus.REQUIRES_PAYMENT
+        assert isinstance(known, OrderStatus)
+        # A status added server-side before the SDK enum catches up must not
+        # crash the read — it degrades to the bare string.
+        assert unknown == "canceled"
+
+    def test_fails_loudly_when_a_money_field_is_missing(self):
+        # ``amountRefundedMinor`` is always present on the wire; a missing value
+        # is a contract regression and must never silently read as 0.
+        payments = _make_payments()
+        body = {k: v for k, v in ORDER.items() if k != "amountRefundedMinor"}
+        with requests_mock.Mocker() as m:
+            m.get(f"{BACKEND}/api/v1/orders/{ORDER_ID}", json=body)
+            with pytest.raises(ValidationError):
+                payments.orders.get_order(ORDER_ID)
 
     def test_surfaces_bck_order_0002_on_miss(self):
         payments = _make_payments()
