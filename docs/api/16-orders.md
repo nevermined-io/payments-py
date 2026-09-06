@@ -22,11 +22,11 @@ payments = Payments.get_instance(
 )
 
 created = payments.orders.create_order(
-    3437,  # USD cents: $34.37 ($1.00 - $999,999.99)
+    3437,  # USD cents: $34.37
     description="Cart checkout - 3 items",
     buyer_ref="merchant-order-4821",
     idempotency_key="merchant-order-4821",
-    line_items=[{"sku": "PRO-PLAN", "quantity": 1, "amountMinor": 3437}],
+    line_items=[{"sku": "PRO-PLAN", "quantity": 1, "unit_price": 3437}],
     metadata={"channel": "web"},
 )
 
@@ -37,13 +37,13 @@ print(created.client_secret)  # hand this to the browser (Stripe.js confirm)
 
 | Parameter | Type | Description |
 |---|---|---|
-| `amount_minor` | `int` | Charge amount in USD cents, `100` to `99_999_999`. |
+| `amount_minor` | `int` | Charge amount in USD cents (at least `100`, i.e. $1.00). The API validates the upper bound (`BCK.ORDER.0001`); a deployment may enforce a lower per-order cap (`BCK.ORDER.0003`). |
 | `currency` | `str` | ISO currency, lower-cased. Default and only value in Phase 1: `"usd"`. |
 | `description` | `str` | Optional. Human-readable description (max 1024 chars). |
 | `buyer_ref` | `str` | Optional. Your own reference for the buyer or cart (max 255 chars). |
 | `idempotency_key` | `str` | Optional. A retried create with the same key returns the same Order and `client_secret`; a conflicting body is refused with `BCK.ORDER.0007`. |
-| `line_items` | `list[dict]` | Optional. Recorded verbatim, opaque to the API. |
-| `metadata` | `dict` | Optional. Recorded verbatim, opaque to the API. |
+| `line_items` | `list[dict]` | Optional. Merchant-defined structure, recorded verbatim (keys are not transformed), opaque to the API. |
+| `metadata` | `dict` | Optional. Merchant-defined structure, recorded verbatim (keys are not transformed), opaque to the API. |
 | `capture_mode` | `str` | Optional. `"automatic"` only in Phase 1. |
 | `payment_provider` | `str` | Optional. `"stripe"` only in Phase 1. |
 

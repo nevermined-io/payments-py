@@ -66,8 +66,10 @@ class OrdersAPI(BasePaymentsAPI):
         organization whose Stripe Connect account can receive card payments.
 
         Args:
-            amount_minor: Charge amount in USD cents, $1.00–$999,999.99
-                (``100``–``99_999_999``).
+            amount_minor: Charge amount in USD cents (at least ``100``,
+                i.e. $1.00). The API validates the upper bound
+                (``BCK.ORDER.0001``); a deployment may enforce a lower
+                per-order cap (``BCK.ORDER.0003``).
             currency: ISO currency, lower-cased. Phase 1 is USD-only.
             description: Human-readable description of the charge (max 1024
                 chars).

@@ -7,13 +7,13 @@ browser-fiat Orders endpoints (nvm-monorepo epic #3238, task #3250):
   control, so the SDK sends NO ``Authorization`` header.
 
 ``requests`` is mocked with ``requests_mock`` so we can assert on URLs,
-headers and bodies without hitting the network. The mock NVM API key is the
-same fixture used in ``test_payments.py``.
+headers and bodies without hitting the network. The NVM API key is a
+throwaway JWT minted per test run, never a committed credential.
 """
 
 import json
-import os
 
+import jwt
 import pytest
 import requests_mock
 from pydantic import ValidationError
@@ -30,9 +30,13 @@ from payments_py.common.types import (
 from payments_py.environments import Environments
 from payments_py.payments import Payments
 
-TEST_API_KEY = os.getenv(
-    "TEST_PROXY_BEARER_TOKEN",
-    "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweEVCNDk3OTU2OTRBMDc1QTY0ZTY2MzdmMUU5MGYwMjE0Mzg5YjI0YTMiLCJqdGkiOiIweGMzYjYyMWJkYTM5ZDllYWQyMTUyMDliZWY0MDBhMDEzYjM1YjQ2Zjc1NzM4YWFjY2I5ZjdkYWI0ZjQ5MmM5YjgiLCJleHAiOjE3OTQ2NTUwNjAsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.YMkQUjGh7_m07nj8SKXZReNKSryg9mTU3qwJr_TKYATUixbYQTte3CKucjqvgAGzJAd1Kq2ubz3b37n5Zsllxs",
+# A throwaway, locally-signed JWT — NOT a real credential. ``_parse_nvm_api_key``
+# only needs a decodable token carrying ``sub`` + ``o11y``; the ``sandbox-staging:``
+# prefix drives environment resolution. Same approach as test_user_scoped_listing.py.
+TEST_API_KEY = "sandbox-staging:" + jwt.encode(
+    {"sub": "0x0000000000000000000000000000000000000001", "o11y": "test-o11y"},
+    "unit-test-secret-not-a-real-credential-0123456789",
+    algorithm="HS256",
 )
 
 BACKEND = Environments["staging_sandbox"].backend.rstrip("/")
