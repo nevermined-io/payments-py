@@ -17,6 +17,7 @@ import os
 import pytest
 import requests_mock
 
+from payments_py.api.base_payments import CURRENT_ORG_ID_HEADER
 from payments_py.common.api_version import API_VERSION_HEADER, LOCKED_API_VERSION
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import CreateOrderResult, Order, PaymentOptions
@@ -56,11 +57,15 @@ def _make_payments():
     )
 
 
-def test_orders_is_wired_and_follows_the_org_pin():
+def test_orders_is_wired_and_forwards_the_org_pin_to_the_wire():
     payments = _make_payments()
     assert payments.orders is not None
     payments.set_organization_id("org-abc")
-    assert payments.orders.get_organization_id() == "org-abc"
+    with requests_mock.Mocker() as m:
+        m.post(f"{BACKEND}/api/v1/orders", status_code=201, json=CREATED)
+        payments.orders.create_order(100)
+        req = m.request_history[0]
+    assert req.headers[CURRENT_ORG_ID_HEADER] == "org-abc"
 
 
 class TestCreateOrder:

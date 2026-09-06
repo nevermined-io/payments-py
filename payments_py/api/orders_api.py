@@ -11,7 +11,12 @@ no plan, no buyer Nevermined account, no delegation. Wraps
   ``BCK.ORDER.0003``; :meth:`Payments.set_organization_id` (the
   ``X-Current-Org-Id`` header) does not substitute for an org-scoped key.
 - ``GET /api/v1/orders/{id}`` — anonymous; the unguessable id is the sole
-  access control, so no API key is sent.
+  access control, so no API key is sent on that call.
+
+This client is the merchant's: a :class:`Payments` instance is always
+constructed with an NVM API key. The buyer never needs one — the buyer's
+browser confirms the ``client_secret`` with Stripe.js and can poll the GET
+endpoint directly, which is why :meth:`OrdersAPI.get_order` sends no key.
 """
 
 import json
@@ -118,9 +123,10 @@ class OrdersAPI(BasePaymentsAPI):
         """Read the buyer-safe view of an Order (``GET /api/v1/orders/{id}``).
 
         The endpoint is anonymous — the unguessable id is the sole access
-        control — so no API key is sent. The response never includes the
-        merchant identity or the fee, and carries ``client_secret`` only while
-        the Order is payable.
+        control — so this call sends no API key (the :class:`Payments`
+        instance still needs one to be constructed). The response never
+        includes the merchant identity or the fee, and carries
+        ``client_secret`` only while the Order is payable.
 
         Args:
             order_id: The unguessable Order id returned by
