@@ -212,6 +212,34 @@ class TestGetOrder:
             with pytest.raises(ValidationError):
                 payments.orders.get_order(ORDER_ID)
 
+    def test_url_encodes_the_order_id(self):
+        # A stray ``?`` / ``#`` / ``..`` in a buyer-facing id must not retarget
+        # the request; it must reach the API as part of the path.
+        payments = _make_payments()
+        with requests_mock.Mocker(case_sensitive=True) as m:
+            m.get(f"{BACKEND}/api/v1/orders/ord_x%3Ffoo%3D1", json=ORDER)
+            payments.orders.get_order("ord_x?foo=1")
+            req = m.request_history[0]
+        assert req.path == "/api/v1/orders/ord_x%3Ffoo%3D1"
+        assert req.query == ""
+
+    def test_surfaces_the_read_throttle_without_catalogue_code_as_http_429(self):
+        # Nest ThrottlerException body: no ``code``, unlike NVMException envelopes.
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.get(
+                f"{BACKEND}/api/v1/orders/{ORDER_ID}",
+                status_code=429,
+                json={
+                    "statusCode": 429,
+                    "message": "ThrottlerException: Too Many Requests",
+                },
+            )
+            with pytest.raises(PaymentsError) as exc:
+                payments.orders.get_order(ORDER_ID)
+        assert exc.value.code == "http_429"
+        assert "Too Many Requests" in str(exc.value)
+
     def test_surfaces_bck_order_0002_on_miss(self):
         payments = _make_payments()
         with requests_mock.Mocker() as m:

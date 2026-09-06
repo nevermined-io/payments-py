@@ -60,15 +60,17 @@ print(order.client_secret)          # present only while the Order is payable
 
 The read is anonymous on the wire (the unguessable id is the access control) and returns a buyer-safe projection: it never includes the merchant identity, the Connect account or the fee.
 
+The read endpoint is rate-limited: all anonymous callers behind one IP share a bucket of 60 requests per minute. A throttled call raises `PaymentsError` with code `http_429` and no catalogue code (this is not the create-side `BCK.ORDER.0010`). Poll sparingly and back off on `http_429`.
+
 ## Order lifecycle
 
 | Status | Meaning |
 |---|---|
 | `requires_payment` | Created; the browser has not confirmed yet. `client_secret` is available. |
-| `paid` | Payment succeeded. |
+| `paid` | Payment succeeded. Also the state after a **won** dispute. |
 | `failed` | Payment failed, or the PaymentIntent could not be created. No money moved. |
 | `refunded` / `partially_refunded` | Refunded in full / in part (see `amount_refunded_minor`). |
-| `disputed` | A chargeback is open. |
+| `disputed` | A chargeback is open, or was lost. A won dispute returns the Order to `paid`. |
 
 ## Error codes
 
@@ -82,7 +84,10 @@ Errors raise `PaymentsError` with `code` set to the backend catalogue code:
 | `BCK.ORDER.0004` | 500 | The merchant has no Connect account able to receive card payments. |
 | `BCK.ORDER.0005` | 500 | The PaymentIntent could not be created; the Order is `failed`, no money moved. |
 | `BCK.ORDER.0007` | 409 | Idempotency-key conflict. |
-| `BCK.ORDER.0010` | 429 | Velocity cap exceeded. Retry after backoff. |
+| `BCK.ORDER.0010` | 429 | Velocity cap exceeded on `create_order`. Retry after backoff. |
+| `http_429` | 429 | The `get_order` read throttle (no catalogue code). Back off and retry. |
+
+A refusal that carries no catalogue code (a throttle or gateway response) surfaces with code `http_<status>`.
 
 ```python
 from payments_py import PaymentsError

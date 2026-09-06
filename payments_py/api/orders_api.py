@@ -21,6 +21,7 @@ endpoint directly, which is why :meth:`OrdersAPI.get_order` sends no key.
 
 import json
 from typing import Any, Dict, List, Optional
+from urllib.parse import quote
 
 import requests
 
@@ -96,7 +97,9 @@ class OrdersAPI(BasePaymentsAPI):
                 ``BCK.ORDER.0007`` (idempotency-key conflict),
                 ``BCK.ORDER.0010`` (velocity cap, retryable),
                 ``BCK.ORDER.0004`` / ``0005`` (Connect account / PaymentIntent
-                failure, no money moved).
+                failure, no money moved). A refusal without a catalogue code
+                (e.g. a gateway or throttle response) carries ``http_<status>``
+                instead.
         """
         optional = {
             "description": description,
@@ -142,9 +145,16 @@ class OrdersAPI(BasePaymentsAPI):
 
         Raises:
             PaymentsError: with code ``BCK.ORDER.0002`` when no Order has this
-                id.
+                id. The read endpoint is rate-limited — all anonymous callers
+                behind one IP share a bucket of 60 requests per minute — and a
+                throttled call carries no catalogue code, so it surfaces as
+                code ``http_429``. That is distinct from the create-side
+                velocity cap ``BCK.ORDER.0010``; poll sparingly and back off on
+                ``http_429``.
         """
-        path = API_URL_GET_ORDER.format(order_id=order_id)
+        # Encode the id so a stray ``?``, ``#`` or ``..`` cannot retarget the
+        # request (the id is buyer-facing and often arrives from a URL param).
+        path = API_URL_GET_ORDER.format(order_id=quote(order_id, safe=""))
         url = f"{self.environment.backend}{path}"
         response = requests.get(url, **self.get_public_http_options("GET"))
         if not response.ok:
