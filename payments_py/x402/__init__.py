@@ -54,6 +54,7 @@ from .types import (
     SessionKeyPayload,
     VerifyResponse,
     SettleResponse,
+    X402BillingModel,
     # Shared context
     PaymentContext,
     # Delegation types
@@ -100,6 +101,7 @@ __all__ = [
     "SessionKeyPayload",
     "VerifyResponse",
     "SettleResponse",
+    "X402BillingModel",
     # Shared context
     "PaymentContext",
     # Delegation types

@@ -86,9 +86,40 @@ settlement = payments.facilitator.settle_permissions(
 )
 
 if settlement.success:
-    print(f"Credits redeemed: {settlement.credits_redeemed}")
+    # Read `billing_model` before the credit fields — see "Was the buyer charged?" below
+    if settlement.billing_model == "pay-as-you-go":
+        print(f"Charged, reference: {settlement.order_tx or settlement.transaction}")
+    else:
+        print(f"Credits redeemed: {settlement.credits_redeemed}")
     print(f"Transaction: {settlement.transaction}")
 ```
+
+### Was the buyer charged?
+
+`settlement.success` tells you the settle worked. What to check **in addition** depends on
+`settlement.billing_model`:
+
+| `billing_model` | Success criterion | Credit fields |
+| --------------- | ----------------- | ------------- |
+| `credits` | `success` and `int(credits_redeemed) > 0` | `credits_redeemed` is the amount burned, `remaining_balance` what is left |
+| `pay-as-you-go` | `success` **and** a non-empty `order_tx` (fiat rails) / `transaction` (crypto rails) | always the string `"0"` — no balance exists on this plan shape |
+
+```python
+settled = settlement.success and (
+    bool(settlement.order_tx or settlement.transaction)
+    if settlement.billing_model == "pay-as-you-go"
+    else int(settlement.credits_redeemed or "0") > 0
+)
+```
+
+Two things make this easy to get wrong:
+
+- **Do not gate on `credits_redeemed` without reading `billing_model` first.** A pay-as-you-go
+  plan holds no credit balance, so `credits_redeemed > 0` can never hold there — a real charge
+  reads as a decline. On a card rail that invites a retry of a payment that already succeeded,
+  and repeated attempts feed issuer fraud scoring.
+- **These fields are strings.** `"0"` is truthy while `int("0") > 0` is false, so two
+  plausible-looking checks disagree. Compare numerically, and only on `credits` plans.
 
 ## Complete Example: Flask Agent
 
@@ -148,9 +179,13 @@ def create_task():
             max_amount="1"
         )
 
+        # Pass `billing_model` through — it is what tells the caller how to read
+        # the credit fields (see "Was the buyer charged?" above).
         return jsonify({
             'result': result,
-            'credits_used': settlement.credits_redeemed
+            'billing_model': settlement.billing_model,
+            'credits_used': settlement.credits_redeemed,
+            'order_tx': settlement.order_tx,
         })
 
     except PaymentsError as e:
@@ -226,7 +261,9 @@ async def create_task(request: Request, body: dict):
 
     return {
         "result": result,
-        "credits_used": settlement.credits_redeemed
+        "billing_model": settlement.billing_model,
+        "credits_used": settlement.credits_redeemed,
+        "order_tx": settlement.order_tx,
     }
 ```
 
@@ -285,9 +322,12 @@ The `settle_permissions` method returns a `SettleResponse`:
 | `success` | `bool` | Whether settlement succeeded |
 | `error_reason` | `str` | Reason for settlement failure (if `success` is false) |
 | `payer` | `str` | Payer's wallet address |
-| `transaction` | `str` | Blockchain transaction hash |
-| `credits_redeemed` | `str` | Number of credits burned |
-| `remaining_balance` | `str` | Credits remaining |
+| `transaction` | `str` | Blockchain transaction hash. Also the charge reference on crypto pay-as-you-go plans |
+| `network` | `str` | The rail: a CAIP-2 chain id for crypto, or the settling PSP (`stripe`, `braintree`, `visa`) for fiat |
+| `billing_model` | `str` | How the request was priced: `credits` or `pay-as-you-go`. Read this before the two credit fields |
+| `credits_redeemed` | `str` | Number of credits burned. **Always `"0"` on `pay-as-you-go`**, including on a successful charge |
+| `remaining_balance` | `str` | Credits remaining. **Always `"0"` on `pay-as-you-go`** |
+| `order_tx` | `str` | Order / per-request charge reference. On fiat pay-as-you-go this is the PSP transaction id |
 
 ## Best Practices
 
@@ -297,9 +337,12 @@ The `settle_permissions` method returns a `SettleResponse`:
 
 3. **Settle after completion**: Only burn credits after successfully completing the request
 
-4. **Log transactions**: Keep records of verification and settlement for debugging
+4. **Branch on `billing_model`**: Never decide "was the buyer charged?" from `credits_redeemed`
+   alone — see [Was the buyer charged?](#was-the-buyer-charged) above
 
-5. **Use middleware for consistency**: Apply validation uniformly across all endpoints
+5. **Log transactions**: Keep records of verification and settlement for debugging
+
+6. **Use middleware for consistency**: Apply validation uniformly across all endpoints
 
 ## Next Steps
 

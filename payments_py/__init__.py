@@ -50,6 +50,7 @@ from payments_py.x402 import (
     SessionKeyPayload,
     VerifyResponse,
     SettleResponse,
+    X402BillingModel,
     SupportedNetworks,
     SupportedSchemes,
     NeverminedFacilitator,
@@ -163,6 +164,7 @@ __all__ = [
     "SessionKeyPayload",
     "VerifyResponse",
     "SettleResponse",
+    "X402BillingModel",
     "SupportedNetworks",
     "SupportedSchemes",
     # X402 Facilitator
