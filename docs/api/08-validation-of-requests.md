@@ -104,6 +104,11 @@ if settlement.success:
 | `credits` | `success` and `int(credits_redeemed) > 0` | `credits_redeemed` is the amount burned, `remaining_balance` what is left |
 | `pay-as-you-go` | `success` **and** a non-empty `order_tx` (fiat rails) / `transaction` (crypto rails) | always the string `"0"` — no balance exists on this plan shape |
 
+**No `billing_model` in the response?** You are talking to a Nevermined API that predates the
+discriminator. Apply the **credits** rule — never read a missing discriminator as pay-as-you-go.
+All three fields are optional; if `credits_redeemed` is absent too there is no balance information
+to check, and `success` is the whole answer.
+
 ```python
 settled = settlement.success and (
     bool(settlement.order_tx or settlement.transaction)

@@ -288,6 +288,12 @@ class SettleResponse(BaseModel):
     Mind the type as well: these fields are **strings**. ``"0"`` is truthy while
     ``int("0") > 0`` is false, so two plausible-looking checks disagree.
 
+    If ``billing_model`` is **absent**, you are talking to a Nevermined API that
+    predates the discriminator: apply the ``credits`` rule, and never read a
+    missing discriminator as pay-as-you-go. All three fields are optional; if
+    ``credits_redeemed`` is absent too there is no balance information to check,
+    and ``success`` is the whole answer.
+
     Example::
 
         settled = response.success and (
@@ -309,10 +315,12 @@ class SettleResponse(BaseModel):
             card-delegation rails it is the settling payment provider
             (``stripe``, ``braintree``, ``visa``), not a CAIP-2 value.
         billing_model: Which billing model this settle was priced under
-            (Nevermined extension), one of :data:`X402BillingModel`. Present
-            regardless of ``success`` — check ``success`` before treating it as
-            evidence of a charge. Read it before the two credit fields; see the
-            per-model criterion above.
+            (Nevermined extension), one of :data:`X402BillingModel`. Reported
+            whether or not the settle succeeded — so check ``success`` before
+            treating it as evidence of a charge. It is absent entirely against a
+            Nevermined API that predates the discriminator, which is why it is
+            optional; treat that case as ``credits``. Read it before the two
+            credit fields; see the per-model criterion above.
         credits_redeemed: Number of credits redeemed (Nevermined extension).
             Always the string ``"0"`` for ``billing_model == "pay-as-you-go"``
             plans, which hold no credit balance — including on a settle that
