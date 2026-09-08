@@ -63,11 +63,17 @@ class _FakeSettlement:
         transaction="0xabc",
         credits_redeemed="5",
         remaining_balance="100",
+        billing_model=None,
+        order_tx=None,
     ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
         self.remaining_balance = remaining_balance
+        # The real SettleResponse always carries these; a double that cannot
+        # express them cannot exercise the pay-as-you-go shape at all.
+        self.billing_model = billing_model
+        self.order_tx = order_tx
 
     def model_dump(self, by_alias=False, exclude_none=False):
         data = {
@@ -75,6 +81,7 @@ class _FakeSettlement:
             "transaction": self.transaction,
             "network": "eip155:84532",
             "payer": "0x123",
+            ("billingModel" if by_alias else "billing_model"): self.billing_model,
             ("creditsRedeemed" if by_alias else "credits_redeemed"): (
                 self.credits_redeemed
             ),
@@ -83,7 +90,7 @@ class _FakeSettlement:
             ),
             # Null-valued fields the real model carries — used to exercise
             # exclude_none in the spec receipt.
-            ("orderTx" if by_alias else "order_tx"): None,
+            ("orderTx" if by_alias else "order_tx"): self.order_tx,
             ("errorReason" if by_alias else "error_reason"): None,
         }
         if exclude_none:
@@ -263,8 +270,47 @@ class TestPaywallSettlementReceipt:
         assert nvm["creditsRedeemed"] == "5"
         assert nvm["remainingBalance"] == "100"
         assert nvm["planId"] == "plan-123"
+        # Absent on a credits settle that carried neither — omitted, not None,
+        # so a consumer can tell "absent" from "present and empty".
+        assert "billingModel" not in nvm and "orderTx" not in nvm
         # The tool content is preserved on success.
         assert result["content"][0]["text"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_payg_receipt_carries_billing_model_and_order_tx(self):
+        """A pay-as-you-go settle DID charge the buyer, yet reports "0" credits.
+
+        The plan holds no credit balance, so ``creditsRedeemed`` is "0" on a
+        successful charge. Without ``billingModel`` on this key a consumer cannot
+        tell that from a credits settle that burned nothing — and retrying a card
+        charge that already succeeded is exactly the thing to avoid.
+        See nevermined-io/nvm-monorepo#2999.
+        """
+        decorator = _make_decorator(
+            _FakeSettlement(
+                success=True,
+                transaction="pi_3U6tgrBYvSRKcV421ehH4bnX",
+                credits_redeemed="0",
+                remaining_balance="0",
+                billing_model="pay-as-you-go",
+                order_tx="pi_3U6tgrBYvSRKcV421ehH4bnX",
+            )
+        )
+
+        def handler(args, extra, ctx):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+        protected = decorator.protect(handler, {"name": "premium", "kind": "tool"})
+        result = await protected({"q": "x"}, {"requestInfo": {"headers": {}}})
+
+        nvm = result["_meta"][NEVERMINED_CREDITS_META_KEY]
+        # The discriminator, and the reference that actually proves the charge.
+        assert nvm["billingModel"] == "pay-as-you-go"
+        assert nvm["orderTx"] == "pi_3U6tgrBYvSRKcV421ehH4bnX"
+        # The trap this guards: a successful charge reporting "0" credits.
+        assert nvm["success"] is True
+        assert nvm["creditsRedeemed"] == "0"
+        assert nvm["remainingBalance"] == "0"
 
 
 # ---------------------------------------------------------------------------

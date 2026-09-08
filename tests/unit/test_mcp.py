@@ -44,11 +44,16 @@ class SettleResult:
         transaction=None,
         credits_redeemed="1",
         remaining_balance="100",
+        billing_model=None,
+        order_tx=None,
     ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
         self.remaining_balance = remaining_balance
+        # The real SettleResponse always carries these.
+        self.billing_model = billing_model
+        self.order_tx = order_tx
 
     def model_dump(self, by_alias=False, exclude_none=False):
         data = {

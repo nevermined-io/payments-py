@@ -40,11 +40,16 @@ class SettleResult:
         transaction="0x123",
         credits_redeemed="1",
         remaining_balance="100",
+        billing_model=None,
+        order_tx=None,
     ):
         self.success = success
         self.transaction = transaction
         self.credits_redeemed = credits_redeemed
         self.remaining_balance = remaining_balance
+        # The real SettleResponse always carries these.
+        self.billing_model = billing_model
+        self.order_tx = order_tx
 
 
 class PaymentsMinimal:

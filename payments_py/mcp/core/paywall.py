@@ -267,6 +267,11 @@ class PaywallDecorator:
                 result["_meta"][X402_PAYMENT_RESPONSE_META_KEY] = settlement
 
             # Nevermined-namespaced observability (NOT part of the x402 spec).
+            # `creditsRedeemed` is meaningless without `billingModel`: a
+            # pay-as-you-go plan holds no balance, so it reads "0" on a settle
+            # that DID charge the buyer. Both new keys are omitted (not emitted
+            # as None) when the settle carried neither, so a consumer can tell
+            # "absent" from "present and empty".
             nvm_meta = {
                 "txHash": credits_result.get("txHash"),
                 "creditsRedeemed": credits_result.get("creditsRedeemed", "0"),
@@ -275,6 +280,10 @@ class PaywallDecorator:
                 "subscriberAddress": auth_result.get("subscriber_address"),
                 "success": credits_result.get("success", False),
             }
+            if credits_result.get("billingModel"):
+                nvm_meta["billingModel"] = credits_result["billingModel"]
+            if credits_result.get("orderTx"):
+                nvm_meta["orderTx"] = credits_result["orderTx"]
             if credits_result.get("errorReason"):
                 nvm_meta["errorReason"] = credits_result["errorReason"]
             result["_meta"][NEVERMINED_CREDITS_META_KEY] = nvm_meta
@@ -365,10 +374,12 @@ class PaywallDecorator:
                 return {
                     "success": settle_success,
                     "txHash": settle_result.transaction if settle_success else None,
+                    "billingModel": settle_result.billing_model,
                     "creditsRedeemed": credits_burned,
                     "remainingBalance": (
                         settle_result.remaining_balance if settle_success else None
                     ),
+                    "orderTx": settle_result.order_tx,
                     "settlement": (
                         settle_result.model_dump(by_alias=True, exclude_none=True)
                         if settle_success and hasattr(settle_result, "model_dump")
@@ -411,10 +422,12 @@ class PaywallDecorator:
                     return {
                         "success": settle_success,
                         "txHash": settle_result.transaction if settle_success else None,
+                        "billingModel": settle_result.billing_model,
                         "creditsRedeemed": credits_burned,
                         "remainingBalance": (
                             settle_result.remaining_balance if settle_success else None
                         ),
+                        "orderTx": settle_result.order_tx,
                         "settlement": (
                             settle_result.model_dump(by_alias=True, exclude_none=True)
                             if settle_success and hasattr(settle_result, "model_dump")
