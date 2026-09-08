@@ -290,9 +290,7 @@ class SettleResponse(BaseModel):
 
     If ``billing_model`` is **absent**, you are talking to a Nevermined API that
     predates the discriminator: apply the ``credits`` rule, and never read a
-    missing discriminator as pay-as-you-go. All three fields are optional; if
-    ``credits_redeemed`` is absent too there is no balance information to check,
-    and ``success`` is the whole answer.
+    missing discriminator as pay-as-you-go.
 
     Example::
 
