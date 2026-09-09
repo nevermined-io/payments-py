@@ -377,6 +377,12 @@ class TestMiddlewareHooks:
         )
 
         assert response.status_code == 200
+        # The body, not just the status. This is the only x402 test that
+        # configures on_after_settle, so it is the one placed to notice a
+        # settled response losing its payload while every hook still fires —
+        # e.g. returning the already-drained original instead of the rebuilt
+        # one. An empty 200 with all three flags set used to pass here.
+        assert response.json()["result"] == "ok"
         assert hook_calls["before_verify"] is True
         assert hook_calls["after_verify"] is True
         assert hook_calls["after_settle"] is True
