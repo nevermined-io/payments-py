@@ -94,6 +94,7 @@ nav:
     - 13. LangSmith Deployment: api/13-langsmith-deployment.md
     - 14. Onboarding Customers: api/14-onboarding-customers.md
     - 15. MPP Protocol: api/15-mpp.md
+    - 16. Orders: api/16-orders.md
   - Reference:
     - Payments Class: reference/payments.md
     - Data Models: reference/data_models.md
