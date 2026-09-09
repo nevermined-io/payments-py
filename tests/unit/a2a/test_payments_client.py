@@ -1,5 +1,6 @@
 """Unit tests for PaymentsClient."""
 
+import importlib
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -278,9 +279,15 @@ async def test_card_delegation_branch_also_carries_version_and_binding():
     )
     client._client = StubClient()  # type: ignore[attr-defined]
 
-    with patch(
-        "payments_py.x402.resolve_scheme.resolve_scheme",
-        return_value="nvm:card-delegation",
+    # patch.object on the imported module object, not the dotted string:
+    # `payments_py/x402/__init__.py` does `from .resolve_scheme import
+    # resolve_scheme`, so the attribute `payments_py.x402.resolve_scheme`
+    # resolves to the FUNCTION or to the MODULE depending on import order —
+    # which is why the string form passed locally and failed in CI with
+    # "<function resolve_scheme> does not have the attribute 'resolve_scheme'".
+    resolve_scheme_module = importlib.import_module("payments_py.x402.resolve_scheme")
+    with patch.object(
+        resolve_scheme_module, "resolve_scheme", return_value="nvm:card-delegation"
     ):
         await client.send_message({})  # type: ignore[arg-type]
 

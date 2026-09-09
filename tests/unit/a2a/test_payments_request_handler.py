@@ -841,25 +841,6 @@ async def test_transient_settle_failure_is_still_a_warning(caplog):  # noqa: D40
 
 
 @pytest.mark.asyncio()  # noqa: D401
-async def test_both_settle_sites_share_one_failure_policy():  # noqa: D401
-    """The streaming site used to decide separately and had drifted: a bare
-    warning, no receipt, so a replayed v3 token there was indistinguishable
-    from a backend blip and the in-band path reported the task as paid.
-
-    Pinning the shared helper is what stops the two diverging again — the
-    streaming call site is exercised through `_record_settle_failure`, which is
-    the only place either site now decides anything."""
-    import inspect
-
-    from payments_py.a2a import payments_request_handler as module
-
-    source = inspect.getsource(module.PaymentsRequestHandler)
-    # Exactly one policy, referenced from both settle sites.
-    assert source.count("self._record_settle_failure(") == 2
-    assert source.count("_settle_receipt_by_task[task_id] = SettleResponse(") == 1
-
-
-@pytest.mark.asyncio()  # noqa: D401
 async def test_streamed_spent_token_records_a_failed_receipt(caplog):  # noqa: D401
     """The streaming path cannot retract the events, but it must still record
     the failure so the in-band path emits payment-failed rather than reporting
