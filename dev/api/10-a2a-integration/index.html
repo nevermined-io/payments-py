@@ -904,6 +904,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#using-paymentsclient-managed-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using PaymentsClient (managed tokens)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1492,6 +1503,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#using-paymentsclient-managed-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using PaymentsClient (managed tokens)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1886,27 +1908,73 @@
 <a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>    <span class="p">)</span>
 <a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 </code></pre></div>
+<h3 id="using-paymentsclient-managed-tokens">Using <code>PaymentsClient</code> (managed tokens)<a class="headerlink" href="#using-paymentsclient-managed-tokens" title="Permanent link">&para;</a></h3>
+<p><code>payments.a2a["get_client"]</code> returns a <code>PaymentsClient</code> that mints and
+attaches the access token for you:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">&quot;get_client&quot;</span><span class="p">](</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">agent_base_url</span><span class="o">=</span><span class="s2">&quot;http://agent-url/&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="p">)</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+</code></pre></div>
+<p>The client mints a <strong>v2</strong> token once and caches it for its lifetime — a v2
+token is a reusable bearer credential. Pass <code>token_version=3</code> to request the
+single-use, seller/resource-bound token instead:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">&quot;get_client&quot;</span><span class="p">](</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="n">agent_base_url</span><span class="o">=</span><span class="s2">&quot;http://agent-url/&quot;</span><span class="p">,</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">token_version</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="p">)</span>
+</code></pre></div>
+<p>On a v3 request the client also <strong>binds</strong> the token, to <code>agent_base_url</code> and
+<code>POST</code>. That default assumes the seller is this SDK's A2A server, which
+advertises <code>str(request.url)</code>; the backend compares origin + path, so the two
+agree. A seller that advertises something else — this SDK's FastAPI middleware
+advertises a <em>relative</em> <code>request.url.path</code> — would never match and the settle
+would fail, so pass the binding explicitly instead:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">&quot;get_client&quot;</span><span class="p">](</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="n">agent_base_url</span><span class="o">=</span><span class="s2">&quot;http://agent-url/&quot;</span><span class="p">,</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">token_version</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="n">resource</span><span class="o">=</span><span class="s2">&quot;/a2a/&quot;</span><span class="p">,</span>   <span class="c1"># whatever the seller advertises in its 402</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    <span class="n">http_verb</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="p">)</span>
+</code></pre></div>
+<p>A v3 token is consumed by the seller's first settle, so the client mints one
+<strong>per paid request</strong> and never caches it — replaying one fails with
+<code>BCK.X402.0059</code>. Which of the two behaviours applies is decided by the token
+that came back, not by <code>token_version</code>: a backend that predates v3 support
+strips the field silently and returns a (cached) v2 token. <code>clear_token()</code> is
+therefore a no-op on the v3 path. See
+<a href="../11-x402/#access-token-versions-v2-and-v3">Access Token Versions</a>.</p>
 <h2 id="hooks">Hooks<a class="headerlink" href="#hooks" title="Permanent link">&para;</a></h2>
 <p>Add custom logic at request lifecycle points:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Incoming request: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request completed: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_error</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request failed: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">result</span> <span class="o">=</span> <span class="n">PaymentsA2AServer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span>
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="n">agent_card</span><span class="o">=</span><span class="n">agent_card</span><span class="p">,</span>
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    <span class="n">executor</span><span class="o">=</span><span class="n">executor</span><span class="p">,</span>
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    <span class="n">payments_service</span><span class="o">=</span><span class="n">payments</span><span class="p">,</span>
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>    <span class="n">hooks</span><span class="o">=</span><span class="p">{</span>
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>        <span class="s2">&quot;beforeRequest&quot;</span><span class="p">:</span> <span class="n">before_request</span><span class="p">,</span>
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>        <span class="s2">&quot;afterRequest&quot;</span><span class="p">:</span> <span class="n">after_request</span><span class="p">,</span>
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>        <span class="s2">&quot;onError&quot;</span><span class="p">:</span> <span class="n">on_error</span><span class="p">,</span>
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    <span class="p">},</span>
-<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Incoming request: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request completed: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_error</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request failed: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="n">result</span> <span class="o">=</span> <span class="n">PaymentsA2AServer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    <span class="n">agent_card</span><span class="o">=</span><span class="n">agent_card</span><span class="p">,</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    <span class="n">executor</span><span class="o">=</span><span class="n">executor</span><span class="p">,</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    <span class="n">payments_service</span><span class="o">=</span><span class="n">payments</span><span class="p">,</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    <span class="n">hooks</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        <span class="s2">&quot;beforeRequest&quot;</span><span class="p">:</span> <span class="n">before_request</span><span class="p">,</span>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>        <span class="s2">&quot;afterRequest&quot;</span><span class="p">:</span> <span class="n">after_request</span><span class="p">,</span>
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>        <span class="s2">&quot;onError&quot;</span><span class="p">:</span> <span class="n">on_error</span><span class="p">,</span>
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    <span class="p">},</span>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="p">)</span>
 </code></pre></div>
 <h2 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
 <table>
@@ -1937,6 +2005,11 @@
 <td>-32001</td>
 <td>402</td>
 <td>Plan ID missing from card</td>
+</tr>
+<tr>
+<td><code>BCK.X402.0059</code></td>
+<td>4xx</td>
+<td>v3 access token already spent — mint a new one (<code>AccessTokenAlreadyUsedError</code>)</td>
 </tr>
 </tbody>
 </table>

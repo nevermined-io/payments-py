@@ -1718,6 +1718,37 @@ using the FastAPI middleware:</p>
 <p>Each <code>issue_challenge</code> returns a distinct challenge even for identical inputs —
 the id doubles as the burn idempotency key, so two requests sharing one would
 settle as a single burn.</p>
+<p><code>payments.mpp.get_mpp_access_token(plan_id, agent_id, token_options)</code> mints the
+buyer's credential directly, for a buyer not using <code>payments.mpp.fetch</code>. It
+takes an <code>MppTokenOptions</code> — the same fields as <code>X402TokenOptions</code> <strong>minus the
+whole v3 binding</strong>: <code>token_version</code>, <code>resource</code> and <code>http_verb</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">MPP has no token version</p>
+<p>x402 and MPP no longer share a version ladder (nvm-monorepo#3266). x402's
+single-use unit is the <strong>token</strong> — a v3 token carries a one-time nonce and
+is consumed by its first settle. MPP's is the <strong>challenge</strong>, whose id is the
+burn idempotency key, and one MPP access token is presented across many
+challenges by design. A per-token nonce would therefore kill every buyer's
+second challenge.</p>
+<p>The backend refuses <strong>any</strong> <code>tokenVersion</code> on an MPP mint with
+<code>BCK.MPP.0007</code> — <code>2</code> included, since that ordinal belongs to x402's ladder.
+The SDK refuses it before the request, so you get a <code>PaymentsError</code>
+(<code>code='validation'</code>) naming the cause rather than an opaque 400. The mint
+response carries no <code>tokenVersion</code> key either.</p>
+<p><code>MppTokenOptions</code> is a <strong>sibling</strong> of <code>X402TokenOptions</code>, not its base — so
+passing an <code>X402TokenOptions</code> here now fails type checking. It still runs
+(pydantic does not enforce annotations, and the shared fields are
+identical) and it still raises at the mint if it carries any of the v3
+binding, but the annotation is what rejects it at the call site instead of
+leaving the runtime guard as the only defence. Construct an
+<code>MppTokenOptions</code>.</p>
+<p><code>resource</code> and <code>http_verb</code> are refused too. An MPP token's struct has no
+members for them, so they bind nothing — but redemption runs through the
+same shared erc4337 <code>verify</code>, where the presence of the token's
+<code>resource.url</code> is what arms the endpoint allowlist. Sending them would
+switch on a check you never configured while adding no binding at all. An
+MPP credential is bound by its <strong>challenge</strong>, not by its token.</p>
+</div>
 <div class="admonition danger">
 <p class="admonition-title">Settlement failures are not all the same</p>
 <p><code>settle_credential</code> raises <code>MppSettlementOutcomeUnknownError</code> when the call
