@@ -377,6 +377,12 @@ class TestMiddlewareHooks:
         )
 
         assert response.status_code == 200
+        # The body, not just the status. This is the only x402 test that
+        # configures on_after_settle, so it is the one placed to notice a
+        # settled response losing its payload while every hook still fires —
+        # e.g. returning the already-drained original instead of the rebuilt
+        # one. An empty 200 with all three flags set used to pass here.
+        assert response.json()["result"] == "ok"
         assert hook_calls["before_verify"] is True
         assert hook_calls["after_verify"] is True
         assert hook_calls["after_settle"] is True
@@ -568,3 +574,203 @@ class TestDynamicCredits:
         assert config.plan_id == "test-plan"
         assert callable(config.credits)
         # We can't easily test the callable without a request, but we verify it's stored
+
+
+class TestV3TokenRelay:
+    """The seller relays the access token unchanged — no protocol change for v3.
+
+    A v3 token (nvm-monorepo#2646) is signed over ``agentId`` / ``resourceUrl``
+    / ``httpVerb`` / ``nonce``, so ANY mutation on the way to verify or settle
+    — re-encoding, trimming, normalising — turns it into a forgery
+    (``BCK.X402.0005``). The middleware must hand the facilitator the exact
+    bytes it received.
+    """
+
+    @pytest.fixture
+    def v3_token(self):
+        token_data = {
+            "x402Version": 2,
+            "accepted": {
+                "scheme": "nvm:erc4337",
+                "network": "eip155:84532",
+                "planId": "test-plan-123",
+            },
+            "payload": {
+                "signature": "0xtest",
+                "authorization": {
+                    "from": "0xsubscriber",
+                    "agentId": "agent-1",
+                    "resourceUrl": "http://testserver/ask",
+                    "httpVerb": "POST",
+                    "nonce": "0x0123456789abcdef",
+                },
+            },
+        }
+        return base64.b64encode(json.dumps(token_data).encode()).decode()
+
+    def test_v3_token_reaches_verify_and_settle_byte_for_byte(
+        self, client, mock_payments, v3_token
+    ):
+        response = client.post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: v3_token},
+        )
+
+        assert response.status_code == 200
+
+        verify_token = mock_payments.facilitator.verify_permissions.call_args.kwargs[
+            "x402_access_token"
+        ]
+        settle_token = mock_payments.facilitator.settle_permissions.call_args.kwargs[
+            "x402_access_token"
+        ]
+        assert verify_token == v3_token
+        assert settle_token == v3_token
+        # And the relayed bytes still decode to the same signed authorization.
+        assert (
+            json.loads(base64.b64decode(settle_token))["payload"]["authorization"][
+                "nonce"
+            ]
+            == "0x0123456789abcdef"
+        )
+
+    def test_settle_is_called_once_per_request(self, client, mock_payments, v3_token):
+        """A v3 token is consumed by its FIRST settle, so the seller must not
+        settle the same token twice within one request."""
+        client.post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: v3_token},
+        )
+
+        assert mock_payments.facilitator.settle_permissions.call_count == 1
+
+
+class TestSpentTokenIsNotServed:
+    """A replayed v3 token must not buy the agent's output.
+
+    The backend spends a v3 nonce at SETTLE only — `verify()` never consults
+    the replay store, deliberately, because verify is a dry run a seller may
+    repeat. So a replayed token passes verification, the handler runs, and the
+    seller only learns the token was spent afterwards. Returning the generated
+    body then would hand out the output for free, repeatable without limit.
+    """
+
+    def test_spent_token_gets_402_and_no_body(self, client, mock_payments):
+        from payments_py.common.payments_error import PaymentsError
+
+        # A PLAIN PaymentsError carrying the wire code, not the typed class:
+        # `payments` is caller-supplied, so a BCK.X402.0059 rebuilt across a
+        # process boundary or raised by a second copy of this package arrives
+        # like this — and an isinstance check would miss it and serve the body.
+        mock_payments.facilitator.settle_permissions.side_effect = PaymentsError(
+            "access token already used", "BCK.X402.0059"
+        )
+
+        response = client.post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: "dGVzdA=="},
+        )
+
+        assert response.status_code == 402
+        # The agent's answer must not be in the body.
+        assert "Answer to:" not in response.text
+        assert X402_HEADERS["PAYMENT_REQUIRED"] in response.headers
+        assert "already used" in response.json()["message"]
+
+    def test_transient_settle_failure_still_serves_the_response(
+        self, client, mock_payments
+    ):
+        """The withholding is scoped to a spent token. A backend outage is not
+        the buyer's fault and the value was already delivered, so that branch
+        must keep returning the agent's output."""
+        mock_payments.facilitator.settle_permissions.side_effect = RuntimeError(
+            "backend down"
+        )
+
+        response = client.post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: "dGVzdA=="},
+        )
+
+        assert response.status_code == 200
+        assert "Answer to: test" in response.text
+
+    def test_spent_token_402_goes_through_on_payment_error(self, mock_payments):
+        """Every other 402 in this middleware lets the hook observe and
+        override. A seller who wired it for metrics or alerting must not be
+        skipped on the one 402 that means "work delivered, unpaid" — the signal
+        that someone is replaying tokens against them."""
+        from payments_py.common.payments_error import PaymentsError
+
+        seen = {}
+
+        async def on_payment_error(error, request):
+            seen["error"] = error
+            return JSONResponse(status_code=418, content={"custom": True})
+
+        mock_payments.facilitator.settle_permissions.side_effect = PaymentsError(
+            "access token already used", "BCK.X402.0059"
+        )
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+            options=PaymentMiddlewareOptions(on_payment_error=on_payment_error),
+        )
+
+        @app.post("/ask")
+        async def ask(body: QueryRequest):
+            return JSONResponse({"response": f"Answer to: {body.query}"})
+
+        response = TestClient(app).post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: "dGVzdA=="},
+        )
+
+        assert response.status_code == 418
+        assert response.json() == {"custom": True}
+        assert seen["error"].code == "BCK.X402.0059"
+
+    def test_a_failure_after_a_successful_settle_still_serves_the_body(
+        self, mock_payments
+    ):
+        """The withholding branch must be unreachable once the burn committed.
+
+        `on_after_settle` raising this error is plausible for an agent that pays
+        a downstream service from that hook — and withholding there would charge
+        the buyer and give them nothing, while logging that the response was
+        withheld to avoid serving a replay. Narrowing the settle `try` is what
+        makes the branch mean what its comment says."""
+        from payments_py.common.payments_error import PaymentsError
+
+        async def on_after_settle(request, credits, result):
+            raise PaymentsError("access token already used", "BCK.X402.0059")
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+            options=PaymentMiddlewareOptions(on_after_settle=on_after_settle),
+        )
+
+        @app.post("/ask")
+        async def ask(body: QueryRequest):
+            return JSONResponse({"response": f"Answer to: {body.query}"})
+
+        response = TestClient(app).post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: "dGVzdA=="},
+        )
+
+        # Paid, so served.
+        assert response.status_code == 200
+        assert "Answer to: test" in response.text

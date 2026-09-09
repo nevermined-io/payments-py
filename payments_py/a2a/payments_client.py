@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Optional
 
 import httpx
 from a2a.client.client import ClientConfig
@@ -19,7 +19,7 @@ from a2a.types import (
 
 if TYPE_CHECKING:  # pragma: no cover
     from payments_py.payments import Payments
-    from payments_py.x402.types import DelegationConfig
+    from payments_py.x402.types import DelegationConfig, X402TokenVersion
 
 
 class PaymentsClient:  # noqa: D101
@@ -31,6 +31,9 @@ class PaymentsClient:  # noqa: D101
         agent_id: str,
         plan_id: str,
         delegation_config: Optional["DelegationConfig"] = None,
+        token_version: Optional["X402TokenVersion"] = None,
+        resource: Optional[str] = None,
+        http_verb: Optional[str] = None,
     ) -> None:
         # Preserve trailing slash to avoid JSON-RPC 307 redirects between /a2a and /a2a/
         self._agent_base_url = (
@@ -40,6 +43,15 @@ class PaymentsClient:  # noqa: D101
         self._agent_id = agent_id
         self._plan_id = plan_id
         self._delegation_config = delegation_config
+        # Access-token version to REQUEST (None = whatever the backend mints by
+        # default, today v2). Never used to decide how the token is HANDLED —
+        # that is read off the token that came back, see _get_access_token. It
+        # does decide whether the v3 binding is sent, see _mint_access_token.
+        self._token_version = token_version
+        # v3 binding overrides, for a seller that advertises something other
+        # than this SDK's A2A server does. Only consulted on a v3 request.
+        self._resource = resource
+        self._http_verb = http_verb
         self._access_token: str | None = None
         self._client = None  # Lazily created to ease unit testing
 
@@ -47,46 +59,109 @@ class PaymentsClient:  # noqa: D101
     # Internal helpers
     # ------------------------------------------------------------------
     async def _get_access_token(self) -> str:
-        if self._access_token is None:
-            from payments_py.x402.resolve_scheme import resolve_scheme
-            from payments_py.x402.types import X402TokenOptions
+        """The access token for the next paid call.
 
-            # Resolve scheme from plan metadata
-            scheme = resolve_scheme(self._payments, self._plan_id)
+        A **v2** token is a reusable bearer credential, so it is minted once and
+        cached for the client's lifetime — unchanged behaviour.
 
-            # Delegation config is required for all schemes
-            if not self._delegation_config:
-                from payments_py.common.payments_error import PaymentsError
+        A **v3** token (nvm-monorepo#2646) is single-use: the seller's first
+        ``POST /x402/settle`` consumes its nonce, and presenting it again fails
+        with ``BCK.X402.0059``. Caching one would therefore break every call
+        after the first, so a v3 token is minted **per paid request** and never
+        stored.
 
-                raise PaymentsError.validation(
-                    f"{scheme} scheme requires delegation_config. "
-                    "Pass it to PaymentsClient() or get_client()."
-                )
+        Which of the two applies is read off the token that came back, never
+        off ``self._token_version``: a backend predating #2646 drops
+        ``tokenVersion: 3`` silently and mints v2, and a backend that later
+        flips its default to v3 would hand out single-use tokens to a client
+        that asked for nothing at all. Detection covers both directions.
+        """
+        if self._access_token is not None:
+            return self._access_token
 
-            # Build token options with resolved scheme
-            if scheme != "nvm:erc4337":
-                token_options = X402TokenOptions(
-                    scheme=scheme, delegation_config=self._delegation_config
-                )
-            else:
-                token_options = X402TokenOptions(
-                    delegation_config=self._delegation_config
-                )
+        from payments_py.x402.token import is_single_use_access_token
 
-            getter = self._payments.x402.get_x402_access_token
-            if inspect.iscoroutinefunction(getter):
-                token_resp = await getter(
-                    self._plan_id, self._agent_id, token_options=token_options
-                )
-            else:
-                token_resp = await asyncio.to_thread(
-                    getter,
-                    self._plan_id,
-                    self._agent_id,
-                    token_options=token_options,
-                )
-            self._access_token = token_resp["accessToken"]
-        return self._access_token
+        access_token = await self._mint_access_token()
+        if is_single_use_access_token(access_token):
+            # Single-use — deliberately NOT cached.
+            return access_token
+        self._access_token = access_token
+        return access_token
+
+    async def _mint_access_token(self) -> str:
+        from payments_py.x402.resolve_scheme import resolve_scheme
+        from payments_py.x402.token_version import X402_TOKEN_VERSION_V3
+        from payments_py.x402.types import X402TokenOptions
+
+        # Resolve scheme from plan metadata
+        scheme = resolve_scheme(self._payments, self._plan_id)
+
+        # Delegation config is required for all schemes
+        if not self._delegation_config:
+            from payments_py.common.payments_error import PaymentsError
+
+            raise PaymentsError.validation(
+                f"{scheme} scheme requires delegation_config. "
+                "Pass it to PaymentsClient() or get_client()."
+            )
+
+        # A v3 token is only worth minting BOUND: its whole point is that the
+        # signature covers the seller and the endpoint, and an unbound v3 token
+        # is merely single-use — half the guarantee, while the docs promise
+        # both. Every A2A call is a JSON-RPC POST to this one service endpoint,
+        # so the binding is the same for all of them and is known from the
+        # constructor.
+        #
+        # The default binds `self._agent_base_url`, which assumes the seller is
+        # THIS SDK's A2A server: it advertises `str(request.url)` (see
+        # `a2a/server.py`), an absolute URL, and the backend's
+        # `resourceUrlsMatch` compares origin + path — so the trailing slash
+        # forced in __init__ is what makes the two sides agree. That is an
+        # invariant of our server, not of A2A. A seller advertising anything
+        # else (this SDK's FastAPI middleware passes a RELATIVE
+        # `request.url.path`) will not match, and the settle fails; such a
+        # caller passes `resource=` / `http_verb=` explicitly instead.
+        #
+        # Sent ONLY on a v3 request: on v2 these fields bind nothing and merely
+        # arm the backend's endpoint allowlist, and the request builder refuses
+        # the combination outright.
+        binding: Dict[str, Any] = (
+            {
+                "resource": self._resource or self._agent_base_url,
+                "http_verb": self._http_verb or "POST",
+            }
+            if self._token_version == X402_TOKEN_VERSION_V3
+            else {}
+        )
+
+        # Build token options with resolved scheme
+        if scheme != "nvm:erc4337":
+            token_options = X402TokenOptions(
+                scheme=scheme,
+                delegation_config=self._delegation_config,
+                token_version=self._token_version,
+                **binding,
+            )
+        else:
+            token_options = X402TokenOptions(
+                delegation_config=self._delegation_config,
+                token_version=self._token_version,
+                **binding,
+            )
+
+        getter = self._payments.x402.get_x402_access_token
+        if inspect.iscoroutinefunction(getter):
+            token_resp = await getter(
+                self._plan_id, self._agent_id, token_options=token_options
+            )
+        else:
+            token_resp = await asyncio.to_thread(
+                getter,
+                self._plan_id,
+                self._agent_id,
+                token_options=token_options,
+            )
+        return token_resp["accessToken"]
 
     def _auth_headers(self, token: str) -> dict[str, str]:
         return {"payment-signature": token}
@@ -244,5 +319,8 @@ class PaymentsClient:  # noqa: D101
 
     # Utilities --------------------------------------------------------
     def clear_token(self) -> None:  # noqa: D401
-        """Clear cached access-token forcing a refresh on next call."""
+        """Clear cached access-token forcing a refresh on next call.
+
+        A no-op for a v3 token, which is never cached in the first place.
+        """
         self._access_token = None

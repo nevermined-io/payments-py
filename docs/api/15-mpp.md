@@ -263,6 +263,40 @@ Each `issue_challenge` returns a distinct challenge even for identical inputs �
 the id doubles as the burn idempotency key, so two requests sharing one would
 settle as a single burn.
 
+`payments.mpp.get_mpp_access_token(plan_id, agent_id, token_options)` mints the
+buyer's credential directly, for a buyer not using `payments.mpp.fetch`. It
+takes an `MppTokenOptions` — the same fields as `X402TokenOptions` **minus the
+whole v3 binding**: `token_version`, `resource` and `http_verb`.
+
+!!! note "MPP has no token version"
+    x402 and MPP no longer share a version ladder (nvm-monorepo#3266). x402's
+    single-use unit is the **token** — a v3 token carries a one-time nonce and
+    is consumed by its first settle. MPP's is the **challenge**, whose id is the
+    burn idempotency key, and one MPP access token is presented across many
+    challenges by design. A per-token nonce would therefore kill every buyer's
+    second challenge.
+
+    The backend refuses **any** `tokenVersion` on an MPP mint with
+    `BCK.MPP.0007` — `2` included, since that ordinal belongs to x402's ladder.
+    The SDK refuses it before the request, so you get a `PaymentsError`
+    (`code='validation'`) naming the cause rather than an opaque 400. The mint
+    response carries no `tokenVersion` key either.
+
+    `MppTokenOptions` is a **sibling** of `X402TokenOptions`, not its base — so
+    passing an `X402TokenOptions` here now fails type checking. It still runs
+    (pydantic does not enforce annotations, and the shared fields are
+    identical) and it still raises at the mint if it carries any of the v3
+    binding, but the annotation is what rejects it at the call site instead of
+    leaving the runtime guard as the only defence. Construct an
+    `MppTokenOptions`.
+
+    `resource` and `http_verb` are refused too. An MPP token's struct has no
+    members for them, so they bind nothing — but redemption runs through the
+    same shared erc4337 `verify`, where the presence of the token's
+    `resource.url` is what arms the endpoint allowlist. Sending them would
+    switch on a check you never configured while adding no binding at all. An
+    MPP credential is bound by its **challenge**, not by its token.
+
 !!! danger "Settlement failures are not all the same"
     `settle_credential` raises `MppSettlementOutcomeUnknownError` when the call
     ended without a definite answer — a read timeout, a connection torn down

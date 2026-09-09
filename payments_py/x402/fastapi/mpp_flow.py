@@ -119,7 +119,12 @@ class MppFlow:
         this middleware keeps ownership of the response unless the hook returns
         one outright.
 
-        The x402 branch lets the hook take over on every error. MPP cannot copy
+        The x402 branch lets the hook take over on every 402 it returns —
+        including the spent-token one, which is the 402 a seller most wants to
+        observe, since it is the signal that someone is replaying tokens against
+        them. (A transient settle failure notifies nothing there, deliberately:
+        it answers 200, because the buyer paid and the agent delivered.) MPP
+        cannot copy
         that wholesale: the protocol only lets a buyer make progress if the 402
         carries a fresh ``WWW-Authenticate`` challenge, so a seller who wired the
         hook for observability would silently strip the one thing the documented

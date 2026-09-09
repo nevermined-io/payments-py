@@ -25,6 +25,7 @@ from a2a.types import (
 from payments_py.common.payments_error import PaymentsError
 from payments_py.payments import Payments
 from payments_py.x402.a2a import X402A2AUtils
+from payments_py.x402.errors import is_access_token_already_used
 from payments_py.x402.token import decode_access_token
 from payments_py.x402.helpers import (
     build_payment_required,
@@ -602,6 +603,77 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             event_metadata.get("agentRequestId") if event_metadata else None
         )
 
+    def _record_settle_failure(
+        self,
+        settle_error: BaseException,
+        task_id: Optional[str],
+        inband: bool,
+        credits_used: Any,
+        streamed: bool,
+    ) -> None:
+        """One place deciding what a failed settle means, for both settle sites.
+
+        They used to decide separately and drifted: the streaming site logged a
+        bare warning and recorded nothing, so a replayed v3 token there was
+        indistinguishable from a backend blip and the in-band path reported the
+        task as paid.
+
+        A SPENT token is not a settle failure — it is an unpaid request, and it
+        is the buyer's own doing. The backend spends a v3 nonce at settle only
+        (``verify()`` never consults the replay store, deliberately, since
+        verify is a dry run a seller may repeat), so a replay passes
+        verification and is only detectable here, after the work is done. On the
+        streaming path the events have already gone out and cannot be retracted
+        — but that argument covers WITHHOLDING, not silence: the seller still
+        has to be able to tell a replay from an outage, and the in-band path
+        still has to refuse to report the task as paid.
+
+        Discriminated by wire CODE, not by class: ``self._payments`` is
+        caller-supplied, so a ``BCK.X402.0059`` rebuilt across a process or
+        serialization boundary, or raised by a second copy of this package,
+        arrives as a plain ``PaymentsError``.
+        """
+        spent = is_access_token_already_used(settle_error)
+        where = (
+            "after the stream was delivered" if streamed else "during task finalization"
+        )
+
+        if spent:
+            logger.error(
+                "x402 settlement refused for task %s: the access token was "
+                "already spent (BCK.X402.0059) %s, so %s credits went "
+                "unsettled. Mint a new access token per paid request.",
+                task_id if task_id is not None else "?",
+                where,
+                credits_used,
+                exc_info=True,
+            )
+        else:
+            logger.warning(
+                "Failed to settle %s credits %s for task %s",
+                credits_used,
+                where,
+                task_id if task_id is not None else "?",
+                exc_info=True,
+            )
+
+        if task_id is not None and inband:
+            # Record a failed receipt so the in-band path emits payment-failed
+            # and never delivers paid content without settlement landing.
+            #
+            # A spent token names itself: unlike an infrastructure failure it is
+            # the buyer's own doing and they can act on it, so the generic
+            # reason would waste the one channel that reaches them.
+            self._settle_receipt_by_task[task_id] = SettleResponse(
+                success=False,
+                error_reason=(
+                    "Access token already used (BCK.X402.0059) — mint a new "
+                    "access token per paid request"
+                    if spent
+                    else "Settlement failed during task finalization"
+                ),
+            )
+
     async def _handle_task_finalization_from_event(
         self, event: TaskStatusUpdateEvent, http_ctx: HttpRequestContext
     ) -> None:
@@ -651,20 +723,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 self._settle_receipt_by_task[task_id] = self._coerce_settle_response(
                     settle_result
                 )
-        except Exception:  # noqa: BLE001
-            logger.warning(
-                "Failed to settle %s credits during task finalization",
+        except Exception as settle_error:  # noqa: BLE001
+            self._record_settle_failure(
+                settle_error,
+                getattr(event, "task_id", None),
+                http_ctx.inband,
                 credits_used,
-                exc_info=True,
+                streamed=False,
             )
-            task_id = getattr(event, "task_id", None)
-            if task_id is not None and http_ctx.inband:
-                # Record a failed receipt so the in-band path emits payment-failed
-                # and never delivers paid content without settlement landing.
-                self._settle_receipt_by_task[task_id] = SettleResponse(
-                    success=False,
-                    error_reason="Settlement failed during task finalization",
-                )
 
     # ------------------------------------------------------------------
     # In-band x402 v2 helpers ------------------------------------------
@@ -849,11 +915,13 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                                 agent_request_id=agent_request_id,
                             ),
                         )
-                    except Exception:  # noqa: BLE001
-                        logger.warning(
-                            "Failed to settle credits for task %s",
-                            getattr(event, "task_id", "?"),
-                            exc_info=True,
+                    except Exception as settle_error:  # noqa: BLE001
+                        self._record_settle_failure(
+                            settle_error,
+                            getattr(event, "task_id", None),
+                            http_ctx.inband,
+                            credits_used,
+                            streamed=True,
                         )
 
             # Handle push notifications on final status updates

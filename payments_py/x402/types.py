@@ -41,6 +41,10 @@ DelegationProvider = Literal["stripe", "braintree", "visa", "vgs", "erc4337"]
 # 'usd'/'eur' for Stripe/Braintree/Visa, stablecoin 'usdc'/'eurc' for erc4337.
 # Validated at runtime by Pydantic on model construction.
 DelegationCurrency = Literal["usd", "eur", "usdc", "eurc"]
+# EIP-712 struct versions the mint endpoints accept. Mirrors the backend DTO
+# (`@IsIn([2, 3])` on GenerateX402TokenDto.tokenVersion) and the TS SDK's
+# `X402TokenVersion`, so an out-of-range value fails here instead of 400ing.
+X402TokenVersion = Literal[2, 3]
 
 
 class X402Resource(BaseModel):
@@ -450,14 +454,14 @@ class CreateDelegationResponse(BaseModel):
     )
 
 
-class X402TokenOptions(BaseModel):
-    """
-    Options for x402 token generation that control scheme and delegation behavior.
+class _TokenOptionsBase(BaseModel):
+    """The fields both mints take. Private: callers use one of the two public
+    subclasses, which is the whole point of the split below.
 
-    Attributes:
-        scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
-        network: Network identifier (auto-derived from scheme if omitted)
-        delegation_config: Delegation configuration for both erc4337 and card-delegation schemes
+    ``extra="forbid"`` is inherited by both. It is what makes a mistyped or
+    protocol-wrong field a construction-time error instead of a silently
+    dropped one — the failure mode that let ``MppTokenOptions(token_version=3)``
+    quietly discard the value and mint something the caller did not ask for.
     """
 
     scheme: Optional[str] = None
@@ -469,7 +473,106 @@ class X402TokenOptions(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
         from_attributes=True,
+        extra="forbid",
     )
+
+
+class MppTokenOptions(_TokenOptionsBase):
+    """
+    Options for MPP access-token generation.
+
+    Exactly the fields the MPP mint accepts. The **v3 binding** —
+    ``resource``, ``http_verb``, ``token_version`` — is deliberately absent,
+    because none of it belongs on an MPP token:
+
+    * MPP carries no token version at all (nvm-monorepo#3266). The two
+      protocols' single-use unit differs — for x402 it is the TOKEN (the v3
+      one-time nonce), for MPP it is the CHALLENGE, whose id doubles as the
+      burn idempotency key. One MPP access token is presented across many
+      challenges by design, so a per-token nonce would kill every buyer's
+      second challenge. The backend answers ``BCK.MPP.0007`` for **any**
+      ``tokenVersion``, ``2`` included.
+    * ``resource`` / ``http_verb`` bind nothing on an MPP token — its struct
+      has no members for them — but they are not inert either. Redemption runs
+      through the shared erc4337 ``verify``, where the presence of the token's
+      ``resource.url`` is what switches ``enforceEndpointAllowlist`` on
+      (``erc4337-scheme.handler.ts``). Sending them would arm a check the
+      caller did not ask for while binding nothing.
+
+    This is a **sibling** of :class:`X402TokenOptions`, not its base. Making the
+    richer type a subtype of the narrower one would state the invariant
+    backwards: an ``X402TokenOptions`` carrying ``token_version=3`` would
+    satisfy every ``MppTokenOptions`` annotation, so the MPP mint's own
+    signature could not reject it and the runtime guard would be the only
+    enforcement left. As siblings, a type checker rejects it at the call site.
+
+    .. warning::
+       Passing an ``X402TokenOptions`` to ``payments.mpp.get_mpp_access_token``
+       now fails type checking. It still *runs* — pydantic does not enforce
+       annotations, and the shared fields are identical — and it still raises at
+       the mint if it carries any of the v3 binding. Construct an
+       ``MppTokenOptions`` there instead.
+
+    Attributes:
+        scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
+        network: Network identifier (auto-derived from scheme if omitted)
+        delegation_config: Delegation configuration for both erc4337 and card-delegation schemes
+    """
+
+
+class X402TokenOptions(_TokenOptionsBase):
+    """
+    Options for x402 token generation that control scheme and delegation behavior.
+
+    ``resource``, ``http_verb`` and ``token_version`` are the **v3** binding
+    (nvm-monorepo#2646): a v3 token's EIP-712 signature covers ``agentId``,
+    ``resourceUrl``, ``httpVerb`` and a one-time ``nonce``, which is what binds
+    it to one seller and one endpoint and makes it single-use at settle.
+
+    The three travel together. ``resource`` and ``http_verb`` are sent **only**
+    when ``token_version=3``; supplying them without it raises, because on a v2
+    token they are not inert — the field lands on the unsigned envelope, binds
+    nothing, and its only effect is to switch the backend's
+    ``enforceEndpointAllowlist`` on for a check the caller never configured.
+
+    A sibling of :class:`MppTokenOptions` rather than a subclass — see there for
+    why the direction matters.
+
+    .. warning::
+       ``extra="forbid"`` is inherited, and that is a **behaviour change on a
+       public constructor**: this model previously took pydantic's default
+       ``extra="ignore"``, so ``X402TokenOptions(**some_superset_dict)`` — a
+       config blob, a dict round-tripped from JSON, kwargs forwarded from a
+       wrapper — used to construct fine and now raises ``ValidationError``.
+       Filter the dict to the declared fields, or pass them explicitly.
+
+    Attributes:
+        scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
+        network: Network identifier (auto-derived from scheme if omitted)
+        delegation_config: Delegation configuration for both erc4337 and card-delegation schemes
+        resource: The protected resource the token is minted for, as a URL
+            string or an :class:`X402Resource`. This is the signed
+            ``resourceUrl`` on v3. Bind the **same string the seller
+            advertises** in its 402 ``resource.url``: the backend compares them
+            with origin + path, falling back to exact string equality when
+            either side does not parse as an absolute URL, so a relative
+            ``/ask`` on one side and an absolute URL on the other can never
+            match. Requires ``token_version=3``.
+        http_verb: HTTP verb of that resource (e.g. ``"POST"``). Sent as
+            ``accepted.extra.httpVerb`` and signed on v3. Normalized to
+            upper case by the request builder. Requires ``token_version=3``.
+        token_version: Access-token version to request (``2`` — the backend
+            default — or ``3``). **x402 only**; the MPP mint refuses it.
+            **Never** infer the version you got from this value: a backend
+            predating nvm-monorepo#2646 silently drops the field and returns
+            v2. Read it back with
+            :func:`payments_py.x402.token.detect_access_token_version`, or from
+            the ``tokenVersion`` key the mint adds to its response.
+    """
+
+    resource: Optional[Union[str, X402Resource]] = None
+    http_verb: Optional[str] = Field(None, alias="httpVerb")
+    token_version: Optional[X402TokenVersion] = Field(None, alias="tokenVersion")
 
 
 # Sync or async callable that resolves credits dynamically from a request.

@@ -5,6 +5,8 @@ import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
+import logging
+
 import pytest
 
 from a2a.server.events.event_queue import EventQueue
@@ -730,3 +732,137 @@ async def test_validate_request_captures_agent_request_attributes():  # noqa: D4
     # Verify the return dict includes agent_request_id and agent_request
     assert result["agent_request_id"] == "req-xyz"
     assert result["agent_request"] == {"agent_request_id": "req-xyz", "some": "data"}
+
+
+# ---------------------------------------------------------------------------
+# A spent v3 token must be distinguishable from a backend blip (BCK.X402.0059)
+# ---------------------------------------------------------------------------
+
+
+def _spent_token_handler(inband: bool = True):
+    """Handler whose settle always reports the token as already spent."""
+    from payments_py.common.payments_error import PaymentsError
+
+    settle_mock = Mock(
+        side_effect=PaymentsError("access token already used", "BCK.X402.0059")
+    )
+    dummy_payments = SimpleNamespace(
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
+    )
+    handler = PaymentsRequestHandler(
+        agent_card={},
+        task_store=InMemoryTaskStore(),
+        agent_executor=DummyExecutor(),
+        payments_service=dummy_payments,  # type: ignore[arg-type]
+    )
+    event = TaskStatusUpdateEvent(
+        task_id="tid",
+        context_id="ctx-123",
+        status=TaskStatus(state=TaskState.completed),
+        final=True,
+        metadata={"creditsUsed": 5},
+    )
+    ctx = HttpRequestContext(
+        bearer_token="BEARER_TOKEN",
+        url_requested="https://x",
+        http_method_requested="POST",
+        validation={"plan_id": "plan123", "subscriber_address": "0x123"},
+        inband=inband,
+    )
+    return handler, event, ctx, settle_mock
+
+
+@pytest.mark.asyncio()  # noqa: D401
+async def test_spent_token_is_logged_as_an_error_not_a_warning(caplog):  # noqa: D401
+    """A replayed token and a backend outage must not look the same to a
+    seller: one is someone replaying tokens against them, the other is our own
+    infrastructure. Note the error arrives as a plain ``PaymentsError`` carrying
+    the wire code — the case `is_access_token_already_used` exists for, and the
+    one an `isinstance` check would miss."""
+    handler, event, ctx, _ = _spent_token_handler()
+
+    with caplog.at_level(logging.ERROR):
+        await handler._handle_task_finalization_from_event(event, ctx)
+
+    assert any(
+        "BCK.X402.0059" in record.getMessage() and record.levelno == logging.ERROR
+        for record in caplog.records
+    )
+
+
+@pytest.mark.asyncio()  # noqa: D401
+async def test_spent_token_records_a_failed_receipt_for_the_inband_path():  # noqa: D401
+    """The failed receipt is what makes the in-band path emit payment-failed
+    rather than reporting a paid task, so the spent-token branch must not skip
+    it — an earlier attempt at this fix used a separate `except` block and did."""
+    handler, event, ctx, _ = _spent_token_handler(inband=True)
+
+    await handler._handle_task_finalization_from_event(event, ctx)
+
+    receipt = handler._settle_receipt_by_task["tid"]
+    assert receipt.success is False
+    assert "BCK.X402.0059" in (receipt.error_reason or "")
+
+
+@pytest.mark.asyncio()  # noqa: D401
+async def test_transient_settle_failure_is_still_a_warning(caplog):  # noqa: D401
+    """The other side of the split: an ordinary failure keeps its old
+    treatment, so the ERROR above stays meaningful."""
+    settle_mock = Mock(side_effect=RuntimeError("backend down"))
+    dummy_payments = SimpleNamespace(
+        facilitator=SimpleNamespace(settle_permissions=settle_mock),
+    )
+    handler = PaymentsRequestHandler(
+        agent_card={},
+        task_store=InMemoryTaskStore(),
+        agent_executor=DummyExecutor(),
+        payments_service=dummy_payments,  # type: ignore[arg-type]
+    )
+    event = TaskStatusUpdateEvent(
+        task_id="tid",
+        context_id="ctx-123",
+        status=TaskStatus(state=TaskState.completed),
+        final=True,
+        metadata={"creditsUsed": 5},
+    )
+    ctx = HttpRequestContext(
+        bearer_token="BEARER_TOKEN",
+        url_requested="https://x",
+        http_method_requested="POST",
+        validation={"plan_id": "plan123", "subscriber_address": "0x123"},
+        inband=True,
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        await handler._handle_task_finalization_from_event(event, ctx)
+
+    assert not any(record.levelno == logging.ERROR for record in caplog.records)
+    assert any(record.levelno == logging.WARNING for record in caplog.records)
+
+
+@pytest.mark.asyncio()  # noqa: D401
+async def test_streamed_spent_token_records_a_failed_receipt(caplog):  # noqa: D401
+    """The streaming path cannot retract the events, but it must still record
+    the failure so the in-band path emits payment-failed rather than reporting
+    a paid task — and log it as a replay rather than an outage."""
+    from payments_py.common.payments_error import PaymentsError
+
+    handler, _, _, _ = _spent_token_handler()
+
+    with caplog.at_level(logging.ERROR):
+        handler._record_settle_failure(
+            PaymentsError("access token already used", "BCK.X402.0059"),
+            task_id="tid",
+            inband=True,
+            credits_used=5,
+            streamed=True,
+        )
+
+    receipt = handler._settle_receipt_by_task["tid"]
+    assert receipt.success is False
+    assert "BCK.X402.0059" in (receipt.error_reason or "")
+    assert any(
+        "after the stream was delivered" in record.getMessage()
+        and record.levelno == logging.ERROR
+        for record in caplog.records
+    )
