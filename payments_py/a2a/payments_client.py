@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Optional
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Optional
 
 import httpx
 from a2a.client.client import ClientConfig
@@ -19,7 +19,7 @@ from a2a.types import (
 
 if TYPE_CHECKING:  # pragma: no cover
     from payments_py.payments import Payments
-    from payments_py.x402.types import DelegationConfig
+    from payments_py.x402.types import DelegationConfig, X402TokenVersion
 
 
 class PaymentsClient:  # noqa: D101
@@ -31,7 +31,7 @@ class PaymentsClient:  # noqa: D101
         agent_id: str,
         plan_id: str,
         delegation_config: Optional["DelegationConfig"] = None,
-        token_version: Optional[int] = None,
+        token_version: Optional["X402TokenVersion"] = None,
     ) -> None:
         # Preserve trailing slash to avoid JSON-RPC 307 redirects between /a2a and /a2a/
         self._agent_base_url = (
@@ -42,8 +42,9 @@ class PaymentsClient:  # noqa: D101
         self._plan_id = plan_id
         self._delegation_config = delegation_config
         # Access-token version to REQUEST (None = whatever the backend mints by
-        # default, today v2). Never used to decide how the token is handled —
-        # see _get_access_token.
+        # default, today v2). Never used to decide how the token is HANDLED —
+        # that is read off the token that came back, see _get_access_token. It
+        # does decide whether the v3 binding is sent, see _mint_access_token.
         self._token_version = token_version
         self._access_token: str | None = None
         self._client = None  # Lazily created to ease unit testing
@@ -83,6 +84,7 @@ class PaymentsClient:  # noqa: D101
 
     async def _mint_access_token(self) -> str:
         from payments_py.x402.resolve_scheme import resolve_scheme
+        from payments_py.x402.token_version import X402_TOKEN_VERSION_V3
         from payments_py.x402.types import X402TokenOptions
 
         # Resolve scheme from plan metadata
@@ -97,17 +99,35 @@ class PaymentsClient:  # noqa: D101
                 "Pass it to PaymentsClient() or get_client()."
             )
 
+        # A v3 token is only worth minting BOUND: its whole point is that the
+        # signature covers the seller and the endpoint, and an unbound v3 token
+        # is merely single-use — half the guarantee, while the docs promise
+        # both. Every A2A call is a JSON-RPC POST to this one service endpoint,
+        # so the binding is the same for all of them and is known from the
+        # constructor; there is nothing to resolve and nothing that can fail.
+        #
+        # Sent ONLY on a v3 request: on v2 these fields bind nothing and merely
+        # arm the backend's endpoint allowlist, and the request builder refuses
+        # the combination outright.
+        binding: Dict[str, Any] = (
+            {"resource": self._agent_base_url, "http_verb": "POST"}
+            if self._token_version == X402_TOKEN_VERSION_V3
+            else {}
+        )
+
         # Build token options with resolved scheme
         if scheme != "nvm:erc4337":
             token_options = X402TokenOptions(
                 scheme=scheme,
                 delegation_config=self._delegation_config,
                 token_version=self._token_version,
+                **binding,
             )
         else:
             token_options = X402TokenOptions(
                 delegation_config=self._delegation_config,
                 token_version=self._token_version,
+                **binding,
             )
 
         getter = self._payments.x402.get_x402_access_token

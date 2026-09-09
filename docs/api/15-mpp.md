@@ -265,8 +265,8 @@ settle as a single burn.
 
 `payments.mpp.get_mpp_access_token(plan_id, agent_id, token_options)` mints the
 buyer's credential directly, for a buyer not using `payments.mpp.fetch`. It
-takes an `MppTokenOptions` — the same fields as `X402TokenOptions` **minus**
-`token_version`.
+takes an `MppTokenOptions` — the same fields as `X402TokenOptions` **minus the
+whole v3 binding**: `token_version`, `resource` and `http_verb`.
 
 !!! note "MPP has no token version"
     x402 and MPP no longer share a version ladder (nvm-monorepo#3266). x402's
@@ -281,6 +281,13 @@ takes an `MppTokenOptions` — the same fields as `X402TokenOptions` **minus**
     The SDK refuses it before the request, so you get a `PaymentsError`
     (`code='validation'`) naming the cause rather than an opaque 400. The mint
     response carries no `tokenVersion` key either.
+
+    `resource` and `http_verb` are refused too. An MPP token's struct has no
+    members for them, so they bind nothing — but redemption runs through the
+    same shared erc4337 `verify`, where the presence of the token's
+    `resource.url` is what arms the endpoint allowlist. Sending them would
+    switch on a check you never configured while adding no binding at all. An
+    MPP credential is bound by its **challenge**, not by its token.
 
 !!! danger "Settlement failures are not all the same"
     `settle_credential` raises `MppSettlementOutcomeUnknownError` when the call

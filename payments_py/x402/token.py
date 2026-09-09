@@ -14,7 +14,11 @@ from payments_py.common.types import PaymentOptions
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.nvm_api import API_URL_CREATE_PERMISSION
 from payments_py.x402.token_request import build_x402_token_request_body
-from payments_py.x402.types import X402TokenOptions
+from payments_py.x402.token_version import (
+    X402_TOKEN_VERSION_V2,
+    X402_TOKEN_VERSION_V3,
+)
+from payments_py.x402.types import X402TokenOptions, X402TokenVersion
 
 
 def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
@@ -30,6 +34,12 @@ def decode_access_token(access_token: str) -> Optional[Dict[str, Any]]:
     Returns:
         The decoded token data or None if invalid
     """
+    # Shape-checked before the padding concatenation: a non-str input (bytes, an
+    # int, a dict) would raise TypeError there instead of returning None, which
+    # is what every caller — and this function's own contract — expects.
+    if not isinstance(access_token, str):
+        return None
+
     padded = access_token + "=" * (4 - len(access_token) % 4)
 
     # Try URL-safe base64 first, then standard base64
@@ -67,20 +77,6 @@ def encode_access_token(payload: Dict[str, Any]) -> str:
     return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 
 
-#: The access-token version the backend still mints by default. Its EIP-712
-#: signature covers ``[from, sessionKeysProvider, sessionKeys, planId]`` only —
-#: ``agentId``, ``resourceUrl`` and ``httpVerb`` sit outside it and there is no
-#: nonce — so a v2 token is a bearer credential that settles more than once.
-X402_TOKEN_VERSION_V2 = 2
-
-#: The seller/resource-bound, single-use access token (nvm-monorepo#2646). Its
-#: signature additionally covers ``agentId``, ``resourceUrl``, ``httpVerb`` and
-#: a one-time ``nonce``; the FIRST ``POST /x402/settle`` consumes it and a
-#: second settle of the same token fails with ``BCK.X402.0059``. ``verify()``
-#: never consumes, so verify-then-settle is unchanged.
-X402_TOKEN_VERSION_V3 = 3
-
-
 def is_single_use_access_token(access_token: Optional[str]) -> bool:
     """Whether the token is consumed by its first successful settlement.
 
@@ -97,8 +93,14 @@ def is_single_use_access_token(access_token: Optional[str]) -> bool:
     would therefore treat a reusable v2 token as single-use (harmless) or, worse,
     let a caller believe replay protection is on when it is not.
 
-    The discriminant is the one field only v3 carries: a non-empty
-    ``payload.authorization.nonce``.
+    The discriminant is the one field only v3 carries:
+    ``payload.authorization.nonce``, a non-empty, non-whitespace **string**.
+    The wire type is checked, not assumed: the backend mints it as
+    ``0x`` + 32 CSPRNG bytes hex-encoded (``generateTokenNonce`` in core-kit's
+    ``AgentX402AccessToken.ts``), i.e. always a string. A numeric or otherwise
+    reshaped nonce therefore reads as v2 — see
+    :func:`detect_access_token_version` for why that asymmetry is the one worth
+    guarding.
     """
     if not access_token:
         return False
@@ -115,16 +117,26 @@ def is_single_use_access_token(access_token: Optional[str]) -> bool:
     return isinstance(nonce, str) and nonce.strip() != ""
 
 
-def detect_access_token_version(access_token: Optional[str]) -> int:
+def detect_access_token_version(access_token: Optional[str]) -> X402TokenVersion:
     """The EIP-712 version the given access token was actually signed under.
 
     Nothing here is verified — it answers "which settle semantics does this
     token have", which only the backend's signature check ultimately enforces.
 
     Returns :data:`X402_TOKEN_VERSION_V3` for a token carrying a non-empty
-    ``authorization.nonce``, :data:`X402_TOKEN_VERSION_V2` otherwise (including
-    for a token that cannot be decoded — the reusable, non-single-use reading is
-    the safe default, since it never makes a caller skip a re-mint).
+    string ``authorization.nonce``, :data:`X402_TOKEN_VERSION_V2` otherwise,
+    including for a token that cannot be decoded.
+
+    Note which way that fallback is unsafe. Callers branch on this to decide
+    whether to cache (:meth:`PaymentsClient._get_access_token`), and the four
+    cases are not symmetric: v2-read-as-v3 only re-mints more often than needed,
+    while **v3-read-as-v2 caches a spent token** and fails every later settle
+    with ``BCK.X402.0059``. So v2 is the fallback for *undecodable input* — where
+    no version claim exists at all and today's reusable semantics are what every
+    pre-v3 token already gets — not because it is the conservative reading of an
+    ambiguous nonce. It is not: for a token that decodes, the nonce check is
+    what has to be right, which is why its wire type is verified rather than
+    assumed (see :func:`is_single_use_access_token`).
     """
     return (
         X402_TOKEN_VERSION_V3
@@ -136,8 +148,11 @@ def detect_access_token_version(access_token: Optional[str]) -> int:
 def with_detected_token_version(response: Dict[str, Any]) -> Dict[str, Any]:
     """Add the detected ``tokenVersion`` to a mint response, in place.
 
-    Shared by the x402 and MPP mints so both expose the version the same way
-    and neither can start reporting what it requested instead of what it got.
+    Used by the x402 mint only: the MPP mint reports no version at all, since
+    MPP has no version ladder (nvm-monorepo#3266). Kept as a named helper
+    rather than inlined so the "report what came back, never what was asked
+    for" rule has one place to be read and tested.
+
     A response without an ``accessToken`` string is left untouched — there is
     no token to read a version from, and inventing one would be a lie.
     """

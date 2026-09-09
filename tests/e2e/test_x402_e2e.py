@@ -30,10 +30,17 @@ from payments_py.x402 import (
     X402Scheme,
     X402TokenOptions,
     X402_TOKEN_VERSION_V3,
-    detect_access_token_version,
+    decode_access_token,
 )
 from tests.e2e.utils import retry_with_backoff, wait_for_condition
 from tests.e2e.conftest import TEST_TIMEOUT
+
+#: The only settle failure the v3 legs tolerate: the buyer has no credits and
+#: the plan cannot be auto-ordered for them. It is a plan-rail outcome that says
+#: nothing about the token, and it is what nvm-monorepo#3296 produced for every
+#: EIP-7702-migrated buyer. A settle answering 200 with `success=False` for any
+#: OTHER reason is a real failure — a token-level rejection is a 4xx and raises.
+_TOLERATED_SETTLE_FAILURES = frozenset({"Cannot order plan"})
 
 
 class TestX402DelegationFlow:
@@ -489,12 +496,25 @@ class TestX402DelegationFlow:
         access_token = response.get("accessToken")
         assert access_token
 
-        # The mint reports the version it GOT, and it must agree with the
-        # standalone detector run over the same token.
-        detected = detect_access_token_version(access_token)
-        assert response.get("tokenVersion") == detected
+        # Assert against an INDEPENDENT oracle, not against the detector: the
+        # mint computes `tokenVersion` by calling `detect_access_token_version`
+        # itself, so comparing the two is f(x) == f(x) and holds for every
+        # input, however wrong f is. The property is the nonce on the wire.
+        reported = response.get("tokenVersion")
+        authorization = (decode_access_token(access_token) or {}).get("payload", {})
+        nonce = (authorization.get("authorization") or {}).get("nonce")
 
-        if detected != X402_TOKEN_VERSION_V3:
+        if reported == X402_TOKEN_VERSION_V3:
+            assert isinstance(nonce, str) and nonce.strip() != "", (
+                "the mint reported v3 but the token carries no signed nonce: "
+                f"{nonce!r}"
+            )
+        else:
+            assert (
+                not nonce
+            ), f"the mint reported v{reported} but a nonce is present: {nonce!r}"
+
+        if reported != X402_TOKEN_VERSION_V3:
             pytest.skip(
                 "Backend returned a v2 token: this deployment predates "
                 "nvm-monorepo#2646, which silently strips tokenVersion:3."
@@ -544,15 +564,19 @@ class TestX402DelegationFlow:
         )
 
         if not first.success:
-            # A settle that answers 200 with success=False failed on the PLAN
-            # rail (balance / auto-order), not on the token: a token-level
-            # rejection is a 4xx and would have raised. That is the same
-            # staging-account limitation test_settle_permissions and
-            # test_settle_remaining_credits are outright skipped for — "Cannot
-            # order plan" against the free, delegation-based plan on the rotated
-            # account. Skip rather than fail: nothing here says anything about
-            # v3, and the assertion that does (the second settle) needs a
-            # consumed nonce to be meaningful.
+            # Narrow on purpose. `if not first.success` would turn ANY failed
+            # settle green — including a genuine v3 replay-protection
+            # regression — and the replay assertions below would never run. The
+            # only outcome tolerated is the one that says nothing about v3: the
+            # plan rail (balance / auto-order) refusing to order the plan for
+            # this account, which is what nvm-monorepo#3296 was. Anything else
+            # fails the test.
+            if first.error_reason not in _TOLERATED_SETTLE_FAILURES:
+                pytest.fail(
+                    "First settle failed for a reason that is not the known "
+                    f"plan-rail limitation: error_reason={first.error_reason!r}, "
+                    f"remaining_balance={first.remaining_balance!r}"
+                )
             pytest.skip(
                 "First settle failed on the plan rail, not the token "
                 f"(error_reason={first.error_reason!r}, "

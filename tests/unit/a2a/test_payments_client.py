@@ -172,6 +172,36 @@ async def test_caching_follows_the_returned_token_not_the_request():
 
 
 @pytest.mark.asyncio()
+async def test_v3_request_binds_the_token_to_the_agent_endpoint():
+    """A v3 token is only worth minting BOUND — an unbound one is merely
+    single-use, half of what the docs promise. Every A2A call is a JSON-RPC
+    POST to the one service endpoint, so the binding is known from the
+    constructor and nothing can fail to resolve."""
+    client, get_token_mock = _client_with_tokens([_v3_token("n1")], token_version=3)
+
+    await client.send_message({})  # type: ignore[arg-type]
+
+    options = get_token_mock.await_args.kwargs["token_options"]
+    assert options.token_version == 3
+    assert options.resource == "https://agent.example/"
+    assert options.http_verb == "POST"
+
+
+@pytest.mark.asyncio()
+async def test_v2_request_sends_no_binding():
+    """On v2 the binding is not signed: it would bind nothing and merely arm
+    the backend's endpoint allowlist, and the request builder refuses the
+    combination outright."""
+    client, get_token_mock = _client_with_tokens([V2_TOKEN])
+
+    await client.send_message({})  # type: ignore[arg-type]
+
+    options = get_token_mock.await_args.kwargs["token_options"]
+    assert options.resource is None
+    assert options.http_verb is None
+
+
+@pytest.mark.asyncio()
 async def test_default_client_requests_no_explicit_token_version():
     """Opt-in: without token_version the SDK asks for nothing and the backend
     default (today v2) applies."""

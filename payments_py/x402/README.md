@@ -761,7 +761,7 @@ result = payments.x402.get_x402_access_token(
 )
 
 token = result["accessToken"]
-version = result["tokenVersion"]  # 2 or 3
+version = result.get("tokenVersion")  # 2 or 3; absent if the mint returned no token
 ```
 
 **Returns:** Dictionary with `accessToken`, `tokenVersion` and metadata
@@ -798,7 +798,7 @@ result = payments.x402.get_x402_access_token(
     ),
 )
 
-result["tokenVersion"]                       # 2 or 3 — detected, not requested
+result.get("tokenVersion")                   # 2 or 3 — detected, not requested
 is_single_use_access_token(result["accessToken"])    # same answer, standalone
 detect_access_token_version(result["accessToken"])
 ```

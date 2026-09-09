@@ -9,6 +9,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from payments_py.common.payments_error import PaymentsError
 from payments_py.x402.errors import (
@@ -173,6 +174,7 @@ class TestMintRequestBody:
                     description="Task runner",
                     mime_type="application/json",
                 ),
+                token_version=3,
             ),
         )
 
@@ -198,9 +200,10 @@ class TestMintRequestBody:
         assert "httpVerb" not in body["accepted"]["extra"]
 
     @pytest.mark.parametrize("blank_url", ["", "   "])
+    @pytest.mark.parametrize("shape", [str, X402Resource])
     @patch("payments_py.x402.token.requests.post")
     def test_blank_resource_url_raises_before_any_http_call(
-        self, mock_post, mock_options, blank_url
+        self, mock_post, mock_options, blank_url, shape
     ):
         """A blank signed URL is indistinguishable from 'absent' and only
         surfaces later as a forgery rejection at settle — fail fast instead,
@@ -209,7 +212,13 @@ class TestMintRequestBody:
 
         with pytest.raises(PaymentsError) as excinfo:
             api.get_x402_access_token(
-                "plan-1", token_options=X402TokenOptions(resource=blank_url)
+                "plan-1",
+                token_options=X402TokenOptions(
+                    resource=(
+                        blank_url if shape is str else X402Resource(url=blank_url)
+                    ),
+                    token_version=3,
+                ),
             )
 
         assert excinfo.value.code == "validation"
@@ -228,6 +237,22 @@ class TestMintResponseVersion:
             "plan-1", token_options=X402TokenOptions(token_version=3)
         )
 
+        assert result["tokenVersion"] == 3
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_unrequested_v3_token_is_reported_as_v3(self, mock_post, mock_options):
+        """The mirror case, and the one that goes live the day the backend
+        flips its default (nvm-monorepo#3259): ask for nothing, get v3.
+
+        Without it, an implementation that echoes the request instead of
+        reading the token — ``tokenVersion = 3 if requested else 2`` — passes
+        the whole suite, and every caller branching on this key would then
+        cache and replay a spent token."""
+        _mock_mint(mock_post, V3_TOKEN)
+
+        result = X402TokenAPI(mock_options).get_x402_access_token("plan-1")
+
+        assert "tokenVersion" not in _sent_body(mock_post)
         assert result["tokenVersion"] == 3
 
     @patch("payments_py.x402.token.requests.post")
@@ -305,33 +330,56 @@ class TestMppHasNoTokenVersion:
         assert "tokenVersion" not in _sent_body(mock_post)
 
     @patch("payments_py.mpp.mpp_api.requests.post")
-    def test_mpp_mint_still_sends_resource_and_verb(self, mock_post, mock_options):
-        """Only the version split; ``resource`` / ``httpVerb`` are still
-        accepted by the MPP mint DTO (an OmitType of the x402 one)."""
+    def test_mpp_mint_refuses_the_v3_binding(self, mock_post, mock_options):
+        """resource / http_verb are refused too, not just the version.
+
+        An MPP token's struct has no members for them, so they bind nothing —
+        but redemption runs through the shared erc4337 ``verify``, where the
+        presence of the token's ``resource.url`` is what arms
+        ``enforceEndpointAllowlist``. Sending them would switch on a check the
+        caller never configured while adding no binding at all."""
         from payments_py.mpp.mpp_api import MppAPI
 
-        _mock_mint(mock_post, V2_TOKEN)
-        mock_post.return_value.ok = True
-        mock_post.return_value.status_code = 200
+        with pytest.raises(PaymentsError) as excinfo:
+            MppAPI(mock_options).get_mpp_access_token(
+                "plan-1",
+                "agent-1",
+                token_options=X402TokenOptions(
+                    resource="https://seller.example/ask",
+                    http_verb="POST",
+                    token_version=3,
+                ),
+            )
 
-        MppAPI(mock_options).get_mpp_access_token(
-            "plan-1",
-            "agent-1",
-            token_options=MppTokenOptions(
-                resource="https://seller.example/ask", http_verb="POST"
-            ),
-        )
+        assert excinfo.value.code == "validation"
+        mock_post.assert_not_called()
 
-        body = _sent_body(mock_post)
-        assert body["resource"] == {"url": "https://seller.example/ask"}
-        assert body["accepted"]["extra"]["httpVerb"] == "POST"
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"token_version": 3},
+            {"token_version": 2},
+            {"resource": "https://seller.example/ask"},
+            {"http_verb": "POST"},
+        ],
+    )
+    def test_mpp_token_options_refuses_the_binding_at_construction(self, kwargs):
+        """The type is the first line of defence, and it must REFUSE rather
+        than silently drop: pydantic's default ``extra='ignore'`` would discard
+        the value at construction and mint something the caller did not ask
+        for, with no error anywhere."""
+        with pytest.raises(ValidationError):
+            MppTokenOptions(**kwargs)
 
-    def test_mpp_token_options_has_no_version_field(self):
-        """The type is the first line of defence: MppTokenOptions mirrors the
-        TS twin's ``Omit<X402TokenOptions, 'tokenVersion'>``, and
-        X402TokenOptions stays assignable to it so existing callers work."""
-        assert "token_version" not in MppTokenOptions.model_fields
+    def test_x402_token_options_stays_assignable_to_mpp_token_options(self):
+        """The compatibility trade this PR makes deliberately: an existing
+        caller passing X402TokenOptions to the MPP mint still type-checks, so
+        the runtime guard in the request builder is what actually enforces the
+        split."""
         assert issubclass(X402TokenOptions, MppTokenOptions)
+        for field in ("token_version", "resource", "http_verb"):
+            assert field not in MppTokenOptions.model_fields
+            assert field in X402TokenOptions.model_fields
 
 
 class TestAlreadyUsedError:
@@ -347,12 +395,16 @@ class TestAlreadyUsedError:
         return response
 
     def test_0059_becomes_access_token_already_used_error(self):
+        # The literal, not the constant: building the mock from
+        # X402_TOKEN_ALREADY_USED_CODE would pass under any renumbering and so
+        # could never detect drift from the backend catalogue.
         error = x402_error_from_response(
-            self._response(X402_TOKEN_ALREADY_USED_CODE), "Permission settlement failed"
+            self._response("BCK.X402.0059"), "Permission settlement failed"
         )
 
         assert isinstance(error, AccessTokenAlreadyUsedError)
-        assert error.code == X402_TOKEN_ALREADY_USED_CODE
+        assert error.code == "BCK.X402.0059"
+        assert X402_TOKEN_ALREADY_USED_CODE == "BCK.X402.0059"
         assert is_access_token_already_used(error) is True
         assert "Mint a new access token" in str(error)
         # Still a PaymentsError, so existing handlers keep working.
@@ -398,3 +450,105 @@ class TestAlreadyUsedError:
             )
 
         assert excinfo.value.code == X402_TOKEN_ALREADY_USED_CODE
+
+
+class TestV3BindingRequiresV3:
+    """resource / http_verb only mean something on a v3 token."""
+
+    @pytest.mark.parametrize(
+        "binding",
+        [
+            {"resource": "https://seller.example/api/v1/tasks"},
+            {"http_verb": "POST"},
+            {"resource": "https://seller.example/api/v1/tasks", "http_verb": "POST"},
+        ],
+    )
+    @pytest.mark.parametrize("token_version", [None, 2])
+    @patch("payments_py.x402.token.requests.post")
+    def test_binding_without_v3_is_refused(
+        self, mock_post, mock_options, binding, token_version
+    ):
+        """Neither dropped nor forwarded. Dropping would mint an unbound token
+        while the caller believes it is bound; forwarding arms the backend's
+        endpoint allowlist on a token that binds nothing, which for an agent
+        registered with `endpoints` fails as BCK.PROTOCOL.0031."""
+        api = X402TokenAPI(mock_options)
+
+        with pytest.raises(PaymentsError) as excinfo:
+            api.get_x402_access_token(
+                "plan-1",
+                token_options=X402TokenOptions(token_version=token_version, **binding),
+            )
+
+        assert excinfo.value.code == "validation"
+        assert "token_version=3" in str(excinfo.value)
+        mock_post.assert_not_called()
+
+    @patch("payments_py.x402.token.requests.post")
+    def test_v2_mint_stays_byte_identical_without_binding(
+        self, mock_post, mock_options
+    ):
+        """The v2 body must be what it was before v3 existed."""
+        _mock_mint(mock_post, V2_TOKEN)
+
+        X402TokenAPI(mock_options).get_x402_access_token("plan-1", "agent-1")
+
+        assert _sent_body(mock_post) == {
+            "accepted": {
+                "scheme": "nvm:erc4337",
+                "network": "eip155:84532",
+                "planId": "plan-1",
+                "extra": {"agentId": "agent-1"},
+            }
+        }
+
+
+class TestHttpVerbNormalisation:
+    """http_verb is signed on v3 and compared at settle against a
+    framework-supplied `request.method`, which is upper case everywhere."""
+
+    @pytest.mark.parametrize("verb", ["post", "  post  ", "PosT"])
+    @patch("payments_py.x402.token.requests.post")
+    def test_verb_is_stripped_and_upper_cased(self, mock_post, mock_options, verb):
+        _mock_mint(mock_post, V3_TOKEN)
+
+        X402TokenAPI(mock_options).get_x402_access_token(
+            "plan-1",
+            token_options=X402TokenOptions(
+                resource="https://seller.example/api/v1/tasks",
+                http_verb=verb,
+                token_version=3,
+            ),
+        )
+
+        assert _sent_body(mock_post)["accepted"]["extra"]["httpVerb"] == "POST"
+
+    @pytest.mark.parametrize("blank", ["", "   "])
+    @patch("payments_py.x402.token.requests.post")
+    def test_blank_verb_raises_before_any_http_call(
+        self, mock_post, mock_options, blank
+    ):
+        """Same rationale as the blank-URL guard: a blank signed member is
+        indistinguishable from an absent one and surfaces only at settle."""
+        with pytest.raises(PaymentsError) as excinfo:
+            X402TokenAPI(mock_options).get_x402_access_token(
+                "plan-1",
+                token_options=X402TokenOptions(http_verb=blank, token_version=3),
+            )
+
+        assert excinfo.value.code == "validation"
+        assert "http_verb" in str(excinfo.value)
+        mock_post.assert_not_called()
+
+
+class TestTokenVersionIsARestrictedLiteral:
+    """X402TokenVersion mirrors the backend DTO's @IsIn([2, 3])."""
+
+    @pytest.mark.parametrize("bad", [0, 1, 4, 30, -1])
+    def test_out_of_range_version_is_refused_at_construction(self, bad):
+        with pytest.raises(ValidationError):
+            X402TokenOptions(token_version=bad)
+
+    @pytest.mark.parametrize("good", [2, 3])
+    def test_supported_versions_construct(self, good):
+        assert X402TokenOptions(token_version=good).token_version == good

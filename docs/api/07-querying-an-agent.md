@@ -29,7 +29,7 @@ result = payments.x402.get_x402_access_token(
 
 access_token = result['accessToken']
 print(f"Access Token: {access_token[:50]}...")
-print(f"Token version: {result['tokenVersion']}")  # 2 or 3
+print(f"Token version: {result.get('tokenVersion')}")  # 2 or 3, absent if the mint returned no token
 ```
 
 ### Token Generation Parameters
@@ -114,13 +114,13 @@ result = payments.x402.get_x402_access_token(
     ),
 )
 
-if result["tokenVersion"] == 3:
+if result.get("tokenVersion") == 3:
     ...  # do NOT reuse: mint a fresh token for the next paid request
 ```
 
 Requesting v3 is not a guarantee of getting v3 — a backend that predates v3
 support drops the field silently and returns v2. Always read
-`result["tokenVersion"]` (or `is_single_use_access_token(access_token)`), never the
+`result.get("tokenVersion")` (or `is_single_use_access_token(access_token)`), never the
 value you passed in. Full details, including the `BCK.X402.0059`
 "already used" error, are in
 [x402 Payment Protocol](11-x402.md#access-token-versions-v2-and-v3).

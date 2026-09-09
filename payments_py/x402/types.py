@@ -458,28 +458,41 @@ class MppTokenOptions(BaseModel):
     """
     Options for MPP access-token generation.
 
-    The same inputs as :class:`X402TokenOptions` **minus** ``token_version``:
-    MPP carries no token version at all (nvm-monorepo#3266). The two protocols
-    stopped sharing a version ladder because their single-use unit differs —
-    for x402 it is the TOKEN (the v3 one-time nonce), for MPP it is the
-    CHALLENGE, whose id doubles as the burn idempotency key. One MPP access
-    token is presented across many challenges by design, so a per-token nonce
-    would kill every buyer's second challenge.
+    Exactly the fields the MPP mint accepts. The **v3 binding** —
+    ``resource``, ``http_verb``, ``token_version`` — is deliberately absent,
+    because none of it belongs on an MPP token:
 
-    ``X402TokenOptions`` subclasses this, so an existing caller passing one to
-    the MPP mint still type-checks — mirroring the TS twin's
-    ``Omit<X402TokenOptions, 'tokenVersion'>``. Setting ``token_version`` on it
-    is refused at the mint rather than silently dropped: the backend answers
-    ``BCK.MPP.0007`` for **any** value, ``2`` included.
+    * MPP carries no token version at all (nvm-monorepo#3266). The two
+      protocols' single-use unit differs — for x402 it is the TOKEN (the v3
+      one-time nonce), for MPP it is the CHALLENGE, whose id doubles as the
+      burn idempotency key. One MPP access token is presented across many
+      challenges by design, so a per-token nonce would kill every buyer's
+      second challenge. The backend answers ``BCK.MPP.0007`` for **any**
+      ``tokenVersion``, ``2`` included.
+    * ``resource`` / ``http_verb`` bind nothing on an MPP token — its struct
+      has no members for them — but they are not inert either. Redemption runs
+      through the shared erc4337 ``verify``, where the presence of the token's
+      ``resource.url`` is what switches ``enforceEndpointAllowlist`` on
+      (``erc4337-scheme.handler.ts``). Sending them would arm a check the
+      caller did not ask for while binding nothing.
+
+    ``extra="forbid"`` makes that a construction-time error rather than a
+    silent drop: ``MppTokenOptions(token_version=3)`` raises instead of
+    quietly discarding the field and minting something the caller did not ask
+    for.
+
+    :class:`X402TokenOptions` subclasses this and adds the binding, so an
+    ``X402TokenOptions`` still satisfies an ``MppTokenOptions`` annotation —
+    the same compatibility trade the TS twin makes with
+    ``Omit<X402TokenOptions, 'tokenVersion'>``. It is a widening subtype and no
+    static checker will flag it, so the real enforcement is the runtime guard
+    in :func:`payments_py.x402.token_request.build_x402_token_request_body`,
+    which refuses the whole binding on an MPP mint.
 
     Attributes:
         scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
         network: Network identifier (auto-derived from scheme if omitted)
         delegation_config: Delegation configuration for both erc4337 and card-delegation schemes
-        resource: The protected resource the token is minted for, as a URL
-            string or an :class:`X402Resource`.
-        http_verb: HTTP verb of that resource (e.g. ``"POST"``). Sent as
-            ``accepted.extra.httpVerb``.
     """
 
     scheme: Optional[str] = None
@@ -487,12 +500,11 @@ class MppTokenOptions(BaseModel):
     delegation_config: Optional[DelegationConfig] = Field(
         None, alias="delegationConfig"
     )
-    resource: Optional[Union[str, X402Resource]] = None
-    http_verb: Optional[str] = Field(None, alias="httpVerb")
 
     model_config = ConfigDict(
         populate_by_name=True,
         from_attributes=True,
+        extra="forbid",
     )
 
 
@@ -500,31 +512,43 @@ class X402TokenOptions(MppTokenOptions):
     """
     Options for x402 token generation that control scheme and delegation behavior.
 
-    ``resource``, ``http_verb`` and ``token_version`` exist for the **v3**
-    access token (nvm-monorepo#2646): a v3 token's EIP-712 signature covers
-    ``agentId``, ``resourceUrl``, ``httpVerb`` and a one-time ``nonce``, which
-    is what binds it to one seller and one endpoint and makes it single-use at
-    settle. They are harmless on v2 — the backend simply signs less.
+    ``resource``, ``http_verb`` and ``token_version`` are the **v3** binding
+    (nvm-monorepo#2646): a v3 token's EIP-712 signature covers ``agentId``,
+    ``resourceUrl``, ``httpVerb`` and a one-time ``nonce``, which is what binds
+    it to one seller and one endpoint and makes it single-use at settle.
+
+    The three travel together. ``resource`` and ``http_verb`` are sent **only**
+    when ``token_version=3``; supplying them without it raises, because on a v2
+    token they are not inert — the field lands on the unsigned envelope, binds
+    nothing, and its only effect is to switch the backend's
+    ``enforceEndpointAllowlist`` on for a check the caller never configured.
 
     Attributes:
         scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
         network: Network identifier (auto-derived from scheme if omitted)
         delegation_config: Delegation configuration for both erc4337 and card-delegation schemes
         resource: The protected resource the token is minted for, as a URL
-            string or an :class:`X402Resource`. Load-bearing for v3 (it is the
-            signed ``resourceUrl``); without it the backend logs
-            ``resource.url not provided in token … skipping endpoint validation``.
+            string or an :class:`X402Resource`. This is the signed
+            ``resourceUrl`` on v3. Bind the **same string the seller
+            advertises** in its 402 ``resource.url``: the backend compares them
+            with origin + path, falling back to exact string equality when
+            either side does not parse as an absolute URL, so a relative
+            ``/ask`` on one side and an absolute URL on the other can never
+            match. Requires ``token_version=3``.
         http_verb: HTTP verb of that resource (e.g. ``"POST"``). Sent as
-            ``accepted.extra.httpVerb`` and signed on v3.
+            ``accepted.extra.httpVerb`` and signed on v3. Normalized to
+            upper case by the request builder. Requires ``token_version=3``.
         token_version: Access-token version to request (``2`` — the backend
-            default — or ``3``). **x402 only**; the MPP mint refuses it. **Never**
-            infer the version you got from this value: a backend predating
-            nvm-monorepo#2646 silently drops the field and returns v2. Read it
-            back with
-            :func:`payments_py.x402.token.detect_access_token_version`, or from the
-            ``tokenVersion`` key the mint adds to its response.
+            default — or ``3``). **x402 only**; the MPP mint refuses it.
+            **Never** infer the version you got from this value: a backend
+            predating nvm-monorepo#2646 silently drops the field and returns
+            v2. Read it back with
+            :func:`payments_py.x402.token.detect_access_token_version`, or from
+            the ``tokenVersion`` key the mint adds to its response.
     """
 
+    resource: Optional[Union[str, X402Resource]] = None
+    http_verb: Optional[str] = Field(None, alias="httpVerb")
     token_version: Optional[X402TokenVersion] = Field(None, alias="tokenVersion")
 
 

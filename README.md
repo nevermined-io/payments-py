@@ -196,7 +196,11 @@ cc = payments_builder.plans.get_fixed_credits_config(100)
 ```python
 from payments_py import Payments, PaymentOptions
 from payments_py.common.types import PlanMetadata
-from payments_py.x402 import DelegationConfig, X402TokenOptions
+from payments_py.x402 import (
+    CreateDelegationPayload,
+    DelegationConfig,
+    X402TokenOptions,
+)
 
 payments = Payments.get_instance(
     PaymentOptions(nvm_api_key="<KEY>", environment="sandbox")
@@ -227,18 +231,27 @@ balance = payments.plans.get_plan_balance(plan_id)
 access = payments.x402.get_x402_access_token(plan_id, agent_id)
 token = access["accessToken"]
 
-# Or a single-use token bound to one seller endpoint (v3):
+# Or a single-use token bound to one seller endpoint (v3). Bind the SAME string
+# the seller advertises in its 402 — here, the endpoint registered above.
+delegation = payments.delegation.create_delegation(
+    CreateDelegationPayload(
+        provider="erc4337",
+        spending_limit_cents=10000,
+        duration_secs=604800,
+        currency="usdc",
+    )
+)
 access = payments.x402.get_x402_access_token(
     plan_id,
     agent_id,
     token_options=X402TokenOptions(
-        delegation_config=DelegationConfig(delegation_id=delegation_id),
-        resource="https://seller.example/api/v1/tasks",
+        delegation_config=DelegationConfig(delegation_id=delegation.delegation_id),
+        resource="https://your-agent.example.com/a2a/",
         http_verb="POST",
         token_version=3,
     ),
 )
-if access["tokenVersion"] == 3:
+if access.get("tokenVersion") == 3:
     ...  # consumed by its first settle — mint a fresh one per paid request
 ```
 
