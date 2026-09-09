@@ -247,3 +247,46 @@ async def test_default_client_requests_no_explicit_token_version():
     await client.send_message({})  # type: ignore[arg-type]
 
     assert get_token_mock.await_args.kwargs["token_options"].token_version is None
+
+
+@pytest.mark.asyncio()
+async def test_card_delegation_branch_also_carries_version_and_binding():
+    """The non-erc4337 branch was never executed: no test sets up a plan, so
+    `resolve_scheme` always excepted and fell back to `nvm:erc4337`, and an
+    unconditional `raise` in the card branch left the suite green.
+
+    A fiat-plan A2A buyer goes through it, so it needs the same v3 wiring."""
+    from payments_py.x402.types import X402TokenOptions
+
+    class StubClient:  # noqa: D101
+        def __init__(self):
+            self.send_message = AsyncMock(return_value={"ok": True})
+
+    get_token_mock = AsyncMock(return_value={"accessToken": _v3_token("card")})
+    dummy_payments = SimpleNamespace(
+        x402=SimpleNamespace(get_x402_access_token=get_token_mock),
+        agents=SimpleNamespace(),
+        requests=SimpleNamespace(),
+    )
+    client = PaymentsClient(
+        agent_base_url="https://agent.example",
+        payments=dummy_payments,  # type: ignore[arg-type]
+        agent_id="agent1",
+        plan_id="1",
+        delegation_config=DelegationConfig(delegation_id="test-delegation"),
+        token_version=3,
+    )
+    client._client = StubClient()  # type: ignore[attr-defined]
+
+    with patch(
+        "payments_py.x402.resolve_scheme.resolve_scheme",
+        return_value="nvm:card-delegation",
+    ):
+        await client.send_message({})  # type: ignore[arg-type]
+
+    options = get_token_mock.await_args.kwargs["token_options"]
+    assert isinstance(options, X402TokenOptions)
+    assert options.scheme == "nvm:card-delegation"
+    assert options.token_version == 3
+    assert options.resource == "https://agent.example/"
+    assert options.http_verb == "POST"

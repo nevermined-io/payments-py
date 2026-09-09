@@ -18,6 +18,7 @@ from payments_py.x402.types import (
     DelegationConfig,
     MppTokenOptions,
     X402Resource,
+    X402TokenOptions,
 )
 
 
@@ -57,12 +58,14 @@ def _resolve_resource(
 
     Raises:
         PaymentsError: (``code='validation'``) if the URL is empty or
-            whitespace-only. On a v3 token the URL is *signed*: a blank one is
-            signed as the empty string, which is indistinguishable from "field
-            absent" and then makes the seller's own ``resource.url`` disagree
-            with the signature at settle — rejected as forgery
-            (``BCK.X402.0005``) long after the mistake was made. Same fail-fast
-            rationale as the blank ``delegation_id`` guard below.
+            whitespace-only. A blank is signed as the empty string, and the
+            backend normalizes a signed ``''`` straight back to "not bound"
+            (``orUndefined`` in ``resolveErc4337Binding``) — so it does NOT
+            fail loudly as forgery. It silently mints an **unbound** v3 token:
+            single-use, but presentable to any seller, which is half the
+            guarantee the caller asked for and no error anywhere says so. That
+            silence is why this is worth a fail-fast guard, the same reason as
+            the blank ``delegation_id`` one below.
     """
     if resource is None:
         return None
@@ -91,9 +94,9 @@ def _resolve_http_verb(http_verb: Optional[str]) -> Optional[str]:
 
     Raises:
         PaymentsError: (``code='validation'``) if the verb is empty or
-            whitespace-only — same rationale as the blank-URL guard below: a
-            blank signed member is indistinguishable from an absent one and
-            surfaces only as ``BCK.X402.0005`` at settle, far from the mistake.
+            whitespace-only — same rationale as the blank-URL guard below: the
+            backend normalizes a signed blank back to "not bound", so it does
+            not fail, it silently drops that dimension of the binding.
     """
     if http_verb is None:
         return None
@@ -171,11 +174,20 @@ def build_x402_token_request_body(
         else get_default_network(scheme, environment_name)
     )
 
-    # The v3 binding lives on X402TokenOptions only; a plain MppTokenOptions has
-    # no such attributes, hence getattr rather than direct reads.
-    token_version = getattr(token_options, "token_version", None)
-    resource = _resolve_resource(getattr(token_options, "resource", None))
-    http_verb = _resolve_http_verb(getattr(token_options, "http_verb", None))
+    # The v3 binding lives on X402TokenOptions only, so the reads are narrowed
+    # by isinstance rather than done with getattr. getattr fails OPEN: rename or
+    # mistype one of these fields and it returns None forever, `has_binding`
+    # goes False, the refusal below never fires, and a caller who asked for a
+    # bound v3 token silently gets an unbound one. isinstance puts the same
+    # reads in front of the type checker, so that rename is a build error.
+    if isinstance(token_options, X402TokenOptions):
+        token_version = token_options.token_version
+        resource = _resolve_resource(token_options.resource)
+        http_verb = _resolve_http_verb(token_options.http_verb)
+    else:
+        token_version = None
+        resource = None
+        http_verb = None
     has_binding = resource is not None or http_verb is not None
 
     if protocol == "mpp":

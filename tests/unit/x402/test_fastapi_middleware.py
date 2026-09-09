@@ -639,3 +639,52 @@ class TestV3TokenRelay:
         )
 
         assert mock_payments.facilitator.settle_permissions.call_count == 1
+
+
+class TestSpentTokenIsNotServed:
+    """A replayed v3 token must not buy the agent's output.
+
+    The backend spends a v3 nonce at SETTLE only — `verify()` never consults
+    the replay store, deliberately, because verify is a dry run a seller may
+    repeat. So a replayed token passes verification, the handler runs, and the
+    seller only learns the token was spent afterwards. Returning the generated
+    body then would hand out the output for free, repeatable without limit.
+    """
+
+    def test_spent_token_gets_402_and_no_body(self, client, mock_payments):
+        from payments_py.x402.errors import AccessTokenAlreadyUsedError
+
+        mock_payments.facilitator.settle_permissions.side_effect = (
+            AccessTokenAlreadyUsedError()
+        )
+
+        response = client.post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: "dGVzdA=="},
+        )
+
+        assert response.status_code == 402
+        # The agent's answer must not be in the body.
+        assert "Answer to:" not in response.text
+        assert X402_HEADERS["PAYMENT_REQUIRED"] in response.headers
+        assert "already used" in response.json()["message"]
+
+    def test_transient_settle_failure_still_serves_the_response(
+        self, client, mock_payments
+    ):
+        """The withholding is scoped to a spent token. A backend outage is not
+        the buyer's fault and the value was already delivered, so that branch
+        must keep returning the agent's output."""
+        mock_payments.facilitator.settle_permissions.side_effect = RuntimeError(
+            "backend down"
+        )
+
+        response = client.post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: "dGVzdA=="},
+        )
+
+        assert response.status_code == 200
+        assert "Answer to: test" in response.text

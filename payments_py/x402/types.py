@@ -481,6 +481,14 @@ class MppTokenOptions(BaseModel):
     quietly discarding the field and minting something the caller did not ask
     for.
 
+    .. warning::
+       ``X402TokenOptions`` inherits that strictness, and this is a **behaviour
+       change on a public constructor**. It previously took pydantic's default
+       ``extra="ignore"``, so ``X402TokenOptions(**some_superset_dict)`` — a
+       config blob, a dict round-tripped from JSON, kwargs forwarded from a
+       wrapper — used to construct fine and now raises ``ValidationError``.
+       Filter the dict to the declared fields, or pass the fields explicitly.
+
     :class:`X402TokenOptions` subclasses this and adds the binding, so an
     ``X402TokenOptions`` still satisfies an ``MppTokenOptions`` annotation —
     the same compatibility trade the TS twin makes with

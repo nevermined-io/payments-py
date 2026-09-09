@@ -354,6 +354,29 @@ class TestMppHasNoTokenVersion:
         assert excinfo.value.code == "validation"
         mock_post.assert_not_called()
 
+    @patch("payments_py.mpp.mpp_api.requests.post")
+    def test_mpp_refuses_the_binding_even_without_a_token_version(
+        self, mock_post, mock_options
+    ):
+        """Unmasks the binding guard from the version guard.
+
+        Every other MPP test passes `token_version` too, so the version refusal
+        fires first and the binding refusal is never the one under test —
+        deleting it outright would leave those assertions green. Here there is
+        no version, so only the binding guard can raise, and it must."""
+        from payments_py.mpp.mpp_api import MppAPI
+
+        with pytest.raises(PaymentsError) as excinfo:
+            MppAPI(mock_options).get_mpp_access_token(
+                "plan-1",
+                "agent-1",
+                token_options=X402TokenOptions(resource="https://seller.example/ask"),
+            )
+
+        assert excinfo.value.code == "validation"
+        assert "resource / http_verb" in str(excinfo.value)
+        mock_post.assert_not_called()
+
     @pytest.mark.parametrize(
         "kwargs",
         [
@@ -430,6 +453,27 @@ class TestAlreadyUsedError:
         )
         assert is_access_token_already_used(None) is False
         assert is_access_token_already_used(ValueError("nope")) is False
+
+    @patch("payments_py.x402.facilitator_api.requests.post")
+    def test_verify_also_surfaces_the_typed_error(self, mock_post, mock_options):
+        """The upgrade is wired into verify as well as settle, and each call
+        site needs its own guard: reverting either one to
+        `PaymentsError.from_response` must fail something. A guard tested on
+        one path proves nothing about the path beside it."""
+        import requests
+
+        response = self._response("BCK.X402.0059")
+        response.raise_for_status.side_effect = requests.HTTPError("400")
+        mock_post.return_value = response
+
+        payment_required = build_payment_required(
+            plan_id="plan-1", agent_id="agent-1", network="eip155:84532"
+        )
+
+        with pytest.raises(AccessTokenAlreadyUsedError):
+            FacilitatorAPI(mock_options).verify_permissions(
+                payment_required=payment_required, x402_access_token=V3_TOKEN
+            )
 
     @patch("payments_py.x402.facilitator_api.requests.post")
     def test_second_settle_surfaces_the_typed_error(self, mock_post, mock_options):

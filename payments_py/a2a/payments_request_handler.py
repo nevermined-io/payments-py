@@ -25,6 +25,7 @@ from a2a.types import (
 from payments_py.common.payments_error import PaymentsError
 from payments_py.payments import Payments
 from payments_py.x402.a2a import X402A2AUtils
+from payments_py.x402.errors import AccessTokenAlreadyUsedError
 from payments_py.x402.token import decode_access_token
 from payments_py.x402.helpers import (
     build_payment_required,
@@ -651,12 +652,38 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 self._settle_receipt_by_task[task_id] = self._coerce_settle_response(
                     settle_result
                 )
-        except Exception:  # noqa: BLE001
-            logger.warning(
-                "Failed to settle %s credits during task finalization",
-                credits_used,
-                exc_info=True,
-            )
+        except Exception as settle_error:  # noqa: BLE001
+            # One handler, two readings — deliberately not split into separate
+            # `except` blocks, because everything after the log (recording the
+            # failed receipt so the in-band path emits payment-failed and never
+            # delivers paid content without settlement) applies identically and
+            # must not be duplicated or accidentally skipped.
+            if isinstance(settle_error, AccessTokenAlreadyUsedError):
+                # A SPENT v3 token, not a settle failure. The backend spends the
+                # nonce at settle only — verify() never consults the replay
+                # store — so a replayed token passes verification and the seller
+                # only finds out here, once the work is done. ERROR and named,
+                # so a seller can tell an unpaid replay apart from a backend
+                # blip.
+                #
+                # The in-band path refuses to deliver paid content without
+                # settlement (the failed receipt below drives payment-failed).
+                # The legacy header path has already streamed its events by this
+                # point and cannot retract them — worth knowing when deciding
+                # whether to enable v3 on that path.
+                logger.error(
+                    "x402 settlement refused during task finalization: the "
+                    "access token was already spent (BCK.X402.0059). Mint a new "
+                    "access token per paid request; %s credits went unsettled.",
+                    credits_used,
+                    exc_info=True,
+                )
+            else:
+                logger.warning(
+                    "Failed to settle %s credits during task finalization",
+                    credits_used,
+                    exc_info=True,
+                )
             task_id = getattr(event, "task_id", None)
             if task_id is not None and http_ctx.inband:
                 # Record a failed receipt so the in-band path emits payment-failed

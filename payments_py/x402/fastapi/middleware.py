@@ -76,6 +76,7 @@ from payments_py.x402.fastapi.mpp_support import (
     extract_credential,
     resolve_mpp_option,
 )
+from payments_py.x402.errors import AccessTokenAlreadyUsedError
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
 from payments_py.x402.types import (
@@ -417,8 +418,46 @@ class PaymentMiddleware(BaseHTTPMiddleware):
 
             return new_response
 
+        except AccessTokenAlreadyUsedError as spent_error:
+            # A SPENT v3 token is not a settle failure — it is an unpaid
+            # request, and it must not be served.
+            #
+            # The backend spends a v3 nonce at SETTLE only; verify() never
+            # consults the replay store, deliberately, because verify is a dry
+            # run a seller may legitimately repeat. So a replayed v3 token
+            # passes verification, the handler runs, and the seller only learns
+            # the token was spent here — after the work is done. Returning the
+            # generated body on this branch (as the generic handler below does)
+            # would hand out the agent's output for free, repeatable without
+            # limit: the buyer mints one v3 token, settles it once, then replays
+            # it forever. v2 could not do this, because settle always burned.
+            #
+            # So this one branch overrides the "the agent already delivered the
+            # value" rule below. That rule is right for a TRANSIENT failure,
+            # where the buyer is not at fault and the seller can reconcile
+            # later; it is wrong here, where the failure is deterministic, the
+            # buyer's own doing, and will recur on every replay.
+            logger.error(
+                "x402 settlement refused: the access token was already spent "
+                "(BCK.X402.0059) — the response is withheld to avoid serving a "
+                "replayed token for free: %s",
+                spent_error,
+            )
+            return _send_payment_required(
+                payment_required,
+                "This x402 access token was already used. A v3 token is "
+                "single-use and is consumed by its first settle — mint a new "
+                "access token for each paid request.",
+            )
+
         except Exception as settle_error:
-            # Log but don't fail the response if settlement fails
+            # Log but don't fail the response if settlement fails.
+            #
+            # Scoped to failures the buyer is not responsible for — a backend
+            # outage, a timeout, a reconciliation error. The agent already
+            # delivered the value, so punishing the buyer for our infrastructure
+            # would be wrong. A spent token is NOT one of these; see the branch
+            # above.
             logger.error("x402 settlement failed: %s", settle_error)
             return response
 
