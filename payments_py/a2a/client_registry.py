@@ -28,6 +28,8 @@ class ClientRegistry:  # noqa: D101
         plan_id: str,
         delegation_config: Optional["DelegationConfig"] = None,
         token_version: Optional["X402TokenVersion"] = None,
+        resource: Optional[str] = None,
+        http_verb: Optional[str] = None,
     ) -> PaymentsClient:
         """Return a cached or newly created PaymentsClient instance.
 
@@ -43,10 +45,18 @@ class ClientRegistry:  # noqa: D101
         no error, no warning and nothing on the returned object to inspect.
         Re-reading the version off a minted token governs how it is HANDLED,
         not which version is REQUESTED, and the registry never re-mints.
+
+        ``resource`` / ``http_verb`` override the v3 binding for a seller that
+        advertises something other than this SDK's A2A server does, and are in
+        the key for the same reason: a second caller asking for a different
+        binding must not be handed the first caller's client.
         """
         if not agent_base_url or not agent_id or not plan_id:
             raise ValueError("agent_base_url, agent_id and plan_id are required")
-        key = f"{agent_base_url}::{agent_id}::{plan_id}::{token_version}"
+        key = (
+            f"{agent_base_url}::{agent_id}::{plan_id}"
+            f"::{token_version}::{resource}::{http_verb}"
+        )
         if key not in self._clients:
             self._clients[key] = PaymentsClient(
                 agent_base_url=agent_base_url,
@@ -55,5 +65,7 @@ class ClientRegistry:  # noqa: D101
                 plan_id=plan_id,
                 delegation_config=delegation_config,
                 token_version=token_version,
+                resource=resource,
+                http_verb=http_verb,
             )
         return self._clients[key]

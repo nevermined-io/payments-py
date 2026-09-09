@@ -330,6 +330,25 @@ client = payments.a2a["get_client"](
 )
 ```
 
+On a v3 request the client also **binds** the token, to `agent_base_url` and
+`POST`. That default assumes the seller is this SDK's A2A server, which
+advertises `str(request.url)`; the backend compares origin + path, so the two
+agree. A seller that advertises something else — this SDK's FastAPI middleware
+advertises a *relative* `request.url.path` — would never match and the settle
+would fail, so pass the binding explicitly instead:
+
+```python
+client = payments.a2a["get_client"](
+    agent_base_url="http://agent-url/",
+    agent_id=agent_id,
+    plan_id=plan_ids[0],
+    delegation_config=DelegationConfig(delegation_id=delegation_id),
+    token_version=3,
+    resource="/a2a/",   # whatever the seller advertises in its 402
+    http_verb="POST",
+)
+```
+
 A v3 token is consumed by the seller's first settle, so the client mints one
 **per paid request** and never caches it — replaying one fails with
 `BCK.X402.0059`. Which of the two behaviours applies is decided by the token

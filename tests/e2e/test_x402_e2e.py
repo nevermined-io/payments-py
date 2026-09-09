@@ -514,11 +514,19 @@ class TestX402DelegationFlow:
                 not nonce
             ), f"the mint reported v{reported} but a nonce is present: {nonce!r}"
 
-        if reported != X402_TOKEN_VERSION_V3:
-            pytest.skip(
-                "Backend returned a v2 token: this deployment predates "
-                "nvm-monorepo#2646, which silently strips tokenVersion:3."
-            )
+        # Asserted, not skipped. Skipping here made the ONLY end-to-end proof of
+        # single-use vanish in exactly the situation that should fail loudest: a
+        # dropped kwarg, a regressed X402TokenOptions or a reverted backend
+        # returns v2, both legs below skip on the unset token, and the suite
+        # goes green. v3 has shipped since backend v1.30.0 (staging runs 1.31.0)
+        # and an explicit tokenVersion:3 request is never downgraded, so a v2
+        # token here is a regression. Same call the TS twin made in its round 2.
+        assert reported == X402_TOKEN_VERSION_V3, (
+            f"expected a v3 token from this deployment, got v{reported} — an "
+            "explicit tokenVersion:3 request is not downgraded since backend "
+            "v1.30.0. If this is a deployment that predates nvm-monorepo#2646, "
+            "gate on the deployment version, never on the answer under test."
+        )
 
         TestX402DelegationFlow.v3_access_token = access_token
         print("Minted a v3 (single-use) X402 access token")

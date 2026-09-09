@@ -66,3 +66,25 @@ def test_v2_then_v3_does_not_hand_back_the_cached_v2_client():  # noqa: D401
     # Each version still caches on its own key.
     assert registry.get_client(**_OPTS, token_version=3) is v3_client  # type: ignore[arg-type]
     assert registry.get_client(**_OPTS) is v2_client  # type: ignore[arg-type]
+
+
+def test_binding_overrides_reach_the_client_and_key_the_cache():  # noqa: D401
+    """Same argument as the version: a second caller asking for a different
+    binding must not be handed the first caller's client."""
+    registry = ClientRegistry(DummyPayments())  # type: ignore[arg-type]
+
+    default = registry.get_client(**_OPTS, token_version=3)  # type: ignore[arg-type]
+    overridden = registry.get_client(  # type: ignore[arg-type]
+        **_OPTS, token_version=3, resource="/a2a/", http_verb="POST"
+    )
+
+    assert overridden is not default
+    assert default._resource is None
+    assert overridden._resource == "/a2a/"
+    assert overridden._http_verb == "POST"
+    assert (
+        registry.get_client(  # type: ignore[arg-type]
+            **_OPTS, token_version=3, resource="/a2a/", http_verb="POST"
+        )
+        is overridden
+    )

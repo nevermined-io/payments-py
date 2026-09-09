@@ -1,8 +1,11 @@
 """
 The access-token request body, shared by the x402 and MPP mints.
 
-Both routes take identical inputs — only the EIP-712 domain the backend signs
-under differs — so the body is built in one place to keep them from drifting.
+The two routes take the same inputs **except for the v3 binding** —
+``tokenVersion``, ``resource`` and ``httpVerb`` are x402-only, and are refused
+below for MPP (nvm-monorepo#3266). Beyond that only the EIP-712 domain the
+backend signs under differs, so the body is built in one place to keep the two
+from drifting.
 """
 
 import warnings

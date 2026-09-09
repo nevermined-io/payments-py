@@ -95,7 +95,7 @@ def _v3_token(nonce: str) -> str:
     )
 
 
-def _client_with_tokens(tokens, token_version=None):
+def _client_with_tokens(tokens, token_version=None, **binding):
     """A PaymentsClient whose mint returns ``tokens`` in order."""
 
     class StubClient:  # noqa: D101
@@ -115,6 +115,7 @@ def _client_with_tokens(tokens, token_version=None):
         plan_id="1",
         delegation_config=DelegationConfig(delegation_id="test-delegation"),
         token_version=token_version,
+        **binding,
     )
     client._client = StubClient()  # type: ignore[attr-defined]
     return client, get_token_mock
@@ -185,6 +186,42 @@ async def test_v3_request_binds_the_token_to_the_agent_endpoint():
     assert options.token_version == 3
     assert options.resource == "https://agent.example/"
     assert options.http_verb == "POST"
+
+
+@pytest.mark.asyncio()
+async def test_explicit_binding_overrides_the_default():
+    """The default binds the agent base URL, which assumes the seller is this
+    SDK's A2A server (it advertises `str(request.url)`). A seller advertising
+    a relative path — what this SDK's FastAPI middleware does — would never
+    match, so such a caller must be able to say what to bind."""
+    client, get_token_mock = _client_with_tokens(
+        [_v3_token("n1")],
+        token_version=3,
+        resource="/a2a/",
+        http_verb="post",
+    )
+
+    await client.send_message({})  # type: ignore[arg-type]
+
+    options = get_token_mock.await_args.kwargs["token_options"]
+    assert options.resource == "/a2a/"
+    # Normalisation still happens in the request builder, not here.
+    assert options.http_verb == "post"
+
+
+@pytest.mark.asyncio()
+async def test_binding_override_is_ignored_without_v3():
+    """An override is still part of the v3 binding: on v2 it would bind nothing
+    and arm the endpoint allowlist, which the request builder refuses."""
+    client, get_token_mock = _client_with_tokens(
+        [V2_TOKEN], resource="/a2a/", http_verb="POST"
+    )
+
+    await client.send_message({})  # type: ignore[arg-type]
+
+    options = get_token_mock.await_args.kwargs["token_options"]
+    assert options.resource is None
+    assert options.http_verb is None
 
 
 @pytest.mark.asyncio()

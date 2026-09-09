@@ -32,6 +32,8 @@ class PaymentsClient:  # noqa: D101
         plan_id: str,
         delegation_config: Optional["DelegationConfig"] = None,
         token_version: Optional["X402TokenVersion"] = None,
+        resource: Optional[str] = None,
+        http_verb: Optional[str] = None,
     ) -> None:
         # Preserve trailing slash to avoid JSON-RPC 307 redirects between /a2a and /a2a/
         self._agent_base_url = (
@@ -46,6 +48,10 @@ class PaymentsClient:  # noqa: D101
         # that is read off the token that came back, see _get_access_token. It
         # does decide whether the v3 binding is sent, see _mint_access_token.
         self._token_version = token_version
+        # v3 binding overrides, for a seller that advertises something other
+        # than this SDK's A2A server does. Only consulted on a v3 request.
+        self._resource = resource
+        self._http_verb = http_verb
         self._access_token: str | None = None
         self._client = None  # Lazily created to ease unit testing
 
@@ -104,13 +110,26 @@ class PaymentsClient:  # noqa: D101
         # is merely single-use — half the guarantee, while the docs promise
         # both. Every A2A call is a JSON-RPC POST to this one service endpoint,
         # so the binding is the same for all of them and is known from the
-        # constructor; there is nothing to resolve and nothing that can fail.
+        # constructor.
+        #
+        # The default binds `self._agent_base_url`, which assumes the seller is
+        # THIS SDK's A2A server: it advertises `str(request.url)` (see
+        # `a2a/server.py`), an absolute URL, and the backend's
+        # `resourceUrlsMatch` compares origin + path — so the trailing slash
+        # forced in __init__ is what makes the two sides agree. That is an
+        # invariant of our server, not of A2A. A seller advertising anything
+        # else (this SDK's FastAPI middleware passes a RELATIVE
+        # `request.url.path`) will not match, and the settle fails; such a
+        # caller passes `resource=` / `http_verb=` explicitly instead.
         #
         # Sent ONLY on a v3 request: on v2 these fields bind nothing and merely
         # arm the backend's endpoint allowlist, and the request builder refuses
         # the combination outright.
         binding: Dict[str, Any] = (
-            {"resource": self._agent_base_url, "http_verb": "POST"}
+            {
+                "resource": self._resource or self._agent_base_url,
+                "http_verb": self._http_verb or "POST",
+            }
             if self._token_version == X402_TOKEN_VERSION_V3
             else {}
         )
