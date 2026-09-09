@@ -652,10 +652,14 @@ class TestSpentTokenIsNotServed:
     """
 
     def test_spent_token_gets_402_and_no_body(self, client, mock_payments):
-        from payments_py.x402.errors import AccessTokenAlreadyUsedError
+        from payments_py.common.payments_error import PaymentsError
 
-        mock_payments.facilitator.settle_permissions.side_effect = (
-            AccessTokenAlreadyUsedError()
+        # A PLAIN PaymentsError carrying the wire code, not the typed class:
+        # `payments` is caller-supplied, so a BCK.X402.0059 rebuilt across a
+        # process boundary or raised by a second copy of this package arrives
+        # like this — and an isinstance check would miss it and serve the body.
+        mock_payments.facilitator.settle_permissions.side_effect = PaymentsError(
+            "access token already used", "BCK.X402.0059"
         )
 
         response = client.post(
@@ -686,5 +690,81 @@ class TestSpentTokenIsNotServed:
             headers={X402_HEADERS["PAYMENT_SIGNATURE"]: "dGVzdA=="},
         )
 
+        assert response.status_code == 200
+        assert "Answer to: test" in response.text
+
+    def test_spent_token_402_goes_through_on_payment_error(self, mock_payments):
+        """Every other 402 in this middleware lets the hook observe and
+        override. A seller who wired it for metrics or alerting must not be
+        skipped on the one 402 that means "work delivered, unpaid" — the signal
+        that someone is replaying tokens against them."""
+        from payments_py.common.payments_error import PaymentsError
+
+        seen = {}
+
+        async def on_payment_error(error, request):
+            seen["error"] = error
+            return JSONResponse(status_code=418, content={"custom": True})
+
+        mock_payments.facilitator.settle_permissions.side_effect = PaymentsError(
+            "access token already used", "BCK.X402.0059"
+        )
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+            options=PaymentMiddlewareOptions(on_payment_error=on_payment_error),
+        )
+
+        @app.post("/ask")
+        async def ask(body: QueryRequest):
+            return JSONResponse({"response": f"Answer to: {body.query}"})
+
+        response = TestClient(app).post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: "dGVzdA=="},
+        )
+
+        assert response.status_code == 418
+        assert response.json() == {"custom": True}
+        assert seen["error"].code == "BCK.X402.0059"
+
+    def test_a_failure_after_a_successful_settle_still_serves_the_body(
+        self, mock_payments
+    ):
+        """The withholding branch must be unreachable once the burn committed.
+
+        `on_after_settle` raising this error is plausible for an agent that pays
+        a downstream service from that hook — and withholding there would charge
+        the buyer and give them nothing, while logging that the response was
+        withheld to avoid serving a replay. Narrowing the settle `try` is what
+        makes the branch mean what its comment says."""
+        from payments_py.common.payments_error import PaymentsError
+
+        async def on_after_settle(request, credits, result):
+            raise PaymentsError("access token already used", "BCK.X402.0059")
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+            options=PaymentMiddlewareOptions(on_after_settle=on_after_settle),
+        )
+
+        @app.post("/ask")
+        async def ask(body: QueryRequest):
+            return JSONResponse({"response": f"Answer to: {body.query}"})
+
+        response = TestClient(app).post(
+            "/ask",
+            json={"query": "test"},
+            headers={X402_HEADERS["PAYMENT_SIGNATURE"]: "dGVzdA=="},
+        )
+
+        # Paid, so served.
         assert response.status_code == 200
         assert "Answer to: test" in response.text
