@@ -282,6 +282,14 @@ whole v3 binding**: `token_version`, `resource` and `http_verb`.
     (`code='validation'`) naming the cause rather than an opaque 400. The mint
     response carries no `tokenVersion` key either.
 
+    `MppTokenOptions` is a **sibling** of `X402TokenOptions`, not its base — so
+    passing an `X402TokenOptions` here now fails type checking. It still runs
+    (pydantic does not enforce annotations, and the shared fields are
+    identical) and it still raises at the mint if it carries any of the v3
+    binding, but the annotation is what rejects it at the call site instead of
+    leaving the runtime guard as the only defence. Construct an
+    `MppTokenOptions`.
+
     `resource` and `http_verb` are refused too. An MPP token's struct has no
     members for them, so they bind nothing — but redemption runs through the
     same shared erc4337 `verify`, where the presence of the token's

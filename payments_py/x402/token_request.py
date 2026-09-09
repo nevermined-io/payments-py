@@ -16,9 +16,9 @@ from payments_py.x402.schemes import get_default_network
 from payments_py.x402.token_version import X402_TOKEN_VERSION_V3
 from payments_py.x402.types import (
     DelegationConfig,
-    MppTokenOptions,
     X402Resource,
     X402TokenOptions,
+    _TokenOptionsBase,
 )
 
 
@@ -112,7 +112,7 @@ def _resolve_http_verb(http_verb: Optional[str]) -> Optional[str]:
 def build_x402_token_request_body(
     plan_id: str,
     agent_id: Optional[str] = None,
-    token_options: Optional[MppTokenOptions] = None,
+    token_options: Optional[_TokenOptionsBase] = None,
     environment_name: Optional[str] = None,
     protocol: Literal["x402", "mpp"] = "x402",
 ) -> Dict[str, Any]:

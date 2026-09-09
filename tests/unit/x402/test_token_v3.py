@@ -394,15 +394,39 @@ class TestMppHasNoTokenVersion:
         with pytest.raises(ValidationError):
             MppTokenOptions(**kwargs)
 
-    def test_x402_token_options_stays_assignable_to_mpp_token_options(self):
-        """The compatibility trade this PR makes deliberately: an existing
-        caller passing X402TokenOptions to the MPP mint still type-checks, so
-        the runtime guard in the request builder is what actually enforces the
-        split."""
-        assert issubclass(X402TokenOptions, MppTokenOptions)
+    def test_the_two_option_models_are_siblings(self):
+        """Neither may be a subtype of the other.
+
+        Making the richer type a subclass of the narrower one states the
+        invariant backwards: an X402TokenOptions carrying token_version=3 would
+        satisfy every MppTokenOptions annotation, so `get_mpp_access_token`'s
+        own signature could not reject it and the runtime guard would be the
+        only enforcement left. As siblings a type checker rejects it at the
+        call site, and the runtime guard becomes defence in depth rather than
+        the sole defence."""
+        assert not issubclass(X402TokenOptions, MppTokenOptions)
+        assert not issubclass(MppTokenOptions, X402TokenOptions)
+
         for field in ("token_version", "resource", "http_verb"):
             assert field not in MppTokenOptions.model_fields
             assert field in X402TokenOptions.model_fields
+        # The shared half stays identical, so neither mint loses a field.
+        assert set(MppTokenOptions.model_fields) <= set(X402TokenOptions.model_fields)
+
+    def test_the_runtime_guard_still_holds_for_an_untyped_caller(self):
+        """Annotations are not enforced at runtime, so a caller ignoring the
+        type checker must still be refused rather than silently minting."""
+        from payments_py.x402.token_request import build_x402_token_request_body
+
+        with pytest.raises(PaymentsError) as excinfo:
+            build_x402_token_request_body(
+                "plan-1",
+                token_options=X402TokenOptions(token_version=3),
+                environment_name="sandbox",
+                protocol="mpp",
+            )
+
+        assert excinfo.value.code == "validation"
 
 
 class TestAlreadyUsedError:

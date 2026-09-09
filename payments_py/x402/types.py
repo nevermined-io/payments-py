@@ -454,7 +454,30 @@ class CreateDelegationResponse(BaseModel):
     )
 
 
-class MppTokenOptions(BaseModel):
+class _TokenOptionsBase(BaseModel):
+    """The fields both mints take. Private: callers use one of the two public
+    subclasses, which is the whole point of the split below.
+
+    ``extra="forbid"`` is inherited by both. It is what makes a mistyped or
+    protocol-wrong field a construction-time error instead of a silently
+    dropped one — the failure mode that let ``MppTokenOptions(token_version=3)``
+    quietly discard the value and mint something the caller did not ask for.
+    """
+
+    scheme: Optional[str] = None
+    network: Optional[str] = None
+    delegation_config: Optional[DelegationConfig] = Field(
+        None, alias="delegationConfig"
+    )
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+        extra="forbid",
+    )
+
+
+class MppTokenOptions(_TokenOptionsBase):
     """
     Options for MPP access-token generation.
 
@@ -476,26 +499,19 @@ class MppTokenOptions(BaseModel):
       (``erc4337-scheme.handler.ts``). Sending them would arm a check the
       caller did not ask for while binding nothing.
 
-    ``extra="forbid"`` makes that a construction-time error rather than a
-    silent drop: ``MppTokenOptions(token_version=3)`` raises instead of
-    quietly discarding the field and minting something the caller did not ask
-    for.
+    This is a **sibling** of :class:`X402TokenOptions`, not its base. Making the
+    richer type a subtype of the narrower one would state the invariant
+    backwards: an ``X402TokenOptions`` carrying ``token_version=3`` would
+    satisfy every ``MppTokenOptions`` annotation, so the MPP mint's own
+    signature could not reject it and the runtime guard would be the only
+    enforcement left. As siblings, a type checker rejects it at the call site.
 
     .. warning::
-       ``X402TokenOptions`` inherits that strictness, and this is a **behaviour
-       change on a public constructor**. It previously took pydantic's default
-       ``extra="ignore"``, so ``X402TokenOptions(**some_superset_dict)`` — a
-       config blob, a dict round-tripped from JSON, kwargs forwarded from a
-       wrapper — used to construct fine and now raises ``ValidationError``.
-       Filter the dict to the declared fields, or pass the fields explicitly.
-
-    :class:`X402TokenOptions` subclasses this and adds the binding, so an
-    ``X402TokenOptions`` still satisfies an ``MppTokenOptions`` annotation —
-    the same compatibility trade the TS twin makes with
-    ``Omit<X402TokenOptions, 'tokenVersion'>``. It is a widening subtype and no
-    static checker will flag it, so the real enforcement is the runtime guard
-    in :func:`payments_py.x402.token_request.build_x402_token_request_body`,
-    which refuses the whole binding on an MPP mint.
+       Passing an ``X402TokenOptions`` to ``payments.mpp.get_mpp_access_token``
+       now fails type checking. It still *runs* — pydantic does not enforce
+       annotations, and the shared fields are identical — and it still raises at
+       the mint if it carries any of the v3 binding. Construct an
+       ``MppTokenOptions`` there instead.
 
     Attributes:
         scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
@@ -503,20 +519,8 @@ class MppTokenOptions(BaseModel):
         delegation_config: Delegation configuration for both erc4337 and card-delegation schemes
     """
 
-    scheme: Optional[str] = None
-    network: Optional[str] = None
-    delegation_config: Optional[DelegationConfig] = Field(
-        None, alias="delegationConfig"
-    )
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-        from_attributes=True,
-        extra="forbid",
-    )
-
-
-class X402TokenOptions(MppTokenOptions):
+class X402TokenOptions(_TokenOptionsBase):
     """
     Options for x402 token generation that control scheme and delegation behavior.
 
@@ -530,6 +534,17 @@ class X402TokenOptions(MppTokenOptions):
     token they are not inert — the field lands on the unsigned envelope, binds
     nothing, and its only effect is to switch the backend's
     ``enforceEndpointAllowlist`` on for a check the caller never configured.
+
+    A sibling of :class:`MppTokenOptions` rather than a subclass — see there for
+    why the direction matters.
+
+    .. warning::
+       ``extra="forbid"`` is inherited, and that is a **behaviour change on a
+       public constructor**: this model previously took pydantic's default
+       ``extra="ignore"``, so ``X402TokenOptions(**some_superset_dict)`` — a
+       config blob, a dict round-tripped from JSON, kwargs forwarded from a
+       wrapper — used to construct fine and now raises ``ValidationError``.
+       Filter the dict to the declared fields, or pass them explicitly.
 
     Attributes:
         scheme: The x402 scheme to use (defaults to 'nvm:erc4337')
