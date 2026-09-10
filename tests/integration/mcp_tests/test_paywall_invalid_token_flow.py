@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from payments_py.mcp import build_mcp_integration
 from payments_py.mcp.utils.errors import SettlementFailedError
+from tests.x402_responses import make_settle_response, make_verify_response
 
 
 def mock_decode_access_token(token: str):
@@ -31,30 +32,6 @@ def mock_decode_access_token(token: str):
         },
         "extensions": {},
     }
-
-
-class MockVerifyResult:
-    """Mock verify permissions result."""
-
-    def __init__(self, is_valid: bool, invalid_reason: str = None):
-        self.is_valid = is_valid
-        self.invalid_reason = invalid_reason
-
-
-class MockSettleResult:
-    """Mock settle permissions result."""
-
-    def __init__(
-        self,
-        success: bool,
-        transaction: str = None,
-        credits_redeemed: str = "0",
-        remaining_balance: str = "100",
-    ):
-        self.success = success
-        self.transaction = transaction
-        self.credits_redeemed = credits_redeemed
-        self.remaining_balance = remaining_balance
 
 
 class PaymentsMockWithFailures:
@@ -80,14 +57,16 @@ class PaymentsMockWithFailures:
     async def _verify_permissions(self, **kwargs):
         self.calls.append(("verify_permissions", kwargs))
         if self.failure_mode in ("invalid-token", "not-subscriber"):
-            return MockVerifyResult(is_valid=False, invalid_reason="Payment required")
-        return MockVerifyResult(is_valid=True)
+            return make_verify_response(
+                is_valid=False, invalid_reason="Payment required"
+            )
+        return make_verify_response(is_valid=True)
 
     async def _settle_permissions(self, **kwargs):
         self.calls.append(("settle", kwargs))
         if self.failure_mode == "insufficient-balance":
             raise Exception("Insufficient balance for redemption")
-        return MockSettleResult(
+        return make_settle_response(
             success=True,
             transaction="0xtest123",
             credits_redeemed=str(kwargs.get("max_amount", 0)),

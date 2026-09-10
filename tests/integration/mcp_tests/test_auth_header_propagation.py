@@ -8,6 +8,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from payments_py.mcp.core.auth import PaywallAuthenticator
+from tests.x402_responses import make_verify_response
 
 
 def mock_decode_access_token(token: str):
@@ -32,13 +33,6 @@ def mock_decode_access_token(token: str):
     }
 
 
-class MockVerifyResult:
-    """Mock verify permissions result."""
-
-    def __init__(self, is_valid: bool):
-        self.is_valid = is_valid
-
-
 class PaymentsMockWithTracking:
     """Mock Payments with call tracking for integration tests."""
 
@@ -54,7 +48,7 @@ class PaymentsMockWithTracking:
 
     async def _verify_permissions(self, **kwargs):
         self.calls.append(("verify_permissions", kwargs))
-        return MockVerifyResult(is_valid=True)
+        return make_verify_response(is_valid=True)
 
     def _get_agent_plans_sync(self, agent_id: str):
         """Sync version for non-awaited calls."""
