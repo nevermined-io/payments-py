@@ -126,11 +126,26 @@ not care about it — measured: the same probe produces 28 failures against the
 old doubles and 0 against these.
 
 Do **not** "fix" that by making production code use `getattr(result, "f", None)`
-— that bends the SDK around its fixtures and hides the drift. Note the factories
-reject an unknown or aliased keyword themselves: both models use Pydantic's
-default `extra="ignore"`, so constructing them directly would silently drop a
-typo'd or since-removed field name. `tests/unit/test_x402_response_doubles.py`
-fails if a hand-rolled bag reappears.
+— that bends the SDK around its fixtures and hides the drift.
+
+The factories validate keyword **names** themselves, for both the overrides and
+their own defaults, and the check is **not** redundant with Pydantic:
+
+- **Unknown name** — both models use Pydantic's default `extra="ignore"`, so
+  constructing them directly *silently drops* a typo'd or since-removed field.
+  The model does no enforcing; `_reject_unknown` does.
+- **camelCase alias** — this one is **not** dropped. `populate_by_name=True`
+  means `SettleResponse(creditsRedeemed="5")` is accepted and sets
+  `credits_redeemed`. It is rejected because of the defaults/overrides dict
+  merge: two spellings of one field survive as two keys, and Pydantic resolves
+  the alias in preference to the field name *whatever the dict order* — so a
+  mixed-spelling merge silently discards one of them, in the direction where the
+  override is the loser.
+
+`tests/unit/test_x402_response_doubles.py` fails if a hand-rolled bag reappears,
+and carries its own positive control so it cannot silently stop detecting. Its
+sweep parses `ast.ClassDef` only, so `dict` / `Mock` / `SimpleNamespace` stubs
+are **outside** what it can see — those are on review to catch.
 
 ### Test Markers
 

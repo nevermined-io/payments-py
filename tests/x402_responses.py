@@ -72,13 +72,42 @@ VERIFY_DEFAULTS: Dict[str, Any] = {
 _M = TypeVar("_M", bound=BaseModel)
 
 
-def _build(model: Type[_M], defaults: Dict[str, Any], overrides: Dict[str, Any]) -> _M:
-    unknown = sorted(set(overrides) - set(model.model_fields))
+def _reject_unknown(model: Type[BaseModel], names: Any, what: str) -> None:
+    """Raise unless every name in ``names`` is a field of ``model``.
+
+    Both response models use Pydantic's default ``extra="ignore"``, so a name the
+    model does not know is silently dropped rather than raised — the exact drift
+    this module exists to close, one level up. It has to be caught here.
+
+    Note the check rejects the camelCase wire aliases too, even though
+    ``populate_by_name=True`` means Pydantic would happily *accept*
+    ``creditsRedeemed`` and set ``credits_redeemed`` from it. The reason is the
+    merge below: ``{**defaults, **overrides}`` keys on the string, so two
+    spellings of one field survive as two separate keys, and Pydantic then
+    resolves the alias in preference to the field name *regardless of dict
+    order*. A mixed-spelling merge therefore silently ignores one of the two —
+    and in the direction that matters (an aliased default, an override in the
+    Python name) it is the override that loses. One spelling per field is what
+    makes "overrides win" actually true.
+    """
+    unknown = sorted(set(names) - set(model.model_fields))
     if unknown:
         raise TypeError(
-            f"{model.__name__} has no field(s) {unknown}. "
+            f"{model.__name__} has no field(s) {unknown} ({what}). "
             f"Known fields: {sorted(model.model_fields)}"
         )
+
+
+# Validate the defaults at import time. Without this the factory reintroduces
+# the PR's own defect: a typo'd or renamed default key is dropped by
+# extra="ignore", every double silently degrades to the model's own default, and
+# the suite stays green while testing less than it claims to.
+_reject_unknown(SettleResponse, SETTLE_DEFAULTS, "in SETTLE_DEFAULTS")
+_reject_unknown(VerifyResponse, VERIFY_DEFAULTS, "in VERIFY_DEFAULTS")
+
+
+def _build(model: Type[_M], defaults: Dict[str, Any], overrides: Dict[str, Any]) -> _M:
+    _reject_unknown(model, overrides, "passed as an override")
     return model(**{**defaults, **overrides})
 
 

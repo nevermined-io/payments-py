@@ -11,6 +11,7 @@ These tests pin the two properties that keeps it fixed.
 """
 
 import ast
+import importlib
 import pathlib
 
 import pytest
@@ -54,10 +55,25 @@ class TestFactories:
             factory(no_such_field="x")
 
     def test_alias_spelling_is_rejected(self):
-        # Call sites use the Python names; the camelCase wire alias would be
-        # silently ignored by the model, so reject it loudly.
+        # NOT because the model would ignore it — populate_by_name=True means
+        # SettleResponse(creditsRedeemed="5") is accepted and sets
+        # credits_redeemed. The reason is the defaults/overrides dict merge:
+        # two spellings of one field survive as two keys and Pydantic resolves
+        # the alias in preference to the field name whatever the dict order, so
+        # a mixed-spelling merge silently drops one of them.
         with pytest.raises(TypeError, match="has no field"):
             make_settle_response(creditsRedeemed="5")
+
+    @pytest.mark.parametrize("defaults_name", ["SETTLE_DEFAULTS", "VERIFY_DEFAULTS"])
+    def test_defaults_are_validated_too(self, defaults_name):
+        # The overrides check alone left the factory carrying this PR's own
+        # defect: a typo'd default key is dropped by extra="ignore", every
+        # double degrades to the model's default, and the suite stays green.
+        module = importlib.import_module("tests.x402_responses")
+        model = SettleResponse if defaults_name == "SETTLE_DEFAULTS" else VerifyResponse
+        assert not set(getattr(module, defaults_name)) - set(model.model_fields)
+        with pytest.raises(TypeError, match="has no field"):
+            module._reject_unknown(model, {"remainingBalanceTYPO": 1}, "in defaults")
 
 
 def _self_assigned_attrs(node: ast.ClassDef) -> set[str]:
@@ -85,6 +101,62 @@ def _self_assigned_attrs(node: ast.ClassDef) -> set[str]:
     return attrs
 
 
+def _looks_like_a_double(attrs: set[str]) -> bool:
+    # "success" alone is far too common to key on; require it to look like a
+    # settle response. "is_valid" is specific enough on its own.
+    settle_fields = set(SettleResponse.model_fields)
+    return ("success" in attrs and len(attrs & settle_fields) >= 2) or (
+        "is_valid" in attrs
+    )
+
+
+def _sweep(paths):
+    """Return ``(offenders, scanned)`` over an iterable of .py paths."""
+    offenders, scanned = [], 0
+    for path in sorted(paths):
+        if "__pycache__" in path.parts:
+            continue
+        scanned += 1
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.ClassDef) and _looks_like_a_double(
+                _self_assigned_attrs(node)
+            ):
+                offenders.append(f"{path.name}:{node.lineno} {node.name}")
+    return offenders, scanned
+
+
+HAND_ROLLED_FIXTURES = {
+    "settle": (
+        "class ReintroducedSettleBag:\n"
+        "    def __init__(self, success=True, transaction='0xdead'):\n"
+        "        self.success = success\n"
+        "        self.transaction = transaction\n"
+    ),
+    "verify": (
+        "class ReintroducedVerifyBag:\n"
+        "    def __init__(self, is_valid=True):\n"
+        "        self.is_valid = is_valid\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(HAND_ROLLED_FIXTURES))
+def test_sweep_detects_a_hand_rolled_double(tmp_path, shape):
+    """Positive control: the detector below must actually detect.
+
+    Without this, neutering ``_self_assigned_attrs`` to ``return set()`` leaves
+    the whole suite green — a guard that has silently stopped guarding is
+    indistinguishable from a clean tree, which is the failure mode this PR is
+    about, one level up again.
+    """
+    probe = tmp_path / "probe.py"
+    probe.write_text(HAND_ROLLED_FIXTURES[shape])
+    offenders, scanned = _sweep([probe])
+    assert scanned == 1
+    assert len(offenders) == 1, offenders
+    assert "Reintroduced" in offenders[0]
+
+
 def test_no_hand_rolled_settle_or_verify_doubles():
     """No test class may stand in for a settle/verify response by hand.
 
@@ -95,24 +167,10 @@ def test_no_hand_rolled_settle_or_verify_doubles():
     If this fails, use ``make_settle_response`` / ``make_verify_response`` from
     ``tests/x402_responses.py`` instead of declaring a class.
     """
-    settle_fields = set(SettleResponse.model_fields)
-    offenders = []
+    offenders, scanned = _sweep(TESTS_ROOT.rglob("*.py"))
 
-    for path in sorted(TESTS_ROOT.rglob("*.py")):
-        if "__pycache__" in path.parts:
-            continue
-        for node in ast.walk(ast.parse(path.read_text())):
-            if not isinstance(node, ast.ClassDef):
-                continue
-            attrs = _self_assigned_attrs(node)
-            # "success" alone is far too common to key on; require it to look
-            # like a settle response. "is_valid" is specific enough on its own.
-            if ("success" in attrs and len(attrs & settle_fields) >= 2) or (
-                "is_valid" in attrs
-            ):
-                rel = path.relative_to(TESTS_ROOT.parent)
-                offenders.append(f"{rel}:{node.lineno} {node.name} {sorted(attrs)}")
-
+    # A path change that walked the wrong tree would find zero files and pass.
+    assert scanned > 50, f"only scanned {scanned} files under {TESTS_ROOT}"
     assert not offenders, (
         "Hand-rolled settle/verify response double(s) found; build the real "
         "model with tests.x402_responses instead (payments-py#273):\n  "

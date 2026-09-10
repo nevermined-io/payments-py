@@ -58,7 +58,11 @@ class PaymentsMockWithFailures:
         self.calls.append(("verify_permissions", kwargs))
         if self.failure_mode in ("invalid-token", "not-subscriber"):
             return make_verify_response(
-                is_valid=False, invalid_reason="Payment required"
+                is_valid=False,
+                invalid_reason="Payment required",
+                # A rejected verify identifies no payer; VERIFY_DEFAULTS is the
+                # successful shape, so clear it rather than inherit it.
+                payer=None,
             )
         return make_verify_response(is_valid=True)
 

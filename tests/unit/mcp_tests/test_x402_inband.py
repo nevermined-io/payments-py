@@ -61,15 +61,19 @@ def _settlement(success=True, **overrides):
     ``order_tx`` / ``error_reason`` are deliberately left unset on the success
     shape so the receipt assertions still exercise ``exclude_none``.
     """
-    return make_settle_response(
-        success=success,
-        transaction="0xabc" if success else "",
-        credits_redeemed="5",
-        remaining_balance="100",
-        payer="0x123",
-        **({} if success else {"error_reason": "insufficient credits"}),
-        **overrides,
-    )
+    shape = {
+        "success": success,
+        "transaction": "0xabc" if success else "",
+        "credits_redeemed": "5",
+        "remaining_balance": "100",
+        "payer": "0x123",
+    }
+    if not success:
+        shape["error_reason"] = "insufficient credits"
+    # Merge rather than splat: `**shape, **overrides` is a duplicate-keyword
+    # TypeError for any of the five names above, i.e. for 5 of the model's 8
+    # fields — the caller could only override the three it did not set.
+    return make_settle_response(**{**shape, **overrides})
 
 
 class _FakeRequestContext:

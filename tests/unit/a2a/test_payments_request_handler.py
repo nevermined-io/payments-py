@@ -22,6 +22,7 @@ from a2a.types import (
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import HttpRequestContext
 from payments_py.common.payments_error import PaymentsError
+from tests.x402_responses import make_verify_response
 
 
 class DummyExecutor:  # noqa: D101
@@ -679,9 +680,7 @@ async def test_validate_request_captures_agent_request_attributes():  # noqa: D4
     """Test that validate_request sets latest_agent_request and latest_agent_request_id."""
 
     # Mock verify_permissions result
-    verify_result = SimpleNamespace(
-        is_valid=True,
-        invalid_reason=None,
+    verify_result = make_verify_response(
         agent_request={"agent_request_id": "req-xyz", "some": "data"},
         agent_request_id="req-xyz",
     )
