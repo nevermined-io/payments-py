@@ -106,6 +106,32 @@ poetry run pytest tests/unit/test_example.py -v
 poetry run pytest --cov=payments_py --cov-report=term-missing
 ```
 
+### Never hand-roll a settle/verify test double
+
+Tests that stub `facilitator.verify_permissions` / `settle_permissions` must
+build the **real** model via `tests/x402_responses.py`, never an attribute bag:
+
+```python
+from tests.x402_responses import make_settle_response, make_verify_response
+
+facilitator.settle_permissions = lambda **k: make_settle_response(transaction="0xabc")
+```
+
+A hand-rolled class only ever carries the fields production code read the day it
+was written. All 12 such doubles in this suite had drifted from the model
+(#273), and adding two fields to `SettleResponse` turned **28 unrelated tests
+red** with `AttributeError` (#272). Building the model means every field exists,
+populated by the model's own defaults, so a new field is inert in tests that do
+not care about it — measured: the same probe produces 28 failures against the
+old doubles and 0 against these.
+
+Do **not** "fix" that by making production code use `getattr(result, "f", None)`
+— that bends the SDK around its fixtures and hides the drift. Note the factories
+reject an unknown or aliased keyword themselves: both models use Pydantic's
+default `extra="ignore"`, so constructing them directly would silently drop a
+typo'd or since-removed field name. `tests/unit/test_x402_response_doubles.py`
+fails if a hand-rolled bag reappears.
+
 ### Test Markers
 
 - No marker: Unit and integration tests (fast)
