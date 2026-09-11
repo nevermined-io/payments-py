@@ -104,6 +104,18 @@ def _self_assigned_attrs(node: ast.ClassDef) -> set[str]:
 def _looks_like_a_double(attrs: set[str]) -> bool:
     # "success" alone is far too common to key on; require it to look like a
     # settle response. "is_valid" is specific enough on its own.
+    #
+    # ⚠️ KNOWN BLIND SPOT, deliberate. Because "success" is itself a field of
+    # SettleResponse, the `>= 2` below means "success plus at least one OTHER
+    # settle field" — so a class carrying ONLY `success` is not detected. That
+    # is asymmetric with `is_valid`, which is caught on its own, and it is the
+    # price of not flagging every unrelated class in the tree that happens to
+    # have a `success` attribute. Such a bag is also close to unusable in
+    # practice: production reads `.transaction` / `.credits_redeemed` off a
+    # settle result and would AttributeError on the first access.
+    #
+    # Widening this predicate is NOT the fix — measure the false positives
+    # first. The other blind spots are listed in the module docstring.
     settle_fields = set(SettleResponse.model_fields)
     return ("success" in attrs and len(attrs & settle_fields) >= 2) or (
         "is_valid" in attrs
