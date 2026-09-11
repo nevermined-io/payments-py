@@ -280,9 +280,16 @@ class PaywallDecorator:
                 "subscriberAddress": auth_result.get("subscriber_address"),
                 "success": credits_result.get("success", False),
             }
-            if credits_result.get("billingModel"):
+            # `is not None`, not truthiness: the comment above promises a consumer
+            # can tell "absent" from "present and empty", and a truthiness test
+            # collapses those two — an empty string would be dropped exactly like
+            # a missing key, which is the opposite of the stated distinction.
+            # Inert today (billingModel is an enum-like non-empty string and
+            # orderTx is either None or a real charge reference), and correct if
+            # that ever changes.
+            if credits_result.get("billingModel") is not None:
                 nvm_meta["billingModel"] = credits_result["billingModel"]
-            if credits_result.get("orderTx"):
+            if credits_result.get("orderTx") is not None:
                 nvm_meta["orderTx"] = credits_result["orderTx"]
             if credits_result.get("errorReason"):
                 nvm_meta["errorReason"] = credits_result["errorReason"]

@@ -290,6 +290,40 @@ class TestPaywallSettlementReceipt:
         assert nvm["creditsRedeemed"] == "0"
         assert nvm["remainingBalance"] == "0"
 
+    @pytest.mark.asyncio
+    async def test_credits_receipt_carries_the_explicit_discriminator(self):
+        """The `credits` value itself, which nothing else in this class covers.
+
+        The two tests above cover ``billing_model`` ABSENT (read as credits) and
+        ``"pay-as-you-go"``. Neither asserts that an explicit ``"credits"``
+        actually reaches ``nevermined/credits`` — so the PR introducing the
+        discriminator left the one value its own docs example shows untested.
+
+        Low functional risk, since the emit check is value-agnostic — which is
+        exactly why it needs a test rather than an argument: nothing would have
+        caught a regression that dropped only this value.
+        """
+        decorator = _make_decorator(
+            _settlement(
+                success=True,
+                transaction="0xabc",
+                credits_redeemed="5",
+                remaining_balance="95",
+                billing_model="credits",
+            )
+        )
+
+        def handler(args, extra, ctx):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+        protected = decorator.protect(handler, {"name": "premium", "kind": "tool"})
+        result = await protected({"q": "x"}, {"requestInfo": {"headers": {}}})
+
+        nvm = result["_meta"][NEVERMINED_CREDITS_META_KEY]
+        assert nvm["billingModel"] == "credits"
+        assert nvm["creditsRedeemed"] == "5"
+        assert nvm["remainingBalance"] == "95"
+
 
 # ---------------------------------------------------------------------------
 # (v) settlement failure after execution
