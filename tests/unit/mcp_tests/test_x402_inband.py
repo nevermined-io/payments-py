@@ -34,6 +34,7 @@ from payments_py.mcp.core.server_manager import (
     McpServerManager,
     _get_mcp_server_class,
 )
+from tests.x402_responses import make_settle_response, make_verify_response
 
 # ---------------------------------------------------------------------------
 # Helpers / fakes
@@ -54,48 +55,25 @@ SAMPLE_PAYLOAD = {
 }
 
 
-class _FakeSettlement:
-    """Mimics the facilitator settlement model (pydantic-like)."""
+def _settlement(success=True, **overrides):
+    """A real ``SettleResponse`` shaped the way the facilitator answers here.
 
-    def __init__(
-        self,
-        success=True,
-        transaction="0xabc",
-        credits_redeemed="5",
-        remaining_balance="100",
-        billing_model=None,
-        order_tx=None,
-    ):
-        self.success = success
-        self.transaction = transaction
-        self.credits_redeemed = credits_redeemed
-        self.remaining_balance = remaining_balance
-        # The real SettleResponse always carries these; a double that cannot
-        # express them cannot exercise the pay-as-you-go shape at all.
-        self.billing_model = billing_model
-        self.order_tx = order_tx
-
-    def model_dump(self, by_alias=False, exclude_none=False):
-        data = {
-            "success": self.success,
-            "transaction": self.transaction,
-            "network": "eip155:84532",
-            "payer": "0x123",
-            ("billingModel" if by_alias else "billing_model"): self.billing_model,
-            ("creditsRedeemed" if by_alias else "credits_redeemed"): (
-                self.credits_redeemed
-            ),
-            ("remainingBalance" if by_alias else "remaining_balance"): (
-                self.remaining_balance
-            ),
-            # Null-valued fields the real model carries — used to exercise
-            # exclude_none in the spec receipt.
-            ("orderTx" if by_alias else "order_tx"): self.order_tx,
-            ("errorReason" if by_alias else "error_reason"): None,
-        }
-        if exclude_none:
-            data = {k: v for k, v in data.items() if v is not None}
-        return data
+    ``order_tx`` / ``error_reason`` are deliberately left unset on the success
+    shape so the receipt assertions still exercise ``exclude_none``.
+    """
+    shape = {
+        "success": success,
+        "transaction": "0xabc" if success else "",
+        "credits_redeemed": "5",
+        "remaining_balance": "100",
+        "payer": "0x123",
+    }
+    if not success:
+        shape["error_reason"] = "insufficient credits"
+    # Merge rather than splat: `**shape, **overrides` is a duplicate-keyword
+    # TypeError for any of the five names above, i.e. for 5 of the model's 8
+    # fields — the caller could only override the three it did not set.
+    return make_settle_response(**{**shape, **overrides})
 
 
 class _FakeRequestContext:
@@ -248,7 +226,7 @@ class TestReadPaymentPayload:
 class TestPaywallSettlementReceipt:
     @pytest.mark.asyncio
     async def test_attaches_spec_and_nevermined_meta(self):
-        decorator = _make_decorator(_FakeSettlement(success=True))
+        decorator = _make_decorator(_settlement(success=True))
 
         def handler(args, extra, ctx):
             return {"content": [{"type": "text", "text": "ok"}]}
@@ -287,7 +265,7 @@ class TestPaywallSettlementReceipt:
         See nevermined-io/nvm-monorepo#2999.
         """
         decorator = _make_decorator(
-            _FakeSettlement(
+            _settlement(
                 success=True,
                 transaction="pi_3U6tgrBYvSRKcV421ehH4bnX",
                 credits_redeemed="0",
@@ -321,7 +299,7 @@ class TestPaywallSettlementReceipt:
 class TestSettlementFailureSuppressesContent:
     @pytest.mark.asyncio
     async def test_raises_settlement_failed_and_dispatch_suppresses_content(self):
-        decorator = _make_decorator(_FakeSettlement(success=False))
+        decorator = _make_decorator(_settlement(success=False))
 
         def handler(args, extra, ctx):
             return {"content": [{"type": "text", "text": "secret-paid-result"}]}
@@ -458,7 +436,7 @@ class TestAuthBuildsPaymentRequired:
 class TestFreeCallNoReceipt:
     @pytest.mark.asyncio
     async def test_no_settlement_receipt_for_free_call(self):
-        decorator = _make_decorator(_FakeSettlement(success=True))
+        decorator = _make_decorator(_settlement(success=True))
         # Zero credits → no settlement happens.
         decorator._credits.resolve = MagicMock(return_value=0)
 
@@ -479,18 +457,11 @@ class TestFreeCallNoReceipt:
 # ---------------------------------------------------------------------------
 
 
-class _DispatchVerifyResult:
-    def __init__(self, is_valid=True):
-        self.is_valid = is_valid
-        self.agent_request = None
-        self.agent_request_id = None
-
-
 def _make_dispatch_payments(settlement):
     payments = MagicMock()
     payments.environment_name = "staging_sandbox"
     payments.facilitator.verify_permissions = MagicMock(
-        return_value=_DispatchVerifyResult(True)
+        return_value=make_verify_response(is_valid=True)
     )
     payments.facilitator.settle_permissions = MagicMock(return_value=settlement)
     payments.agents.get_agent_plans = MagicMock(
@@ -561,7 +532,7 @@ async def _invoke_call_tool(manager, *, inband_payload=None, session_headers=Non
 class TestDispatcherInBand:
     @pytest.mark.asyncio
     async def test_inband_payload_reencoded_to_bearer(self):
-        payments = _make_dispatch_payments(_FakeSettlement(success=True))
+        payments = _make_dispatch_payments(_settlement(success=True))
         manager, recorded = await _build_dispatch_manager(payments)
 
         result = await _invoke_call_tool(manager, inband_payload=SAMPLE_PAYLOAD)
@@ -573,7 +544,7 @@ class TestDispatcherInBand:
 
     @pytest.mark.asyncio
     async def test_payment_required_converted_to_error_result(self):
-        payments = _make_dispatch_payments(_FakeSettlement(success=False))
+        payments = _make_dispatch_payments(_settlement(success=False))
         manager, _ = await _build_dispatch_manager(payments)
 
         result = await _invoke_call_tool(manager, inband_payload=SAMPLE_PAYLOAD)
@@ -589,7 +560,7 @@ class TestDispatcherInBand:
     @pytest.mark.asyncio
     async def test_header_fallback_when_no_inband_payload(self):
         logs = []
-        payments = _make_dispatch_payments(_FakeSettlement(success=True))
+        payments = _make_dispatch_payments(_settlement(success=True))
         manager, recorded = await _build_dispatch_manager(payments, on_log=logs.append)
 
         token = encode_access_token(SAMPLE_PAYLOAD)
@@ -612,7 +583,7 @@ class TestDispatcherInBand:
         # header and forward the rest of the request context to the user handler
         # (tenant/tracing/custom headers), mirroring the TS sibling. Replacing
         # `extra` wholesale silently dropped them on the in-band transport.
-        payments = _make_dispatch_payments(_FakeSettlement(success=True))
+        payments = _make_dispatch_payments(_settlement(success=True))
         manager, recorded = await _build_dispatch_manager(payments)
 
         result = await _invoke_call_tool(
@@ -673,7 +644,7 @@ class TestSettleFallbackRetry:
     async def test_fallback_uses_http_url_not_verb(self):
         http_url = "https://api.example.com/tools/premium"
         settle_mock = MagicMock(
-            side_effect=[RuntimeError("primary boom"), _FakeSettlement(success=True)]
+            side_effect=[RuntimeError("primary boom"), _settlement(success=True)]
         )
         payments = MagicMock()
         payments.environment_name = "staging_sandbox"
@@ -781,7 +752,7 @@ class TestAgentIdOptional:
         # A server configured with planId and NO agentId must NOT raise the
         # misconfiguration error; verify/settle run plan-only (the facilitator is
         # plan-centric — proven against staging).
-        decorator = _make_decorator(_FakeSettlement(success=True))
+        decorator = _make_decorator(_settlement(success=True))
         decorator.config = {"planId": "plan-123", "agentId": "", "serverName": "srv"}
 
         def handler(args, extra, ctx):
@@ -797,7 +768,7 @@ class TestAgentIdOptional:
     @pytest.mark.asyncio
     async def test_missing_plan_id_raises_misconfiguration(self):
         # No planId anywhere (config or per-tool) -> Misconfiguration "missing planId".
-        decorator = _make_decorator(_FakeSettlement(success=True))
+        decorator = _make_decorator(_settlement(success=True))
         decorator.config = {"planId": "", "agentId": "agent-9", "serverName": "srv"}
 
         def handler(args, extra, ctx):

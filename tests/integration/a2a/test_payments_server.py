@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from payments_py.a2a.server import PaymentsA2AServer
 from payments_py.a2a.types import AgentCard
+from tests.x402_responses import make_settle_response, make_verify_response
 
 
 # Mock decode_access_token to return x402-compliant token structure
@@ -59,30 +60,13 @@ def agent_card() -> AgentCard:  # noqa: D401
     }
 
 
-class VerifyResult:
-    """Mock verify permissions result."""
-
-    def __init__(self, is_valid=True, payer=None):
-        self.is_valid = is_valid
-        self.payer = payer
-
-
-class SettleResult:
-    """Mock settle permissions result."""
-
-    def __init__(self, success=True, transaction="0x123", credits_redeemed="1"):
-        self.success = success
-        self.transaction = transaction
-        self.credits_redeemed = credits_redeemed
-
-
 @pytest.fixture()  # noqa: D401
 def dummy_payments(monkeypatch):  # noqa: D401
     # Stub verify_permissions & settle_permissions to avoid HTTP (x402 flow)
     payments = SimpleNamespace(
         facilitator=SimpleNamespace(
-            verify_permissions=lambda **k: VerifyResult(is_valid=True),
-            settle_permissions=lambda **k: SettleResult(
+            verify_permissions=lambda **k: make_verify_response(is_valid=True),
+            settle_permissions=lambda **k: make_settle_response(
                 success=True,
                 transaction="0x123",
                 credits_redeemed="1",

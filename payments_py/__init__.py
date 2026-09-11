@@ -58,7 +58,9 @@ from payments_py.x402 import (
     X402TokenAPI,
     # Delegation
     DelegationConfig,
+    MppTokenOptions,
     X402TokenOptions,
+    X402TokenVersion,
     X402SchemeType,
     X402_SCHEME_NETWORKS,
     get_default_network,
@@ -80,7 +82,18 @@ from payments_py.utils import (
     get_ai_hub_open_api_url,
     get_service_host_from_endpoints,
 )
-from payments_py.x402.token import decode_access_token
+from payments_py.x402.token import (
+    decode_access_token,
+    detect_access_token_version,
+    is_single_use_access_token,
+    X402_TOKEN_VERSION_V2,
+    X402_TOKEN_VERSION_V3,
+)
+from payments_py.x402.errors import (
+    AccessTokenAlreadyUsedError,
+    X402_TOKEN_ALREADY_USED_CODE,
+    is_access_token_already_used,
+)
 
 # Import plan utility functions
 from payments_py.plans import (
@@ -157,6 +170,13 @@ __all__ = [
     # X402 APIs
     "FacilitatorAPI",
     "X402TokenAPI",
+    "X402_TOKEN_VERSION_V2",
+    "X402_TOKEN_VERSION_V3",
+    "detect_access_token_version",
+    "is_single_use_access_token",
+    "AccessTokenAlreadyUsedError",
+    "X402_TOKEN_ALREADY_USED_CODE",
+    "is_access_token_already_used",
     # X402 Types
     "PaymentRequirements",
     "NvmPaymentRequiredResponse",
@@ -171,7 +191,9 @@ __all__ = [
     "NeverminedFacilitator",
     # Delegation
     "DelegationConfig",
+    "MppTokenOptions",
     "X402TokenOptions",
+    "X402TokenVersion",
     "X402SchemeType",
     "X402_SCHEME_NETWORKS",
     "get_default_network",

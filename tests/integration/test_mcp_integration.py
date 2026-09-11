@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import patch
 
 from payments_py.mcp import build_mcp_integration
+from tests.x402_responses import make_settle_response, make_verify_response
 
 # Mock decode_access_token to return x402-compliant token structure
 mock_decode_token = lambda token: {
@@ -24,34 +25,6 @@ mock_decode_token = lambda token: {
 }
 
 
-class VerifyResult:
-    """Mock verify permissions result."""
-
-    def __init__(self, is_valid=True):
-        self.is_valid = is_valid
-
-
-class SettleResult:
-    """Mock settle permissions result."""
-
-    def __init__(
-        self,
-        success=True,
-        transaction="0x123",
-        credits_redeemed="1",
-        remaining_balance="100",
-        billing_model=None,
-        order_tx=None,
-    ):
-        self.success = success
-        self.transaction = transaction
-        self.credits_redeemed = credits_redeemed
-        self.remaining_balance = remaining_balance
-        # The real SettleResponse always carries these.
-        self.billing_model = billing_model
-        self.order_tx = order_tx
-
-
 class PaymentsMinimal:
     def __init__(self, subscriber=True):
         class Facilitator:
@@ -64,7 +37,7 @@ class PaymentsMinimal:
             ):
                 if not self._subscriber:
                     raise Exception("Not a subscriber")
-                return VerifyResult(is_valid=True)
+                return make_verify_response(is_valid=True)
 
             def settle_permissions(
                 self,
@@ -73,7 +46,7 @@ class PaymentsMinimal:
                 x402_access_token=None,
                 agent_request_id=None,
             ):
-                return SettleResult(
+                return make_settle_response(
                     success=True, transaction="0x123", credits_redeemed=str(max_amount)
                 )
 
@@ -146,7 +119,7 @@ def test_context_integration_with_real_like_data():
                 ):
                     if not self._subscriber:
                         raise Exception("Not a subscriber")
-                    return VerifyResult(is_valid=True)
+                    return make_verify_response(is_valid=True)
 
                 def settle_permissions(
                     self,
@@ -155,7 +128,7 @@ def test_context_integration_with_real_like_data():
                     x402_access_token=None,
                     agent_request_id=None,
                 ):
-                    return SettleResult(
+                    return make_settle_response(
                         success=True,
                         transaction=f"0x{hash(f'{max_amount}') % 1000000000:x}",
                         credits_redeemed=str(max_amount),

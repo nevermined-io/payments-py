@@ -76,6 +76,7 @@ from payments_py.x402.fastapi.mpp_support import (
     extract_credential,
     resolve_mpp_option,
 )
+from payments_py.x402.errors import is_access_token_already_used
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
 from payments_py.x402.types import (
@@ -383,6 +384,15 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         # visible response stays at the original 2xx - the agent already
         # delivered the value; an internal settle reconciliation failure
         # is not their problem.
+        #
+        # The try is narrowed to the settle call alone. Everything after it —
+        # draining the body, building the response, the on_after_settle hook —
+        # runs when settlement has ALREADY SUCCEEDED, so a failure there must
+        # never reach the spent-token branch below: that branch withholds the
+        # body, and withholding after a successful burn charges the buyer and
+        # gives them nothing. `on_after_settle` raising
+        # AccessTokenAlreadyUsedError is not hypothetical for an agent that pays
+        # a downstream service from that hook.
         try:
             settlement = self.payments.facilitator.settle_permissions(
                 payment_required=payment_required,
@@ -390,7 +400,68 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                 max_amount=str(credits_to_charge),
                 agent_request_id=payment_context.agent_request_id,
             )
+        except Exception as settle_error:
+            # Discriminated by wire CODE, not by class. `self.payments` is
+            # caller-supplied, so a BCK.X402.0059 raised by a second copy of
+            # this package — or rebuilt across a process or serialization
+            # boundary — arrives as a plain PaymentsError and would otherwise
+            # fall through to the "serve it anyway" branch, handing over the
+            # body for free. That is the exact case
+            # `is_access_token_already_used` was written for.
+            if is_access_token_already_used(settle_error):
+                # A SPENT v3 token is not a settle failure — it is an unpaid
+                # request, and it must not be served.
+                #
+                # The backend spends a v3 nonce at SETTLE only; verify() never
+                # consults the replay store, deliberately, because verify is a
+                # dry run a seller may legitimately repeat. So a replayed v3
+                # token passes verification, the handler runs, and the seller
+                # only learns the token was spent here — after the work is done.
+                # Returning the generated body (as the transient branch does)
+                # would hand out the agent's output for free, repeatable without
+                # limit: mint one v3 token, settle it once, replay it forever.
+                # v2 could not do this, because settle always burned.
+                #
+                # So this branch overrides the "the agent already delivered the
+                # value" rule. That rule is right for a TRANSIENT failure, where
+                # the buyer is not at fault and the seller can reconcile later;
+                # it is wrong here, where the failure is deterministic, the
+                # buyer's own doing, and recurs on every replay.
+                logger.error(
+                    "x402 settlement refused: the access token was already "
+                    "spent (BCK.X402.0059) — the response is withheld to avoid "
+                    "serving a replayed token for free: %s",
+                    settle_error,
+                )
+                # Through the hook like every other 402 in this middleware: a
+                # seller who wired it for metrics or a custom body must not be
+                # skipped on the one 402 that means "work delivered, unpaid" —
+                # the signal that someone is replaying tokens against them.
+                if self.options.on_payment_error:
+                    custom_response = await self.options.on_payment_error(
+                        settle_error, request
+                    )
+                    if custom_response:
+                        return custom_response
+                return _send_payment_required(
+                    payment_required,
+                    "This x402 access token was already used. A v3 token is "
+                    "single-use and is consumed by its first settle — mint a "
+                    "new access token for each paid request.",
+                )
 
+            # Log but don't fail the response if settlement fails.
+            #
+            # Scoped to failures the buyer is not responsible for — a backend
+            # outage, a timeout, a reconciliation error. The agent already
+            # delivered the value, so punishing the buyer for our infrastructure
+            # would be wrong. A spent token is NOT one of these; see above.
+            logger.error("x402 settlement failed: %s", settle_error)
+            return response
+
+        # Settlement succeeded past this point, so the buyer has PAID. Nothing
+        # below may withhold the body, whatever it raises.
+        try:
             # Add settlement response header (base64-encoded per x402 spec)
             settlement_json = settlement.model_dump_json(by_alias=True)
             settlement_base64 = base64.b64encode(settlement_json.encode()).decode()
@@ -408,19 +479,35 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                 media_type=response.media_type,
             )
             new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = settlement_base64
+        except Exception as receipt_error:
+            # The receipt header could not be attached. The burn committed, so
+            # the buyer is owed the answer — but `response`'s body_iterator may
+            # already be partially drained, which is why this is reported rather
+            # than silently returning a possibly truncated body.
+            logger.error(
+                "x402 settled but the receipt header could not be attached: %s",
+                receipt_error,
+            )
+            return response
 
-            # Hook: after settlement
-            if self.options.on_after_settle:
+        # Hook: after settlement. Observational, and deliberately outside the
+        # response construction: a hook that raises must not cost the buyer the
+        # answer they already paid for. In particular it must never reach the
+        # spent-token branch above — for an agent that pays a downstream service
+        # from this hook, AccessTokenAlreadyUsedError here is plausible, and
+        # withholding then would charge the buyer and hand them nothing.
+        if self.options.on_after_settle:
+            try:
                 await self.options.on_after_settle(
                     request, credits_to_charge, settlement
                 )
+            except Exception as hook_error:
+                logger.error(
+                    "x402 on_after_settle hook failed after a successful burn: " "%s",
+                    hook_error,
+                )
 
-            return new_response
-
-        except Exception as settle_error:
-            # Log but don't fail the response if settlement fails
-            logger.error("x402 settlement failed: %s", settle_error)
-            return response
+        return new_response
 
 
 def payment_middleware(

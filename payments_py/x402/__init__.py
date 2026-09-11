@@ -61,7 +61,9 @@ from .types import (
     DelegationConfig,
     CreateDelegationPayload,
     CreateDelegationResponse,
+    MppTokenOptions,
     X402TokenOptions,
+    X402TokenVersion,
 )
 from .helpers import build_payment_required, build_payment_required_for_plans
 from .networks import SupportedNetworks
@@ -77,7 +79,19 @@ from .facilitator import NeverminedFacilitator
 from .facilitator_api import FacilitatorAPI
 from .delegation_api import DelegationAPI, DelegationSummary, PaymentMethodSummary
 from .a2a import X402A2AUtils, X402Metadata, PaymentStatus as X402PaymentStatus
-from .token import X402TokenAPI, decode_access_token
+from .token import (
+    X402TokenAPI,
+    X402_TOKEN_VERSION_V2,
+    X402_TOKEN_VERSION_V3,
+    decode_access_token,
+    detect_access_token_version,
+    is_single_use_access_token,
+)
+from .errors import (
+    AccessTokenAlreadyUsedError,
+    X402_TOKEN_ALREADY_USED_CODE,
+    is_access_token_already_used,
+)
 
 # V2 extended types
 from .types_v2 import (
@@ -108,7 +122,9 @@ __all__ = [
     "DelegationConfig",
     "CreateDelegationPayload",
     "CreateDelegationResponse",
+    "MppTokenOptions",
     "X402TokenOptions",
+    "X402TokenVersion",
     # Helper functions
     "build_payment_required",
     "build_payment_required_for_plans",
@@ -131,6 +147,14 @@ __all__ = [
     "FacilitatorAPI",
     "X402TokenAPI",
     "decode_access_token",
+    # v3 access tokens (single-use, seller/resource-bound)
+    "X402_TOKEN_VERSION_V2",
+    "X402_TOKEN_VERSION_V3",
+    "detect_access_token_version",
+    "is_single_use_access_token",
+    "AccessTokenAlreadyUsedError",
+    "X402_TOKEN_ALREADY_USED_CODE",
+    "is_access_token_already_used",
     # Delegation API
     "DelegationAPI",
     "DelegationSummary",

@@ -18,6 +18,7 @@ from payments_py.a2a.decorator import (
     _DecoratorExecutor,
     a2a_requires_payment,
 )
+from tests.x402_responses import make_settle_response, make_verify_response
 
 
 # ---------------------------------------------------------------------------
@@ -51,8 +52,8 @@ class _SpyEventQueue(EventQueue):
 def _make_payments():
     return SimpleNamespace(
         facilitator=SimpleNamespace(
-            verify_permissions=Mock(return_value=SimpleNamespace(is_valid=True)),
-            settle_permissions=Mock(return_value={"success": True}),
+            verify_permissions=Mock(return_value=make_verify_response(is_valid=True)),
+            settle_permissions=Mock(return_value=make_settle_response()),
         ),
     )
 
