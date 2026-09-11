@@ -252,21 +252,93 @@ class VerifyResponse(BaseModel):
     )
 
 
+X402BillingModel = Literal["credits", "pay-as-you-go"]
+"""How a settled request was priced (Nevermined extension).
+
+- ``credits`` — the plan holds a credit balance and this settle redeemed from it.
+- ``pay-as-you-go`` — the plan holds no balance; the request is priced
+  individually and charged directly (a card PSP on fiat rails, an on-chain order
+  on crypto rails).
+
+Compare against this alias, but note that
+:attr:`SettleResponse.billing_model` is typed ``str``, like ``network`` and
+``scheme`` elsewhere in this module: a billing model this SDK release has not
+heard of must not turn a settle that charged the buyer into a
+``ValidationError``.
+"""
+
+
 class SettleResponse(BaseModel):
     """
     x402 Settle Response - per x402 facilitator spec.
 
     @see https://github.com/coinbase/x402/blob/main/specs/x402-specification-v2.md
 
+    **Deciding whether the buyer was charged.** ``success`` alone tells you the
+    settle worked. What to check *in addition* depends on :attr:`billing_model`:
+
+    - ``credits`` — ``response.success and int(response.credits_redeemed or "0") > 0``.
+    - ``pay-as-you-go`` — ``response.success`` plus a non-empty ``order_tx``
+      (fiat rails) or ``transaction`` (crypto rails). ``credits_redeemed`` and
+      ``remaining_balance`` are always the string ``"0"`` on this billing model
+      and carry no information.
+
+    Do not gate on ``credits_redeemed`` without reading ``billing_model`` first:
+    on a pay-as-you-go plan ``credits_redeemed > 0`` can never hold, so a real
+    charge reads as a decline — and retrying a card charge that already succeeded
+    is the one thing to avoid, because repeated attempts feed issuer fraud
+    scoring.
+
+    Mind the type as well: these fields are **strings**. ``"0"`` is truthy while
+    ``int("0") > 0`` is false, so two plausible-looking checks disagree.
+
+    If ``billing_model`` is **absent**, you are talking to a Nevermined API that
+    predates the discriminator: apply the ``credits`` rule, and never read a
+    missing discriminator as pay-as-you-go.
+
+    Example::
+
+        settled = response.success and (
+            bool(response.order_tx or response.transaction)
+            if response.billing_model == "pay-as-you-go"
+            else int(response.credits_redeemed or "0") > 0
+        )
+
     Attributes:
         success: Whether settlement was successful
         error_reason: Reason for settlement failure (only present if success is false)
         payer: Address of the payer's wallet
-        transaction: Blockchain transaction hash (empty string if settlement failed)
-        network: Blockchain network identifier in CAIP-2 format
-        credits_redeemed: Number of credits redeemed (Nevermined extension)
-        remaining_balance: Subscriber's remaining balance (Nevermined extension)
-        order_tx: Transaction hash of the order operation if auto top-up occurred (Nevermined extension)
+        transaction: Blockchain transaction hash (empty string if settlement
+            failed). On crypto pay-as-you-go plans this is also the reference for
+            the per-request charge.
+        network: Network identifier. The discriminator is the rail, not the
+            billing model: for crypto rails (``nvm:erc4337``) it is the CAIP-2
+            chain id (``eip155:84532``) under both billing models; for fiat
+            card-delegation rails it is the settling payment provider
+            (``stripe``, ``braintree``, ``visa``), not a CAIP-2 value.
+        billing_model: Which billing model this settle was priced under
+            (Nevermined extension), one of :data:`X402BillingModel`. Reported
+            whether or not the settle succeeded — so check ``success`` before
+            treating it as evidence of a charge. It is absent entirely against a
+            Nevermined API that predates the discriminator, which is why it is
+            optional; treat that case as ``credits``. Read it before the two
+            credit fields; see the per-model criterion above.
+        credits_redeemed: Number of credits redeemed (Nevermined extension).
+            Always the string ``"0"`` for ``billing_model == "pay-as-you-go"``
+            plans, which hold no credit balance — including on a settle that
+            charged the buyer successfully.
+        remaining_balance: Subscriber's remaining credit balance (Nevermined
+            extension). Always the string ``"0"`` for
+            ``billing_model == "pay-as-you-go"`` plans — the per-request charge
+            is referenced by ``order_tx`` (fiat) or ``transaction`` (crypto), not
+            here.
+        order_tx: Reference for the order or per-request charge, if one occurred
+            (Nevermined extension). On fiat pay-as-you-go this is the per-request
+            charge — the PSP transaction id (a Stripe PaymentIntent ``pi_…``, a
+            Braintree transaction id); crypto pay-as-you-go reports its on-chain
+            order in ``transaction`` instead. On ``credits`` plans it is set only
+            when the settle had to order credits first (auto top-up). Treat it as
+            an opaque string.
     """
 
     success: bool
@@ -274,6 +346,7 @@ class SettleResponse(BaseModel):
     payer: Optional[str] = None
     transaction: str = ""
     network: str = ""
+    billing_model: Optional[str] = Field(None, alias="billingModel")
     credits_redeemed: Optional[str] = Field(None, alias="creditsRedeemed")
     remaining_balance: Optional[str] = Field(None, alias="remainingBalance")
     order_tx: Optional[str] = Field(None, alias="orderTx")
