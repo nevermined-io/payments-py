@@ -12,6 +12,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from payments_py.mcp import build_mcp_integration
+from tests.x402_responses import make_settle_response, make_verify_response
 
 
 def mock_decode_access_token(token: str):
@@ -42,14 +43,13 @@ class PaymentsMock:
     def __init__(self):
         self._environment_name = "sandbox"
         self.facilitator = MagicMock()
-        self.facilitator.verify_permissions = AsyncMock(return_value={"isValid": True})
+        self.facilitator.verify_permissions = AsyncMock(
+            return_value=make_verify_response(is_valid=True)
+        )
         self.facilitator.settle_permissions = AsyncMock(
-            return_value={
-                "success": True,
-                "transaction": "0xtest123",
-                "network": "eip155:84532",
-                "creditsRedeemed": "5",
-            }
+            return_value=make_settle_response(
+                transaction="0xtest123", credits_redeemed="5"
+            )
         )
         self.agents = MagicMock()
         self.agents.get_agent_plans = AsyncMock(

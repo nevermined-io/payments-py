@@ -19,6 +19,7 @@ from a2a.types import (
 )
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import MessageSendParams, AgentCard, HttpRequestContext
+from tests.x402_responses import make_settle_response, make_verify_response
 
 
 class DummyStreamingExecutor(AgentExecutor):  # noqa: D101
@@ -86,15 +87,14 @@ def payments_stub(monkeypatch):  # noqa: D401
 
     def settle(**kwargs):  # noqa: D401
         settle_called["called"] = kwargs
-        return {
-            "success": True,
-            "txHash": "0x123",
-            "data": {"creditsBurned": str(kwargs.get("max_amount", 0))},
-        }
+        return make_settle_response(
+            transaction="0x123",
+            credits_redeemed=str(kwargs.get("max_amount", 0)),
+        )
 
     payments = SimpleNamespace(
         facilitator=SimpleNamespace(
-            verify_permissions=lambda **k: {"success": True},
+            verify_permissions=lambda **k: make_verify_response(is_valid=True),
             settle_permissions=settle,
         )
     )

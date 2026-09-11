@@ -24,6 +24,7 @@ from a2a.types import (
 
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import MessageSendParams, HttpRequestContext
+from tests.x402_responses import make_settle_response, make_verify_response
 
 
 class DummyWebhookExecutor(AgentExecutor):
@@ -100,16 +101,15 @@ class MockPaymentsService:
             self.validation_call_count += 1
             if self.should_fail_validation:
                 raise RuntimeError("Validation failed")
-            return {"success": True}
+            return make_verify_response(is_valid=True)
 
         def settle_permissions(**kwargs) -> dict:
             self.settle_call_count += 1
             self.last_settle_credits = int(kwargs.get("max_amount", 0))
-            return {
-                "success": True,
-                "txHash": "0x123",
-                "data": {"creditsBurned": kwargs.get("max_amount", "0")},
-            }
+            return make_settle_response(
+                transaction="0x123",
+                credits_redeemed=str(kwargs.get("max_amount", "0")),
+            )
 
         return SimpleNamespace(
             verify_permissions=verify_permissions,

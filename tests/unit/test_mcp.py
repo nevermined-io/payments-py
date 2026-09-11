@@ -4,6 +4,8 @@ import pytest
 
 from payments_py.mcp import build_mcp_integration
 from payments_py.mcp.utils.errors import SettlementFailedError
+from payments_py.x402.types import SettleResponse
+from tests.x402_responses import make_settle_response, make_verify_response
 
 
 # Mock the decode_access_token to return x402-compliant token structure
@@ -28,54 +30,20 @@ def mock_decode_token(token):
     }
 
 
-class VerifyResult:
-    """Mock verify permissions result with is_valid attribute."""
-
-    def __init__(self, is_valid=True):
-        self.is_valid = is_valid
-
-
-class SettleResult:
-    """Mock settle permissions result."""
-
-    def __init__(
-        self,
-        success=True,
-        transaction=None,
-        credits_redeemed="1",
-        remaining_balance="100",
-    ):
-        self.success = success
-        self.transaction = transaction
-        self.credits_redeemed = credits_redeemed
-        self.remaining_balance = remaining_balance
-
-    def model_dump(self, by_alias=False, exclude_none=False):
-        data = {
-            "success": self.success,
-            "transaction": self.transaction,
-            "network": "eip155:84532",
-            "payer": "0x123subscriber",
-            ("remainingBalance" if by_alias else "remaining_balance"): (
-                self.remaining_balance
-            ),
-        }
-        if exclude_none:
-            data = {k: v for k, v in data.items() if v is not None}
-        return data
-
-
 def make_settle_result(settle_result):
-    """Convert dict to SettleResult if needed."""
+    """Convert the tests' loose dict shorthand into a real ``SettleResponse``."""
     if settle_result is None:
-        return SettleResult()
-    if isinstance(settle_result, SettleResult):
+        # No transaction hash: the model's own "no tx" value is "", not None.
+        return make_settle_response(transaction="", payer="0x123subscriber")
+    if isinstance(settle_result, SettleResponse):
         return settle_result
     # Handle dict input
-    return SettleResult(
+    return make_settle_response(
         success=settle_result.get("success", True),
-        transaction=settle_result.get("txHash"),
+        transaction=settle_result.get("txHash") or "",
         credits_redeemed=settle_result.get("data", {}).get("creditsBurned", "1"),
+        error_reason=settle_result.get("error"),
+        payer="0x123subscriber",
     )
 
 
@@ -100,7 +68,7 @@ class PaymentsMock:
                     elif isinstance(payment_required, dict):
                         plan_id = payment_required.get("accepts", [{}])[0].get("planId")
                 self._parent.calls.append(("verify", plan_id, x402_access_token))
-                return VerifyResult(is_valid=True)
+                return make_verify_response(is_valid=True)
 
             def settle_permissions(
                 self,
@@ -179,8 +147,11 @@ def test_adds_metadata_to_result_after_successful_redemption():
     nvm = out["_meta"]["nevermined/credits"]
     assert nvm.get("success") is True
     assert nvm.get("creditsRedeemed") == "3"
-    # txHash should be None since our mock doesn't return it
-    assert nvm.get("txHash") is None
+    # No transaction hash, because the stub settle response does not carry one.
+    # ``SettleResponse.transaction`` is a non-Optional ``str`` defaulting to "",
+    # so "no tx" reaches the caller as "" — the old attribute-bag double claimed
+    # ``None`` here, a value the real model cannot hold (payments-py#273).
+    assert nvm.get("txHash") == ""
 
 
 @patch("payments_py.mcp.core.auth.decode_access_token", mock_decode_token)
@@ -342,7 +313,7 @@ def test_propagates_error_on_settle_when_configured():
                 def verify_permissions(
                     self, payment_required=None, max_amount=None, x402_access_token=None
                 ):
-                    return VerifyResult(is_valid=True)
+                    return make_verify_response(is_valid=True)
 
                 def settle_permissions(
                     self,
@@ -548,7 +519,7 @@ class PaymentsMockWithX402Context:
                     elif isinstance(payment_required, dict):
                         plan_id = payment_required.get("accepts", [{}])[0].get("planId")
                 self._parent.calls.append(("verify", plan_id, x402_access_token))
-                return VerifyResult(is_valid=True)
+                return make_verify_response(is_valid=True)
 
             def settle_permissions(
                 self,
@@ -740,15 +711,6 @@ MOCK_AGENT_REQUEST = {
 }
 
 
-class VerifyResultWithAgentRequest:
-    """Mock verify result that includes agent_request (as returned by the backend)."""
-
-    def __init__(self, is_valid=True, agent_request=None, agent_request_id=None):
-        self.is_valid = is_valid
-        self.agent_request = agent_request
-        self.agent_request_id = agent_request_id
-
-
 class PaymentsMockWithAgentRequest:
     """Mock that returns agent_request from verify_permissions."""
 
@@ -765,7 +727,7 @@ class PaymentsMockWithAgentRequest:
                 self, payment_required=None, max_amount=None, x402_access_token=None
             ):
                 self._parent.calls.append(("verify", x402_access_token))
-                return VerifyResultWithAgentRequest(
+                return make_verify_response(
                     is_valid=True,
                     agent_request=self._parent._agent_request,
                     agent_request_id=self._parent._agent_request_id,
