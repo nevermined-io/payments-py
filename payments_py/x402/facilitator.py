@@ -216,9 +216,19 @@ class NeverminedFacilitator:
             )
 
             if settlement.success:
-                logger.info(
-                    f"✅ Payment settled successfully! Credits redeemed: {settlement.credits_redeemed}"
-                )
+                # `credits_redeemed` is always "0" on a pay-as-you-go plan, which
+                # holds no credit balance — logging it there would report a real
+                # charge as if nothing had been paid. Report the charge reference
+                # instead. See `SettleResponse` for the per-billing-model criterion.
+                if settlement.billing_model == "pay-as-you-go":
+                    charge = settlement.order_tx or settlement.transaction
+                    logger.info(
+                        f"✅ Payment settled successfully! Charge reference: {charge}"
+                    )
+                else:
+                    logger.info(
+                        f"✅ Payment settled successfully! Credits redeemed: {settlement.credits_redeemed}"
+                    )
                 logger.info(f"Transaction hash: {settlement.transaction}")
                 return settlement
             else:

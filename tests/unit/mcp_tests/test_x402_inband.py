@@ -248,8 +248,81 @@ class TestPaywallSettlementReceipt:
         assert nvm["creditsRedeemed"] == "5"
         assert nvm["remainingBalance"] == "100"
         assert nvm["planId"] == "plan-123"
+        # Absent on a credits settle that carried neither — omitted, not None,
+        # so a consumer can tell "absent" from "present and empty".
+        assert "billingModel" not in nvm and "orderTx" not in nvm
         # The tool content is preserved on success.
         assert result["content"][0]["text"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_payg_receipt_carries_billing_model_and_order_tx(self):
+        """A pay-as-you-go settle DID charge the buyer, yet reports "0" credits.
+
+        The plan holds no credit balance, so ``creditsRedeemed`` is "0" on a
+        successful charge. Without ``billingModel`` on this key a consumer cannot
+        tell that from a credits settle that burned nothing — and retrying a card
+        charge that already succeeded is exactly the thing to avoid.
+        See nevermined-io/nvm-monorepo#2999.
+        """
+        decorator = _make_decorator(
+            _settlement(
+                success=True,
+                transaction="pi_3U6tgrBYvSRKcV421ehH4bnX",
+                credits_redeemed="0",
+                remaining_balance="0",
+                billing_model="pay-as-you-go",
+                order_tx="pi_3U6tgrBYvSRKcV421ehH4bnX",
+            )
+        )
+
+        def handler(args, extra, ctx):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+        protected = decorator.protect(handler, {"name": "premium", "kind": "tool"})
+        result = await protected({"q": "x"}, {"requestInfo": {"headers": {}}})
+
+        nvm = result["_meta"][NEVERMINED_CREDITS_META_KEY]
+        # The discriminator, and the reference that actually proves the charge.
+        assert nvm["billingModel"] == "pay-as-you-go"
+        assert nvm["orderTx"] == "pi_3U6tgrBYvSRKcV421ehH4bnX"
+        # The trap this guards: a successful charge reporting "0" credits.
+        assert nvm["success"] is True
+        assert nvm["creditsRedeemed"] == "0"
+        assert nvm["remainingBalance"] == "0"
+
+    @pytest.mark.asyncio
+    async def test_credits_receipt_carries_the_explicit_discriminator(self):
+        """The `credits` value itself, which nothing else in this class covers.
+
+        The two tests above cover ``billing_model`` ABSENT (read as credits) and
+        ``"pay-as-you-go"``. Neither asserts that an explicit ``"credits"``
+        actually reaches ``nevermined/credits`` — so the PR introducing the
+        discriminator left the one value its own docs example shows untested.
+
+        Low functional risk, since the emit check is value-agnostic — which is
+        exactly why it needs a test rather than an argument: nothing would have
+        caught a regression that dropped only this value.
+        """
+        decorator = _make_decorator(
+            _settlement(
+                success=True,
+                transaction="0xabc",
+                credits_redeemed="5",
+                remaining_balance="95",
+                billing_model="credits",
+            )
+        )
+
+        def handler(args, extra, ctx):
+            return {"content": [{"type": "text", "text": "ok"}]}
+
+        protected = decorator.protect(handler, {"name": "premium", "kind": "tool"})
+        result = await protected({"q": "x"}, {"requestInfo": {"headers": {}}})
+
+        nvm = result["_meta"][NEVERMINED_CREDITS_META_KEY]
+        assert nvm["billingModel"] == "credits"
+        assert nvm["creditsRedeemed"] == "5"
+        assert nvm["remainingBalance"] == "95"
 
 
 # ---------------------------------------------------------------------------

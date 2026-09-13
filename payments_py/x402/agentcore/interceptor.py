@@ -439,10 +439,19 @@ class AgentCoreInterceptor:
                 logger.error(f"Settlement failed: {settlement.error_reason}")
                 # Still return response, but log error
             else:
-                logger.info(
-                    f"Settlement successful: {settlement.credits_redeemed} credits, "
-                    f"remaining: {settlement.remaining_balance}"
-                )
+                # Pay-as-you-go plans hold no credit balance, so both credit
+                # fields read "0" even on a charge that succeeded — log the
+                # charge reference there instead. See `SettleResponse`.
+                if settlement.billing_model == "pay-as-you-go":
+                    charge = settlement.order_tx or settlement.transaction
+                    logger.info(
+                        f"Settlement successful (pay-as-you-go), charge: {charge}"
+                    )
+                else:
+                    logger.info(
+                        f"Settlement successful: {settlement.credits_redeemed} credits, "
+                        f"remaining: {settlement.remaining_balance}"
+                    )
 
                 # Call after_settle hook
                 if self.options.on_after_settle:

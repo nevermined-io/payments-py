@@ -360,6 +360,7 @@ For backward compatibility the server still falls back to reading the access tok
         "nevermined/credits": {
             "success": True,
             "txHash": "0xabc...",
+            "billingModel": "credits",
             "creditsRedeemed": "5",
             "planId": "plan-123",
             "subscriberAddress": "0x123..."
@@ -391,10 +392,19 @@ For backward compatibility the server still falls back to reading the access tok
 |----------------------------|------|-------------|
 | `success` | `bool` | Whether credit redemption succeeded |
 | `txHash` | `str` or `None` | Blockchain transaction hash (only on success) |
-| `creditsRedeemed` | `str` | Number of credits burned (`"0"` on failure) |
+| `billingModel` | `str` | `credits` or `pay-as-you-go`. Omitted when the settle carried no discriminator — read it before `creditsRedeemed` |
+| `creditsRedeemed` | `str` | Number of credits burned (`"0"` on failure — **and always `"0"` on a pay-as-you-go plan, including a successful charge**) |
+| `orderTx` | `str` | Order / per-request charge reference. Omitted when absent; on fiat pay-as-you-go this is what proves the charge |
 | `planId` | `str` | Plan used for the operation |
 | `subscriberAddress` | `str` | Subscriber's wallet address |
 | `errorReason` | `str` | Error message (only on failure) |
+
+> **On a pay-as-you-go plan a paid call reports `creditsRedeemed: "0"`.** Those plans hold no credit
+> balance — each call is charged directly — so both credit fields read `"0"` even though the buyer
+> *was* charged. `billingModel` is what tells the two apart, and it is carried on both `_meta` keys:
+> `x402/payment-response` passes the whole settle receipt through, and `nevermined/credits` carries
+> `billingModel` and `orderTx` alongside its condensed fields. See
+> [Was the buyer charged?](11-x402.md#was-the-buyer-charged).
 
 ## Endpoints
 

@@ -38,13 +38,21 @@ Example usage:
     )
 
     if verification.is_valid:
-        # Settle (burn) the credits
         settlement = payments.facilitator.settle_permissions(
             payment_required=payment_required,
             x402_access_token=x402_token,
             max_amount="2"  # optional
         )
-        print(f"Credits redeemed: {settlement.credits_redeemed}")
+
+        # Read `billing_model` before the credit fields: on a pay-as-you-go plan
+        # there is no balance, so `credits_redeemed` is always the string "0"
+        # even on a charge that succeeded. See `SettleResponse`.
+        if settlement.success:
+            if settlement.billing_model == "pay-as-you-go":
+                charge = settlement.order_tx or settlement.transaction
+                print(f"Charged, reference: {charge}")
+            else:
+                print(f"Credits redeemed: {settlement.credits_redeemed}")
 """
 
 import requests
