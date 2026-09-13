@@ -1926,12 +1926,13 @@
 <a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>        <span class="s2">&quot;nevermined/credits&quot;</span><span class="p">:</span> <span class="p">{</span>
 <a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>            <span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
 <a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>            <span class="s2">&quot;txHash&quot;</span><span class="p">:</span> <span class="s2">&quot;0xabc...&quot;</span><span class="p">,</span>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>            <span class="s2">&quot;creditsRedeemed&quot;</span><span class="p">:</span> <span class="s2">&quot;5&quot;</span><span class="p">,</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>            <span class="s2">&quot;planId&quot;</span><span class="p">:</span> <span class="s2">&quot;plan-123&quot;</span><span class="p">,</span>
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>            <span class="s2">&quot;subscriberAddress&quot;</span><span class="p">:</span> <span class="s2">&quot;0x123...&quot;</span>
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>        <span class="p">}</span>
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    <span class="p">}</span>
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="p">}</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>            <span class="s2">&quot;billingModel&quot;</span><span class="p">:</span> <span class="s2">&quot;credits&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>            <span class="s2">&quot;creditsRedeemed&quot;</span><span class="p">:</span> <span class="s2">&quot;5&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>            <span class="s2">&quot;planId&quot;</span><span class="p">:</span> <span class="s2">&quot;plan-123&quot;</span><span class="p">,</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>            <span class="s2">&quot;subscriberAddress&quot;</span><span class="p">:</span> <span class="s2">&quot;0x123...&quot;</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>        <span class="p">}</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    <span class="p">}</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="p">}</span>
 </code></pre></div>
 <p><strong>Payment required.</strong> When the caller has not paid (or cannot be authorized), the tool returns an <strong>error tool result</strong> carrying the <code>PaymentRequired</code> object in both <code>structuredContent</code> (the object) and <code>content[0].text</code> (its JSON-stringified copy):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span>
@@ -1969,9 +1970,19 @@
 <td>Blockchain transaction hash (only on success)</td>
 </tr>
 <tr>
+<td><code>billingModel</code></td>
+<td><code>str</code></td>
+<td><code>credits</code> or <code>pay-as-you-go</code>. Omitted when the settle carried no discriminator — read it before <code>creditsRedeemed</code></td>
+</tr>
+<tr>
 <td><code>creditsRedeemed</code></td>
 <td><code>str</code></td>
-<td>Number of credits burned (<code>"0"</code> on failure)</td>
+<td>Number of credits burned (<code>"0"</code> on failure — <strong>and always <code>"0"</code> on a pay-as-you-go plan, including a successful charge</strong>)</td>
+</tr>
+<tr>
+<td><code>orderTx</code></td>
+<td><code>str</code></td>
+<td>Order / per-request charge reference. Omitted when absent; on fiat pay-as-you-go this is what proves the charge</td>
 </tr>
 <tr>
 <td><code>planId</code></td>
@@ -1990,6 +2001,14 @@
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>On a pay-as-you-go plan a paid call reports <code>creditsRedeemed: "0"</code>.</strong> Those plans hold no credit
+balance — each call is charged directly — so both credit fields read <code>"0"</code> even though the buyer
+<em>was</em> charged. <code>billingModel</code> is what tells the two apart, and it is carried on both <code>_meta</code> keys:
+<code>x402/payment-response</code> passes the whole settle receipt through, and <code>nevermined/credits</code> carries
+<code>billingModel</code> and <code>orderTx</code> alongside its condensed fields. See
+<a href="../11-x402/#was-the-buyer-charged">Was the buyer charged?</a>.</p>
+</blockquote>
 <h2 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">&para;</a></h2>
 <p>The MCP server exposes:</p>
 <ul>
