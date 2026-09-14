@@ -395,9 +395,21 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         try:
             # Both blocking and non-blocking use the same method, but with different
             # early return behavior
-            result, interrupted_or_non_blocking = await self._consume_and_burn_credits(
+            (
+                result,
+                interrupted_or_non_blocking,
+                background_task,
+            ) = await self._consume_and_burn_credits(
                 result_aggregator, consumer, http_ctx, blocking
             )
+            if background_task is not None:
+                # The SDK spawns the continuation with a bare `create_task`, so
+                # without this it is tracked as `Task-N` and the one log line the
+                # parent tracker recovers — `Background task %s failed`, i.e. a
+                # lost burn — carries nothing to correlate with a request. The
+                # parent names its own continuation the same way before tracking.
+                background_task.set_name(f"continue_consuming:{task_id}")
+            self._track_background_task(background_task)
 
             if not result:
                 raise PaymentsError.internal(
@@ -422,8 +434,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             # Cleanup like parent implementation
             if interrupted_or_non_blocking:
                 # For non-blocking mode, schedule background cleanup (like parent SDK
-                # does)
-                asyncio.create_task(self._cleanup_producer(producer_task, task_id))
+                # does). Tracked for the same reason the continuation is: the loop
+                # holds only a weak reference, and the parent names and tracks its
+                # own cleanup task identically.
+                cleanup_task = asyncio.create_task(
+                    self._cleanup_producer(producer_task, task_id)
+                )
+                cleanup_task.set_name(f"cleanup_producer:{task_id}")
+                self._track_background_task(cleanup_task)
             else:
                 await self._cleanup_producer(producer_task, task_id)
 
@@ -495,7 +513,18 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             self.delete_http_ctx_for_task(task_id)
 
     async def _cleanup_producer(self, producer_task, task_id: str) -> None:
-        """Cleanup producer task (from parent implementation)."""
+        """Cleanup producer task (from parent implementation).
+
+        Known bug, tracked in #279: unlike the parent — which *awaits* the
+        producer, closes the queue and pops ``_running_agents`` — this cancels
+        it. That happens whenever the SDK interrupts, on the tick after the
+        first event: non-blocking requests, and **also** a blocking request
+        whose executor emits ``auth_required`` (``consume_and_break_on_interrupt``
+        always interrupts on that state, regardless of ``blocking``). On either
+        path an executor awaiting anything real never emits its final
+        ``creditsUsed`` status and the burn is lost. Left as is here because
+        changing it changes request semantics for every consumer.
+        """
         if not producer_task.done():
             producer_task.cancel()
             try:
@@ -503,18 +532,45 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             except asyncio.CancelledError:
                 pass
 
+    def _track_background_task(self, task: asyncio.Task | None) -> None:
+        """Hold a strong reference to an SDK background continuation task.
+
+        ``consume_and_break_on_interrupt`` spawns the continuation with
+        ``asyncio.create_task`` and hands it back; the loop keeps only a weak
+        reference, so the caller has to retain it or it may be garbage
+        collected before it finishes.
+
+        The retention itself is ``DefaultRequestHandler``'s — its version also
+        calls ``result()`` in the done callback, so an exception raised inside
+        the continuation is logged as ``Background task %s failed`` instead of
+        surfacing (if at all) as asyncio's GC-time "exception was never
+        retrieved". That matters here: in the continuation, ``task_manager
+        .process`` and the payment-extension helpers run outside the ``try``
+        that wraps ``settle_permissions``, so a failure there loses the burn
+        silently. This override exists only to widen the signature — the SDK's
+        does not accept ``None``, and ``consume_and_break_on_interrupt``
+        returns ``None`` whenever it was not interrupted.
+        """
+        if task is None:
+            return
+        super()._track_background_task(task)
+
     async def _consume_and_burn_credits(
         self,
         result_aggregator: ResultAggregator,
         consumer: EventConsumer,
         http_ctx: HttpRequestContext,
         blocking: bool = True,
-    ) -> tuple[Task | Message, bool]:
+    ) -> tuple[Task | Message | None, bool, asyncio.Task | None]:
         """Process events with credit burning (like TypeScript processEventsWithFinalization).
 
         This mirrors TypeScript processEventsWithFinalization with:
         - Credit burning on final events with creditsUsed metadata
         - Background processing continuation when interrupted (via SDK's _continue_consuming)
+
+        Returns the SDK's ``(result, interrupted, background_task)`` triple
+        unchanged; the caller must keep ``background_task`` alive (see
+        :meth:`_track_background_task`).
         """
         # Store the original consume_all method before replacing it
         original_consume_all = consumer.consume_all

@@ -396,7 +396,20 @@ class TestCreatePaidReactAgent:
         # LangGraph reshapes this, the test breaks loudly which is the point.
         tools_node = agent.get_graph().nodes["tools"]
         underlying = getattr(tools_node, "data", tools_node)
-        handle = getattr(underlying, "handle_tool_errors", None)
+        # LangGraph 1.x moved the stored policy to a private `_handle_tool_errors`;
+        # the constructor keyword is unchanged. Accept either spelling, but fail
+        # if neither exists — that would mean the policy is no longer readable.
+        missing = object()
+        handle = missing
+        for attr in ("handle_tool_errors", "_handle_tool_errors"):
+            value = getattr(underlying, attr, missing)
+            if value is not missing:
+                handle = value
+                break
+        assert handle is not missing, (
+            "ToolNode exposes neither handle_tool_errors nor _handle_tool_errors "
+            "— LangGraph moved the policy again"
+        )
         assert (
             handle is False
         ), f"Expected ToolNode.handle_tool_errors=False, got {handle!r}"
