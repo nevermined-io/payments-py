@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -33,7 +33,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1286,16 +1286,16 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py</span><span class="w"> </span><span class="kn">import</span> <span class="n">Payments</span><span class="p">,</span> <span class="n">PaymentOptions</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:your-org-scoped-key&quot;</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="s2">&quot;sandbox&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">"nvm:your-org-scoped-key"</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="s2">"sandbox"</span><span class="p">)</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">created</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">orders</span><span class="o">.</span><span class="n">create_order</span><span class="p">(</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="mi">3437</span><span class="p">,</span>  <span class="c1"># USD cents: $34.37</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Cart checkout - 3 items&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">buyer_ref</span><span class="o">=</span><span class="s2">&quot;merchant-order-4821&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">idempotency_key</span><span class="o">=</span><span class="s2">&quot;merchant-order-4821&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">line_items</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;sku&quot;</span><span class="p">:</span> <span class="s2">&quot;PRO-PLAN&quot;</span><span class="p">,</span> <span class="s2">&quot;quantity&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;unit_price&quot;</span><span class="p">:</span> <span class="mi">3437</span><span class="p">}],</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="s2">&quot;web&quot;</span><span class="p">},</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">"Cart checkout - 3 items"</span><span class="p">,</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">buyer_ref</span><span class="o">=</span><span class="s2">"merchant-order-4821"</span><span class="p">,</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">idempotency_key</span><span class="o">=</span><span class="s2">"merchant-order-4821"</span><span class="p">,</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">line_items</span><span class="o">=</span><span class="p">[{</span><span class="s2">"sku"</span><span class="p">:</span> <span class="s2">"PRO-PLAN"</span><span class="p">,</span> <span class="s2">"quantity"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">"unit_price"</span><span class="p">:</span> <span class="mi">3437</span><span class="p">}],</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">"channel"</span><span class="p">:</span> <span class="s2">"web"</span><span class="p">},</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">)</span>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="nb">print</span><span class="p">(</span><span class="n">created</span><span class="o">.</span><span class="n">order_id</span><span class="p">)</span>       <span class="c1"># ord_... - the buyer-facing access control</span>
@@ -1458,7 +1458,7 @@
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">created</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">orders</span><span class="o">.</span><span class="n">create_order</span><span class="p">(</span><span class="mi">3437</span><span class="p">)</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">except</span> <span class="n">PaymentsError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">code</span> <span class="o">==</span> <span class="s2">&quot;BCK.ORDER.0010&quot;</span><span class="p">:</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">code</span> <span class="o">==</span> <span class="s2">"BCK.ORDER.0010"</span><span class="p">:</span>
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="o">...</span>  <span class="c1"># back off and retry</span>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="k">raise</span>
 </code></pre></div>
@@ -1520,7 +1520,7 @@
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

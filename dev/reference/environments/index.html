@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -33,7 +33,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1403,6 +1403,7 @@
     <div class="doc doc-contents first">
 
 
+
         <p>Data class to store environment information.</p>
 
 
@@ -1423,7 +1424,7 @@
               <p>
                   <span class="doc-attribute-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                      <code><span title="str">str</span></code>
                   </span>
               </p>
             </td>
@@ -1437,7 +1438,7 @@
               <p>
                   <span class="doc-attribute-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                      <code><span title="str">str</span></code>
                   </span>
               </p>
             </td>
@@ -1451,7 +1452,7 @@
               <p>
                   <span class="doc-attribute-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                      <code><span title="str">str</span></code>
                   </span>
               </p>
             </td>
@@ -1465,7 +1466,7 @@
               <p>
                   <span class="doc-attribute-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                      <code><span title="str">str</span></code>
                   </span>
               </p>
             </td>
@@ -1482,7 +1483,9 @@
 
 
 
-  <div class="doc doc-children">
+
+<div class="doc doc-children">
+
 
 
 
@@ -1539,7 +1542,7 @@ names are rejected at runtime below.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+                      <code><span title="str">str</span></code>
                   </span>
               </p>
             </td>
@@ -1592,7 +1595,7 @@ names are rejected at runtime below.</p>
           <tr class="doc-section-item">
             <td>
               <span class="doc-raises-annotation">
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+                  <code><span title="ValueError">ValueError</span></code>
               </span>
             </td>
             <td class="doc-raises-details">
@@ -1605,7 +1608,7 @@ names are rejected at runtime below.</p>
     </table>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>payments_py/environments.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-108">108</a></span>
 <span class="normal"><a href="#__codelineno-0-109">109</a></span>
@@ -1627,7 +1630,7 @@ names are rejected at runtime below.</p>
 <span class="normal"><a href="#__codelineno-0-125">125</a></span>
 <span class="normal"><a href="#__codelineno-0-126">126</a></span>
 <span class="normal"><a href="#__codelineno-0-127">127</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_environment</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EnvironmentInfo</span><span class="p">:</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="w">    </span><span class="sd">"""</span>
 <a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">    Get the environment configuration by name.</span>
 <a id="__codelineno-0-111" name="__codelineno-0-111"></a>
 <a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">    Accepts ``str`` because the name may come from the deprecated, free-form</span>
@@ -1642,9 +1645,9 @@ names are rejected at runtime below.</p>
 <a id="__codelineno-0-121" name="__codelineno-0-121"></a>
 <a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">    Raises:</span>
 <a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="sd">        ValueError: If the environment name is not defined.</span>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="sd">    """</span>
 <a id="__codelineno-0-125" name="__codelineno-0-125"></a>    <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">Environments</span><span class="p">:</span>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Environment &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; is not defined.&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Environment '</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">' is not defined."</span><span class="p">)</span>
 <a id="__codelineno-0-127" name="__codelineno-0-127"></a>    <span class="k">return</span> <span class="n">Environments</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -1668,42 +1671,42 @@ names are rejected at runtime below.</p>
 
 <a href="#payments_py.environments.Environments" class="headerlink" title="Permanent link">&para;</a></h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">Environments</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="s2">&quot;staging_sandbox&quot;</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        <span class="n">frontend</span><span class="o">=</span><span class="s2">&quot;https://nevermined.dev&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;https://api.sandbox.nevermined.dev&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;https://proxy.sandbox.nevermined.dev&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="s2">&quot;https://helicone.nevermined.dev&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="s2">"staging_sandbox"</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        <span class="n">frontend</span><span class="o">=</span><span class="s2">"https://nevermined.dev"</span><span class="p">,</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        <span class="n">backend</span><span class="o">=</span><span class="s2">"https://api.sandbox.nevermined.dev"</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n">proxy</span><span class="o">=</span><span class="s2">"https://proxy.sandbox.nevermined.dev"</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="s2">"https://helicone.nevermined.dev"</span><span class="p">,</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="p">),</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="s2">&quot;staging_live&quot;</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="n">frontend</span><span class="o">=</span><span class="s2">&quot;https://nevermined.dev&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;https://api.live.nevermined.dev&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;https://proxy.live.nevermined.dev&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="s2">&quot;https://helicone.nevermined.dev&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="s2">"staging_live"</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="n">frontend</span><span class="o">=</span><span class="s2">"https://nevermined.dev"</span><span class="p">,</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="n">backend</span><span class="o">=</span><span class="s2">"https://api.live.nevermined.dev"</span><span class="p">,</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="n">proxy</span><span class="o">=</span><span class="s2">"https://proxy.live.nevermined.dev"</span><span class="p">,</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="s2">"https://helicone.nevermined.dev"</span><span class="p">,</span>
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="p">),</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="s2">&quot;sandbox&quot;</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        <span class="n">frontend</span><span class="o">=</span><span class="s2">&quot;https://nevermined.app&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;https://api.sandbox.nevermined.app&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        <span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;https://proxy.sandbox.nevermined.app&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="s2">&quot;https://helicone.nevermined.dev&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="s2">"sandbox"</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        <span class="n">frontend</span><span class="o">=</span><span class="s2">"https://nevermined.app"</span><span class="p">,</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        <span class="n">backend</span><span class="o">=</span><span class="s2">"https://api.sandbox.nevermined.app"</span><span class="p">,</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        <span class="n">proxy</span><span class="o">=</span><span class="s2">"https://proxy.sandbox.nevermined.app"</span><span class="p">,</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="s2">"https://helicone.nevermined.dev"</span><span class="p">,</span>
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="p">),</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="s2">&quot;live&quot;</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>        <span class="n">frontend</span><span class="o">=</span><span class="s2">&quot;https://nevermined.app&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>        <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;https://api.live.nevermined.app&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        <span class="n">proxy</span><span class="o">=</span><span class="s2">&quot;https://proxy.live.nevermined.app&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="s2">&quot;https://helicone.nevermined.dev&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="s2">"live"</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>        <span class="n">frontend</span><span class="o">=</span><span class="s2">"https://nevermined.app"</span><span class="p">,</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>        <span class="n">backend</span><span class="o">=</span><span class="s2">"https://api.live.nevermined.app"</span><span class="p">,</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        <span class="n">proxy</span><span class="o">=</span><span class="s2">"https://proxy.live.nevermined.app"</span><span class="p">,</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="s2">"https://helicone.nevermined.dev"</span><span class="p">,</span>
 <a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    <span class="p">),</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    <span class="s2">&quot;custom&quot;</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        <span class="n">frontend</span><span class="o">=</span><span class="n">getenv</span><span class="p">(</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>            <span class="s2">&quot;NVM_FRONTEND_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;http://localhost:3000&quot;</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    <span class="s2">"custom"</span><span class="p">:</span> <span class="n">EnvironmentInfo</span><span class="p">(</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        <span class="n">frontend</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>            <span class="s2">"NVM_FRONTEND_URL"</span><span class="p">,</span> <span class="s2">"http://localhost:3000"</span>
 <a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>        <span class="p">),</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>        <span class="n">backend</span><span class="o">=</span><span class="n">getenv</span><span class="p">(</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>            <span class="s2">&quot;NVM_BACKEND_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;http://localhost:3001&quot;</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>        <span class="n">backend</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>            <span class="s2">"NVM_BACKEND_URL"</span><span class="p">,</span> <span class="s2">"http://localhost:3001"</span>
 <a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>        <span class="p">),</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>        <span class="n">proxy</span><span class="o">=</span><span class="n">getenv</span><span class="p">(</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>            <span class="s2">&quot;NVM_PROXY_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;https://localhost:443&quot;</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>        <span class="n">proxy</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>            <span class="s2">"NVM_PROXY_URL"</span><span class="p">,</span> <span class="s2">"https://localhost:443"</span>
 <a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>        <span class="p">),</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="n">getenv</span><span class="p">(</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>            <span class="s2">&quot;HELICONE_URL&quot;</span><span class="p">,</span> <span class="s2">&quot;http://localhost:8585&quot;</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>        <span class="n">helicone_url</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>            <span class="s2">"HELICONE_URL"</span><span class="p">,</span> <span class="s2">"http://localhost:8585"</span>
 <a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>        <span class="p">),</span>
 <a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    <span class="p">),</span>
 <a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="p">}</span>
@@ -1729,7 +1732,7 @@ names are rejected at runtime below.</p>
   </span>
 
 <a href="#payments_py.environments.ZeroAddress" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">ZeroAddress</span> <span class="o">=</span> <span class="s1">&#39;0x0000000000000000000000000000000000000000&#39;</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">ZeroAddress</span> <span class="o">=</span> <span class="s1">'0x0000000000000000000000000000000000000000'</span>
 </code></pre></div>
 
     <div class="doc doc-contents first">
@@ -1795,7 +1798,7 @@ names are rejected at runtime below.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

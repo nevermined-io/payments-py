@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1350,7 +1350,9 @@ best-effort and must not interfere with the payment flow.</p>
 
 
 
-  <div class="doc doc-children">
+
+<div class="doc doc-children">
+
 
 
 
@@ -1388,15 +1390,15 @@ errors raised inside the trace SETUP (constructing or entering the
 LangSmith context) are swallowed, since those are pure observability
 concerns and must never interfere with the payment flow.</p>
 <p>Example::</p>
-<div class="highlight"><pre><span></span><code>with verify_span(plan_ids=[&quot;plan-1&quot;]) as span:
+<div class="highlight"><pre><span></span><code>with verify_span(plan_ids=["plan-1"]) as span:
     verification = payments.facilitator.verify_permissions(...)
     add_metadata(span, build_verify_metadata(
-        plan_ids=[&quot;plan-1&quot;], verification=verification,
+        plan_ids=["plan-1"], verification=verification,
     ))
 </code></pre></div>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>payments_py/langsmith/spans.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-287">287</a></span>
 <span class="normal"><a href="#__codelineno-0-288">288</a></span>
@@ -1441,12 +1443,12 @@ concerns and must never interfere with the payment flow.</p>
 <a id="__codelineno-0-291" name="__codelineno-0-291"></a>    <span class="n">network</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-292" name="__codelineno-0-292"></a>    <span class="n">agent_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]]:</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Open an ``nvm:verify`` child span around a verify call.</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="w">    </span><span class="sd">"""Open an ``nvm:verify`` child span around a verify call.</span>
 <a id="__codelineno-0-295" name="__codelineno-0-295"></a>
 <a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">    Yields the underlying ``RunTree`` if LangSmith is active and a parent</span>
 <a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">    run is in scope; yields ``None`` otherwise. Always safe to call.</span>
 <a id="__codelineno-0-298" name="__codelineno-0-298"></a>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">    Exceptions raised by the caller&#39;s body propagate out unchanged -- the</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">    Exceptions raised by the caller's body propagate out unchanged -- the</span>
 <a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">    underlying ``langsmith.trace`` context manager sees them via its</span>
 <a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">    ``__exit__`` and records the span as failed before re-raising. Only</span>
 <a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">    errors raised inside the trace SETUP (constructing or entering the</span>
@@ -1455,21 +1457,21 @@ concerns and must never interfere with the payment flow.</p>
 <a id="__codelineno-0-305" name="__codelineno-0-305"></a>
 <a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="sd">    Example::</span>
 <a id="__codelineno-0-307" name="__codelineno-0-307"></a>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">        with verify_span(plan_ids=[&quot;plan-1&quot;]) as span:</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">        with verify_span(plan_ids=["plan-1"]) as span:</span>
 <a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">            verification = payments.facilitator.verify_permissions(...)</span>
 <a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">            add_metadata(span, build_verify_metadata(</span>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">                plan_ids=[&quot;plan-1&quot;], verification=verification,</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">                plan_ids=["plan-1"], verification=verification,</span>
 <a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">            ))</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="n">inputs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;plan_ids&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">)}</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">    """</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="n">inputs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"plan_ids"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">)}</span>
 <a id="__codelineno-0-315" name="__codelineno-0-315"></a>    <span class="k">if</span> <span class="n">scheme</span><span class="p">:</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a>        <span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;scheme&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scheme</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>        <span class="n">inputs</span><span class="p">[</span><span class="s2">"scheme"</span><span class="p">]</span> <span class="o">=</span> <span class="n">scheme</span>
 <a id="__codelineno-0-317" name="__codelineno-0-317"></a>    <span class="k">if</span> <span class="n">network</span><span class="p">:</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;network&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">network</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="n">inputs</span><span class="p">[</span><span class="s2">"network"</span><span class="p">]</span> <span class="o">=</span> <span class="n">network</span>
 <a id="__codelineno-0-319" name="__codelineno-0-319"></a>    <span class="k">if</span> <span class="n">agent_id</span><span class="p">:</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a>        <span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;agent_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_id</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>        <span class="n">inputs</span><span class="p">[</span><span class="s2">"agent_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_id</span>
 <a id="__codelineno-0-321" name="__codelineno-0-321"></a>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a>    <span class="k">with</span> <span class="n">_open_nvm_span</span><span class="p">(</span><span class="s2">&quot;nvm:verify&quot;</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span> <span class="k">as</span> <span class="n">span</span><span class="p">:</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a>    <span class="k">with</span> <span class="n">_open_nvm_span</span><span class="p">(</span><span class="s2">"nvm:verify"</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span> <span class="k">as</span> <span class="n">span</span><span class="p">:</span>
 <a id="__codelineno-0-323" name="__codelineno-0-323"></a>        <span class="k">yield</span> <span class="n">span</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -1496,7 +1498,7 @@ concerns and must never interfere with the payment flow.</p>
 <p>Same semantics as :func:<code>verify_span</code>.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>payments_py/langsmith/spans.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-326">326</a></span>
 <span class="normal"><a href="#__codelineno-0-327">327</a></span>
@@ -1517,15 +1519,15 @@ concerns and must never interfere with the payment flow.</p>
 <a id="__codelineno-0-328" name="__codelineno-0-328"></a>    <span class="n">plan_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
 <a id="__codelineno-0-329" name="__codelineno-0-329"></a>    <span class="n">agent_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]]:</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Open an ``nvm:settlement`` child span around a settle call.</span>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="w">    </span><span class="sd">"""Open an ``nvm:settlement`` child span around a settle call.</span>
 <a id="__codelineno-0-332" name="__codelineno-0-332"></a>
 <a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">    Same semantics as :func:`verify_span`.</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a>    <span class="n">inputs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;plan_ids&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">)}</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">    """</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a>    <span class="n">inputs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"plan_ids"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">)}</span>
 <a id="__codelineno-0-336" name="__codelineno-0-336"></a>    <span class="k">if</span> <span class="n">agent_id</span><span class="p">:</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="n">inputs</span><span class="p">[</span><span class="s2">&quot;agent_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_id</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="n">inputs</span><span class="p">[</span><span class="s2">"agent_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_id</span>
 <a id="__codelineno-0-338" name="__codelineno-0-338"></a>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a>    <span class="k">with</span> <span class="n">_open_nvm_span</span><span class="p">(</span><span class="s2">&quot;nvm:settlement&quot;</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span> <span class="k">as</span> <span class="n">span</span><span class="p">:</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a>    <span class="k">with</span> <span class="n">_open_nvm_span</span><span class="p">(</span><span class="s2">"nvm:settlement"</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span> <span class="k">as</span> <span class="n">span</span><span class="p">:</span>
 <a id="__codelineno-0-340" name="__codelineno-0-340"></a>        <span class="k">yield</span> <span class="n">span</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -1560,7 +1562,7 @@ surfaced as <code>nvm.payment_token</code> so the full credential never ends
 up in metadata that we control.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>payments_py/langsmith/spans.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-185">185</a></span>
 <span class="normal"><a href="#__codelineno-0-186">186</a></span>
@@ -1605,31 +1607,31 @@ up in metadata that we control.</p>
 <a id="__codelineno-0-191" name="__codelineno-0-191"></a>    <span class="n">duration_ms</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-192" name="__codelineno-0-192"></a>    <span class="n">token</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-193" name="__codelineno-0-193"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<a id="__codelineno-0-194" name="__codelineno-0-194"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the ``nvm.*`` metadata dict for a verify span. Drops ``None`` values.</span>
+<a id="__codelineno-0-194" name="__codelineno-0-194"></a><span class="w">    </span><span class="sd">"""Build the ``nvm.*`` metadata dict for a verify span. Drops ``None`` values.</span>
 <a id="__codelineno-0-195" name="__codelineno-0-195"></a>
 <a id="__codelineno-0-196" name="__codelineno-0-196"></a><span class="sd">    ``token`` is abbreviated via :func:`abbreviate_token` before being</span>
 <a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="sd">    surfaced as ``nvm.payment_token`` so the full credential never ends</span>
 <a id="__codelineno-0-198" name="__codelineno-0-198"></a><span class="sd">    up in metadata that we control.</span>
-<a id="__codelineno-0-199" name="__codelineno-0-199"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-200" name="__codelineno-0-200"></a>    <span class="n">md</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;nvm.plan_ids&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">)}</span>
+<a id="__codelineno-0-199" name="__codelineno-0-199"></a><span class="sd">    """</span>
+<a id="__codelineno-0-200" name="__codelineno-0-200"></a>    <span class="n">md</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"nvm.plan_ids"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">)}</span>
 <a id="__codelineno-0-201" name="__codelineno-0-201"></a>    <span class="k">if</span> <span class="n">scheme</span><span class="p">:</span>
-<a id="__codelineno-0-202" name="__codelineno-0-202"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.scheme&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scheme</span>
+<a id="__codelineno-0-202" name="__codelineno-0-202"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.scheme"</span><span class="p">]</span> <span class="o">=</span> <span class="n">scheme</span>
 <a id="__codelineno-0-203" name="__codelineno-0-203"></a>    <span class="k">if</span> <span class="n">network</span><span class="p">:</span>
-<a id="__codelineno-0-204" name="__codelineno-0-204"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.network&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">network</span>
+<a id="__codelineno-0-204" name="__codelineno-0-204"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.network"</span><span class="p">]</span> <span class="o">=</span> <span class="n">network</span>
 <a id="__codelineno-0-205" name="__codelineno-0-205"></a>    <span class="k">if</span> <span class="n">agent_id</span><span class="p">:</span>
-<a id="__codelineno-0-206" name="__codelineno-0-206"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.agent_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_id</span>
+<a id="__codelineno-0-206" name="__codelineno-0-206"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.agent_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_id</span>
 <a id="__codelineno-0-207" name="__codelineno-0-207"></a>    <span class="k">if</span> <span class="n">duration_ms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-208" name="__codelineno-0-208"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.verify.duration_ms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">duration_ms</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-0-208" name="__codelineno-0-208"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.verify.duration_ms"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">duration_ms</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
 <a id="__codelineno-0-209" name="__codelineno-0-209"></a>    <span class="n">abbreviated</span> <span class="o">=</span> <span class="n">abbreviate_token</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
 <a id="__codelineno-0-210" name="__codelineno-0-210"></a>    <span class="k">if</span> <span class="n">abbreviated</span><span class="p">:</span>
-<a id="__codelineno-0-211" name="__codelineno-0-211"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.payment_token&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">abbreviated</span>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.payment_token"</span><span class="p">]</span> <span class="o">=</span> <span class="n">abbreviated</span>
 <a id="__codelineno-0-212" name="__codelineno-0-212"></a>    <span class="k">if</span> <span class="n">verification</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-213" name="__codelineno-0-213"></a>        <span class="k">if</span> <span class="n">verification</span><span class="o">.</span><span class="n">payer</span><span class="p">:</span>
-<a id="__codelineno-0-214" name="__codelineno-0-214"></a>            <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.payer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">verification</span><span class="o">.</span><span class="n">payer</span>
-<a id="__codelineno-0-215" name="__codelineno-0-215"></a>        <span class="k">if</span> <span class="n">verification</span><span class="o">.</span><span class="n">network</span> <span class="ow">and</span> <span class="s2">&quot;nvm.network&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">md</span><span class="p">:</span>
-<a id="__codelineno-0-216" name="__codelineno-0-216"></a>            <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.network&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">verification</span><span class="o">.</span><span class="n">network</span>
+<a id="__codelineno-0-214" name="__codelineno-0-214"></a>            <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.payer"</span><span class="p">]</span> <span class="o">=</span> <span class="n">verification</span><span class="o">.</span><span class="n">payer</span>
+<a id="__codelineno-0-215" name="__codelineno-0-215"></a>        <span class="k">if</span> <span class="n">verification</span><span class="o">.</span><span class="n">network</span> <span class="ow">and</span> <span class="s2">"nvm.network"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">md</span><span class="p">:</span>
+<a id="__codelineno-0-216" name="__codelineno-0-216"></a>            <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.network"</span><span class="p">]</span> <span class="o">=</span> <span class="n">verification</span><span class="o">.</span><span class="n">network</span>
 <a id="__codelineno-0-217" name="__codelineno-0-217"></a>        <span class="k">if</span> <span class="n">verification</span><span class="o">.</span><span class="n">agent_request_id</span><span class="p">:</span>
-<a id="__codelineno-0-218" name="__codelineno-0-218"></a>            <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.agent_request_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">verification</span><span class="o">.</span><span class="n">agent_request_id</span>
+<a id="__codelineno-0-218" name="__codelineno-0-218"></a>            <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.agent_request_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">verification</span><span class="o">.</span><span class="n">agent_request_id</span>
 <a id="__codelineno-0-219" name="__codelineno-0-219"></a>    <span class="k">return</span> <span class="n">md</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -1661,7 +1663,7 @@ up in metadata that we control.</p>
 surfaced as <code>nvm.payment_token</code>.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>payments_py/langsmith/spans.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-222">222</a></span>
 <span class="normal"><a href="#__codelineno-0-223">223</a></span>
@@ -1700,29 +1702,29 @@ surfaced as <code>nvm.payment_token</code>.</p>
 <a id="__codelineno-0-226" name="__codelineno-0-226"></a>    <span class="n">duration_ms</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-227" name="__codelineno-0-227"></a>    <span class="n">token</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the ``nvm.*`` metadata dict for a settlement span. Drops ``None`` values.</span>
+<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="w">    </span><span class="sd">"""Build the ``nvm.*`` metadata dict for a settlement span. Drops ``None`` values.</span>
 <a id="__codelineno-0-230" name="__codelineno-0-230"></a>
 <a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">    ``token`` is abbreviated via :func:`abbreviate_token` before being</span>
 <a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">    surfaced as ``nvm.payment_token``.</span>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a>    <span class="n">md</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;nvm.plan_ids&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">)}</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">    """</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a>    <span class="n">md</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"nvm.plan_ids"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">)}</span>
 <a id="__codelineno-0-235" name="__codelineno-0-235"></a>    <span class="k">if</span> <span class="n">agent_id</span><span class="p">:</span>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.agent_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_id</span>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.agent_id"</span><span class="p">]</span> <span class="o">=</span> <span class="n">agent_id</span>
 <a id="__codelineno-0-237" name="__codelineno-0-237"></a>    <span class="k">if</span> <span class="n">duration_ms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-238" name="__codelineno-0-238"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.settle.duration_ms&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">duration_ms</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.settle.duration_ms"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">duration_ms</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
 <a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="n">abbreviated</span> <span class="o">=</span> <span class="n">abbreviate_token</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
 <a id="__codelineno-0-240" name="__codelineno-0-240"></a>    <span class="k">if</span> <span class="n">abbreviated</span><span class="p">:</span>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.payment_token&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">abbreviated</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.payment_token"</span><span class="p">]</span> <span class="o">=</span> <span class="n">abbreviated</span>
 <a id="__codelineno-0-242" name="__codelineno-0-242"></a>    <span class="k">if</span> <span class="n">settlement</span><span class="o">.</span><span class="n">credits_redeemed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-243" name="__codelineno-0-243"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.credits_redeemed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">credits_redeemed</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.credits_redeemed"</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">credits_redeemed</span>
 <a id="__codelineno-0-244" name="__codelineno-0-244"></a>    <span class="k">if</span> <span class="n">settlement</span><span class="o">.</span><span class="n">remaining_balance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.balance.after&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">remaining_balance</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.balance.after"</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">remaining_balance</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="k">if</span> <span class="n">settlement</span><span class="o">.</span><span class="n">transaction</span><span class="p">:</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.tx_hash&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">transaction</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.tx_hash"</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">transaction</span>
 <a id="__codelineno-0-248" name="__codelineno-0-248"></a>    <span class="k">if</span> <span class="n">settlement</span><span class="o">.</span><span class="n">network</span><span class="p">:</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.network&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">network</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.network"</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">network</span>
 <a id="__codelineno-0-250" name="__codelineno-0-250"></a>    <span class="k">if</span> <span class="n">settlement</span><span class="o">.</span><span class="n">payer</span><span class="p">:</span>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">&quot;nvm.payer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">payer</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a>        <span class="n">md</span><span class="p">[</span><span class="s2">"nvm.payer"</span><span class="p">]</span> <span class="o">=</span> <span class="n">settlement</span><span class="o">.</span><span class="n">payer</span>
 <a id="__codelineno-0-252" name="__codelineno-0-252"></a>    <span class="k">return</span> <span class="n">md</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -1747,7 +1749,7 @@ surfaced as <code>nvm.payment_token</code>.</p>
 <p>Safe to call regardless of whether <code>langsmith</code> is installed.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>payments_py/langsmith/spans.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-34">34</a></span>
 <span class="normal"><a href="#__codelineno-0-35">35</a></span>
@@ -1760,10 +1762,10 @@ surfaced as <code>nvm.payment_token</code>.</p>
 <span class="normal"><a href="#__codelineno-0-42">42</a></span>
 <span class="normal"><a href="#__codelineno-0-43">43</a></span>
 <span class="normal"><a href="#__codelineno-0-44">44</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="k">def</span><span class="w"> </span><span class="nf">active_run_tree</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the current LangSmith ``RunTree``, or ``None`` if no run is active.</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="w">    </span><span class="sd">"""Return the current LangSmith ``RunTree``, or ``None`` if no run is active.</span>
 <a id="__codelineno-0-36" name="__codelineno-0-36"></a>
 <a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">    Safe to call regardless of whether ``langsmith`` is installed.</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">    """</span>
 <a id="__codelineno-0-39" name="__codelineno-0-39"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">_LANGSMITH_AVAILABLE</span><span class="p">:</span>
 <a id="__codelineno-0-40" name="__codelineno-0-40"></a>        <span class="k">return</span> <span class="kc">None</span>
 <a id="__codelineno-0-41" name="__codelineno-0-41"></a>    <span class="k">try</span><span class="p">:</span>
@@ -1795,7 +1797,7 @@ surfaced as <code>nvm.payment_token</code>.</p>
 <p>No-op if <code>run_tree</code> is <code>None</code> or <code>metadata</code> is empty.</p>
 
 
-            <details class="quote">
+            <details class="mkdocstrings-source">
               <summary>Source code in <code>payments_py/langsmith/spans.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-47">47</a></span>
 <span class="normal"><a href="#__codelineno-0-48">48</a></span>
@@ -1808,16 +1810,16 @@ surfaced as <code>nvm.payment_token</code>.</p>
 <span class="normal"><a href="#__codelineno-0-55">55</a></span>
 <span class="normal"><a href="#__codelineno-0-56">56</a></span>
 <span class="normal"><a href="#__codelineno-0-57">57</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="k">def</span><span class="w"> </span><span class="nf">add_metadata</span><span class="p">(</span><span class="n">run_tree</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Attach ``metadata`` to ``run_tree``, swallowing any error.</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="w">    </span><span class="sd">"""Attach ``metadata`` to ``run_tree``, swallowing any error.</span>
 <a id="__codelineno-0-49" name="__codelineno-0-49"></a>
 <a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="sd">    No-op if ``run_tree`` is ``None`` or ``metadata`` is empty.</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="sd">    """</span>
 <a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="k">if</span> <span class="n">run_tree</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">metadata</span><span class="p">:</span>
 <a id="__codelineno-0-53" name="__codelineno-0-53"></a>        <span class="k">return</span>
 <a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-0-55" name="__codelineno-0-55"></a>        <span class="n">run_tree</span><span class="o">.</span><span class="n">add_metadata</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
 <a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;LangSmith add_metadata failed (ignored)&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"LangSmith add_metadata failed (ignored)"</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -1889,7 +1891,7 @@ surfaced as <code>nvm.payment_token</code>.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

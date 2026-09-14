@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -33,7 +33,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -1474,7 +1474,7 @@ unset, the x402 path is untouched.</p>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaymentMiddleware</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span><span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">&quot;nvm:...&quot;</span><span class="p">))</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span><span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">"nvm:..."</span><span class="p">))</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">PaymentMiddleware</span><span class="p">,</span>
@@ -1482,22 +1482,22 @@ unset, the x402 path is untouched.</p>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">routes</span><span class="o">=</span><span class="p">{</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="c1"># Accepts BOTH protocols. The 402 advertises an MPP challenge and the</span>
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        <span class="c1"># x402 payment-required header, so either buyer can pay it.</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        <span class="s2">&quot;POST /ask&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;plan_id&quot;</span><span class="p">:</span> <span class="n">PLAN_ID</span><span class="p">,</span> <span class="s2">&quot;credits&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;mpp&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        <span class="s2">"POST /ask"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"plan_id"</span><span class="p">:</span> <span class="n">PLAN_ID</span><span class="p">,</span> <span class="s2">"credits"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">"mpp"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="p">},</span>
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="p">)</span>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/ask&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/ask"</span><span class="p">)</span>
 <a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">ask</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">):</span>
 <a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">context</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">payment_context</span>
 <a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="c1"># context.mpp is present only when the request was paid over MPP. It is an</span>
 <a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="c1"># MppPaymentFraming with three attributes: credential, resource, http_verb.</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;answer&quot;</span><span class="p">:</span> <span class="s2">&quot;...&quot;</span><span class="p">,</span> <span class="s2">&quot;paid_over&quot;</span><span class="p">:</span> <span class="s2">&quot;mpp&quot;</span> <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">mpp</span> <span class="k">else</span> <span class="s2">&quot;x402&quot;</span><span class="p">}</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">"answer"</span><span class="p">:</span> <span class="s2">"..."</span><span class="p">,</span> <span class="s2">"paid_over"</span><span class="p">:</span> <span class="s2">"mpp"</span> <span class="k">if</span> <span class="n">context</span><span class="o">.</span><span class="n">mpp</span> <span class="k">else</span> <span class="s2">"x402"</span><span class="p">}</span>
 </code></pre></div>
 <h3 id="binding-the-challenge-to-the-request-body">Binding the challenge to the request body<a class="headerlink" href="#binding-the-challenge-to-the-request-body" title="Permanent link">&para;</a></h3>
 <p><code>{"bind_body": True}</code> seals a <code>sha-256=&lt;base64&gt;</code> digest of the request body into
 the challenge, so the paid retry must carry the same bytes:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">routes</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;POST /ask&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;plan_id&quot;</span><span class="p">:</span> <span class="n">PLAN_ID</span><span class="p">,</span> <span class="s2">&quot;credits&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;mpp&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;bind_body&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}}}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">routes</span><span class="o">=</span><span class="p">{</span><span class="s2">"POST /ask"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"plan_id"</span><span class="p">:</span> <span class="n">PLAN_ID</span><span class="p">,</span> <span class="s2">"credits"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">"mpp"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"bind_body"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}}}</span>
 </code></pre></div>
 <p><code>bind_body</code> is the only key the option accepts, and a typo raises at startup
 rather than resolving to <code>False</code>: <code>{"bindBody": True}</code> would otherwise turn the
@@ -1589,14 +1589,14 @@ use for x402. No new plan, no new delegation, no new credential.</p>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">DelegationConfig</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">mpp</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="s2">&quot;https://agent.example/ask&quot;</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="s2">"POST"</span><span class="p">,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="s2">"https://agent.example/ask"</span><span class="p">,</span>
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">MppFetchOptions</span><span class="p">(</span>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
 <a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_id</span><span class="p">,</span>        <span class="c1"># optional: refuse a challenge naming another plan</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="n">max_credits</span><span class="o">=</span><span class="s2">&quot;10&quot;</span><span class="p">,</span>       <span class="c1"># optional: budget for the WHOLE call</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="n">max_credits</span><span class="o">=</span><span class="s2">"10"</span><span class="p">,</span>       <span class="c1"># optional: budget for the WHOLE call</span>
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="p">),</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;hello&quot;</span><span class="p">},</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">"q"</span><span class="p">:</span> <span class="s2">"hello"</span><span class="p">},</span>
 <a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="p">)</span>
 <a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
 <a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">paid</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">receipt</span><span class="p">)</span>
@@ -1673,14 +1673,14 @@ against, and the one re-challenge cycle spent.</p>
 <a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="c1"># max_credits or plan_id guard can fire on the RE-CHALLENGE turn, after a</span>
 <a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="c1"># credential has already gone out, so the report is checked here too.</span>
 <a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    <span class="k">if</span> <span class="n">mpp_spend_of</span><span class="p">(</span><span class="n">err</span><span class="p">):</span>
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;guard fired after a credential was presented: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"guard fired after a credential was presented: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
 <a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="k">except</span> <span class="n">MppError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
 <a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="c1"># What the wire actually said: a rejected credential, a malformed</span>
 <a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    <span class="c1"># challenge, an MPP-disabled environment.</span>
 <a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    <span class="n">spend</span> <span class="o">=</span> <span class="n">mpp_spend_of</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
 <a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    <span class="k">if</span> <span class="n">spend</span><span class="p">:</span>
 <a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>        <span class="c1"># A credential was already on the wire. Do NOT blindly retry.</span>
-<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;up to </span><span class="si">%s</span><span class="s2"> credits may have burned&quot;</span><span class="p">,</span> <span class="n">spend</span><span class="o">.</span><span class="n">credits_presented</span><span class="p">)</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"up to </span><span class="si">%s</span><span class="s2"> credits may have burned"</span><span class="p">,</span> <span class="n">spend</span><span class="o">.</span><span class="n">credits_presented</span><span class="p">)</span>
 </code></pre></div>
 <p><code>mpp_spend_of</code> returns a report <strong>only</strong> when at least one credential was
 presented, so a non-<code>None</code> result always means money may have left. It reads the
@@ -1702,17 +1702,17 @@ using the FastAPI middleware:</p>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">issued</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">mpp</span><span class="o">.</span><span class="n">issue_challenge</span><span class="p">(</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">IssueMppChallengeParams</span><span class="p">(</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="n">plan_id</span><span class="o">=</span><span class="n">PLAN_ID</span><span class="p">,</span> <span class="n">credits</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="s2">&quot;/ask&quot;</span><span class="p">,</span> <span class="n">http_verb</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="n">plan_id</span><span class="o">=</span><span class="n">PLAN_ID</span><span class="p">,</span> <span class="n">credits</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="s2">"/ask"</span><span class="p">,</span> <span class="n">http_verb</span><span class="o">=</span><span class="s2">"POST"</span>
 <a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="p">)</span>
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="p">)</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="c1"># → {&quot;challenge&quot;: &quot;Payment id=…&quot;, &quot;id&quot;: &quot;…&quot;} — send as WWW-Authenticate</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="c1"># → {"challenge": "Payment id=…", "id": "…"} — send as WWW-Authenticate</span>
 <a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
 <a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="n">verification</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">mpp</span><span class="o">.</span><span class="n">verify_credential</span><span class="p">(</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="n">RedeemMppParams</span><span class="p">(</span><span class="n">credential</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="s2">&quot;/ask&quot;</span><span class="p">,</span> <span class="n">http_verb</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="n">RedeemMppParams</span><span class="p">(</span><span class="n">credential</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="s2">"/ask"</span><span class="p">,</span> <span class="n">http_verb</span><span class="o">=</span><span class="s2">"POST"</span><span class="p">)</span>
 <a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="p">)</span>   <span class="c1"># burns nothing</span>
 <a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
 <a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="n">settlement</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">mpp</span><span class="o">.</span><span class="n">settle_credential</span><span class="p">(</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="n">RedeemMppParams</span><span class="p">(</span><span class="n">credential</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="s2">&quot;/ask&quot;</span><span class="p">,</span> <span class="n">http_verb</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="n">RedeemMppParams</span><span class="p">(</span><span class="n">credential</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="s2">"/ask"</span><span class="p">,</span> <span class="n">http_verb</span><span class="o">=</span><span class="s2">"POST"</span><span class="p">)</span>
 <a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="p">)</span>   <span class="c1"># burns; settling the same credential twice burns once</span>
 </code></pre></div>
 <p>Each <code>issue_challenge</code> returns a distinct challenge even for identical inputs —
@@ -1828,7 +1828,7 @@ buyer-malleable, and the backend collapses every variant onto a single burn).</p
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
