@@ -1,0 +1,133 @@
+name: Dependabot auto-merge
+
+# Approves and queues routine Dependabot bumps so they stop needing a human.
+#
+# Why this works HERE and not in nevermined-io/payments: `main`'s protection in
+# this repository requires 1 approving review with `require_code_owner_reviews:
+# false`, so an approval from any identity with write access satisfies it. The
+# TypeScript repo sets `require_code_owner_reviews: true` with no
+# `bypass_pull_request_allowances`, and a GitHub App cannot be a team member, so
+# the same approval never satisfies CODEOWNERS there (see payments#449). Do not
+# copy this file back without checking that setting.
+#
+# Uses `pull_request`, NOT `pull_request_target`: GitHub has respected the
+# `permissions:` key for Dependabot PRs since October 2021, which makes
+# `pull_request_target` unnecessary and strictly less safe here.
+#
+# Nothing is ever checked out. A Dependabot branch is untrusted content, and
+# running any of it — a script, a build step, a test — while the App token is in
+# the environment would be a straightforward privilege escalation. The whole
+# policy therefore lives in `if:` expressions over `dependabot/fetch-metadata`
+# output, which needs no working tree. (nvm-monorepo runs a policy script
+# instead, and pins it to `base.sha` for exactly this reason.)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  # Re-arm PRs that never get another `pull_request` event: anything opened
+  # before this workflow existed, or whose auto-merge was switched off (a
+  # force-push, or someone toggling it by hand). The sweep only re-enables
+  # auto-merge on PRs that are ALREADY approved — it never approves anything,
+  # so it cannot widen the policy above.
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate release bot token
+        id: bot-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Patch and minor only. A major is held for review on purpose: #282 bumped
+      # a2a-sdk 0.3.26 -> 1.1.2, which removed `TextPart` from `a2a.types` and
+      # broke eight test modules on import — exactly the kind of change that
+      # needs a human, and the kind that #278 raised the runtime floor for.
+      #
+      # For a GROUPED PR `fetch-metadata` reports the highest update-type in the
+      # group, so one major would hold the whole batch. `.github/dependabot.yml`
+      # keeps the version-update group to minor+patch precisely so that cannot
+      # happen; majors arrive as their own PRs.
+      #
+      # Known cost, inherited knowingly: a SECURITY update that is also a major
+      # is held too. The security group cannot be split by update-type the way
+      # the version group can. nvm-monorepo hit this (their #3209 sat 8 days on a
+      # HIGH advisory) and answered it with a policy script reading an advisory
+      # feed. That is more machinery than this repo's volume justifies today; if
+      # a held security major ever costs real time here, port that script.
+      - name: Approve the PR
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+
+      # `--auto` queues the merge behind the required checks (`lint`,
+      # `unit_integration`, `e2e`) rather than merging now. On a Dependabot PR
+      # `e2e` reports `skipped`, which satisfies its required check — see the
+      # comment on that job in `test.yaml`, and note what it says about the
+      # coverage that buys.
+      - name: Enable auto-merge
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+
+  rearm:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate release bot token
+        id: bot-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Re-enable auto-merge on approved Dependabot PRs
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Only PRs that already carry an APPROVED review. This job deliberately
+          # cannot approve: it exists to re-arm a decision someone (or the job
+          # above) already made, not to make a new one.
+          prs=$(gh pr list --repo "$REPO" \
+            --author 'app/dependabot' --state open \
+            --json number,reviewDecision,autoMergeRequest \
+            --jq '.[] | select(.reviewDecision == "APPROVED" and .autoMergeRequest == null) | .number')
+
+          if [ -z "$prs" ]; then
+            echo "Nothing to re-arm."
+            exit 0
+          fi
+
+          for pr in $prs; do
+            echo "Re-enabling auto-merge on #$pr"
+            gh pr merge --auto --squash --repo "$REPO" "$pr"
+          done
