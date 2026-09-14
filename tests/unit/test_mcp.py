@@ -8,6 +8,28 @@ from payments_py.x402.types import SettleResponse
 from tests.x402_responses import make_settle_response, make_verify_response
 
 
+@pytest.fixture(autouse=True)
+def event_loop_for_sync_tests():
+    """Give every test in this module its own current event loop.
+
+    The tests here are synchronous and drive coroutines with
+    ``asyncio.get_event_loop().run_until_complete(...)``, which only works
+    while some loop is set as current on the main thread. That used to be a
+    side effect of whichever async test ran first; pytest-asyncio no longer
+    leaves one behind, so these tests passed alone and failed in a full run.
+    Several of them call ``run_until_complete`` more than once against the same
+    async iterable, so they need one loop for the whole test rather than the
+    fresh-loop-per-call that ``asyncio.run`` would give.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        yield loop
+    finally:
+        asyncio.set_event_loop(None)
+        loop.close()
+
+
 # Mock the decode_access_token to return x402-compliant token structure
 def mock_decode_token(token):
     return {

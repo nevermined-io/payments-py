@@ -63,7 +63,8 @@ async def test_on_message_send_validates_and_calls_parent(monkeypatch):  # noqa:
 
     # Mock _consume_and_burn_credits to return the task
     async def mock_consume_credits(*args, **kwargs):
-        return (completed_task, False)  # (result, interrupted_or_non_blocking)
+        # (result, interrupted_or_non_blocking, background_task)
+        return (completed_task, False, None)
 
     with (
         patch.object(
@@ -186,7 +187,8 @@ async def test_on_message_send_burns_credits_from_events():  # noqa: D401
         except Exception:
             pass  # Swallow errors like the real implementation
 
-        return (completed_task, False)  # (result, interrupted_or_non_blocking)
+        # (result, interrupted_or_non_blocking, background_task)
+        return (completed_task, False, None)
 
     with (
         patch.object(
@@ -361,7 +363,7 @@ async def test_on_message_send_generates_task_id_when_missing():  # noqa: D401
         )
 
     async def mock_consume_credits(*args, **kwargs):
-        return (completed_task, False)
+        return (completed_task, False, None)
 
     with (
         patch.object(

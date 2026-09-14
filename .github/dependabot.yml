@@ -1,6 +1,45 @@
 version: 2
 updates:
-  - package-ecosystem: 'npm'
+  # Python dependencies. Dependabot reads Poetry projects through the `pip`
+  # ecosystem (pyproject.toml + poetry.lock).
+  #
+  # This entry replaces an `npm` one that had been here since the first commit:
+  # there is no package.json in this repository, so it matched nothing and no
+  # version updates were ever configured. Every Dependabot PR this repo has
+  # received came from *security* updates, which run off the dependency graph
+  # and ignore this file — one ungrouped PR per advisory, which is how 18 of
+  # them accumulated.
+  #
+  # Both kinds are grouped: `applies-to` defaults to version-updates, so
+  # security updates need their own group to be batched as well.
+  - package-ecosystem: 'pip'
     directory: '/'
     schedule:
       interval: 'weekly'
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+    groups:
+      python-security:
+        applies-to: security-updates
+        patterns:
+          - '*'
+      python-version-updates:
+        applies-to: version-updates
+        patterns:
+          - '*'
+
+  # Actions referenced by .github/workflows/*. Never configured before, so the
+  # pinned majors here have gone stale without anything proposing bumps.
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(ci)'
+    groups:
+      github-actions:
+        patterns:
+          - '*'

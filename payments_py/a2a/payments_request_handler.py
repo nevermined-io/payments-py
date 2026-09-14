@@ -83,6 +83,12 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         self._async_execution = async_execution
         self._http_ctx_by_task: Dict[str, HttpRequestContext] = {}
         self._http_ctx_by_message: Dict[str, HttpRequestContext] = {}
+        # Strong references to the background continuation tasks handed back by
+        # ResultAggregator.consume_and_break_on_interrupt. The event loop only
+        # holds weak references to tasks, so without this set a non-blocking or
+        # auth-required request can have its continuation collected mid-flight —
+        # losing the credit burn that runs in it.
+        self._background_tasks: set[asyncio.Task] = set()
         # Settlement receipt captured per task during finalization, so the
         # in-band x402 v2 path can emit it into the resulting task metadata.
         self._settle_receipt_by_task: Dict[str, SettleResponse] = {}
@@ -395,9 +401,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         try:
             # Both blocking and non-blocking use the same method, but with different
             # early return behavior
-            result, interrupted_or_non_blocking = await self._consume_and_burn_credits(
+            (
+                result,
+                interrupted_or_non_blocking,
+                background_task,
+            ) = await self._consume_and_burn_credits(
                 result_aggregator, consumer, http_ctx, blocking
             )
+            self._track_background_task(background_task)
 
             if not result:
                 raise PaymentsError.internal(
@@ -503,18 +514,35 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             except asyncio.CancelledError:
                 pass
 
+    def _track_background_task(self, task: asyncio.Task | None) -> None:
+        """Hold a strong reference to an SDK background continuation task.
+
+        ``consume_and_break_on_interrupt`` spawns the continuation with
+        ``asyncio.create_task`` and hands it back; the loop keeps only a weak
+        reference, so the caller has to retain it or it may be garbage
+        collected before it finishes.
+        """
+        if task is None:
+            return
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+
     async def _consume_and_burn_credits(
         self,
         result_aggregator: ResultAggregator,
         consumer: EventConsumer,
         http_ctx: HttpRequestContext,
         blocking: bool = True,
-    ) -> tuple[Task | Message, bool]:
+    ) -> tuple[Task | Message | None, bool, asyncio.Task | None]:
         """Process events with credit burning (like TypeScript processEventsWithFinalization).
 
         This mirrors TypeScript processEventsWithFinalization with:
         - Credit burning on final events with creditsUsed metadata
         - Background processing continuation when interrupted (via SDK's _continue_consuming)
+
+        Returns the SDK's ``(result, interrupted, background_task)`` triple
+        unchanged; the caller must keep ``background_task`` alive (see
+        :meth:`_track_background_task`).
         """
         # Store the original consume_all method before replacing it
         original_consume_all = consumer.consume_all

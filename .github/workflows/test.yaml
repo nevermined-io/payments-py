@@ -66,7 +66,23 @@ jobs:
     # TEST_SUBSCRIBER_API_KEY / TEST_BUILDER_API_KEY are empty and every test
     # fails identically when the SDK tries to parse the empty key. Run on push
     # events (main) and on pull_request events from same-repo branches.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    #
+    # Skip on Dependabot runs for the same reason: repository secrets are not
+    # exposed to `dependabot[bot]` (they would have to live in the separate
+    # Dependabot secret store, which this repo does not populate), so the keys
+    # arrive empty and every E2E test errors in `_parse_nvm_api_key` with
+    # "ValueError: not enough values to unpack (expected 2, got 1)". `e2e` is a
+    # required status check, so that turns every Dependabot PR unmergeable —
+    # which is how 18 of them piled up. A job skipped by this `if` reports
+    # conclusion `skipped`, which satisfies the required check (see #269).
+    #
+    # Gated on `github.actor`, the actor of the triggering event, and not on the
+    # PR author: when a human pushes to a `dependabot/*` branch to fix up a bump,
+    # the actor is that human, secrets are available, and E2E runs as normal.
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
