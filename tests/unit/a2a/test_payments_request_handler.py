@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import contextlib
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
@@ -10,6 +11,7 @@ import logging
 
 import pytest
 
+from a2a.server.events.event_consumer import EventConsumer
 from a2a.server.events.event_queue import EventQueue
 from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
 from a2a.server.tasks.result_aggregator import ResultAggregator
@@ -23,7 +25,7 @@ from a2a.types import (
 from payments_py.a2a.payments_request_handler import PaymentsRequestHandler
 from payments_py.a2a.types import HttpRequestContext
 from payments_py.common.payments_error import PaymentsError
-from tests.x402_responses import make_verify_response
+from tests.x402_responses import make_settle_response, make_verify_response
 
 
 class DummyExecutor:  # noqa: D101
@@ -870,7 +872,8 @@ async def test_streamed_spent_token_records_a_failed_receipt(caplog):  # noqa: D
     )
 
 
-def _handler_with_mocked_send(completed_task: Task, background_task):
+@contextlib.contextmanager
+def _mocked_send(completed_task: Task, background_task):
     """Patch context for `on_message_send` that returns `background_task`.
 
     Mirrors the setup of the tests above, but lets the caller decide what
@@ -883,7 +886,10 @@ def _handler_with_mocked_send(completed_task: Task, background_task):
         task_manager = TaskManager("tid", "ctx-123", task_store, None)
         queue = EventQueue()
         result_aggregator = ResultAggregator(task_manager)
-        producer_task = AsyncMock()
+        # Mock, not AsyncMock: on an unspecced AsyncMock `done()` returns an
+        # un-awaited coroutine, which is truthy, so `_cleanup_producer` would
+        # skip its cancel branch by accident rather than by configuration.
+        producer_task = Mock(spec=asyncio.Task)
         producer_task.done.return_value = True
         return task_manager, "tid", queue, result_aggregator, producer_task
 
@@ -891,40 +897,50 @@ def _handler_with_mocked_send(completed_task: Task, background_task):
         # interrupted=True is what makes the SDK spawn a continuation at all.
         return (completed_task, True, background_task)
 
-    return (
-        patch.object(
-            PaymentsRequestHandler, "_setup_message_execution", side_effect=mock_setup
-        ),
-        patch.object(
-            PaymentsRequestHandler,
-            "_consume_and_burn_credits",
-            side_effect=mock_consume_credits,
-        ),
-        patch.object(
-            PaymentsRequestHandler, "_send_push_notification_if_needed", new=AsyncMock()
-        ),
-        patch.object(
-            PaymentsRequestHandler,
-            "get_agent_card",
-            new=AsyncMock(
-                return_value=SimpleNamespace(
-                    capabilities=SimpleNamespace(
-                        extensions=[
-                            SimpleNamespace(
-                                uri="urn:nevermined:payment",
-                                params=SimpleNamespace(agentId="test-agent"),
-                            )
-                        ]
-                    )
-                )
+    with contextlib.ExitStack() as stack:
+        for patcher in (
+            patch.object(
+                PaymentsRequestHandler,
+                "_setup_message_execution",
+                side_effect=mock_setup,
             ),
-        ),
-    )
+            patch.object(
+                PaymentsRequestHandler,
+                "_consume_and_burn_credits",
+                side_effect=mock_consume_credits,
+            ),
+            patch.object(
+                PaymentsRequestHandler,
+                "_send_push_notification_if_needed",
+                new=AsyncMock(),
+            ),
+            patch.object(
+                PaymentsRequestHandler,
+                "get_agent_card",
+                new=AsyncMock(
+                    return_value=SimpleNamespace(
+                        capabilities=SimpleNamespace(
+                            extensions=[
+                                SimpleNamespace(
+                                    uri="urn:nevermined:payment",
+                                    params=SimpleNamespace(agentId="test-agent"),
+                                )
+                            ]
+                        )
+                    )
+                ),
+            ),
+        ):
+            stack.enter_context(patcher)
+        yield
 
 
-def _build_handler() -> PaymentsRequestHandler:
+def _build_handler(settle_mock=None) -> PaymentsRequestHandler:
     dummy_payments = SimpleNamespace(
-        facilitator=SimpleNamespace(settle_permissions=Mock()),
+        facilitator=SimpleNamespace(
+            settle_permissions=settle_mock
+            or (lambda **kwargs: make_settle_response(transaction="0xabc")),
+        ),
     )
     return PaymentsRequestHandler(
         agent_card={},
@@ -934,9 +950,27 @@ def _build_handler() -> PaymentsRequestHandler:
     )
 
 
+def _http_ctx() -> HttpRequestContext:
+    return HttpRequestContext(
+        bearer_token="BEARER",
+        url_requested="https://x",
+        http_method_requested="POST",
+        validation={"plan_id": "plan123", "subscriber_address": "0x123"},
+    )
+
+
 def _send_params():
     return SimpleNamespace(
         message=SimpleNamespace(task_id="tid", message_id="mid", context_id="ctx-123")
+    )
+
+
+def _completed_task() -> Task:
+    return Task(
+        id="tid",
+        context_id="ctx-123",
+        status=TaskStatus(state=TaskState.completed),
+        history=[],
     )
 
 
@@ -953,84 +987,147 @@ async def test_on_message_send_holds_background_task_until_it_finishes():
     Without this test the retention is pinned by nothing: every other mock in
     this module hands back `background_task=None`.
     """
-    completed_task = Task(
-        id="tid",
-        context_id="ctx-123",
-        status=TaskStatus(state=TaskState.completed),
-        history=[],
-    )
+    completed_task = _completed_task()
     gate = asyncio.Event()
     background_task = asyncio.create_task(gate.wait())
 
-    patches = _handler_with_mocked_send(completed_task, background_task)
-    with patches[0], patches[1], patches[2], patches[3]:
+    with _mocked_send(completed_task, background_task):
         handler = _build_handler()
-        handler.set_http_ctx_for_task(
-            "tid",
-            HttpRequestContext(
-                bearer_token="BEARER",
-                url_requested="https://x",
-                http_method_requested="POST",
-                validation={"plan_id": "plan123", "subscriber_address": "0x123"},
-            ),
-        )
+        handler.set_http_ctx_for_task("tid", _http_ctx())
         await handler.on_message_send(_send_params(), None)
 
-        # Held while pending — this is the whole point of the reference.
+        # Both interrupted-path tasks are held, under the names the parent
+        # handler uses — the cleanup task is created synchronously in the
+        # `finally`, so the loop has not run yet and this is deterministic.
+        assert {t.get_name() for t in handler._background_tasks} == {
+            "continue_consuming:tid",
+            "cleanup_producer:tid",
+        }
         assert background_task in handler._background_tasks
 
         gate.set()
         await background_task
         await asyncio.sleep(0)
 
-        # ...and released once it finishes, so the set cannot grow unbounded.
+        # ...and released once it finishes. (See #279 for the path where the
+        # continuation never finishes: the producer is cancelled without the
+        # queue being closed, so `consume_all` keeps re-polling forever.)
         assert background_task not in handler._background_tasks
 
 
 @pytest.mark.asyncio()
 async def test_background_task_failure_is_logged_not_swallowed(caplog):
-    """A continuation that raises must say so, with the task name.
+    """A continuation that raises must say so, under the task's own name.
 
     Retention is delegated to `DefaultRequestHandler._track_background_task`
     precisely because its done-callback calls `result()`. Inside the
     continuation, `task_manager.process` and the payment-extension helpers run
     outside the `try` that wraps `settle_permissions`, so without that call a
     failure there loses the burn and leaves only asyncio's GC-time
-    "exception was never retrieved" under a generic task name.
+    "exception was never retrieved".
+
+    The task is deliberately created unnamed: the name asserted below has to
+    come from `on_message_send`, not from this fixture, or the test would be
+    pinning itself. The assertion is on the logged exception rather than on the
+    SDK's wording, so an upstream reword does not fail a dependency bump for a
+    non-behavioural reason.
     """
-    completed_task = Task(
-        id="tid",
-        context_id="ctx-123",
-        status=TaskStatus(state=TaskState.completed),
-        history=[],
-    )
+    completed_task = _completed_task()
 
     async def boom():
         raise RuntimeError("continuation blew up")
 
-    background_task = asyncio.create_task(boom(), name="continue_consuming:tid")
+    background_task = asyncio.create_task(boom())
 
-    patches = _handler_with_mocked_send(completed_task, background_task)
-    with caplog.at_level(logging.ERROR), patches[0], patches[1], patches[2], patches[3]:
+    with caplog.at_level(logging.ERROR), _mocked_send(completed_task, background_task):
         handler = _build_handler()
-        handler.set_http_ctx_for_task(
-            "tid",
-            HttpRequestContext(
-                bearer_token="BEARER",
-                url_requested="https://x",
-                http_method_requested="POST",
-                validation={"plan_id": "plan123", "subscriber_address": "0x123"},
-            ),
-        )
+        handler.set_http_ctx_for_task("tid", _http_ctx())
         await handler.on_message_send(_send_params(), None)
 
         with pytest.raises(RuntimeError):
             await background_task
         await asyncio.sleep(0)
 
-    assert any(
-        "Background task" in record.getMessage()
-        and "continue_consuming:tid" in record.getMessage()
+    logged = [
+        record
         for record in caplog.records
-    ), f"continuation failure was not logged: {[r.getMessage() for r in caplog.records]}"
+        if "continue_consuming:tid" in record.getMessage()
+        and record.exc_info
+        and isinstance(record.exc_info[1], RuntimeError)
+    ]
+    assert logged, (
+        "continuation failure was not logged under its task name: "
+        f"{[r.getMessage() for r in caplog.records]}"
+    )
     assert background_task not in handler._background_tasks
+
+
+@pytest.mark.asyncio()
+@pytest.mark.parametrize("blocking", [True, False])
+async def test_consume_and_burn_credits_runs_against_the_real_sdk(blocking):
+    """Exercise the real `_consume_and_burn_credits` against the real SDK.
+
+    Every other `on_message_send` test patches this method out, so the a2a-sdk
+    contract the runtime floor (`a2a-sdk = "^0.3.25"`) exists for — the
+    `(result, interrupted, background_task)` triple, and `_continue_consuming`
+    being the hook the burn is installed on — was covered by nothing but the
+    staging E2E suite, which is exactly what the Dependabot gate in
+    `.github/workflows/test.yaml` skips on a PR that bumps the dependency.
+
+    No network and no executor: events are pushed onto a real `EventQueue`.
+    `auth_required` interrupts even when `blocking=True`, which is what makes
+    the SDK hand back a continuation on both parametrisations.
+    """
+    settle_calls: list[dict] = []
+
+    def settle(**kwargs):
+        settle_calls.append(kwargs)
+        return make_settle_response(transaction="0xabc")
+
+    handler = _build_handler(settle_mock=settle)
+    http_ctx = _http_ctx()
+    handler.set_http_ctx_for_task("tid", http_ctx)
+
+    task_store = InMemoryTaskStore()
+    auth_required_task = Task(
+        id="tid",
+        context_id="ctx-123",
+        status=TaskStatus(state=TaskState.auth_required),
+        history=[],
+    )
+    await task_store.save(auth_required_task)
+    task_manager = TaskManager("tid", "ctx-123", task_store, None)
+    aggregator = ResultAggregator(task_manager)
+
+    queue = EventQueue()
+    await queue.enqueue_event(auth_required_task)
+    consumer = EventConsumer(queue)
+
+    with patch(
+        "payments_py.a2a.payments_request_handler.decode_access_token",
+        return_value={"sub": "0x123"},
+    ):
+        result, interrupted, background_task = await handler._consume_and_burn_credits(
+            aggregator, consumer, http_ctx, blocking
+        )
+
+        # The contract the floor is pinned for: a third element, and a real task.
+        assert interrupted is True
+        assert isinstance(background_task, asyncio.Task)
+        assert result is not None
+
+        # The burn hook must be live on the continuation, not just on the
+        # foreground consumer.
+        await queue.enqueue_event(
+            TaskStatusUpdateEvent(
+                task_id="tid",
+                context_id="ctx-123",
+                final=True,
+                status=TaskStatus(state=TaskState.completed),
+                metadata={"creditsUsed": 1},
+            )
+        )
+        await queue.close()
+        await background_task
+
+    assert len(settle_calls) == 1, f"expected one settle, got {settle_calls}"

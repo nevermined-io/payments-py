@@ -88,10 +88,12 @@ jobs:
     # Note this keys on the actor, not on whether the secrets are actually
     # present: populating TEST_SUBSCRIBER_API_KEY / TEST_BUILDER_API_KEY in the
     # repository's *Dependabot* secret store would let E2E run on Dependabot
-    # PRs and make this clause unnecessary — the better end state for a repo
-    # where a dependency bump can rewire the credit-burn path. Until then a
+    # PRs once this clause is dropped, and make it unnecessary — the better end
+    # state for a repo where a bump can rewire the credit-burn path. Until then a
     # Dependabot bump merges with E2E never executed, and the post-merge `push`
-    # run below is `continue-on-error` and not a required check.
+    # run below is `continue-on-error` and not a required check — a failing
+    # post-merge E2E still reports the run green (measured: run 34108722286,
+    # `e2e: failure` inside a `success` run). Tracked in #280.
     if: >-
       github.actor != 'dependabot[bot]' &&
       (github.event_name != 'pull_request' ||

@@ -59,7 +59,7 @@ Utilities and helpers for E2E tests:
 # Install dependencies
 pip install pytest pytest-asyncio httpx uvicorn
 
-# Environment variables
+# Environment variables (optional — override the committed staging-sandbox defaults)
 export TEST_BUILDER_API_KEY="your-builder-key"
 export TEST_SUBSCRIBER_API_KEY="your-subscriber-key"
 ```

@@ -402,6 +402,13 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             ) = await self._consume_and_burn_credits(
                 result_aggregator, consumer, http_ctx, blocking
             )
+            if background_task is not None:
+                # The SDK spawns the continuation with a bare `create_task`, so
+                # without this it is tracked as `Task-N` and the one log line the
+                # parent tracker recovers — `Background task %s failed`, i.e. a
+                # lost burn — carries nothing to correlate with a request. The
+                # parent names its own continuation the same way before tracking.
+                background_task.set_name(f"continue_consuming:{task_id}")
             self._track_background_task(background_task)
 
             if not result:
@@ -510,10 +517,13 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
 
         Known bug, tracked in #279: unlike the parent — which *awaits* the
         producer, closes the queue and pops ``_running_agents`` — this cancels
-        it. In non-blocking mode that happens on the tick after the first
-        event, so an executor awaiting anything real never emits its final
+        it. That happens whenever the SDK interrupts, on the tick after the
+        first event: non-blocking requests, and **also** a blocking request
+        whose executor emits ``auth_required`` (``consume_and_break_on_interrupt``
+        always interrupts on that state, regardless of ``blocking``). On either
+        path an executor awaiting anything real never emits its final
         ``creditsUsed`` status and the burn is lost. Left as is here because
-        changing it changes non-blocking semantics for every consumer.
+        changing it changes request semantics for every consumer.
         """
         if not producer_task.done():
             producer_task.cancel()
