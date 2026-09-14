@@ -25,13 +25,13 @@ jobs:
 
     steps:
       - name: Checkout payments-py repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.version || github.ref }}
           path: payments-py
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -55,14 +55,14 @@ jobs:
 
       - name: Generate GitHub App Token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           owner: nevermined-io
 
       - name: Checkout docs_mintlify repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: nevermined-io/docs_mintlify
           token: ${{ steps.app-token.outputs.token }}
@@ -137,7 +137,7 @@ jobs:
       # same transform, and fails ONLY on broken links sourced from the staged
       # python pages — internal links only, pre-existing site breakage ignored.
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
 
@@ -164,7 +164,7 @@ jobs:
 
       - name: Create Pull Request
         id: create_pr
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ steps.app-token.outputs.token }}
           path: docs_mintlify

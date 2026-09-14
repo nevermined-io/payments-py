@@ -13,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.10.x"
       - name: Install poetry
@@ -47,9 +47,9 @@ jobs:
     # to pin `langgraph = "^0.6.0"`, disjoint from the >=1.2.11 deepagents
     # needs, but it now tracks `^1.0.10` and the lock resolves 1.2.11.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install the SDK and the Deep Agents harness
@@ -100,9 +100,9 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository)
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.10.x"
       - name: Install poetry
