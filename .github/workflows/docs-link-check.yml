@@ -32,8 +32,8 @@ jobs:
   lint-links:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.10.x'
       - name: Lint synced-doc links (escaping / unmapped relative links)
@@ -50,11 +50,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint-links
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
       - name: Run staged Mintlify broken-links against the docs site
