@@ -59,9 +59,9 @@ Utilities and helpers for E2E tests:
 # Install dependencies
 pip install pytest pytest-asyncio httpx uvicorn
 
-# Environment variables (optional)
-export E2E_BUILDER_API_KEY="your-builder-key"
-export E2E_SUBSCRIBER_API_KEY="your-subscriber-key"
+# Environment variables
+export TEST_BUILDER_API_KEY="your-builder-key"
+export TEST_SUBSCRIBER_API_KEY="your-subscriber-key"
 ```
 
 ### Execution Commands
@@ -143,8 +143,6 @@ pytest tests/e2e/ -v -s --log-cli-level=INFO
 TEST_ENVIRONMENT=staging_sandbox              # Test environment
 TEST_SUBSCRIBER_API_KEY=your-subscriber-key   # Subscriber API key
 TEST_BUILDER_API_KEY=your-builder-key         # Builder/Agent API key
-E2E_BUILDER_API_KEY=test-builder-key          # A2A Builder API key
-E2E_SUBSCRIBER_API_KEY=test-subscriber-key    # A2A Subscriber API key
 ```
 
 ### Test Ports

@@ -5041,4 +5041,4 @@ strands = ["strands-agents"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "a1df253385fed7a4a80a57020b5ae42caff261ac7697416ff4ab33aba5d6baf6"
+content-hash = "658fc80337b22ea715562d26105e55224e761e81f8d2740396ce297367f26d8a"

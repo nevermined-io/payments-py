@@ -13,13 +13,19 @@ def event_loop_for_sync_tests():
     """Give every test in this module its own current event loop.
 
     The tests here are synchronous and drive coroutines with
-    ``asyncio.get_event_loop().run_until_complete(...)``, which only works
-    while some loop is set as current on the main thread. That used to be a
-    side effect of whichever async test ran first; pytest-asyncio no longer
-    leaves one behind, so these tests passed alone and failed in a full run.
-    Several of them call ``run_until_complete`` more than once against the same
-    async iterable, so they need one loop for the whole test rather than the
-    fresh-loop-per-call that ``asyncio.run`` would give.
+    ``asyncio.get_event_loop().run_until_complete(...)``. That call only ever
+    worked because of Python's *implicit loop creation*: on 3.10-3.13
+    ``BaseDefaultEventLoopPolicy.get_event_loop`` creates a loop on the main
+    thread, but only while ``_set_called`` is still False — and any earlier
+    ``asyncio.set_event_loop(None)`` in the session flips it, which is what
+    pytest-asyncio does in its scoped-runner teardown. On 3.14 the implicit
+    creation is gone entirely and the call raises even in a fresh process.
+
+    So this fixture is load-bearing for the interpreter, not for any one
+    pytest-asyncio version: do not delete it because a future release "stopped
+    doing that". ``asyncio.run`` is not a substitute either — several of these
+    tests call ``run_until_complete`` more than once against the same async
+    iterable and need one loop for the whole test.
     """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)

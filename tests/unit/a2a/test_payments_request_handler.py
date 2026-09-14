@@ -1,5 +1,6 @@
 """Unit tests for PaymentsRequestHandler."""
 
+import asyncio
 import base64
 import json
 from types import SimpleNamespace
@@ -867,3 +868,169 @@ async def test_streamed_spent_token_records_a_failed_receipt(caplog):  # noqa: D
         and record.levelno == logging.ERROR
         for record in caplog.records
     )
+
+
+def _handler_with_mocked_send(completed_task: Task, background_task):
+    """Patch context for `on_message_send` that returns `background_task`.
+
+    Mirrors the setup of the tests above, but lets the caller decide what
+    `_consume_and_burn_credits` hands back as the SDK's third tuple element.
+    """
+
+    async def mock_setup(*args, **kwargs):
+        task_store = InMemoryTaskStore()
+        await task_store.save(completed_task)
+        task_manager = TaskManager("tid", "ctx-123", task_store, None)
+        queue = EventQueue()
+        result_aggregator = ResultAggregator(task_manager)
+        producer_task = AsyncMock()
+        producer_task.done.return_value = True
+        return task_manager, "tid", queue, result_aggregator, producer_task
+
+    async def mock_consume_credits(*args, **kwargs):
+        # interrupted=True is what makes the SDK spawn a continuation at all.
+        return (completed_task, True, background_task)
+
+    return (
+        patch.object(
+            PaymentsRequestHandler, "_setup_message_execution", side_effect=mock_setup
+        ),
+        patch.object(
+            PaymentsRequestHandler,
+            "_consume_and_burn_credits",
+            side_effect=mock_consume_credits,
+        ),
+        patch.object(
+            PaymentsRequestHandler, "_send_push_notification_if_needed", new=AsyncMock()
+        ),
+        patch.object(
+            PaymentsRequestHandler,
+            "get_agent_card",
+            new=AsyncMock(
+                return_value=SimpleNamespace(
+                    capabilities=SimpleNamespace(
+                        extensions=[
+                            SimpleNamespace(
+                                uri="urn:nevermined:payment",
+                                params=SimpleNamespace(agentId="test-agent"),
+                            )
+                        ]
+                    )
+                )
+            ),
+        ),
+    )
+
+
+def _build_handler() -> PaymentsRequestHandler:
+    dummy_payments = SimpleNamespace(
+        facilitator=SimpleNamespace(settle_permissions=Mock()),
+    )
+    return PaymentsRequestHandler(
+        agent_card={},
+        task_store=InMemoryTaskStore(),
+        agent_executor=DummyExecutor(),
+        payments_service=dummy_payments,  # type: ignore[arg-type]
+    )
+
+
+def _send_params():
+    return SimpleNamespace(
+        message=SimpleNamespace(task_id="tid", message_id="mid", context_id="ctx-123")
+    )
+
+
+@pytest.mark.asyncio()
+async def test_on_message_send_holds_background_task_until_it_finishes():
+    """The SDK's continuation must be strongly referenced while it is pending.
+
+    `consume_and_break_on_interrupt` spawns the continuation with
+    `asyncio.create_task` and documents that the caller has to retain it — the
+    event loop keeps only a weak reference. That continuation is where the
+    credit burn runs for an interrupted request, so an unheld task means a burn
+    that can vanish to the garbage collector.
+
+    Without this test the retention is pinned by nothing: every other mock in
+    this module hands back `background_task=None`.
+    """
+    completed_task = Task(
+        id="tid",
+        context_id="ctx-123",
+        status=TaskStatus(state=TaskState.completed),
+        history=[],
+    )
+    gate = asyncio.Event()
+    background_task = asyncio.create_task(gate.wait())
+
+    patches = _handler_with_mocked_send(completed_task, background_task)
+    with patches[0], patches[1], patches[2], patches[3]:
+        handler = _build_handler()
+        handler.set_http_ctx_for_task(
+            "tid",
+            HttpRequestContext(
+                bearer_token="BEARER",
+                url_requested="https://x",
+                http_method_requested="POST",
+                validation={"plan_id": "plan123", "subscriber_address": "0x123"},
+            ),
+        )
+        await handler.on_message_send(_send_params(), None)
+
+        # Held while pending — this is the whole point of the reference.
+        assert background_task in handler._background_tasks
+
+        gate.set()
+        await background_task
+        await asyncio.sleep(0)
+
+        # ...and released once it finishes, so the set cannot grow unbounded.
+        assert background_task not in handler._background_tasks
+
+
+@pytest.mark.asyncio()
+async def test_background_task_failure_is_logged_not_swallowed(caplog):
+    """A continuation that raises must say so, with the task name.
+
+    Retention is delegated to `DefaultRequestHandler._track_background_task`
+    precisely because its done-callback calls `result()`. Inside the
+    continuation, `task_manager.process` and the payment-extension helpers run
+    outside the `try` that wraps `settle_permissions`, so without that call a
+    failure there loses the burn and leaves only asyncio's GC-time
+    "exception was never retrieved" under a generic task name.
+    """
+    completed_task = Task(
+        id="tid",
+        context_id="ctx-123",
+        status=TaskStatus(state=TaskState.completed),
+        history=[],
+    )
+
+    async def boom():
+        raise RuntimeError("continuation blew up")
+
+    background_task = asyncio.create_task(boom(), name="continue_consuming:tid")
+
+    patches = _handler_with_mocked_send(completed_task, background_task)
+    with caplog.at_level(logging.ERROR), patches[0], patches[1], patches[2], patches[3]:
+        handler = _build_handler()
+        handler.set_http_ctx_for_task(
+            "tid",
+            HttpRequestContext(
+                bearer_token="BEARER",
+                url_requested="https://x",
+                http_method_requested="POST",
+                validation={"plan_id": "plan123", "subscriber_address": "0x123"},
+            ),
+        )
+        await handler.on_message_send(_send_params(), None)
+
+        with pytest.raises(RuntimeError):
+            await background_task
+        await asyncio.sleep(0)
+
+    assert any(
+        "Background task" in record.getMessage()
+        and "continue_consuming:tid" in record.getMessage()
+        for record in caplog.records
+    ), f"continuation failure was not logged: {[r.getMessage() for r in caplog.records]}"
+    assert background_task not in handler._background_tasks

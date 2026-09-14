@@ -406,6 +406,10 @@ class TestCreatePaidReactAgent:
             if value is not missing:
                 handle = value
                 break
+        assert handle is not missing, (
+            "ToolNode exposes neither handle_tool_errors nor _handle_tool_errors "
+            "— LangGraph moved the policy again"
+        )
         assert (
             handle is False
         ), f"Expected ToolNode.handle_tool_errors=False, got {handle!r}"

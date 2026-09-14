@@ -6,7 +6,6 @@ of payment flows. Common fixtures and test configuration are centralized here
 to avoid duplication across test files.
 """
 
-import asyncio
 import os
 import pytest
 import logging
@@ -73,27 +72,6 @@ def anyio_backend():
 # Note: event_loop fixture is now managed by pytest-asyncio via
 # asyncio_default_fixture_loop_scope = "session" in pyproject.toml
 # Do not define a custom event_loop fixture as it's deprecated
-
-
-@pytest.fixture(autouse=True)
-def setup_test_environment():
-    """Setup test environment before each test.
-
-    Deliberately synchronous: the body never awaits, and pytest 9 turned the
-    long-standing "sync test requested an async fixture" deprecation into a
-    hard error. As an *autouse* fixture this one is requested by every E2E
-    test, most of which are synchronous, so leaving it `async` errored the
-    whole suite at setup.
-    """
-    # Set environment variables for testing
-    os.environ.setdefault("E2E_BUILDER_API_KEY", "test-builder-key")
-    os.environ.setdefault("E2E_SUBSCRIBER_API_KEY", "test-subscriber-key")
-
-    # Add any other global setup here
-    yield
-
-    # Cleanup after test
-    # Add any global cleanup here
 
 
 @pytest.fixture

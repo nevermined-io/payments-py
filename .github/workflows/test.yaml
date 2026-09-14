@@ -38,11 +38,14 @@ jobs:
     #
     # Runs as its own job rather than inside `unit_integration` because that
     # job deliberately pins Python 3.10 — the floor this package declares
-    # (`python = "^3.10"`) — while deepagents requires >=3.11. It also needs
-    # the LangChain v1 stack (langgraph >=1.2.11), which is disjoint from the
-    # `langgraph = "^0.6.0"` the test group pins, so it installs with pip in a
-    # clean environment instead of through the shared poetry lock. Keeping it
-    # separate means the 3.10 floor stays tested and this contract still runs.
+    # (`python = "^3.10"`) — while deepagents requires >=3.11, so it installs
+    # with pip in a clean 3.11 environment instead of through the shared poetry
+    # lock. Keeping it separate means the 3.10 floor stays tested and this
+    # contract still runs.
+    #
+    # The LangChain v1 stack is no longer a second reason: the test group used
+    # to pin `langgraph = "^0.6.0"`, disjoint from the >=1.2.11 deepagents
+    # needs, but it now tracks `^1.0.10` and the lock resolves 1.2.11.
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -74,11 +77,21 @@ jobs:
     # "ValueError: not enough values to unpack (expected 2, got 1)". `e2e` is a
     # required status check, so that turns every Dependabot PR unmergeable —
     # which is how 18 of them piled up. A job skipped by this `if` reports
-    # conclusion `skipped`, which satisfies the required check (see #269).
+    # conclusion `skipped`, which satisfies the required check: the fork gate
+    # came in with #206, and the fork PRs that exercised it — #215 and #181 —
+    # both merged into protected `main` with `e2e: skipped`.
     #
     # Gated on `github.actor`, the actor of the triggering event, and not on the
     # PR author: when a human pushes to a `dependabot/*` branch to fix up a bump,
     # the actor is that human, secrets are available, and E2E runs as normal.
+    #
+    # Note this keys on the actor, not on whether the secrets are actually
+    # present: populating TEST_SUBSCRIBER_API_KEY / TEST_BUILDER_API_KEY in the
+    # repository's *Dependabot* secret store would let E2E run on Dependabot
+    # PRs and make this clause unnecessary — the better end state for a repo
+    # where a dependency bump can rewire the credit-burn path. Until then a
+    # Dependabot bump merges with E2E never executed, and the post-merge `push`
+    # run below is `continue-on-error` and not a required check.
     if: >-
       github.actor != 'dependabot[bot]' &&
       (github.event_name != 'pull_request' ||

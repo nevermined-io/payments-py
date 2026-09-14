@@ -83,12 +83,6 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         self._async_execution = async_execution
         self._http_ctx_by_task: Dict[str, HttpRequestContext] = {}
         self._http_ctx_by_message: Dict[str, HttpRequestContext] = {}
-        # Strong references to the background continuation tasks handed back by
-        # ResultAggregator.consume_and_break_on_interrupt. The event loop only
-        # holds weak references to tasks, so without this set a non-blocking or
-        # auth-required request can have its continuation collected mid-flight —
-        # losing the credit burn that runs in it.
-        self._background_tasks: set[asyncio.Task] = set()
         # Settlement receipt captured per task during finalization, so the
         # in-band x402 v2 path can emit it into the resulting task metadata.
         self._settle_receipt_by_task: Dict[str, SettleResponse] = {}
@@ -433,8 +427,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             # Cleanup like parent implementation
             if interrupted_or_non_blocking:
                 # For non-blocking mode, schedule background cleanup (like parent SDK
-                # does)
-                asyncio.create_task(self._cleanup_producer(producer_task, task_id))
+                # does). Tracked for the same reason the continuation is: the loop
+                # holds only a weak reference, and the parent names and tracks its
+                # own cleanup task identically.
+                cleanup_task = asyncio.create_task(
+                    self._cleanup_producer(producer_task, task_id)
+                )
+                cleanup_task.set_name(f"cleanup_producer:{task_id}")
+                self._track_background_task(cleanup_task)
             else:
                 await self._cleanup_producer(producer_task, task_id)
 
@@ -506,7 +506,15 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
             self.delete_http_ctx_for_task(task_id)
 
     async def _cleanup_producer(self, producer_task, task_id: str) -> None:
-        """Cleanup producer task (from parent implementation)."""
+        """Cleanup producer task (from parent implementation).
+
+        Known bug, tracked in #279: unlike the parent — which *awaits* the
+        producer, closes the queue and pops ``_running_agents`` — this cancels
+        it. In non-blocking mode that happens on the tick after the first
+        event, so an executor awaiting anything real never emits its final
+        ``creditsUsed`` status and the burn is lost. Left as is here because
+        changing it changes non-blocking semantics for every consumer.
+        """
         if not producer_task.done():
             producer_task.cancel()
             try:
@@ -521,11 +529,21 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         ``asyncio.create_task`` and hands it back; the loop keeps only a weak
         reference, so the caller has to retain it or it may be garbage
         collected before it finishes.
+
+        The retention itself is ``DefaultRequestHandler``'s — its version also
+        calls ``result()`` in the done callback, so an exception raised inside
+        the continuation is logged as ``Background task %s failed`` instead of
+        surfacing (if at all) as asyncio's GC-time "exception was never
+        retrieved". That matters here: in the continuation, ``task_manager
+        .process`` and the payment-extension helpers run outside the ``try``
+        that wraps ``settle_permissions``, so a failure there loses the burn
+        silently. This override exists only to widen the signature — the SDK's
+        does not accept ``None``, and ``consume_and_break_on_interrupt``
+        returns ``None`` whenever it was not interrupted.
         """
         if task is None:
             return
-        self._background_tasks.add(task)
-        task.add_done_callback(self._background_tasks.discard)
+        super()._track_background_task(task)
 
     async def _consume_and_burn_credits(
         self,
