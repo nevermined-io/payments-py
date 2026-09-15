@@ -6,6 +6,7 @@ following RFC 8414, RFC 9728, and OpenID Connect Discovery standards.
 """
 
 import pytest
+from urllib.parse import parse_qsl, urlsplit
 
 from payments_py.mcp.http.oauth_metadata import (
     build_authorization_server_metadata,
@@ -14,6 +15,8 @@ from payments_py.mcp.http.oauth_metadata import (
     build_protected_resource_metadata,
     build_server_info_response,
     get_oauth_urls,
+    OAUTH_TIER_PARAM,
+    resolve_oauth_tier,
 )
 
 
@@ -364,3 +367,83 @@ class TestGetOAuthUrls:
         urls = get_oauth_urls("sandbox", custom_urls)
 
         assert urls == custom_urls
+
+
+class TestAuthorizationEndpointCarriesTheTier:
+    """nvm-monorepo#3430 / payments-py#277: the authorize URL this server advertises
+    must name the API tier, because one Nevermined web app serves both tiers'
+    consent screens and boots on Live by default — a bare URL sent a sandbox
+    server's users to the LIVE consent screen ("Connector not authorized").
+    Same param name + values as the API's own RFC 8414 document (``network``)."""
+
+    @pytest.mark.parametrize(
+        "environment,expected",
+        [
+            ("sandbox", "https://nevermined.app/oauth/authorize?network=sandbox"),
+            (
+                "staging_sandbox",
+                "https://nevermined.dev/oauth/authorize?network=sandbox",
+            ),
+            ("live", "https://nevermined.app/oauth/authorize?network=live"),
+            ("staging_live", "https://nevermined.dev/oauth/authorize?network=live"),
+        ],
+    )
+    def test_named_environments_advertise_their_tier_in_every_document(
+        self, base_config, environment, expected
+    ):
+        assert get_oauth_urls(environment)["authorizationUri"] == expected
+        config = {**base_config, "environment": environment}
+        assert (
+            build_authorization_server_metadata(config)["authorization_endpoint"]
+            == expected
+        )
+        assert build_oidc_configuration(config)["authorization_endpoint"] == expected
+        assert (
+            build_server_info_response(config)["oauth"]["authorization_endpoint"]
+            == expected
+        )
+
+    def test_param_is_network_and_the_url_has_one_query_string(self):
+        assert OAUTH_TIER_PARAM == "network"
+        uri = get_oauth_urls("sandbox")["authorizationUri"]
+        assert uri.count("?") == 1
+        parts = urlsplit(uri)
+        assert parts.path == "/oauth/authorize"
+        assert parse_qsl(parts.query) == [("network", "sandbox")]
+
+    def test_tier_is_not_stamped_on_token_jwks_userinfo_or_issuer(self):
+        urls = get_oauth_urls("sandbox")
+        for key in ("tokenUri", "jwksUri", "userinfoUri", "issuer"):
+            assert "network=" not in urls[key]
+
+    def test_explicit_authorization_uri_override_passes_through_untouched(self):
+        urls = get_oauth_urls(
+            "sandbox", {"authorizationUri": "https://custom-issuer.com/oauth/authorize"}
+        )
+        assert urls["authorizationUri"] == "https://custom-issuer.com/oauth/authorize"
+
+    def test_resolve_oauth_tier_named_custom_and_unclassifiable(self):
+        assert resolve_oauth_tier("sandbox", "ignored") == "sandbox"
+        assert resolve_oauth_tier("staging_sandbox", "ignored") == "sandbox"
+        assert resolve_oauth_tier("live", "ignored") == "live"
+        assert resolve_oauth_tier("staging_live", "ignored") == "live"
+        assert (
+            resolve_oauth_tier("custom", "https://api.sandbox.nevermined.app/")
+            == "sandbox"
+        )
+        assert resolve_oauth_tier("custom", "https://api.live.nevermined.dev") == "live"
+        # Unclassifiable: a local stack, or garbage — no guessed tier.
+        assert resolve_oauth_tier("custom", "http://localhost:3001") is None
+        assert resolve_oauth_tier("custom", "not a url") is None
+
+    def test_custom_against_a_local_backend_advertises_the_bare_url(self):
+        # ``Environments["custom"]`` is read at import; drive the builder directly with
+        # the same shape a localhost stack has, so the assertion doesn't depend on env.
+        from payments_py.mcp.http.oauth_metadata import _build_oauth_urls
+
+        urls = _build_oauth_urls(
+            "http://localhost:3000",
+            "http://localhost:3001",
+            resolve_oauth_tier("custom", "http://localhost:3001"),
+        )
+        assert urls["authorizationUri"] == "http://localhost:3000/oauth/authorize"

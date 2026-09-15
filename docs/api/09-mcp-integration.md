@@ -410,7 +410,7 @@ For backward compatibility the server still falls back to reading the access tok
 
 The MCP server exposes:
 
-- `/.well-known/oauth-authorization-server` - OAuth 2.1 discovery
+- `/.well-known/oauth-authorization-server` - OAuth 2.1 discovery. Its `authorization_endpoint` names the API tier your server runs against — `https://nevermined.app/oauth/authorize?network=sandbox` for `sandbox`, `?network=live` for `live` — because one Nevermined web app serves the consent screens for both tiers and boots on whatever tier the user's browser last chose. Clients keep that query string when they add their own parameters (RFC 6749 §3.1); if you configure a client by hand, copy the endpoint from the discovery document, query string included.
 - `/.well-known/oauth-protected-resource` - Resource metadata
 - `/.well-known/oauth-protected-resource/mcp` - MCP-specific protected resource metadata
 - `/register` - Client registration

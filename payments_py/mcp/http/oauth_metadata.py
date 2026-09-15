@@ -16,7 +16,8 @@ Examples:
     'https://nevermined.dev'
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from ...environments import EnvironmentName, Environments
 from ..types.http_types import (
@@ -34,16 +35,80 @@ from ..types.http_types import (
 # OAUTH URLS
 # =============================================================================
 
+#: The query parameter that tells the Nevermined web app WHICH API tier an OAuth
+#: ceremony belongs to, and its two values. Each tier (sandbox / live) is its own
+#: authorization server, but ONE web app serves the consent screens for both and
+#: boots on whatever tier the user's browser last chose — Live by default. A bare
+#: ``https://nevermined.app/oauth/authorize`` therefore sent a sandbox MCP server's
+#: users to the LIVE consent screen, where the connector is not registered
+#: ("Connector not authorized"). The tier is stated on the URL instead; RFC 6749
+#: §3.1 obliges clients to retain the query component when they add their own
+#: parameters. Same name and values as the Nevermined API's own RFC 8414 document
+#: and the embed widget (nvm-monorepo#3430 / #1787).
+OAUTH_TIER_PARAM = "network"
+OAuthTier = Literal["sandbox", "live"]
 
-def _build_oauth_urls(frontend_url: str, backend_url: str) -> OAuthUrls:
+
+def resolve_oauth_tier(
+    environment: EnvironmentName, backend_url: str
+) -> Optional[OAuthTier]:
+    """The API tier an environment belongs to.
+
+    The four named environments map directly; ``custom`` is derived from its
+    backend host (``api.sandbox.`` / ``api.live.``), and when that cannot be
+    classified the tier is omitted — a local stack behind ``localhost`` gets the
+    bare URL rather than a guessed tier that would send the human to the wrong
+    backend.
+
+    Args:
+        environment: The Nevermined environment name.
+        backend_url: The environment's backend URL (used for ``custom`` only).
+
+    Returns:
+        ``"sandbox"``, ``"live"``, or ``None`` when it cannot be determined.
+    """
+    if environment in ("sandbox", "staging_sandbox"):
+        return "sandbox"
+    if environment in ("live", "staging_live"):
+        return "live"
+    try:
+        host = urlsplit(backend_url).hostname or ""
+    except ValueError:
+        return None
+    if host.startswith("api.sandbox."):
+        return "sandbox"
+    if host.startswith("api.live."):
+        return "live"
+    return None
+
+
+def _with_tier_param(authorize_url: str, tier: Optional[OAuthTier]) -> str:
+    """Append ``?network=<tier>`` through the URL machinery, never an f-string.
+
+    Splitting and re-encoding the query means anything a client later appends
+    extends ONE query string with ``&`` rather than producing a second ``?``.
+    """
+    if tier is None:
+        return authorize_url
+    parts = urlsplit(authorize_url)
+    query = [(k, v) for k, v in parse_qsl(parts.query) if k != OAUTH_TIER_PARAM]
+    query.append((OAUTH_TIER_PARAM, tier))
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
+def _build_oauth_urls(
+    frontend_url: str, backend_url: str, tier: Optional[OAuthTier]
+) -> OAuthUrls:
     """Build OAuth URLs from frontend and backend URLs.
 
-    - issuer and authorizationUri use the frontend (user-facing)
+    - issuer and authorizationUri use the frontend (user-facing); authorizationUri
+      carries the API tier (see :func:`resolve_oauth_tier`)
     - tokenUri, jwksUri, userinfoUri use the backend (API)
 
     Args:
         frontend_url: The frontend URL (e.g., https://nevermined.app).
         backend_url: The backend URL (e.g., https://api.sandbox.nevermined.app).
+        tier: The API tier to stamp on the authorize URL, or ``None`` to omit it.
 
     Returns:
         OAuth URLs configuration dict.
@@ -54,7 +119,7 @@ def _build_oauth_urls(frontend_url: str, backend_url: str) -> OAuthUrls:
 
     return {
         "issuer": frontend,
-        "authorizationUri": f"{frontend}/oauth/authorize",
+        "authorizationUri": _with_tier_param(f"{frontend}/oauth/authorize", tier),
         "tokenUri": f"{backend}/oauth/token",
         "jwksUri": f"{backend}/.well-known/jwks.json",
         "userinfoUri": f"{backend}/oauth/userinfo",
@@ -72,8 +137,15 @@ def _get_oauth_urls_for_environment(environment: EnvironmentName) -> OAuthUrls:
     Returns:
         OAuth URLs configuration dict.
     """
-    env_config = Environments.get(environment, Environments["sandbox"])
-    return _build_oauth_urls(env_config.frontend, env_config.backend)
+    effective: EnvironmentName = (
+        environment if environment in Environments else "sandbox"
+    )
+    env_config = Environments[effective]
+    return _build_oauth_urls(
+        env_config.frontend,
+        env_config.backend,
+        resolve_oauth_tier(effective, env_config.backend),
+    )
 
 
 def get_oauth_urls(
