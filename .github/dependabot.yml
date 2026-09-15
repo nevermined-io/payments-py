@@ -25,8 +25,17 @@ updates:
         applies-to: security-updates
         patterns:
           - '*'
+      # Minor and patch only. `dependabot/fetch-metadata` reports the HIGHEST
+      # update-type in a group, so a single major in this batch would report
+      # `semver-major` and hold every routine bump with it in
+      # `dependabot-auto-merge.yml`. Majors are excluded here and therefore
+      # arrive as individual PRs, which is what they want anyway — #282 bumped
+      # a2a-sdk to 1.1.2 and removed `TextPart` from `a2a.types`.
       python-version-updates:
         applies-to: version-updates
+        update-types:
+          - 'minor'
+          - 'patch'
         patterns:
           - '*'
 
@@ -40,6 +49,14 @@ updates:
     commit-message:
       prefix: 'chore(ci)'
     groups:
+      # Same minor+patch restriction, and for the same reason as the pip group
+      # above: without it a grouped actions PR carrying one major reports
+      # `semver-major` to `dependabot/fetch-metadata` and holds the whole batch.
+      # An action major (v3 -> v4) is exactly the bump that wants reading
+      # anyway, so it arrives as its own PR.
       github-actions:
+        update-types:
+          - 'minor'
+          - 'patch'
         patterns:
           - '*'
