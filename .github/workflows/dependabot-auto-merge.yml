@@ -2,13 +2,21 @@ name: Dependabot auto-merge
 
 # Approves and queues routine Dependabot bumps so they stop needing a human.
 #
-# Why this works HERE and not in nevermined-io/payments: `main`'s protection in
-# this repository requires 1 approving review with `require_code_owner_reviews:
-# false`, so an approval from any identity with write access satisfies it. The
-# TypeScript repo sets `require_code_owner_reviews: true` with no
-# `bypass_pull_request_allowances`, and a GitHub App cannot be a team member, so
-# the same approval never satisfies CODEOWNERS there (see payments#449). Do not
-# copy this file back without checking that setting.
+# Why this works HERE: `main` in this repository requires 1 approving review
+# with `require_code_owner_reviews: false`, so an approval from any identity
+# with write access — including a GitHub App, which cannot be a team member and
+# so could never satisfy CODEOWNERS — is enough.
+#
+# Difference from nevermined-io/payments, which runs the same pattern: that
+# repo sets `strict: true` on `main`, so a branch that has fallen behind cannot
+# merge and a companion `dependabot-update-branches.yml` has to keep Dependabot
+# branches current. This repo sets `strict: false` — nothing to update, no
+# companion workflow. The approval half ports in either direction; the
+# update-branches half does not. (Both repos: 1 approval,
+# `require_code_owner_reviews: false`, `bypass_pull_request_allowances: null`.
+# Snapshot taken 2026-09-15 — re-check with `gh api
+# repos/<owner>/<repo>/branches/main/protection` rather than trusting it; the
+# CODEOWNERS setting on `payments` has already changed once under this file.)
 #
 # Uses `pull_request`, NOT `pull_request_target`: GitHub has respected the
 # `permissions:` key for Dependabot PRs since October 2021, which makes
@@ -24,26 +32,56 @@ name: Dependabot auto-merge
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-  # Re-arm PRs that never get another `pull_request` event: anything opened
-  # before this workflow existed, or whose auto-merge was switched off (a
-  # force-push, or someone toggling it by hand). The sweep only re-enables
-  # auto-merge on PRs that are ALREADY approved — it never approves anything,
-  # so it cannot widen the policy above.
+  # Re-arm approved Dependabot PRs that carry no auto-merge: one where someone
+  # switched auto-merge off by hand, or one a human approved without queueing.
+  # A force-push fires `synchronize`, which the trigger above already handles,
+  # and a PR nobody has approved is reached by neither job. See the comment on
+  # the `rearm` job for what this sweep does and does not hold.
   schedule:
     - cron: '17 6 * * *'
   workflow_dispatch:
 
+# Read-only. Every write in this file (`gh pr review`, `gh pr merge`) runs under
+# the App token, whose scope comes from the installation, not from here. The
+# only consumer of `GITHUB_TOKEN` is `dependabot/fetch-metadata`, a third-party
+# action on a floating major tag, and all it calls is `pulls.listCommits`.
+# Handing it write scope would buy nothing and would undercut the same
+# escalation argument the header makes about the checkout.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  pull-requests: read
 
 jobs:
   auto-merge:
+    # `github.actor` as well as `pull_request.user.login`: `synchronize` fires
+    # when a write-access human pushes to a `dependabot/*` branch to fix up a
+    # bump, and on that event the PR author is still `dependabot[bot]` while the
+    # head carries commits nothing inspected — `fetch-metadata` verifies only
+    # `commits[0]`. Without this clause the App would re-approve those commits,
+    # and in doing so undo a deliberate dismissal of its earlier approval. A
+    # human-fixed bump needs a human approval instead, which is the right cost.
+    # (`test.yaml`'s `e2e` job anticipates the same case.)
+    #
+    # Residual, and it is branch protection rather than this file: GitHub
+    # disables auto-merge only when someone WITHOUT write permission pushes, and
+    # `dismiss_stale_reviews: false` keeps the App's earlier approval — so an
+    # already-armed PR still merges a write-access human's push under it.
     if: >-
       github.event_name == 'pull_request' &&
+      github.actor == 'dependabot[bot]' &&
       github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
+      # Runs as `dependabot[bot]`, so `secrets` here resolves against the
+      # *Dependabot* store, not the Actions one. `RELEASE_APP_ID` and
+      # `RELEASE_APP_PRIVATE_KEY` both exist in the org Dependabot store with
+      # `visibility: all`, so they reach this repository (verified 2026-09-15:
+      # `gh api orgs/nevermined-io/dependabot/secrets`). If that visibility is
+      # ever narrowed, this step fails with "The 'client-id' (or deprecated
+      # 'app-id') input must be set to a non-empty string" — loud, but not a
+      # required check, so nothing would block, and `rearm` would print
+      # "Nothing to re-arm." forever since it can only re-arm what this path
+      # approved. A green cron is not evidence that this works.
       - name: Generate release bot token
         id: bot-token
         uses: actions/create-github-app-token@v3
@@ -57,14 +95,15 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Patch and minor only. A major is held for review on purpose: #282 bumped
-      # a2a-sdk 0.3.26 -> 1.1.2, which removed `TextPart` from `a2a.types` and
-      # broke eight test modules on import — exactly the kind of change that
-      # needs a human, and the kind that #278 raised the runtime floor for.
+      # Patch and minor only. A major is held for review on purpose: #282 bumps
+      # a2a-sdk 0.3.26 -> 1.1.2, which removed `TextPart` from `a2a.types`.
+      # `payments_py/x402/a2a.py` imports it, so the whole suite fails to
+      # import — 44 errors during collection (run 34859666178). That is code
+      # work, not a rubber stamp.
       #
       # For a GROUPED PR `fetch-metadata` reports the highest update-type in the
       # group, so one major would hold the whole batch. `.github/dependabot.yml`
-      # keeps the version-update group to minor+patch precisely so that cannot
+      # keeps both version-update groups to minor+patch precisely so that cannot
       # happen; majors arrive as their own PRs.
       #
       # Known cost, inherited knowingly: a SECURITY update that is also a major
@@ -83,10 +122,13 @@ jobs:
           GH_TOKEN: ${{ steps.bot-token.outputs.token }}
 
       # `--auto` queues the merge behind the required checks (`lint`,
-      # `unit_integration`, `e2e`) rather than merging now. On a Dependabot PR
-      # `e2e` reports `skipped`, which satisfies its required check — see the
-      # comment on that job in `test.yaml`, and note what it says about the
-      # coverage that buys.
+      # `unit_integration`, `e2e`) rather than merging now. `deepagents_compat`
+      # is NOT a required check, so a red run there does not hold the merge.
+      #
+      # `e2e` runs for real on a Dependabot PR as of #284, which populated this
+      # repository's Dependabot secret store. Before that it reported `skipped`,
+      # which satisfied the required check without testing anything. See the
+      # comment on that job in `test.yaml`.
       - name: Enable auto-merge
         if: >-
           steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
@@ -95,6 +137,20 @@ jobs:
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+
+      # Without this, a held PR and a broken one look identical: both steps
+      # above `skipped`, job green, nothing in the log saying why. Note that
+      # `fetch-metadata`'s `calculateUpdateType` returns an empty string when
+      # either version is missing, so an unparseable PR lands here too rather
+      # than failing.
+      - name: Log a held update
+        if: >-
+          steps.metadata.outputs.update-type != 'version-update:semver-patch' &&
+          steps.metadata.outputs.update-type != 'version-update:semver-minor'
+        run: |
+          echo "::notice::Held for human review — update-type='${UPDATE_TYPE:-<empty>}' is neither patch nor minor."
+        env:
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
 
   rearm:
     if: github.event_name != 'pull_request'
@@ -107,6 +163,20 @@ jobs:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
+      # This job re-arms what someone already approved; it does not approve.
+      # (It holds a `pull_requests: write` App token, so it *could* — it simply
+      # does not.)
+      #
+      # Two things to know before treating anything here as a hold:
+      #
+      #  - It does not look at update-type. A MAJOR that a human approved gets
+      #    queued at 06:17, and merged on the spot if its checks are already
+      #    green (`gh pr merge --auto` merges immediately when the PR is
+      #    immediately mergeable). That is deliberate: in this repo a human
+      #    approval IS the merge decision.
+      #  - Switching auto-merge off by hand is therefore NOT a hold — the next
+      #    sweep re-arms it. The holds that survive are dismissing the approval
+      #    and requesting changes.
       - name: Re-enable auto-merge on approved Dependabot PRs
         env:
           GH_TOKEN: ${{ steps.bot-token.outputs.token }}
@@ -114,20 +184,36 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Only PRs that already carry an APPROVED review. This job deliberately
-          # cannot approve: it exists to re-arm a decision someone (or the job
-          # above) already made, not to make a new one.
-          prs=$(gh pr list --repo "$REPO" \
-            --author 'app/dependabot' --state open \
-            --json number,reviewDecision,autoMergeRequest \
-            --jq '.[] | select(.reviewDecision == "APPROVED" and .autoMergeRequest == null) | .number')
+          # Printed unfiltered first: "Nothing to re-arm." reads identically
+          # when the selector has drifted. `gh` validates `--json` field names,
+          # but a typo inside the jq path yields an empty result in silence.
+          echo "Open Dependabot PRs:"
+          gh pr list --repo "$REPO" --author 'app/dependabot' --state open \
+            --json number,reviewDecision,autoMergeRequest,isDraft,mergeable \
+            --jq '.[] | "  #\(.number) review=\(.reviewDecision) armed=\(.autoMergeRequest != null) draft=\(.isDraft) mergeable=\(.mergeable)"'
+
+          # `isDraft` / `mergeable` are filtered because `--auto` skips gh's own
+          # client-side mergeability check, so a draft or conflicting PR surfaces
+          # only as an API error — and Dependabot PRs go CONFLICTING routinely
+          # when a sibling lockfile bump merges first.
+          prs=$(gh pr list --repo "$REPO" --author 'app/dependabot' --state open \
+            --json number,reviewDecision,autoMergeRequest,isDraft,mergeable \
+            --jq '.[] | select(.reviewDecision == "APPROVED" and .autoMergeRequest == null
+                               and (.isDraft | not) and .mergeable != "CONFLICTING") | .number')
 
           if [ -z "$prs" ]; then
             echo "Nothing to re-arm."
             exit 0
           fi
 
+          # Guarded: under `set -e` an unguarded failure would end the step at
+          # the first refused PR, leaving every PR after it in `gh pr list` order
+          # un-armed today, tomorrow, and until a human cleared the first one —
+          # while the log named only that first PR.
+          failed=0
           for pr in $prs; do
             echo "Re-enabling auto-merge on #$pr"
-            gh pr merge --auto --squash --repo "$REPO" "$pr"
+            gh pr merge --auto --squash --repo "$REPO" "$pr" \
+              || { echo "::warning::could not re-arm #$pr"; failed=1; }
           done
+          exit "$failed"

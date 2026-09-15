@@ -49,6 +49,14 @@ updates:
     commit-message:
       prefix: 'chore(ci)'
     groups:
+      # Same minor+patch restriction, and for the same reason as the pip group
+      # above: without it a grouped actions PR carrying one major reports
+      # `semver-major` to `dependabot/fetch-metadata` and holds the whole batch.
+      # An action major (v3 -> v4) is exactly the bump that wants reading
+      # anyway, so it arrives as its own PR.
       github-actions:
+        update-types:
+          - 'minor'
+          - 'patch'
         patterns:
           - '*'
