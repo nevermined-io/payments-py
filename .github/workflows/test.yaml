@@ -26,10 +26,14 @@ jobs:
         run: poetry install --with test --no-interaction --no-ansi
       - name: Build
         run: poetry build
+      # No secrets here on purpose. `TEST_SUBSCRIBER_API_KEY` /
+      # `TEST_BUILDER_API_KEY` have no reader outside `tests/e2e/`, which this
+      # `-m "not slow"` selection excludes, and `tests/e2e/conftest.py` only
+      # `os.getenv`s them at import — so the block that used to sit here handed
+      # both keys to Dependabot-branch code that never read them. (It passed on
+      # the pre-#278 Dependabot runs with the store empty: 30943984001,
+      # 30929380126.) The `e2e` job, which does read them, carries its own.
       - name: Run unit and integration tests
-        env:
-          TEST_SUBSCRIBER_API_KEY: ${{ secrets.TEST_SUBSCRIBER_API_KEY }}
-          TEST_BUILDER_API_KEY: ${{ secrets.TEST_BUILDER_API_KEY }}
         run: poetry run pytest -m "not slow" -v -s
 
   deepagents_compat:
@@ -65,45 +69,53 @@ jobs:
     runs-on: ubuntu-latest
 
     needs: unit_integration
-    # Skip on fork PRs: GitHub does not pass repo secrets to fork-PR runs, so
-    # TEST_SUBSCRIBER_API_KEY / TEST_BUILDER_API_KEY are empty and every test
-    # fails identically when the SDK tries to parse the empty key. Run on push
-    # events (main) and on pull_request events from same-repo branches.
+    # Fork PRs skip: a fork-PR run gets no repository secrets from either store,
+    # so both keys arrive empty and every test fails identically in
+    # `_parse_nvm_api_key`. A job skipped by this `if:` reports conclusion
+    # `skipped`, which SATISFIES the required check — that is how a fork PR
+    # merges at all (gate added in #206; #215 and #181 both merged into
+    # protected `main` with `e2e: skipped`).
     #
-    # Dependabot runs are NO LONGER skipped. They were, from #278 until now,
-    # because a workflow triggered by `dependabot[bot]` reads the repository's
-    # *Dependabot* secret store — a store entirely separate from the Actions one
-    # — and this repo had left it empty, so the keys arrived blank and every E2E
-    # test errored in `_parse_nvm_api_key` with "ValueError: not enough values to
-    # unpack (expected 2, got 1)". With `e2e` a required check, that made every
-    # Dependabot PR unmergeable; 18 of them piled up that way.
+    # Dependabot runs are no longer skipped — they were from #278 until #284,
+    # while this repository's *Dependabot* secret store sat empty and `e2e`, a
+    # required check, could never pass; 18 Dependabot PRs piled up that way.
+    # Which store a run reads is chosen by the ACTOR of the triggering event,
+    # not by the PR author: `dependabot[bot]` (including `@dependabot rebase`)
+    # reads the Dependabot store, while a human fix-up push to the same
+    # `dependabot/*` branch reads the Actions one — so a bad Dependabot copy
+    # looks like a per-push flake on one PR. Running this for real matters here:
+    # a bump can rewire the credit-burn path — a2a-sdk 0.3.25 changed the arity
+    # of the call that carries it (#278) — and `tests/e2e/test_a2a_e2e.py`
+    # asserts the exact burn. Rotation procedure: `tests/e2e/README.md`.
     #
-    # `TEST_SUBSCRIBER_API_KEY` / `TEST_BUILDER_API_KEY` now exist in the
-    # Dependabot store, so the job runs for real on a Dependabot PR instead of
-    # reporting `skipped`. That matters more here than in most repos: a
-    # dependency bump in this SDK can rewire the credit-burn path — a2a-sdk
-    # 0.3.25 changed the arity of the call that carries it (#278) — and E2E is
-    # where that shows up. Skipping it meant bumps merged on unit tests alone.
+    # Security trade, stated precisely because the wrong version of it is what a
+    # reader acts on: the keys are STEP-scoped (`Run E2E tests` below), so
+    # `poetry install` and its package build hooks run WITHOUT them. The
+    # exposure is `poetry run pytest -m "slow"`, which imports and executes the
+    # bumped dependency — and anything a build hook planted in the venv — with
+    # the keys in `os.environ` and in use over the network. Acceptable BECAUSE
+    # the Dependabot store was seeded from the staging keys already committed in
+    # `tests/e2e/conftest.py`, so a Dependabot run exposes nothing a `git clone`
+    # does not. Do NOT overwrite it with the rotated Actions keys unless you
+    # accept exposing a non-public credential to dependency code on every
+    # Dependabot PR.
     #
-    # Operational note for whoever rotates these: the two stores hold SEPARATE
-    # copies. Updating the Actions secret does NOT update the Dependabot one, and
-    # nothing warns you — E2E simply starts failing on Dependabot PRs only. The
-    # values seeded into the Dependabot store were the committed staging-sandbox
-    # fallbacks from `tests/e2e/conftest.py`, which had not been touched since
-    # 2025-12-03 while the Actions secrets were rotated on 2026-07-24; they are
-    # therefore probably NOT the same keys, only equivalent ones. Both pass the
-    # suite (77 passed / 26 skipped either way).
+    # Reading a Dependabot run:
     #
-    # Worth knowing about the trade: this job checks out the Dependabot branch
-    # and runs `poetry install`, which executes package build hooks — arbitrary
-    # code from the bumped dependency — with these keys in the environment. That
-    # is the reason GitHub keeps the two stores apart. Acceptable here because
-    # these are staging-sandbox test accounts whose equivalents are already
-    # committed in the repository, but it is not zero risk.
-    #
-    # The post-merge `push` run below is still `continue-on-error` and not a
-    # required check, so a failing E2E on `main` reports the run green (measured:
-    # run 34108722286, `e2e: failure` inside a `success` run). Tracked in #280.
+    #  - `e2e: skipped` is usually `needs: unit_integration` having failed, not
+    #    a secrets problem: a job whose `needs` failed is skipped before its
+    #    `if:` is evaluated, and the Jobs API reports both causes identically.
+    #    Evidence that the keys work has to come from the first Dependabot PR
+    #    whose `unit_integration` passes — `e2e` not `skipped`, and a summary
+    #    with no `errors` and no `Invalid NVM API Key`. `passed > 0` is not
+    #    evidence; 11 tests passed on empty keys before #278.
+    #  - `continue-on-error: true` does NOT green a failed required check. It
+    #    rewrites the workflow-RUN conclusion, while branch protection reads the
+    #    CHECK-RUN conclusion, which stays `failure` and blocks (runs
+    #    30943984001 / 30929380126: `e2e: failure` inside a `success` run, on
+    #    PRs that stayed blocked). Its real effect is the post-merge `push` run,
+    #    where a failing E2E on `main` reports green — run 34108722286, tracked
+    #    in #280. Read the job, not the run.
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository

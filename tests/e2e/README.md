@@ -64,6 +64,45 @@ export TEST_BUILDER_API_KEY="your-builder-key"
 export TEST_SUBSCRIBER_API_KEY="your-subscriber-key"
 ```
 
+### Rotating the CI keys
+
+CI reads these two keys from **two separate secret stores**, and which one a run
+reads is decided by the **actor of the triggering event**, not by the PR author:
+
+| Triggering actor | Store read |
+| --- | --- |
+| `dependabot[bot]` (including `@dependabot rebase`) | **Dependabot** |
+| Anyone else — a human push to a `dependabot/*` branch included | **Actions** |
+
+GitHub never returns a secret's value, so the two can only be kept identical by
+writing both. The pair that has to move together is **`conftest.py` ↔ the
+Dependabot store**, not Actions ↔ Dependabot: the Dependabot copies were seeded
+*from* the committed fallbacks in `conftest.py`, and rotating the Actions secret
+does not touch a Dependabot run. To re-sync:
+
+```bash
+gh secret set TEST_SUBSCRIBER_API_KEY --app dependabot --repo nevermined-io/payments-py
+gh secret set TEST_BUILDER_API_KEY    --app dependabot --repo nevermined-io/payments-py
+```
+
+Two things worth knowing before you change any of this:
+
+- **Keep the Dependabot copies equal to the committed fallbacks.** A Dependabot
+  run hands these keys to the bumped dependency's own code (see the comment on
+  the `e2e` job in `.github/workflows/test.yaml`). While the store holds the
+  keys already public in `conftest.py`, that exposes nothing a `git clone` does
+  not. Putting a non-public key there changes that.
+- **Do not "fix" `os.getenv(NAME, FALLBACK)` in `conftest.py` into
+  `os.getenv(NAME) or FALLBACK`.** An unset store sets the variable to the empty
+  string, which `os.getenv` returns as-is, and `"".split(":")` raises — that
+  loud failure is the only signal a missing Dependabot copy gives. The `or`
+  form would silently route it onto the committed key and report a green run
+  against the wrong store.
+- **Verifying a rotation:** run the suite before and after and compare the
+  **skip** count, not just the pass count. A key for the wrong account turns
+  tests in `test_organizations_e2e.py` into skips rather than failures, so a
+  changed skip count is the signal; an equal pass count alone proves nothing.
+
 ### Execution Commands
 
 ```bash
