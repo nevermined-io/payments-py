@@ -24,6 +24,7 @@ Examples:
 # OAuth metadata generators
 from .oauth_metadata import (
     OAUTH_TIER_PARAM,
+    OAUTH_TIERS,
     OAuthTier,
     build_authorization_server_metadata,
     build_mcp_protected_resource_metadata,
@@ -74,6 +75,7 @@ __all__ = [
     "get_oauth_urls",
     "resolve_oauth_tier",
     "OAUTH_TIER_PARAM",
+    "OAUTH_TIERS",
     "OAuthTier",
     "build_protected_resource_metadata",
     "build_mcp_protected_resource_metadata",
