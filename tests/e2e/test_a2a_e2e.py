@@ -855,7 +855,9 @@ class TestA2AE2EFlow:
             self.access_token is not None
         ), "Access token should be set in setup_class"
 
-        # Check balance BEFORE execution
+        # Check balance BEFORE execution. Fails rather than carrying `None`:
+        # this test's whole claim is that the exact credit burn was verified,
+        # and a `None` here silently turned that check into a printed warning.
         print("🔍 Checking balance BEFORE execution...")
         try:
             balance_before_result = self.payments_subscriber.plans.get_plan_balance(
@@ -864,8 +866,7 @@ class TestA2AE2EFlow:
             balance_before = int(balance_before_result.balance)
             print(f"📊 Balance BEFORE: {balance_before} credits")
         except Exception as e:
-            print(f"❌ Error getting balance before: {e}")
-            balance_before = None
+            pytest.fail(f"Could not read the plan balance before execution: {e}")
 
         agent_card = {
             "name": "E2E Blocking Agent",
@@ -942,35 +943,32 @@ class TestA2AE2EFlow:
                 f"Credits used: {credits_to_burn}" in task_message["parts"][0]["text"]
             )
 
-            # Check balance AFTER execution to verify credits were actually burned
+            # Check balance AFTER execution to verify credits were actually
+            # burned. Deliberately NOT wrapped in try/except: `AssertionError`
+            # is an `Exception`, so the `except` that used to sit here caught
+            # the credit-burn assertion below — a bump that made the burn a
+            # no-op printed a ❌ line and the test still passed, under a final
+            # "✅ ... with verified credit burning". This is the one E2E gate on
+            # the credit-burn path a2a-sdk 0.3.25 rewired (#278), so it has to
+            # be able to fail.
             print("🔍 Checking balance AFTER execution...")
-            try:
-                balance_after_result = self.payments_subscriber.plans.get_plan_balance(
-                    self.PLAN_ID
-                )
-                balance_after = int(balance_after_result.balance)
-                print(f"📊 Balance AFTER: {balance_after} credits")
+            balance_after_result = self.payments_subscriber.plans.get_plan_balance(
+                self.PLAN_ID
+            )
+            balance_after = int(balance_after_result.balance)
+            print(f"📊 Balance AFTER: {balance_after} credits")
 
-                if balance_before is not None:
-                    credits_burned = balance_before - balance_after
-                    print(f"🔥 Credits actually burned: {credits_burned}")
+            credits_burned = balance_before - balance_after
+            print(f"🔥 Credits actually burned: {credits_burned}")
 
-                    # Verify that the exact number of credits were burned
-                    assert credits_burned == credits_to_burn, (
-                        f"Expected {credits_to_burn} credits to be burned, "
-                        f"but {credits_burned} were burned (before: {balance_before}, after: {balance_after})"
-                    )
-                    print(
-                        f"✅ Verified: Exactly {credits_to_burn} credits were burned from the balance!"
-                    )
-                else:
-                    print(
-                        "⚠️ Could not verify credit burning - balance before was not available"
-                    )
-
-            except Exception as e:
-                print(f"❌ Error getting balance after: {e}")
-                print("⚠️ Could not verify credit burning due to balance check error")
+            # Verify that the exact number of credits were burned
+            assert credits_burned == credits_to_burn, (
+                f"Expected {credits_to_burn} credits to be burned, "
+                f"but {credits_burned} were burned (before: {balance_before}, after: {balance_after})"
+            )
+            print(
+                f"✅ Verified: Exactly {credits_to_burn} credits were burned from the balance!"
+            )
 
             print("✅ E2E blocking flow test passed with verified credit burning")
 

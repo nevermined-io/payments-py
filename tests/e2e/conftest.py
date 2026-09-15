@@ -36,6 +36,14 @@ TEST_ERC20_TOKEN = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 # `testing-buyer@nevermined.io` accounts; both are members of the
 # `Nevermined Testing` Enterprise org so plan/agent registrations bypass
 # the personal-account caps.
+#
+# Keep the `os.getenv(NAME, FALLBACK)` form. In CI an unset secret store sets
+# the variable to the EMPTY STRING, which `os.getenv` returns as-is (the
+# default applies only when the name is absent from `os.environ`), and
+# `"".split(":")` then raises in `_parse_nvm_api_key`. That loud failure is the
+# only signal a missing Dependabot secret copy gives; `os.getenv(NAME) or
+# FALLBACK` would silently fall back to these committed keys and report a green
+# run against the wrong store. See "Rotating the CI keys" in the README here.
 SUBSCRIBER_API_KEY = os.getenv(
     "TEST_SUBSCRIBER_API_KEY",
     "sandbox-staging:eyJhbGciOiJFUzI1NksifQ.eyJpc3MiOiIweDU4MzhCNTUxMmNGOWYxMkZFOWYyYmVjY0IyMGViNDcyMTFGOUIwYmMiLCJzdWIiOiIweDRkNEM5RmFBRjY2ZmI1NjI5NDY0MGZDMzI5NjgzMTdEYWQ4ZWQ4ZWQiLCJqdGkiOiIweGZjNzU1N2Q0NGNmNjEzYjI0OWRjNjZkYjk1ZGMyZmNiMmM5MTUxM2M1YmYxMWZkNjEzYmE2YTM3ZjA1ZWJmN2MiLCJleHAiOjQ5MzUxMzE2OTcsIm8xMXkiOiJzay1oZWxpY29uZS13amUzYXdpLW5ud2V5M2EtdzdndnY3YS1oYmh3bm1pIn0.kwvQxOC0XLMXQlVOSQiGgr7iggma1X5QIu46odHXzp5zwNav1PQfR3j6xW1KgkVFt0tHHRjVuzVBPHG2Dahbnhw",
