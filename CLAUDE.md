@@ -168,6 +168,15 @@ The CI pipeline runs:
 2. **Unit & Integration** (`.github/workflows/test.yaml`) - Fast tests
 3. **E2E** - Slow tests (runs after unit/integration pass)
 
+`TEST_SUBSCRIBER_API_KEY` / `TEST_BUILDER_API_KEY` live in **two separate
+secret stores** — Actions and Dependabot — and which one a run reads depends on
+the actor that triggered it. Before rotating either, read
+**"Rotating the CI keys"** in `tests/e2e/README.md`; getting it wrong breaks
+Dependabot PRs only, which is a hard failure to diagnose from the symptom.
+
+Dependabot PRs that are patch or minor are auto-approved and queued by
+`.github/workflows/dependabot-auto-merge.yml` (#283). Majors stop for a human.
+
 ## Release Process
 
 **Do NOT bump the version in `pyproject.toml` by hand in a feature PR.** The release is fully automated through three workflows:
