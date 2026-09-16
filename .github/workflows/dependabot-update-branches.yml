@@ -1,0 +1,163 @@
+name: Update Dependabot branches after merge
+
+# Merges `main` into every open Dependabot branch so their CI runs against the
+# `main` they would actually land on. Ported from
+# nevermined-io/payments/.github/workflows/dependabot-update-branches.yml; the
+# differences from that file are marked "payments-py:" throughout.
+#
+# payments-py: `main` here sets `strict: true`, same as `payments`, so the
+# guarantee is branch protection's and this job only supplies the merges it
+# demands. A Dependabot branch that has fallen behind cannot merge until
+# something merges `main` into it, and unattended that something is this job.
+#
+# It did not start that way. The first draft of this file ran against
+# `strict: false` and claimed to deliver "the safety property `strict: true`
+# would enforce", which was wrong — review caught it (#287). With
+# `strict: false` the sweep gated nothing: no required check depended on it,
+# `dependabot-auto-merge.yml` arms a patch/minor PR the moment it opens so one
+# green on its original head merged before any push woke this job, and
+# `MAX_MERGES` left a wave's overflow unswept and still mergeable. `strict` was
+# turned on in the same PR rather than the claim being softened, which is what
+# makes the paragraph above true instead of aspirational.
+#
+# Two consequences of being load-bearing that are worth knowing:
+#
+#  - If this job breaks, the Dependabot queue stalls SILENTLY. Nothing merges,
+#    no check goes red, and the PRs simply sit. That is the failure mode the
+#    `payments` copy actually had — `--method POST` on a PUT endpoint, 404 on
+#    all 21 open PRs, green job (nevermined-io/payments#449). It is why the
+#    logic lives in a script with `tests/unit/test_dependabot_sweeper.py`
+#    against it, and why a failed `gh pr list` fails the job rather than
+#    reading as an empty queue.
+#  - `MAX_MERGES` now bounds how fast the queue DRAINS, not whether a PR can
+#    slip through unswept. With more open PRs than the cap, the overflow stays
+#    blocked until a later wave — which is the intended behaviour, since a
+#    merge is itself a push to `main` and starts the next one.
+#
+# Unlike `payments`, this repository also sets `allow_update_branch: true`.
+# That surfaces GitHub's own "Update branch" button on a behind PR; it does not
+# perform the update, so it changes nothing about needing this job — it is a
+# manual affordance for humans, on top of what runs here.
+on:
+  push:
+    branches:
+      - main
+  # A push is the normal trigger, and it chains: each merge is itself a push,
+  # so one wave feeds the next. That chain only holds while the PRs being served
+  # actually merge — a wave spent entirely on majors awaiting human review ends
+  # it, and nothing wakes the job again until someone lands something.
+  #
+  # Monday 09:00 UTC is the fallback for exactly that. Cron has no timezone, so
+  # it has to clear Dependabot's own weekly run (Monday 08:00 Europe/Madrid, see
+  # dependabot.yml) in both halves of the year: 08:00 Madrid is 06:00 UTC under
+  # CEST and 07:00 UTC under CET, so 09:00 UTC leaves three hours in summer and
+  # two in winter, either side of the switch. (The `payments` copy states two
+  # and one; that is an arithmetic slip, corrected here — review caught it in
+  # #287. The conclusion is unchanged, and the margin is wider than claimed,
+  # not narrower.) Dependabot's own run is best-effort rather than punctual
+  # anyway, which is why the margin is in hours and not minutes.
+  #
+  # payments-py: that reasoning is only valid because `dependabot.yml` here now
+  # pins `day`/`time`/`timezone` the way `payments` does. Before this PR it
+  # specified `interval: weekly` alone, which leaves Dependabot free to pick the
+  # hour, and no fixed cron could be said to clear it. If that pin is ever
+  # removed, this cron goes back to being a guess.
+  schedule:
+    - cron: '0 9 * * 1'
+  # The push trigger only fires post-merge, so a change to this workflow cannot
+  # be exercised before it lands. Dispatch it by hand to read a real run.
+  # `tests/unit/test_dependabot_sweeper.py` is what covers the logic pre-merge.
+  workflow_dispatch:
+
+# One loop at a time: two overlapping runs would merge into the same branches.
+concurrency:
+  group: dependabot-update-branches
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update-branches:
+    runs-on: ubuntu-latest
+    steps:
+      # payments-py: this job is never triggered by `dependabot[bot]` (push to
+      # `main`, `schedule`, `workflow_dispatch`), so `secrets` resolves against
+      # the *Actions* store — unlike `dependabot-auto-merge.yml`'s `auto-merge`
+      # job, which runs as Dependabot and reads the Dependabot store. Both
+      # copies exist: `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` are org
+      # Actions secrets with `visibility: selected`, and `payments-py` is in the
+      # selected list (verified 2026-09-16, `gh api
+      # orgs/nevermined-io/actions/secrets/RELEASE_APP_ID/repositories`). If the
+      # repo is ever dropped from that list this step fails loudly with "The
+      # 'client-id' (or deprecated 'app-id') input must be set to a non-empty
+      # string" — it is not a required check, so nothing would block; the
+      # branches would simply stop being updated.
+      - name: Generate release bot token
+        id: bot-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      # `ref` is pinned, and the reason is a correction: an earlier version of
+      # this comment claimed all three triggers "resolve to the default
+      # branch". They do not. `workflow_dispatch` takes whatever ref the
+      # dispatcher picks (`gh workflow run ... --ref BRANCH`), and
+      # `actions/checkout` with no `ref` checks out exactly that — including a
+      # `dependabot/*` branch, which carries this workflow once it has been
+      # branched from `main`. Unpinned, dispatching one would have run THAT
+      # branch's copy of the script with the release-App token in `GH_TOKEN`,
+      # which is the escalation the comment was asserting could not happen
+      # (#287). Pinned, the script is `main`'s whatever ref is dispatched.
+      #
+      # The same expression as `BASE` below, deliberately: if it ever resolved
+      # empty the script's `: "${BASE:?}"` guard fails the job rather than the
+      # two silently disagreeing about which branch this is.
+      #
+      # What pinning does NOT fix, stated plainly rather than papered over:
+      # GitHub reads the workflow DEFINITION from the dispatched ref, so a
+      # dispatch from a branch runs that branch's version of this file, pin and
+      # all. No workflow can defend against that from the inside; the boundary
+      # is who may dispatch, which is write access. The pin removes the easy
+      # path — an unmodified dispatch of an existing branch — and that is the
+      # honest claim for it.
+      #
+      # `persist-credentials: false` because nothing here uses git: every write
+      # this job performs goes through the API. Leaving the token in
+      # `.git/config` would widen the blast radius of the script for no gain.
+      #
+      # Worth stating at all because `dependabot-auto-merge.yml` makes a point
+      # of never checking out. That file runs on `pull_request` with the App
+      # token in scope, where the checked-out tree IS the untrusted Dependabot
+      # branch. Here the tree is `main`, and Dependabot branches are only ever
+      # named in an API call, never executed.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Merge main into outdated Dependabot branches
+        env:
+          GH_TOKEN: ${{ steps.bot-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.repository.default_branch }}
+          # Each merge starts a full CI run against staging. Cap the fan-out per
+          # push; the rest are picked up by the next run, and a merge is itself a
+          # push to main, so the queue drains on its own.
+          #
+          # payments-py: 3 rather than the 5 `payments` uses. `test.yaml` sets no
+          # `concurrency` group and its `e2e` job runs the real staging suite
+          # with one shared pair of accounts (`TEST_SUBSCRIBER_API_KEY` /
+          # `TEST_BUILDER_API_KEY`), so the cap is also the number of concurrent
+          # staging suites this job can start. Raise it once E2E runs are
+          # serialised, or if 3 proves to drain too slowly — the ceiling on open
+          # Dependabot PRs here is 5 per ecosystem (`open-pull-requests-limit`).
+          MAX_MERGES: 3
+        # payments-py: the logic lives in a script rather than inline so that
+        # `tests/unit/test_dependabot_sweeper.py` can drive it with a stubbed
+        # `gh`. This workflow's trigger is a push to `main`, so a change to it
+        # cannot be exercised before it lands; that suite is the only pre-merge
+        # check the selection, ordering, status handling and cap get.
+        run: .github/scripts/update-dependabot-branches.sh
