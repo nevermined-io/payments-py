@@ -14,8 +14,16 @@ updates:
   # security updates need their own group to be batched as well.
   - package-ecosystem: 'pip'
     directory: '/'
+    # Pinned rather than left to Dependabot's choice of hour, because
+    # `dependabot-update-branches.yml` schedules its weekly fallback to clear
+    # this run (Monday 09:00 UTC), and a fallback can only be said to clear a
+    # run that happens at a known time. Same values as
+    # nevermined-io/payments, so the two repos' Dependabot waves line up.
     schedule:
       interval: 'weekly'
+      day: 'monday'
+      time: '08:00'
+      timezone: 'Europe/Madrid'
     open-pull-requests-limit: 5
     commit-message:
       prefix: 'chore(deps)'
@@ -43,8 +51,16 @@ updates:
   # pinned majors here have gone stale without anything proposing bumps.
   - package-ecosystem: 'github-actions'
     directory: '/'
+    # Pinned rather than left to Dependabot's choice of hour, because
+    # `dependabot-update-branches.yml` schedules its weekly fallback to clear
+    # this run (Monday 09:00 UTC), and a fallback can only be said to clear a
+    # run that happens at a known time. Same values as
+    # nevermined-io/payments, so the two repos' Dependabot waves line up.
     schedule:
       interval: 'weekly'
+      day: 'monday'
+      time: '08:00'
+      timezone: 'Europe/Madrid'
     open-pull-requests-limit: 5
     commit-message:
       prefix: 'chore(ci)'

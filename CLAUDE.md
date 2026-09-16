@@ -177,6 +177,17 @@ Dependabot PRs only, which is a hard failure to diagnose from the symptom.
 Dependabot PRs that are patch or minor are auto-approved and queued by
 `.github/workflows/dependabot-auto-merge.yml` (#283). Majors stop for a human.
 
+`.github/workflows/dependabot-update-branches.yml` is the companion sweeper,
+ported from `nevermined-io/payments`. On every push to `main` (plus a Monday
+09:00 UTC fallback and `workflow_dispatch`) it merges `main` into up to
+`MAX_MERGES` open Dependabot branches via `POST /repos/{owner}/{repo}/merges`,
+so their required checks re-run against the `main` they will land on rather
+than the one Dependabot branched from — `main` here sets `strict: false`, so
+nothing else enforces that. Conflicts are reported as a job warning and need
+`@dependabot recreate` from a *user* account; the App identity cannot issue
+Dependabot commands. `.github/dependabot.yml` pins its weekly run to Monday
+08:00 Europe/Madrid so that cron fallback has a known run to clear.
+
 ## Release Process
 
 **Do NOT bump the version in `pyproject.toml` by hand in a feature PR.** The release is fully automated through three workflows:

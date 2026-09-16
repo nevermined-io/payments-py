@@ -10,13 +10,26 @@ name: Dependabot auto-merge
 # Difference from nevermined-io/payments, which runs the same pattern: that
 # repo sets `strict: true` on `main`, so a branch that has fallen behind cannot
 # merge and a companion `dependabot-update-branches.yml` has to keep Dependabot
-# branches current. This repo sets `strict: false` — nothing to update, no
-# companion workflow. The approval half ports in either direction; the
-# update-branches half does not. (Both repos: 1 approval,
+# branches current. This repo sets `strict: false`.
+#
+# An earlier version of this comment concluded from that that the
+# update-branches half does not port here. It does, for a different reason, and
+# this repo now runs it too: with `strict: false` nothing is blocked, so a bump
+# this file approves and queues can merge green having been tested only against
+# the `main` Dependabot branched from. The companion workflow merges `main` in
+# so the required checks re-run against the `main` the PR will actually land
+# on. See its header. (Both repos: 1 approval,
 # `require_code_owner_reviews: false`, `bypass_pull_request_allowances: null`.
-# Snapshot taken 2026-09-15 — re-check with `gh api
+# Snapshot taken 2026-09-16 — re-check with `gh api
 # repos/<owner>/<repo>/branches/main/protection` rather than trusting it; the
 # CODEOWNERS setting on `payments` has already changed once under this file.)
+#
+# One interaction worth knowing: the companion job pushes its merge commit as
+# the release App, which fires `synchronize` on the PR. The `auto-merge` job
+# below then skips — `github.actor` is the App, not `dependabot[bot]` — which is
+# correct and harmless: `dismiss_stale_reviews: false` keeps the approval, and
+# GitHub disables auto-merge only on a push from an identity WITHOUT write
+# access, which the App has. The PR stays armed and merges on the fresh checks.
 #
 # Uses `pull_request`, NOT `pull_request_target`: GitHub has respected the
 # `permissions:` key for Dependabot PRs since October 2021, which makes
