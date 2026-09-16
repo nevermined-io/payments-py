@@ -62,8 +62,12 @@ def _pr(number, branch, review_decision=""):
     }
 
 
-def _run(tmp_path, prs, max_merges=3, list_fails=False):
-    """Run the script with a stubbed `gh`; return (result, merge_call_log)."""
+def _run(tmp_path, prs, max_merges=3, list_fails=False, raw_json=None):
+    """Run the script with a stubbed `gh`; return (result, merge_call_log).
+
+    `raw_json` replaces the serialised PR list with an arbitrary string, which
+    is how the parse-failure cases hand the script a body `jq` cannot read.
+    """
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     stub = bin_dir / "gh"
@@ -80,7 +84,7 @@ def _run(tmp_path, prs, max_merges=3, list_fails=False):
         "REPO": "nevermined-io/payments-py",
         "BASE": "main",
         "MAX_MERGES": str(max_merges),
-        "STUB_PRS_JSON": json.dumps(prs),
+        "STUB_PRS_JSON": json.dumps(prs) if raw_json is None else raw_json,
         "STUB_CALL_LOG": str(call_log),
     }
     if list_fails:
@@ -213,4 +217,37 @@ def test_list_failure_fails_the_job(tmp_path):
     assert result.returncode == 1
     assert calls == []
     assert "::error title=Could not list Dependabot PRs" in result.stdout
+    assert "No open Dependabot PRs found." not in result.stdout
+
+
+def test_malformed_json_fails_the_job(tmp_path):
+    """A body `jq` cannot parse must not read as an empty queue.
+
+    `gh pr list` exiting 0 is not on its own evidence that it returned a PR
+    list. Without this guard a truncated body makes `jq` exit 5, `prs` come out
+    empty, and the job print "No open Dependabot PRs found." and exit 0 — the
+    same silent green as the `gh pr list` failure next door, reached by a
+    different route, and not covered by that test because the stub always emits
+    well-formed JSON.
+    """
+    result, calls = _run(tmp_path, [], raw_json='[{"number": 1, "headRefName"')
+
+    assert result.returncode == 1
+    assert calls == []
+    assert "::error title=Could not parse the PR list" in result.stdout
+    assert "No open Dependabot PRs found." not in result.stdout
+
+
+def test_empty_response_body_fails_the_job(tmp_path):
+    """`--json` always yields at least `[]`, so an empty body is a malfunction.
+
+    It needs its own guard because `jq` does not distinguish it from an empty
+    array: measured, `printf '' | jq -r '.[]'` exits 0 and prints nothing, so
+    the parse guard above cannot catch this one.
+    """
+    result, calls = _run(tmp_path, [], raw_json="")
+
+    assert result.returncode == 1
+    assert calls == []
+    assert "::error title=Empty response from gh pr list" in result.stdout
     assert "No open Dependabot PRs found." not in result.stdout

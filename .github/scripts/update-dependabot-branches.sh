@@ -97,6 +97,17 @@ if ! prs_json=$(gh pr list \
   exit 1
 fi
 
+# An empty body with a zero exit is a `gh` malfunction rather than an empty
+# queue — `--json` always yields at least `[]`. It is guarded because `jq` does
+# NOT distinguish the two: measured, `printf '' | jq -r '.[]'` exits 0 with no
+# output, so without this the case would fall through to "No open Dependabot
+# PRs found." and exit 0, which is the silent-green shape this whole script is
+# written against. (A TRUNCATED body does fail: `jq` exits 5, caught below.)
+if [ -z "$prs_json" ]; then
+  echo "::error title=Empty response from gh pr list::expected a JSON array, got an empty body"
+  exit 1
+fi
+
 # Approved first, least-recently-updated within each half. A slot spent on a PR
 # nobody has approved buys nothing: it cannot merge, so it cannot produce the
 # push that starts the next wave. Serving the approved ones first means every

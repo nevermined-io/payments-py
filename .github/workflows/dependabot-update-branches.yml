@@ -101,16 +101,42 @@ jobs:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
-      # Checking out is safe HERE, and the distinction is worth stating because
-      # `dependabot-auto-merge.yml` makes a point of never doing it. That file
-      # runs on `pull_request` with the App token in scope, so a checkout would
-      # put an untrusted Dependabot branch's code next to a privileged
-      # credential. This job's triggers — push to `main`, `schedule`,
-      # `workflow_dispatch` — all resolve to the default branch, so what lands
-      # in the working tree is `main` and nothing else. No Dependabot branch is
-      # ever checked out, and nothing from one is executed: the branches this
-      # job writes to are only ever named in an API call.
+      # `ref` is pinned, and the reason is a correction: an earlier version of
+      # this comment claimed all three triggers "resolve to the default
+      # branch". They do not. `workflow_dispatch` takes whatever ref the
+      # dispatcher picks (`gh workflow run ... --ref BRANCH`), and
+      # `actions/checkout` with no `ref` checks out exactly that — including a
+      # `dependabot/*` branch, which carries this workflow once it has been
+      # branched from `main`. Unpinned, dispatching one would have run THAT
+      # branch's copy of the script with the release-App token in `GH_TOKEN`,
+      # which is the escalation the comment was asserting could not happen
+      # (#287). Pinned, the script is `main`'s whatever ref is dispatched.
+      #
+      # The same expression as `BASE` below, deliberately: if it ever resolved
+      # empty the script's `: "${BASE:?}"` guard fails the job rather than the
+      # two silently disagreeing about which branch this is.
+      #
+      # What pinning does NOT fix, stated plainly rather than papered over:
+      # GitHub reads the workflow DEFINITION from the dispatched ref, so a
+      # dispatch from a branch runs that branch's version of this file, pin and
+      # all. No workflow can defend against that from the inside; the boundary
+      # is who may dispatch, which is write access. The pin removes the easy
+      # path — an unmodified dispatch of an existing branch — and that is the
+      # honest claim for it.
+      #
+      # `persist-credentials: false` because nothing here uses git: every write
+      # this job performs goes through the API. Leaving the token in
+      # `.git/config` would widen the blast radius of the script for no gain.
+      #
+      # Worth stating at all because `dependabot-auto-merge.yml` makes a point
+      # of never checking out. That file runs on `pull_request` with the App
+      # token in scope, where the checked-out tree IS the untrusted Dependabot
+      # branch. Here the tree is `main`, and Dependabot branches are only ever
+      # named in an API call, never executed.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
 
       - name: Merge main into outdated Dependabot branches
         env:
