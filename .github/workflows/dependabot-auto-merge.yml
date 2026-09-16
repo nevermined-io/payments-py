@@ -7,16 +7,33 @@ name: Dependabot auto-merge
 # with write access — including a GitHub App, which cannot be a team member and
 # so could never satisfy CODEOWNERS — is enough.
 #
-# Difference from nevermined-io/payments, which runs the same pattern: that
-# repo sets `strict: true` on `main`, so a branch that has fallen behind cannot
-# merge and a companion `dependabot-update-branches.yml` has to keep Dependabot
-# branches current. This repo sets `strict: false` — nothing to update, no
-# companion workflow. The approval half ports in either direction; the
-# update-branches half does not. (Both repos: 1 approval,
-# `require_code_owner_reviews: false`, `bypass_pull_request_allowances: null`.
-# Snapshot taken 2026-09-15 — re-check with `gh api
-# repos/<owner>/<repo>/branches/main/protection` rather than trusting it; the
+# No longer a difference from nevermined-io/payments: `main` here now sets
+# `strict: true` too, so a Dependabot branch that has fallen behind cannot
+# merge, and the companion `dependabot-update-branches.yml` is what keeps those
+# branches current. Both halves of that repo's pattern run here.
+#
+# It is worth knowing why, because an earlier version of this comment argued
+# the opposite. This repo ran `strict: false`, under which the companion job
+# gated nothing: THIS file arms a patch/minor PR the moment it opens, so one
+# whose checks went green on its original head merged before any push to `main`
+# woke the sweep. Rather than soften the companion's claim, `strict` was turned
+# on (#287). The consequence for this file is that `--auto` below now queues
+# behind "branch is up to date" as well as the three required checks, and it is
+# the companion job that satisfies the former.
+#
+# (Both repos, verified 2026-09-16 with `gh api
+# repos/<owner>/<repo>/branches/main/protection`: `strict: true`, 1 approval,
+# `require_code_owner_reviews: false`, `dismiss_stale_reviews: false`,
+# `require_last_push_approval: false`, `bypass_pull_request_allowances: null`,
+# `enforce_admins: true`. Re-check rather than trusting the snapshot; the
 # CODEOWNERS setting on `payments` has already changed once under this file.)
+#
+# One interaction worth knowing: the companion job pushes its merge commit as
+# the release App, which fires `synchronize` on the PR. The `auto-merge` job
+# below then skips — `github.actor` is the App, not `dependabot[bot]` — which is
+# correct and harmless: `dismiss_stale_reviews: false` keeps the approval, and
+# GitHub disables auto-merge only on a push from an identity WITHOUT write
+# access, which the App has. The PR stays armed and merges on the fresh checks.
 #
 # Uses `pull_request`, NOT `pull_request_target`: GitHub has respected the
 # `permissions:` key for Dependabot PRs since October 2021, which makes
@@ -124,6 +141,12 @@ jobs:
       # `--auto` queues the merge behind the required checks (`lint`,
       # `unit_integration`, `e2e`) rather than merging now. `deepagents_compat`
       # is NOT a required check, so a red run there does not hold the merge.
+      #
+      # Since `main` sets `strict: true`, it also queues behind "branch is up
+      # to date with main", which nothing in this file satisfies —
+      # `dependabot-update-branches.yml` does. A PR armed here and then left
+      # behind by a merge to `main` stays queued, not stuck, but only for as
+      # long as that job keeps working; see its header.
       #
       # `e2e` runs for real on a Dependabot PR as of #284, which populated this
       # repository's Dependabot secret store. Before that it reported `skipped`,

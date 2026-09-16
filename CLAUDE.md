@@ -177,6 +177,47 @@ Dependabot PRs only, which is a hard failure to diagnose from the symptom.
 Dependabot PRs that are patch or minor are auto-approved and queued by
 `.github/workflows/dependabot-auto-merge.yml` (#283). Majors stop for a human.
 
+`.github/workflows/dependabot-update-branches.yml` is the companion sweeper,
+ported from `nevermined-io/payments`. On every push to `main` (plus a Monday
+09:00 UTC fallback and `workflow_dispatch`) it merges `main` into up to
+`MAX_MERGES` open Dependabot branches via `POST /repos/{owner}/{repo}/merges`,
+so their required checks re-run against the `main` they will land on rather
+than the one Dependabot branched from.
+
+`main` sets `strict: true` (aligned with `payments` in #287), so this is
+**load-bearing, not a convenience**: a Dependabot branch that has fallen behind
+cannot merge until something merges `main` into it, and unattended that
+something is this workflow. If it breaks, the queue stalls silently — nothing
+merges, no check goes red, the PRs just sit.
+
+It did not start that way. The first draft ran against `strict: false` and
+described itself as equivalent to strict checks, which was wrong: the sweep
+gated nothing, since `dependabot-auto-merge.yml` arms a PR the moment it opens
+and one green on its original head merged before any push woke the sweep.
+`strict` was turned on rather than the claim softened. Before describing this
+workflow as enforcing anything, re-check that `strict` is still set —
+`gh api repos/nevermined-io/payments-py/branches/main/protection`.
+
+`MAX_MERGES` now bounds how fast the queue drains, not whether a PR can slip
+through unswept; overflow waits for a later wave, and a merge is itself a push
+to `main` that starts one. This repo also sets `allow_update_branch: true`
+(`payments` does not), which only surfaces GitHub's manual "Update branch"
+button — it performs no update and replaces nothing here.
+
+Conflicts are reported as a job warning and need `@dependabot recreate` from a
+*user* account; the App identity cannot issue Dependabot commands.
+`.github/dependabot.yml` pins its weekly run to Monday 08:00 Europe/Madrid so
+the cron fallback has a known run to clear.
+
+The logic lives in `.github/scripts/update-dependabot-branches.sh`, not inline
+in the workflow, because the workflow triggers on a push to `main` and so
+cannot be exercised before it merges. `tests/unit/test_dependabot_sweeper.py`
+runs that script against a stubbed `gh` and is the only pre-merge cover the
+ordering, status handling and cap get — treat it as required when touching
+either file. The `payments` copy shipped calling `--method POST` on a PUT
+endpoint and reported a green job while updating nothing, which is the failure
+mode that suite exists to catch.
+
 ## Release Process
 
 **Do NOT bump the version in `pyproject.toml` by hand in a feature PR.** The release is fully automated through three workflows:
