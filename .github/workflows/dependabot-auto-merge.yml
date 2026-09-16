@@ -17,8 +17,17 @@ name: Dependabot auto-merge
 # this repo now runs it too: with `strict: false` nothing is blocked, so a bump
 # this file approves and queues can merge green having been tested only against
 # the `main` Dependabot branched from. The companion workflow merges `main` in
-# so the required checks re-run against the `main` the PR will actually land
-# on. See its header. (Both repos: 1 approval,
+# so the required checks re-run against the `main` the PR will actually land on.
+#
+# Read that as best-effort, not a guarantee, and this file is the reason why:
+# the `auto-merge` job below arms a patch/minor PR the moment it opens, so if
+# its checks go green on the original head before anything lands on `main`,
+# GitHub merges it and the sweep never saw it. Closing that race needs
+# `strict: true` on `main` — branch protection is the only thing that can gate
+# a merge on an up-to-date branch. The sweep covers the PRs that SIT: held for
+# review, conflicted, or queued behind others. See that workflow's header,
+# which carries the full statement of what it does not do. (Both repos: 1
+# approval,
 # `require_code_owner_reviews: false`, `bypass_pull_request_allowances: null`.
 # Snapshot taken 2026-09-16 — re-check with `gh api
 # repos/<owner>/<repo>/branches/main/protection` rather than trusting it; the

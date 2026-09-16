@@ -182,11 +182,31 @@ ported from `nevermined-io/payments`. On every push to `main` (plus a Monday
 09:00 UTC fallback and `workflow_dispatch`) it merges `main` into up to
 `MAX_MERGES` open Dependabot branches via `POST /repos/{owner}/{repo}/merges`,
 so their required checks re-run against the `main` they will land on rather
-than the one Dependabot branched from — `main` here sets `strict: false`, so
-nothing else enforces that. Conflicts are reported as a job warning and need
-`@dependabot recreate` from a *user* account; the App identity cannot issue
-Dependabot commands. `.github/dependabot.yml` pins its weekly run to Monday
-08:00 Europe/Madrid so that cron fallback has a known run to clear.
+than the one Dependabot branched from.
+
+It is **best-effort and enforces nothing**. `main` here sets `strict: false`,
+and the sweep is asynchronous: a PR whose checks go green on its original head
+before anything lands on `main` is auto-merged without ever being swept, and
+`MAX_MERGES` leaves the overflow of a wave unswept but still mergeable. What it
+covers is the PRs that SIT — held for review, conflicted, or queued behind
+others. Closing the race needs `strict: true` on `main`; branch protection is
+the only thing that can gate a merge on an up-to-date branch. Do not describe
+this workflow as equivalent to strict checks (it was, in its first draft — #287
+caught it).
+
+Conflicts are reported as a job warning and need `@dependabot recreate` from a
+*user* account; the App identity cannot issue Dependabot commands.
+`.github/dependabot.yml` pins its weekly run to Monday 08:00 Europe/Madrid so
+the cron fallback has a known run to clear.
+
+The logic lives in `.github/scripts/update-dependabot-branches.sh`, not inline
+in the workflow, because the workflow triggers on a push to `main` and so
+cannot be exercised before it merges. `tests/unit/test_dependabot_sweeper.py`
+runs that script against a stubbed `gh` and is the only pre-merge cover the
+ordering, status handling and cap get — treat it as required when touching
+either file. The `payments` copy shipped calling `--method POST` on a PUT
+endpoint and reported a green job while updating nothing, which is the failure
+mode that suite exists to catch.
 
 ## Release Process
 
