@@ -2,8 +2,12 @@
 #
 # Merges $BASE into the open Dependabot branches so their CI re-runs against the
 # branch they will actually land on. Called by
-# .github/workflows/dependabot-update-branches.yml; see that file's header for
-# why this repository runs it and what it does NOT guarantee.
+# .github/workflows/dependabot-update-branches.yml.
+#
+# `main` sets `strict: true`, so this is what unblocks a Dependabot PR that has
+# fallen behind: without it the PR cannot merge at all. A silent failure here
+# stalls the whole queue without turning anything red, which is why the guards
+# below are explicit and why the tests exist. See the workflow header.
 #
 # It lives in a file rather than inline in the workflow so it can be tested:
 # `tests/unit/test_dependabot_sweeper.py` drives it with a stubbed `gh` on

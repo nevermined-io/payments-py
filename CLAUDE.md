@@ -184,15 +184,25 @@ ported from `nevermined-io/payments`. On every push to `main` (plus a Monday
 so their required checks re-run against the `main` they will land on rather
 than the one Dependabot branched from.
 
-It is **best-effort and enforces nothing**. `main` here sets `strict: false`,
-and the sweep is asynchronous: a PR whose checks go green on its original head
-before anything lands on `main` is auto-merged without ever being swept, and
-`MAX_MERGES` leaves the overflow of a wave unswept but still mergeable. What it
-covers is the PRs that SIT — held for review, conflicted, or queued behind
-others. Closing the race needs `strict: true` on `main`; branch protection is
-the only thing that can gate a merge on an up-to-date branch. Do not describe
-this workflow as equivalent to strict checks (it was, in its first draft — #287
-caught it).
+`main` sets `strict: true` (aligned with `payments` in #287), so this is
+**load-bearing, not a convenience**: a Dependabot branch that has fallen behind
+cannot merge until something merges `main` into it, and unattended that
+something is this workflow. If it breaks, the queue stalls silently — nothing
+merges, no check goes red, the PRs just sit.
+
+It did not start that way. The first draft ran against `strict: false` and
+described itself as equivalent to strict checks, which was wrong: the sweep
+gated nothing, since `dependabot-auto-merge.yml` arms a PR the moment it opens
+and one green on its original head merged before any push woke the sweep.
+`strict` was turned on rather than the claim softened. Before describing this
+workflow as enforcing anything, re-check that `strict` is still set —
+`gh api repos/nevermined-io/payments-py/branches/main/protection`.
+
+`MAX_MERGES` now bounds how fast the queue drains, not whether a PR can slip
+through unswept; overflow waits for a later wave, and a merge is itself a push
+to `main` that starts one. This repo also sets `allow_update_branch: true`
+(`payments` does not), which only surfaces GitHub's manual "Update branch"
+button — it performs no update and replaces nothing here.
 
 Conflicts are reported as a job warning and need `@dependabot recreate` from a
 *user* account; the App identity cannot issue Dependabot commands.

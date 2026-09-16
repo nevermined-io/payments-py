@@ -5,41 +5,39 @@ name: Update Dependabot branches after merge
 # nevermined-io/payments/.github/workflows/dependabot-update-branches.yml; the
 # differences from that file are marked "payments-py:" throughout.
 #
-# payments-py: READ THIS BEFORE RELYING ON IT — what it does and does not do.
+# payments-py: `main` here sets `strict: true`, same as `payments`, so the
+# guarantee is branch protection's and this job only supplies the merges it
+# demands. A Dependabot branch that has fallen behind cannot merge until
+# something merges `main` into it, and unattended that something is this job.
 #
-# On `payments`, `main` sets `strict: true`, so a branch that has fallen behind
-# literally cannot merge and this job is what unblocks it. There the guarantee
-# is branch protection's; this job only supplies the merges it demands.
+# It did not start that way. The first draft of this file ran against
+# `strict: false` and claimed to deliver "the safety property `strict: true`
+# would enforce", which was wrong — review caught it (#287). With
+# `strict: false` the sweep gated nothing: no required check depended on it,
+# `dependabot-auto-merge.yml` arms a patch/minor PR the moment it opens so one
+# green on its original head merged before any push woke this job, and
+# `MAX_MERGES` left a wave's overflow unswept and still mergeable. `strict` was
+# turned on in the same PR rather than the claim being softened, which is what
+# makes the paragraph above true instead of aspirational.
 #
-# Here `main` sets `strict: false` (verified 2026-09-16, `gh api
-# repos/nevermined-io/payments-py/branches/main/protection`). This job is
-# therefore BEST-EFFORT and enforces nothing. An earlier version of this
-# comment claimed it delivers "the safety property `strict: true` would
-# enforce"; that was wrong and review caught it (#287). Concretely, it does not
-# close the stale-branch race:
+# Two consequences of being load-bearing that are worth knowing:
 #
-#  - `dependabot-auto-merge.yml` arms a patch/minor PR as soon as it opens. If
-#    its checks go green on the original head before anything lands on `main`,
-#    GitHub merges it and this job never saw it.
-#  - The sweep is asynchronous. Nothing makes it a prerequisite of a merge:
-#    there is no required check for it, and neither the push trigger nor the
-#    weekly cron runs between a PR's checks going green and its auto-merge.
-#  - `MAX_MERGES` caps each wave, so with more open PRs than the cap some stay
-#    unswept while remaining perfectly mergeable.
+#  - If this job breaks, the Dependabot queue stalls SILENTLY. Nothing merges,
+#    no check goes red, and the PRs simply sit. That is the failure mode the
+#    `payments` copy actually had — `--method POST` on a PUT endpoint, 404 on
+#    all 21 open PRs, green job (nevermined-io/payments#449). It is why the
+#    logic lives in a script with `tests/unit/test_dependabot_sweeper.py`
+#    against it, and why a failed `gh pr list` fails the job rather than
+#    reading as an empty queue.
+#  - `MAX_MERGES` now bounds how fast the queue DRAINS, not whether a PR can
+#    slip through unswept. With more open PRs than the cap, the overflow stays
+#    blocked until a later wave — which is the intended behaviour, since a
+#    merge is itself a push to `main` and starts the next one.
 #
-# What it does buy, which is real but smaller: a Dependabot PR that sits — held
-# for review, blocked on a conflict, or behind others in the queue — gets
-# `lint`, `unit_integration` and `e2e` re-run against a current `main` instead
-# of merging on checks from whenever Dependabot opened it. That covers the
-# backlog case this repository actually hits, and it is what makes turning
-# `strict: true` on later a settings change rather than a settings change plus
-# a pile of stale branches to unblock by hand.
-#
-# If the race matters rather than the backlog, the fix is `strict: true` on
-# `main` — branch protection is the only thing that can gate a merge on an
-# up-to-date branch — at which point this job becomes the unblocker it is on
-# `payments` and the paragraph above can be replaced by that one. The header of
-# `dependabot-auto-merge.yml` tracks the same distinction.
+# Unlike `payments`, this repository also sets `allow_update_branch: true`.
+# That surfaces GitHub's own "Update branch" button on a behind PR; it does not
+# perform the update, so it changes nothing about needing this job — it is a
+# manual affordance for humans, on top of what runs here.
 on:
   push:
     branches:
