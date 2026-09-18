@@ -316,6 +316,7 @@ asyncio.run(main())
 | `baseUrl` | `str` | No | Base URL (default: localhost) |
 | `version` | `str` | No | Server version |
 | `description` | `str` | No | Server description |
+| `oauthUrls` | `dict` | No | Overrides for the OAuth URLs the discovery documents publish (`authorizationUri`, `tokenUri`, `jwksUri`, `userinfoUri`, `issuer`). Set `authorizationUri` with `?network=sandbox\|live` when your `custom` backend host cannot be classified |
 
 ## Handler Options
 
@@ -410,7 +411,7 @@ For backward compatibility the server still falls back to reading the access tok
 
 The MCP server exposes:
 
-- `/.well-known/oauth-authorization-server` - OAuth 2.1 discovery. Its `authorization_endpoint` names the API tier your server runs against — `https://nevermined.app/oauth/authorize?network=sandbox` for `sandbox`, `?network=live` for `live` — because one Nevermined web app serves the consent screens for both tiers and boots on whatever tier the user's browser last chose. Clients keep that query string when they add their own parameters (RFC 6749 §3.1); if you configure a client by hand, copy the endpoint from the discovery document, query string included. A `custom` environment derives the tier from its backend host (`api.sandbox.…` / `api.live.…`, branded subdomains included); behind a host the SDK cannot classify — `localhost`, a proxy — no tier is stamped, so set `oauth_urls={"authorizationUri": "<webapp>/oauth/authorize?network=<tier>"}` yourself.
+- `/.well-known/oauth-authorization-server` - OAuth 2.1 discovery. Its `authorization_endpoint` names the API tier your server runs against — `https://nevermined.app/oauth/authorize?network=sandbox` for `sandbox`, `?network=live` for `live` — because one Nevermined web app serves the consent screens for both tiers and boots on whatever tier the user's browser last chose. Clients keep that query string when they add their own parameters (RFC 6749 §3.1); if you configure a client by hand, copy the endpoint from the discovery document, query string included. A `custom` environment derives the tier from its backend host (`api.sandbox.…` / `api.live.…`, branded subdomains included); behind a host the SDK cannot classify — `localhost`, a proxy — no tier is stamped, so state it yourself with the `oauthUrls` option: `oauthUrls={"authorizationUri": "<webapp>/oauth/authorize?network=<tier>"}` on `payments.mcp.start()` (or `create_oauth_router()`).
 - `/.well-known/oauth-protected-resource` - Resource metadata
 - `/.well-known/oauth-protected-resource/mcp` - MCP-specific protected resource metadata
 - `/register` - Client registration

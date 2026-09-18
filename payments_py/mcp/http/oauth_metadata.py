@@ -63,8 +63,10 @@ def resolve_oauth_tier(
     is what is matched, never a bare ``sandbox`` anywhere in the host. When the
     host cannot be classified (a ``localhost`` stack, a proxy/CNAME in front of the
     API) the tier is **omitted**, not guessed: the URL stays the bare one, and the
-    operator sets ``oauth_urls={"authorizationUri": "...?network=<tier>"}`` to say
-    which tier that deployment is.
+    operator states the tier through the ``oauthUrls`` option — the camelCase key
+    ``McpServerConfig`` / ``HttpRouterConfig`` actually read —
+    ``oauthUrls={"authorizationUri": "<webapp>/oauth/authorize?network=<tier>"}``,
+    on ``payments.mcp.start()`` or ``create_oauth_router()``.
 
     Args:
         environment: The Nevermined environment name.
