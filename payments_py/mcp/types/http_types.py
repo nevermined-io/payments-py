@@ -37,7 +37,12 @@ class OAuthUrls(TypedDict):
     environment-specific (staging, production, etc.).
 
     Attributes:
-        issuer: The issuer identifier (e.g., https://nevermined.app).
+        issuer: The RFC 8414 issuer identifier — the ORIGIN of the Nevermined API
+            this server's document publishes as ``token_endpoint`` (e.g.
+            ``https://api.sandbox.nevermined.app``), one per tier: the value the
+            API's own discovery document and the web app's RFC 9207 ``iss`` use.
+            Earlier releases published the web app's origin here (tier-blind).
+            An explicit override is passed through unchanged.
         authorizationUri: OAuth authorization endpoint URL.
         tokenUri: OAuth token endpoint URL.
         jwksUri: JSON Web Key Set endpoint URL.

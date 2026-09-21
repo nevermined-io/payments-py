@@ -18,6 +18,7 @@ from payments_py.mcp.http.oauth_metadata import (
     get_oauth_urls,
     OAUTH_TIER_PARAM,
     _with_tier_param,
+    _issuer_of,
     resolve_oauth_tier,
 )
 
@@ -552,3 +553,121 @@ class TestAuthorizationEndpointCarriesTheTier:
     def test_with_tier_param_keeps_one_query_string(self, base, expected):
         assert _with_tier_param(base, "sandbox") == expected
         assert _with_tier_param(base, None) == base
+
+
+class TestIssuerIsTheApiOriginPerTier:
+    """payments-py#291: ``issuer`` used to be the frontend origin — the same string for both
+    tiers — while ``token_endpoint`` and the API's own RFC 8414 document named the backend.
+    Since nvm-monorepo#3532 the web app returns RFC 9207 ``iss`` = the API origin, which an
+    RFC 9207 client compares with the discovered ``issuer`` by simple string comparison — so
+    the frontend value made every client that discovered through this server reject its
+    codes. Hardcoded per environment so a regression to the frontend cannot pass by
+    mirroring the implementation."""
+
+    @pytest.mark.parametrize(
+        "environment, backend, frontend",
+        [
+            ("sandbox", "https://api.sandbox.nevermined.app", "https://nevermined.app"),
+            (
+                "staging_sandbox",
+                "https://api.sandbox.nevermined.dev",
+                "https://nevermined.dev",
+            ),
+            ("live", "https://api.live.nevermined.app", "https://nevermined.app"),
+            (
+                "staging_live",
+                "https://api.live.nevermined.dev",
+                "https://nevermined.dev",
+            ),
+        ],
+    )
+    def test_issuer_is_the_backend_origin_never_the_frontend(
+        self, environment, backend, frontend
+    ):
+        urls = get_oauth_urls(environment)
+        assert urls["issuer"] == backend
+        assert urls["issuer"] != frontend
+        # Every document that describes this AS agrees on its identifier.
+        config = {
+            "baseUrl": "http://localhost:3000",
+            "agentId": "a",
+            "environment": environment,
+        }
+        assert build_authorization_server_metadata(config)["issuer"] == backend
+        assert build_oidc_configuration(config)["issuer"] == backend
+
+    def test_the_two_tiers_now_publish_different_issuers(self):
+        assert get_oauth_urls("sandbox")["issuer"] != get_oauth_urls("live")["issuer"]
+        assert (
+            get_oauth_urls("staging_sandbox")["issuer"]
+            != get_oauth_urls("staging_live")["issuer"]
+        )
+
+    @pytest.mark.parametrize(
+        "environment", ["sandbox", "live", "staging_sandbox", "staging_live", "custom"]
+    )
+    def test_issuer_is_the_origin_of_the_published_token_endpoint(
+        self, environment, monkeypatch
+    ):
+        # The invariant an RFC 9207 client relies on: the identifier it discovered names the
+        # server that will answer at ``token_endpoint``. Both derive from the backend the
+        # document PUBLISHES, so a ``tokenUri`` override moves them together.
+        monkeypatch.setitem(
+            Environments,
+            "custom",
+            EnvironmentInfo(
+                frontend="https://nevermined.app",
+                backend="http://localhost:3001",
+                proxy="",
+                helicone_url="",
+            ),
+        )
+        urls = get_oauth_urls(environment)
+        parts = urlsplit(urls["tokenUri"])
+        assert urls["issuer"] == f"{parts.scheme}://{parts.netloc}"
+        overridden = get_oauth_urls(
+            environment, {"tokenUri": "https://api.live.nevermined.app/oauth/token"}
+        )
+        assert overridden["issuer"] == "https://api.live.nevermined.app"
+
+    def test_custom_local_stack_issuer_is_its_own_backend(self, monkeypatch):
+        monkeypatch.setitem(
+            Environments,
+            "custom",
+            EnvironmentInfo(
+                frontend="https://nevermined.app",
+                backend="http://localhost:3001",
+                proxy="",
+                helicone_url="",
+            ),
+        )
+        assert get_oauth_urls("custom")["issuer"] == "http://localhost:3001"
+
+    @pytest.mark.parametrize(
+        "backend, expected",
+        [
+            # RFC 9207 §2.4 is a simple string comparison against the ``iss`` the web app
+            # returns — ``new URL(backendUrl).origin`` — so this side reduces the same way.
+            (
+                "HTTPS://API.Sandbox.Nevermined.app/oauth/token",
+                "https://api.sandbox.nevermined.app",
+            ),
+            ("https://api.live.nevermined.app/", "https://api.live.nevermined.app"),
+            (
+                "https://api.live.nevermined.app:443/x",
+                "https://api.live.nevermined.app",
+            ),
+            ("http://localhost:3001/api/v1", "http://localhost:3001"),
+            ("http://[::1]:3001/", "http://[::1]:3001"),
+            # Unparsable / scheme-less: the pre-existing strip-trailing-slash shape, no throw.
+            ("http://[::1/", "http://[::1"),
+            ("not a url/", "not a url"),
+        ],
+    )
+    def test_issuer_of_reduces_to_a_whatwg_origin(self, backend, expected):
+        assert _issuer_of(backend) == expected
+
+    def test_explicit_issuer_override_still_passes_through_untouched(self):
+        urls = get_oauth_urls("sandbox", {"issuer": "https://custom-issuer.com"})
+        assert urls["issuer"] == "https://custom-issuer.com"
+        assert urls["tokenUri"] == "https://api.sandbox.nevermined.app/oauth/token"
