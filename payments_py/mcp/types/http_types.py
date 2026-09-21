@@ -43,7 +43,15 @@ class OAuthUrls(TypedDict):
             API's own discovery document and the web app's RFC 9207 ``iss`` use.
             Earlier releases published the web app's origin here (tier-blind).
             An explicit override is passed through unchanged.
-        authorizationUri: OAuth authorization endpoint URL.
+        authorizationUri: OAuth authorization endpoint URL. Overriding it also
+            withdraws the RFC 9207 ``authorization_response_iss_parameter_supported``
+            advertisement from the discovery documents — the SDK cannot vouch that an AS
+            it did not choose returns ``iss``. That is a trade, not a non-event: RFC 9207
+            §2.4 has a client REJECT an ``iss``-less response from a server that
+            advertises support, and SHOULD DISCARD a response that carries ``iss`` from
+            one that does not — so if the override still points at the Nevermined web
+            app, which returns ``iss`` on every response, a strict client may discard
+            its responses (payments-py#295).
         tokenUri: OAuth token endpoint URL.
         jwksUri: JSON Web Key Set endpoint URL.
         userinfoUri: OpenID Connect userinfo endpoint URL.
@@ -260,6 +268,12 @@ class AuthorizationServerMetadata(TypedDict, total=False):
         scopes_supported: Scopes supported by the authorization server.
         token_endpoint_auth_methods_supported: Token endpoint auth methods.
         subject_types_supported: Subject identifier types supported.
+        authorization_response_iss_parameter_supported: RFC 9207 §3 — present (and
+            ``True``) when every authorization response carries ``iss``: the four
+            named environments (the Nevermined web app returns it; nvm-monorepo#3532).
+            Omitted — which the RFC defines as ``False`` — for ``custom`` and for an
+            overridden ``authorizationUri``. The wire type is a boolean; this SDK
+            never publishes an explicit ``False``.
     """
 
     issuer: str
@@ -273,6 +287,7 @@ class AuthorizationServerMetadata(TypedDict, total=False):
     scopes_supported: List[str]
     token_endpoint_auth_methods_supported: List[str]
     subject_types_supported: List[str]
+    authorization_response_iss_parameter_supported: bool
 
 
 class OidcConfiguration(TypedDict, total=False):
@@ -295,6 +310,9 @@ class OidcConfiguration(TypedDict, total=False):
         userinfo_endpoint: OIDC userinfo endpoint URL.
         id_token_signing_alg_values_supported: ID token signing algorithms.
         claims_supported: Claims supported in ID tokens.
+        authorization_response_iss_parameter_supported: As on
+            ``AuthorizationServerMetadata`` — present and ``True`` for the named
+            environments, omitted otherwise (RFC 9207).
     """
 
     issuer: str
@@ -308,6 +326,7 @@ class OidcConfiguration(TypedDict, total=False):
     scopes_supported: List[str]
     token_endpoint_auth_methods_supported: List[str]
     subject_types_supported: List[str]
+    authorization_response_iss_parameter_supported: bool
     userinfo_endpoint: Optional[str]
     id_token_signing_alg_values_supported: Optional[List[str]]
     claims_supported: Optional[List[str]]

@@ -18,6 +18,7 @@ Examples:
 
 import logging
 from typing import Dict, List, Literal, Optional
+from typing_extensions import TypedDict
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from ...environments import EnvironmentName, Environments
@@ -181,6 +182,16 @@ def _canonical_nevermined_origin(backend_url: str) -> Optional[str]:
 # set ``oauthUrls.issuer`` — the remedy the warning names — and not for a loopback host (a local
 # stack, not a proxy for the real API).
 _issuer_warned: set = set()
+
+
+def _is_override(value: object) -> bool:
+    """An override replaces a computed URL only when it is a NON-EMPTY string (#292).
+
+    The one predicate behind ``get_oauth_urls``'s merge and ``_iss_parameter_support``'s
+    "is the consent page overridden" test — two copies would let the document and its
+    RFC 9207 claim disagree with no test failing (#295 review).
+    """
+    return isinstance(value, str) and value != ""
 
 
 def _warn_issuer_once(key: str, message: str) -> None:
@@ -360,12 +371,31 @@ def get_oauth_urls(
     # variable unset used to merge ``None`` over the computed value and publish
     # ``"issuer": null`` in a REQUIRED RFC 8414 field — for an hour, under
     # ``Cache-Control: public`` (payments-py#292 review). Same for ``""``.
-    clean = {
-        k: v for k, v in (overrides or {}).items() if isinstance(v, str) and v != ""
-    }
+    clean = {k: v for k, v in (overrides or {}).items() if _is_override(v)}
     base_urls = _get_oauth_urls_for_environment(
         environment, clean.get("tokenUri"), "issuer" in clean
     )
+    issuer_override = clean.get("issuer")
+    if (
+        environment != "custom"
+        and issuer_override is not None
+        and issuer_override != base_urls["issuer"]
+    ):
+        # A NAMED environment's issuer is not configurable in fact: the web app returns
+        # the canonical origin as RFC 9207 ``iss`` from its own fixed per-tier config, and
+        # these documents advertise ``authorization_response_iss_parameter_supported``,
+        # so a client compares ``iss`` with THIS value and rejects every code. The
+        # override is still published — the operator's word is honoured — but the failure
+        # must not arrive as an unexplained client-side rejection (payments#467 review;
+        # twin of the TypeScript SDK). Keyed on the value, so a corrected typo re-alerts.
+        _warn_issuer_once(
+            f"override:{issuer_override}",
+            f"oauthUrls.issuer '{issuer_override}' differs from the canonical issuer of "
+            f"the '{environment}' environment, '{base_urls['issuer']}' — the iss the "
+            "Nevermined consent page returns on every authorization response. An RFC 9207 "
+            "client compares the two and will reject every authorization code. Remove "
+            f"oauthUrls.issuer, or set it to '{base_urls['issuer']}'.",
+        )
     if clean:
         base_urls.update(clean)  # type: ignore
     return base_urls
@@ -389,6 +419,56 @@ _DEFAULT_SCOPES: List[str] = [
 # =============================================================================
 # METADATA BUILDERS
 # =============================================================================
+
+
+class _IssParameterSupport(TypedDict, total=False):
+    """The one optional key ``_iss_parameter_support`` may add — present only as ``True``."""
+
+    authorization_response_iss_parameter_supported: bool
+
+
+def _iss_parameter_support(
+    environment: EnvironmentName, overrides: Optional[Dict[str, str]]
+) -> _IssParameterSupport:
+    """RFC 9207 §3 — ``authorization_response_iss_parameter_supported``, only where TRUE.
+
+    An authorization server that returns ``iss`` on every authorization response
+    advertises the flag; §2.4 then has a client REJECT any response lacking ``iss``.
+    An omitted flag DEFAULTS to ``False`` (§3), so the SDK publishes it only where it
+    is true and omits it everywhere else — never an explicit ``False``, which would
+    say the same thing louder. True where the consent page is the Nevermined web app,
+    which has returned ``iss`` (= the canonical API origin these documents publish
+    as ``issuer``) on every response since nvm-monorepo#3532 — the API's own document
+    advertises the same flag: every NAMED environment (the decision,
+    payments-py#295). Omitted for ``custom`` — its frontend may be an older or
+    self-hosted web app and this SDK cannot tell; a ``custom`` server on a Nevermined
+    backend AND frontend is deliberately still omitted, the decision drew the line at
+    the environment name, not at a host guess — and whenever
+    ``oauthUrls.authorizationUri`` is overridden, since the consent page is then an AS
+    this SDK cannot vouch for, even when the value points at the Nevermined web app.
+    The override predicate is ``_is_override``, the one ``get_oauth_urls`` merges by.
+
+    Two limits of the omission, so nobody widens or narrows it for the wrong reason
+    (payments#467 review, mirrored here):
+
+    - It is a TRADE, not a neutral default. §2.4's other half has a client SHOULD-discard
+      a response that carries ``iss`` from a server that did not advertise — exactly the
+      state an override that still points at the Nevermined web app (which returns
+      ``iss`` unconditionally) lands in. Omitting swaps the MUST-reject for the
+      SHOULD-discard; the operator docs say so.
+    - It reaches only a client that discovers DIRECTLY against this server. One that
+      follows the protected-resource document's ``authorization_servers`` reads the
+      Nevermined API's own metadata, which advertises the flag unconditionally — so a
+      ``custom`` deployment on a Nevermined backend with an older frontend is not
+      shielded on that route, whatever this document says.
+    """
+    consent_overridden = _is_override((overrides or {}).get("authorizationUri"))
+    # An unknown environment name is served the sandbox documents by
+    # ``get_oauth_urls``, and is not ``custom`` — so the only name that omits is
+    # ``custom`` itself.
+    if environment != "custom" and not consent_overridden:
+        return {"authorization_response_iss_parameter_supported": True}
+    return {}
 
 
 def build_protected_resource_metadata(config: OAuthConfig) -> ProtectedResourceMetadata:
@@ -502,6 +582,7 @@ def build_authorization_server_metadata(
         "scopes_supported": scopes,
         "token_endpoint_auth_methods_supported": ["client_secret_post"],
         "subject_types_supported": ["public"],
+        **_iss_parameter_support(config["environment"], config.get("oauthUrls")),
     }
 
 
@@ -544,6 +625,7 @@ def build_oidc_configuration(config: OAuthConfig) -> OidcConfiguration:
         "id_token_signing_alg_values_supported": ["RS256", "HS256"],
         "scopes_supported": all_scopes,
         "claims_supported": ["sub", "iss", "aud", "exp", "iat", "name", "email"],
+        **_iss_parameter_support(config["environment"], config.get("oauthUrls")),
     }
 
 
