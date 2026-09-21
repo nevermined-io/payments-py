@@ -61,8 +61,10 @@ def resolve_oauth_tier(
     of the backend it will publish as ``token_endpoint``: a Nevermined API host has
     an ``api`` label immediately followed by the tier label —
     ``api.sandbox.nevermined.app``, ``<slug>.api.live.nevermined.app`` (branded
-    per-org subdomains), ``mcp.api.sandbox.nevermined.dev`` — so that label pair
-    is what is matched, never a bare ``sandbox`` anywhere in the host. When the
+    per-org subdomains, ``api.api.live.nevermined.app`` for an org slugged ``api``
+    included), ``mcp.api.sandbox.nevermined.dev`` — so that label pair is what is
+    matched, the FIRST such pair when a host carries more than one, never a bare
+    ``sandbox`` anywhere in the host. When the
     host cannot be classified (a ``localhost`` stack, a proxy/CNAME in front of the
     API) the tier is **omitted**, not guessed: the URL stays the bare one, and the
     operator states the tier through the ``oauthUrls`` option — the camelCase key
