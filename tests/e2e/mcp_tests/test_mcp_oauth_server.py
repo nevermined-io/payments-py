@@ -212,6 +212,8 @@ class TestMcpOAuthDiscoveryEndpoints:
             # against — the value the web app returns as RFC 9207 ``iss``, which clients
             # string-compare against this field. Exact, on the sandbox mock.
             assert data["issuer"] == "https://api.sandbox.nevermined.app"
+            # payments-py#295: a named environment advertises RFC 9207 iss support.
+            assert data["authorization_response_iss_parameter_supported"] is True
             assert "authorization_endpoint" in data
             # payments-py#277: the SERVED document names the API tier — the wiring
             # (server_manager → create_oauth_router → builders) on a sandbox mock.

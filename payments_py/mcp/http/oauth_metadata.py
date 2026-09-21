@@ -391,6 +391,31 @@ _DEFAULT_SCOPES: List[str] = [
 # =============================================================================
 
 
+def _iss_parameter_support(
+    environment: EnvironmentName, overrides: Optional[Dict[str, str]]
+) -> Dict[str, bool]:
+    """RFC 9207 §3 — ``authorization_response_iss_parameter_supported``, only where TRUE.
+
+    An authorization server that returns ``iss`` on every authorization response
+    advertises the flag; §2.4 then has a client REJECT any response lacking ``iss``.
+    For the four named environments the consent page is the Nevermined web app,
+    which has returned ``iss`` (= the canonical API origin these documents publish as
+    ``issuer``) on every response since nvm-monorepo#3532 — the API's own document
+    advertises the same flag. It is OMITTED for ``custom`` (the frontend may be an
+    older or self-hosted web app that does not return ``iss``) and whenever
+    ``oauthUrls.authorizationUri`` is overridden (the consent page is then an AS this
+    SDK knows nothing about). Absent, never ``False``: a client that sees no
+    advertisement skips the check rather than failing it. payments-py#295.
+    """
+    # Same effective-environment rule as ``_get_oauth_urls_for_environment``: an
+    # unknown name serves the sandbox documents, so it advertises what sandbox does.
+    effective = environment if environment in Environments else "sandbox"
+    consent_overridden = bool((overrides or {}).get("authorizationUri"))
+    if effective != "custom" and not consent_overridden:
+        return {"authorization_response_iss_parameter_supported": True}
+    return {}
+
+
 def build_protected_resource_metadata(config: OAuthConfig) -> ProtectedResourceMetadata:
     """Build Protected Resource Metadata (RFC 9728).
 
@@ -502,6 +527,7 @@ def build_authorization_server_metadata(
         "scopes_supported": scopes,
         "token_endpoint_auth_methods_supported": ["client_secret_post"],
         "subject_types_supported": ["public"],
+        **_iss_parameter_support(config["environment"], config.get("oauthUrls")),
     }
 
 
@@ -544,6 +570,7 @@ def build_oidc_configuration(config: OAuthConfig) -> OidcConfiguration:
         "id_token_signing_alg_values_supported": ["RS256", "HS256"],
         "scopes_supported": all_scopes,
         "claims_supported": ["sub", "iss", "aud", "exp", "iat", "name", "email"],
+        **_iss_parameter_support(config["environment"], config.get("oauthUrls")),
     }
 
 

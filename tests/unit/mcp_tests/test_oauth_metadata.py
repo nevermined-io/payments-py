@@ -837,3 +837,121 @@ class TestIssuerIsTheApiOriginPerTier:
             build_authorization_server_metadata(config)["issuer"]
             == "https://api.sandbox.nevermined.app"
         )
+
+
+class TestIssParameterSupportAdvertisement:
+    """payments-py#295 / RFC 9207 §3: advertise ``authorization_response_iss_parameter_supported``
+    only where it is TRUE. §2.4 has a client that sees it REJECT any response lacking ``iss``, so
+    a false advertisement is worse than none: named environments (the Nevermined web app returns
+    ``iss`` since nvm-monorepo#3532) advertise it; ``custom`` and an overridden consent endpoint
+    do not."""
+
+    BASE = {"baseUrl": "http://localhost:3000", "agentId": "a"}
+
+    @pytest.mark.parametrize(
+        "environment", ["sandbox", "live", "staging_sandbox", "staging_live"]
+    )
+    def test_named_environments_advertise_on_both_documents(self, environment):
+        config = {**self.BASE, "environment": environment}
+        assert (
+            build_authorization_server_metadata(config)[
+                "authorization_response_iss_parameter_supported"
+            ]
+            is True
+        )
+        assert (
+            build_oidc_configuration(config)[
+                "authorization_response_iss_parameter_supported"
+            ]
+            is True
+        )
+
+    def test_custom_omits_the_key_entirely(self, monkeypatch):
+        monkeypatch.setitem(
+            Environments,
+            "custom",
+            EnvironmentInfo(
+                frontend="https://nevermined.app",
+                backend="http://localhost:3001",
+                proxy="",
+                helicone_url="",
+            ),
+        )
+        config = {**self.BASE, "environment": "custom"}
+        assert (
+            "authorization_response_iss_parameter_supported"
+            not in build_authorization_server_metadata(config)
+        )
+        assert (
+            "authorization_response_iss_parameter_supported"
+            not in build_oidc_configuration(config)
+        )
+
+    def test_overridden_consent_endpoint_is_not_vouched_for(self):
+        overridden = {
+            **self.BASE,
+            "environment": "sandbox",
+            "oauthUrls": {
+                "authorizationUri": "https://custom-issuer.com/oauth/authorize"
+            },
+        }
+        assert (
+            "authorization_response_iss_parameter_supported"
+            not in build_authorization_server_metadata(overridden)
+        )
+        # Other overrides leave the consent page on the Nevermined web app — still advertised.
+        token_only = {
+            **self.BASE,
+            "environment": "sandbox",
+            "oauthUrls": {"tokenUri": "https://gw.corp.com/oauth/token"},
+        }
+        assert (
+            build_authorization_server_metadata(token_only)[
+                "authorization_response_iss_parameter_supported"
+            ]
+            is True
+        )
+        # An empty override is no override.
+        empty = {
+            **self.BASE,
+            "environment": "sandbox",
+            "oauthUrls": {"authorizationUri": ""},
+        }
+        assert (
+            build_authorization_server_metadata(empty)[
+                "authorization_response_iss_parameter_supported"
+            ]
+            is True
+        )
+
+    def test_unknown_environment_serves_sandbox_documents_flag_included(self):
+        config = {**self.BASE, "environment": "bogus"}
+        assert (
+            build_authorization_server_metadata(config)[  # type: ignore[typeddict-item]
+                "authorization_response_iss_parameter_supported"
+            ]
+            is True
+        )
+
+    def test_value_is_exactly_true_or_absent_never_false(self, monkeypatch):
+        monkeypatch.setitem(
+            Environments,
+            "custom",
+            EnvironmentInfo(
+                frontend="https://nevermined.app",
+                backend="http://localhost:3001",
+                proxy="",
+                helicone_url="",
+            ),
+        )
+        for environment in ("sandbox", "custom"):
+            doc = build_authorization_server_metadata(
+                {**self.BASE, "environment": environment}
+            )
+            assert doc.get("authorization_response_iss_parameter_supported") in (
+                True,
+                None,
+            )
+            assert (
+                doc.get("authorization_response_iss_parameter_supported") is not False
+            )

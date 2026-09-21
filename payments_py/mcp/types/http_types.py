@@ -260,6 +260,10 @@ class AuthorizationServerMetadata(TypedDict, total=False):
         scopes_supported: Scopes supported by the authorization server.
         token_endpoint_auth_methods_supported: Token endpoint auth methods.
         subject_types_supported: Subject identifier types supported.
+        authorization_response_iss_parameter_supported: RFC 9207 — present and
+            ``True`` when every authorization response carries ``iss`` (the four
+            named environments; nvm-monorepo#3532). Absent for ``custom`` and for an
+            overridden ``authorizationUri``; never ``False``.
     """
 
     issuer: str
@@ -273,6 +277,7 @@ class AuthorizationServerMetadata(TypedDict, total=False):
     scopes_supported: List[str]
     token_endpoint_auth_methods_supported: List[str]
     subject_types_supported: List[str]
+    authorization_response_iss_parameter_supported: bool
 
 
 class OidcConfiguration(TypedDict, total=False):
@@ -308,6 +313,7 @@ class OidcConfiguration(TypedDict, total=False):
     scopes_supported: List[str]
     token_endpoint_auth_methods_supported: List[str]
     subject_types_supported: List[str]
+    authorization_response_iss_parameter_supported: bool
     userinfo_endpoint: Optional[str]
     id_token_signing_alg_values_supported: Optional[List[str]]
     claims_supported: Optional[List[str]]
