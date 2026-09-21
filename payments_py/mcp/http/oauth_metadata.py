@@ -162,7 +162,9 @@ def _canonical_nevermined_origin(backend_url: str) -> Optional[str]:
     if tier is None:
         return None
     try:
-        hostname = urlsplit(backend_url).hostname or ""
+        # A trailing-dot FQDN (``api.sandbox.nevermined.app.``) is the same host to DNS;
+        # keep the suffix checks from missing it and republishing a one-byte-off issuer.
+        hostname = (urlsplit(backend_url).hostname or "").rstrip(".")
     except ValueError:
         return None
     environment: Optional[EnvironmentName]
@@ -175,11 +177,32 @@ def _canonical_nevermined_origin(backend_url: str) -> Optional[str]:
     return _origin_of(Environments[environment].backend) if environment else None
 
 
-_issuer_fallback_warned = False
+# Warned once per DISTINCT value (a changed typo re-alerts), never when the operator has already
+# set ``oauthUrls.issuer`` — the remedy the warning names — and not for a loopback host (a local
+# stack, not a proxy for the real API).
+_issuer_warned: set = set()
+
+
+def _warn_issuer_once(key: str, message: str) -> None:
+    if key in _issuer_warned:
+        return
+    _issuer_warned.add(key)
+    logging.getLogger(__name__).warning(message)
+
+
+def _is_loopback(origin: str) -> bool:
+    try:
+        host = urlsplit(origin).hostname
+    except ValueError:
+        return False
+    return host in ("localhost", "127.0.0.1", "::1")
 
 
 def _issuer_for(
-    effective: EnvironmentName, published_backend: str, env_backend: str
+    effective: EnvironmentName,
+    published_backend: str,
+    env_backend: str,
+    issuer_overridden: bool = False,
 ) -> str:
     """The RFC 8414 issuer identifier of the authorization server a document describes.
 
@@ -197,25 +220,36 @@ def _issuer_for(
       backend's origin, else the raw string minus its trailing slash, warned once. A
       metadata endpoint never raises.
     """
-    global _issuer_fallback_warned
     if effective != "custom":
         return _origin_of(env_backend) or env_backend.rstrip("/")
-    issuer = (
-        _canonical_nevermined_origin(published_backend)
-        or _origin_of(published_backend)
-        or _origin_of(env_backend)
-    )
-    if issuer:
-        return issuer
+    canonical = _canonical_nevermined_origin(published_backend)
+    if canonical:
+        return canonical
+    own = _origin_of(published_backend) or _origin_of(env_backend)
+    if own:
+        # The right value for a genuinely foreign API — and the WRONG one for a proxy/CNAME
+        # in front of the real Nevermined API (``https://gw.corp.com`` → the web app still
+        # returns ``iss = https://api.sandbox.nevermined.app``, so every RFC 9207 client
+        # rejects the code). The SDK cannot tell the two apart, so it says what it derived
+        # and names the remedy (payments-py#292 review).
+        if not issuer_overridden and not _is_loopback(own):
+            _warn_issuer_once(
+                own,
+                f"[Nevermined] OAuth issuer derived from backend host "
+                f"'{urlsplit(published_backend).netloc or published_backend}' as '{own}'. "
+                "If that host is a proxy or gateway in front of a Nevermined API rather than "
+                "the API itself, set oauthUrls.issuer (and oauthUrls.tokenUri) to that API's "
+                "real origin — otherwise the issuer will not match the iss the authorization "
+                "server returns.",
+            )
+        return own
     raw = published_backend.rstrip("/")
-    if not _issuer_fallback_warned:
-        _issuer_fallback_warned = True
-        logging.getLogger(__name__).warning(
-            "[Nevermined] Could not derive an OAuth issuer from backend '%s' — "
-            "publishing '%s'. Set oauthUrls.issuer (and oauthUrls.tokenUri) to the API "
-            "origin of this deployment's tier.",
-            published_backend,
+    if not issuer_overridden:
+        _warn_issuer_once(
             raw,
+            f"[Nevermined] Could not derive an OAuth issuer from backend '{published_backend}' "
+            f"— publishing '{raw}'. Set oauthUrls.issuer (and oauthUrls.tokenUri) to the API "
+            "origin of this deployment's tier.",
         )
     return raw
 
@@ -263,7 +297,9 @@ def _build_oauth_urls(
 
 
 def _get_oauth_urls_for_environment(
-    environment: EnvironmentName, backend_for_tier: Optional[str] = None
+    environment: EnvironmentName,
+    backend_for_tier: Optional[str] = None,
+    issuer_overridden: bool = False,
 ) -> OAuthUrls:
     """Get OAuth URLs for an environment.
 
@@ -292,7 +328,7 @@ def _get_oauth_urls_for_environment(
         env_config.frontend,
         env_config.backend,
         resolve_oauth_tier(effective, backend),
-        _issuer_for(effective, backend, env_config.backend),
+        _issuer_for(effective, backend, env_config.backend, issuer_overridden),
     )
 
 
@@ -327,7 +363,9 @@ def get_oauth_urls(
     clean = {
         k: v for k, v in (overrides or {}).items() if isinstance(v, str) and v != ""
     }
-    base_urls = _get_oauth_urls_for_environment(environment, clean.get("tokenUri"))
+    base_urls = _get_oauth_urls_for_environment(
+        environment, clean.get("tokenUri"), "issuer" in clean
+    )
     if clean:
         base_urls.update(clean)  # type: ignore
     return base_urls

@@ -655,6 +655,15 @@ class TestIssuerIsTheApiOriginPerTier:
                 "https://api.sandbox.nevermined.dev",
             ),
             (
+                "https://mcp.api.live.nevermined.dev/oauth/token",
+                "https://api.live.nevermined.dev",
+            ),
+            # A trailing-dot FQDN is the same host to DNS — canonicalised, never one byte off.
+            (
+                "https://api.sandbox.nevermined.app./oauth/token",
+                "https://api.sandbox.nevermined.app",
+            ),
+            (
                 "HTTPS://API.Sandbox.Nevermined.app:443/oauth/token",
                 "https://api.sandbox.nevermined.app",
             ),
@@ -697,7 +706,7 @@ class TestIssuerIsTheApiOriginPerTier:
         # anywhere, so the raw string minus its trailing slash is served — loudly, once.
         from payments_py.mcp.http import oauth_metadata as om
 
-        monkeypatch.setattr(om, "_issuer_fallback_warned", False)
+        monkeypatch.setattr(om, "_issuer_warned", set())
         monkeypatch.setitem(
             Environments,
             "custom",
@@ -716,6 +725,49 @@ class TestIssuerIsTheApiOriginPerTier:
         ]
         assert len(warnings) == 1
         assert "oauthUrls.issuer" in warnings[0].message
+
+    def test_custom_non_nevermined_host_warns_once_per_value_unless_overridden(
+        self, monkeypatch, caplog
+    ):
+        # ``gw.corp.com`` / ``api.live.example.com`` have no canonical form; the derived origin is
+        # right for a foreign API and WRONG for a proxy in front of the real API — the SDK cannot
+        # tell, so it says what it derived and names ``oauthUrls.issuer``.
+        from payments_py.mcp.http import oauth_metadata as om
+
+        monkeypatch.setattr(om, "_issuer_warned", set())
+        monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
+
+        def proxy_warnings():
+            return [
+                r.message for r in caplog.records if "proxy or gateway" in r.message
+            ]
+
+        with caplog.at_level("WARNING", logger="payments_py.mcp.http.oauth_metadata"):
+            urls = get_oauth_urls(
+                "custom", {"tokenUri": "https://gw.corp.com/oauth/token"}
+            )
+            assert urls["issuer"] == "https://gw.corp.com"
+            get_oauth_urls("custom", {"tokenUri": "https://gw.corp.com/oauth/token"})
+            assert len(proxy_warnings()) == 1
+            assert "'gw.corp.com'" in proxy_warnings()[0]
+            assert "oauthUrls.issuer" in proxy_warnings()[0]
+            # A DIFFERENT non-canonical value warns again (a changed typo re-alerts) …
+            get_oauth_urls(
+                "custom", {"tokenUri": "https://api.live.example.com/oauth/token"}
+            )
+            assert len(proxy_warnings()) == 2
+            # … an operator who already set ``oauthUrls.issuer`` is not told to set it …
+            get_oauth_urls(
+                "custom",
+                {
+                    "tokenUri": "https://other.example.com/oauth/token",
+                    "issuer": "https://api.live.nevermined.app",
+                },
+            )
+            assert len(proxy_warnings()) == 2
+            # … and a loopback stack is not a proxy.
+            get_oauth_urls("custom")  # http://localhost:3001
+            assert len(proxy_warnings()) == 2
 
     def test_unknown_environment_falls_back_to_the_sandbox_issuer(self):
         assert get_oauth_urls("staging")["issuer"] == "https://api.sandbox.nevermined.app"  # type: ignore[arg-type]
