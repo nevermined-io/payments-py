@@ -61,8 +61,10 @@ def resolve_oauth_tier(
     of the backend it will publish as ``token_endpoint``: a Nevermined API host has
     an ``api`` label immediately followed by the tier label —
     ``api.sandbox.nevermined.app``, ``<slug>.api.live.nevermined.app`` (branded
-    per-org subdomains), ``mcp.api.sandbox.nevermined.dev`` — so that label pair
-    is what is matched, never a bare ``sandbox`` anywhere in the host. When the
+    per-org subdomains, ``api.api.live.nevermined.app`` for an org slugged ``api``
+    included), ``mcp.api.sandbox.nevermined.dev`` — so that label pair is what is
+    matched, the FIRST such pair when a host carries more than one, never a bare
+    ``sandbox`` anywhere in the host. When the
     host cannot be classified (a ``localhost`` stack, a proxy/CNAME in front of the
     API) the tier is **omitted**, not guessed: the URL stays the bare one, and the
     operator states the tier through the ``oauthUrls`` option — the camelCase key
@@ -87,10 +89,16 @@ def resolve_oauth_tier(
         labels = (urlsplit(backend_url).hostname or "").split(".")
     except ValueError:
         return None
-    if "api" in labels:
-        tier_after_api = labels[labels.index("api") + 1 :][:1]
-        if tier_after_api and tier_after_api[0] in OAUTH_TIERS:
-            return tier_after_api[0]  # type: ignore[return-value]
+    # The FIRST ``api`` label that a tier label FOLLOWS — not the first ``api`` label,
+    # full stop. The two differ on one served shape: an org slugged ``api`` (legal
+    # today) gets the branded host ``api.api.live.nevermined.app``, which
+    # ``labels[labels.index("api") + 1]`` read as ``api`` and refused. Same rule as
+    # nvm-monorepo's shared ``oauthTierFromHostname`` and the TypeScript SDK's
+    # ``tierFromHost`` (payments#469; this side is payments-py#297), so every
+    # classifier answers alike.
+    for label, following in zip(labels, labels[1:]):
+        if label == "api" and following in OAUTH_TIERS:
+            return following  # type: ignore[return-value]
     return None
 
 
