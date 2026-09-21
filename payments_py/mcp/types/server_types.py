@@ -167,6 +167,11 @@ class McpServerConfig(TypedDict, total=False):
         enableClientRegistration: Enable client registration. Defaults to True.
         enableHealthCheck: Enable health check endpoint. Defaults to True.
         enableServerInfo: Enable server info endpoint. Defaults to True.
+        oauthUrls: Overrides for the OAuth URLs the discovery documents publish
+            (``authorizationUri`` / ``tokenUri`` / ...). Forwarded to the OAuth router
+            as-is; the one knob a ``custom`` deployment whose backend host the SDK
+            cannot classify has to state its tier (``authorizationUri`` with
+            ``?network=sandbox|live``). Optional.
         onStart: Callback when server starts (optional).
         onLog: Callback for logging (optional).
     """
@@ -185,6 +190,7 @@ class McpServerConfig(TypedDict, total=False):
     enableClientRegistration: Optional[bool]
     enableHealthCheck: Optional[bool]
     enableServerInfo: Optional[bool]
+    oauthUrls: Optional[Dict[str, str]]
     onStart: Optional[Callable[[Dict[str, Any]], None]]
     onLog: Optional[Callable[[str, Optional[str]], None]]
 

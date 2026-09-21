@@ -209,6 +209,12 @@ class TestMcpOAuthDiscoveryEndpoints:
             # Required fields per RFC 8414
             assert "issuer" in data
             assert "authorization_endpoint" in data
+            # payments-py#277: the SERVED document names the API tier — the wiring
+            # (server_manager → create_oauth_router → builders) on a sandbox mock.
+            assert (
+                data["authorization_endpoint"]
+                == "https://nevermined.app/oauth/authorize?network=sandbox"
+            )
             assert "token_endpoint" in data
 
             # Response types and grant types
@@ -251,7 +257,10 @@ class TestMcpOAuthDiscoveryEndpoints:
 
             # Required OIDC Discovery fields
             assert "issuer" in data
-            assert "authorization_endpoint" in data
+            assert (
+                data["authorization_endpoint"]
+                == "https://nevermined.app/oauth/authorize?network=sandbox"
+            )
             assert "token_endpoint" in data
             assert "jwks_uri" in data
             assert "response_types_supported" in data
