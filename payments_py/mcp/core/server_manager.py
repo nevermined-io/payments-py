@@ -400,9 +400,19 @@ class McpServerManager:
             cors_config = create_cors_middleware(config.get("corsOrigins", "*"))
             self._fastapi_app.add_middleware(CORSMiddleware, **cors_config)
 
-            # Create OAuth router
-            environment = config.get("environment") or getattr(
-                self._payments, "_environment_name", "staging_sandbox"
+            # Create OAuth router. The environment decides which API the discovery
+            # documents name (token_endpoint, jwks, the tier on the authorize URL), so it
+            # must come from the key the Payments object was built with — that is
+            # `environment_name`, the attribute the class actually sets (base_payments.py)
+            # and every other MCP reader uses (core/auth.py, core/paywall.py). This line
+            # read a phantom `_environment_name` from January to September 2026 and so
+            # advertised staging_sandbox for every server that did not pass `environment`
+            # explicitly (payments-py#293). The default stays only for an object that has
+            # neither attribute.
+            environment = (
+                config.get("environment")
+                or getattr(self._payments, "environment_name", None)
+                or "staging_sandbox"
             )
 
             oauth_router = create_oauth_router(

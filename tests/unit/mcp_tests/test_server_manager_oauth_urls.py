@@ -37,9 +37,11 @@ def _base_config(**extra):
 
 def _payments(environment_name):
     # ``start()`` configures the paywall integration before it builds the router; a mock with
-    # the environment name the manager falls back to is all that path needs.
-    payments = MagicMock()
-    payments._environment_name = environment_name
+    # the environment name the manager falls back to is all that path needs. ``spec`` keeps the
+    # double honest: a ``MagicMock()`` without it answers ANY attribute, so a manager reading a
+    # misspelled one (the #293 bug read ``_environment_name``) would still get a value here.
+    payments = MagicMock(spec=["environment_name", "mcp"])
+    payments.environment_name = environment_name
     return payments
 
 
@@ -76,3 +78,50 @@ async def test_start_without_oauth_urls_forwards_none_not_a_default(monkeypatch)
 
     assert "oauthUrls" in captured
     assert captured["oauthUrls"] is None
+
+
+@pytest.mark.asyncio
+async def test_start_takes_the_environment_from_the_payments_key_not_a_phantom_attribute(
+    monkeypatch,
+):
+    # payments-py#293: the manager read ``_environment_name``, which the real class never sets
+    # (it sets ``environment_name``), so every server that did not pass ``environment`` advertised
+    # staging_sandbox documents whatever key it was built with. The double here has ONLY the real
+    # attribute, so a regression to the phantom name falls through to the default and fails.
+    captured = {}
+    monkeypatch.setattr(sm, "create_oauth_router", _spy(captured))
+    manager = sm.McpServerManager(_payments("sandbox"))
+
+    with pytest.raises(_StopAtRouter):
+        await manager.start(_base_config())
+
+    assert captured["environment"] == "sandbox"
+
+
+@pytest.mark.asyncio
+async def test_start_lets_an_explicit_config_environment_win(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(sm, "create_oauth_router", _spy(captured))
+    manager = sm.McpServerManager(_payments("sandbox"))
+
+    with pytest.raises(_StopAtRouter):
+        await manager.start(_base_config(environment="live"))
+
+    assert captured["environment"] == "live"
+
+
+@pytest.mark.asyncio
+async def test_start_defaults_to_staging_sandbox_only_when_the_object_has_no_environment(
+    monkeypatch,
+):
+    captured = {}
+    monkeypatch.setattr(sm, "create_oauth_router", _spy(captured))
+    bare = MagicMock(
+        spec=["mcp"]
+    )  # neither attribute, as before the key-derived environment existed
+    manager = sm.McpServerManager(bare)
+
+    with pytest.raises(_StopAtRouter):
+        await manager.start(_base_config())
+
+    assert captured["environment"] == "staging_sandbox"
