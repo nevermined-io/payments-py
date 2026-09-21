@@ -421,6 +421,10 @@ class McpServerManager:
                     ),
                     "enableHealthCheck": config.get("enableHealthCheck", True),
                     "enableServerInfo": config.get("enableServerInfo", True),
+                    # The escape hatch for a `custom` backend the tier classifier
+                    # cannot read (see `resolve_oauth_tier`); without this line the
+                    # option is accepted by the type and dropped in silence.
+                    "oauthUrls": config.get("oauthUrls"),
                     "version": config.get("version", "1.0.0"),
                     "description": config.get("description"),
                     "onLog": self._log,

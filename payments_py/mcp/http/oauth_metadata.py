@@ -16,7 +16,8 @@ Examples:
     'https://nevermined.dev'
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from ...environments import EnvironmentName, Environments
 from ..types.http_types import (
@@ -34,16 +35,101 @@ from ..types.http_types import (
 # OAUTH URLS
 # =============================================================================
 
+#: The query parameter that tells the Nevermined web app WHICH API tier an OAuth
+#: ceremony belongs to, and its two values. Each tier (sandbox / live) is its own
+#: authorization server, but ONE web app serves the consent screens for both and
+#: boots on whatever tier the user's browser last chose — Live by default. A bare
+#: ``https://nevermined.app/oauth/authorize`` therefore sent a sandbox MCP server's
+#: users to the LIVE consent screen, where the connector is not registered
+#: ("Connector not authorized"). The tier is stated on the URL instead; RFC 6749
+#: §3.1 obliges clients to retain the query component when they add their own
+#: parameters. Same name and values as the Nevermined API's own RFC 8414 document
+#: and the embed widget (nvm-monorepo#3430 / #1787).
+OAUTH_TIER_PARAM = "network"
+OAUTH_TIERS = ("sandbox", "live")
+OAuthTier = Literal["sandbox", "live"]
 
-def _build_oauth_urls(frontend_url: str, backend_url: str) -> OAuthUrls:
+
+def resolve_oauth_tier(
+    environment: EnvironmentName, backend_url: str
+) -> Optional[OAuthTier]:
+    """The API tier an environment belongs to.
+
+    The four named environments map directly. ``custom`` is derived from the host
+    of the backend it will publish as ``token_endpoint``: a Nevermined API host has
+    an ``api`` label immediately followed by the tier label —
+    ``api.sandbox.nevermined.app``, ``<slug>.api.live.nevermined.app`` (branded
+    per-org subdomains), ``mcp.api.sandbox.nevermined.dev`` — so that label pair
+    is what is matched, never a bare ``sandbox`` anywhere in the host. When the
+    host cannot be classified (a ``localhost`` stack, a proxy/CNAME in front of the
+    API) the tier is **omitted**, not guessed: the URL stays the bare one, and the
+    operator states the tier through the ``oauthUrls`` option — the camelCase key
+    ``McpServerConfig`` / ``HttpRouterConfig`` actually read —
+    ``oauthUrls={"authorizationUri": "<webapp>/oauth/authorize?network=<tier>"}``,
+    on ``payments.mcp.start()`` or ``create_oauth_router()``.
+
+    Args:
+        environment: The Nevermined environment name.
+        backend_url: The backend the document publishes (used for ``custom`` only).
+
+    Returns:
+        ``"sandbox"``, ``"live"``, or ``None`` when it cannot be determined.
+    """
+    if environment in ("sandbox", "staging_sandbox"):
+        return "sandbox"
+    if environment in ("live", "staging_live"):
+        return "live"
+    try:
+        # ``hostname`` is lowercased and carries no port/credentials/path. Only an
+        # unbalanced IPv6 literal (``http://[::1``) makes ``urlsplit`` raise.
+        labels = (urlsplit(backend_url).hostname or "").split(".")
+    except ValueError:
+        return None
+    if "api" in labels:
+        tier_after_api = labels[labels.index("api") + 1 :][:1]
+        if tier_after_api and tier_after_api[0] in OAUTH_TIERS:
+            return tier_after_api[0]  # type: ignore[return-value]
+    return None
+
+
+def _with_tier_param(authorize_url: str, tier: Optional[OAuthTier]) -> str:
+    """Append ``?network=<tier>`` through the URL machinery, never an f-string.
+
+    Splitting and re-encoding the query keeps ONE query string (an existing query,
+    port or fragment on the frontend round-trips; blank values are kept). A frontend
+    that ``urlsplit`` refuses — an unbalanced IPv6 literal in ``NVM_FRONTEND_URL`` —
+    falls back to plain concatenation, the same shape the bare URL always had for
+    that misconfiguration, matching the TypeScript SDK.
+    """
+    if tier is None:
+        return authorize_url
+    try:
+        parts = urlsplit(authorize_url)
+    except ValueError:
+        sep = "&" if "?" in authorize_url else "?"
+        return f"{authorize_url}{sep}{OAUTH_TIER_PARAM}={tier}"
+    query = [
+        (k, v)
+        for k, v in parse_qsl(parts.query, keep_blank_values=True)
+        if k != OAUTH_TIER_PARAM
+    ]
+    query.append((OAUTH_TIER_PARAM, tier))
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
+def _build_oauth_urls(
+    frontend_url: str, backend_url: str, tier: Optional[OAuthTier]
+) -> OAuthUrls:
     """Build OAuth URLs from frontend and backend URLs.
 
-    - issuer and authorizationUri use the frontend (user-facing)
+    - issuer and authorizationUri use the frontend (user-facing); authorizationUri
+      carries the API tier (see :func:`resolve_oauth_tier`)
     - tokenUri, jwksUri, userinfoUri use the backend (API)
 
     Args:
         frontend_url: The frontend URL (e.g., https://nevermined.app).
         backend_url: The backend URL (e.g., https://api.sandbox.nevermined.app).
+        tier: The API tier to stamp on the authorize URL, or ``None`` to omit it.
 
     Returns:
         OAuth URLs configuration dict.
@@ -54,26 +140,43 @@ def _build_oauth_urls(frontend_url: str, backend_url: str) -> OAuthUrls:
 
     return {
         "issuer": frontend,
-        "authorizationUri": f"{frontend}/oauth/authorize",
+        "authorizationUri": _with_tier_param(f"{frontend}/oauth/authorize", tier),
         "tokenUri": f"{backend}/oauth/token",
         "jwksUri": f"{backend}/.well-known/jwks.json",
         "userinfoUri": f"{backend}/oauth/userinfo",
     }
 
 
-def _get_oauth_urls_for_environment(environment: EnvironmentName) -> OAuthUrls:
+def _get_oauth_urls_for_environment(
+    environment: EnvironmentName, backend_for_tier: Optional[str] = None
+) -> OAuthUrls:
     """Get OAuth URLs for an environment.
 
-    Uses frontend and backend URLs from Environments configuration.
+    Uses frontend and backend URLs from Environments configuration. An unknown
+    environment name falls back to ``sandbox`` as it always did; the fallback is
+    now internally consistent (a sandbox ``token_endpoint`` AND a sandbox-tagged
+    authorize URL).
 
     Args:
         environment: The Nevermined environment name.
+        backend_for_tier: The backend the document will actually publish as
+            ``token_endpoint`` — the environment's, or a ``tokenUri`` override.
+            Under ``custom`` the tier follows THAT, so a server whose ``tokenUri``
+            is overridden to ``api.sandbox.…`` never publishes a sandbox token
+            endpoint next to a tier-blind authorize URL.
 
     Returns:
         OAuth URLs configuration dict.
     """
-    env_config = Environments.get(environment, Environments["sandbox"])
-    return _build_oauth_urls(env_config.frontend, env_config.backend)
+    effective: EnvironmentName = (
+        environment if environment in Environments else "sandbox"
+    )
+    env_config = Environments[effective]
+    return _build_oauth_urls(
+        env_config.frontend,
+        env_config.backend,
+        resolve_oauth_tier(effective, backend_for_tier or env_config.backend),
+    )
 
 
 def get_oauth_urls(
@@ -97,7 +200,12 @@ def get_oauth_urls(
         >>> custom_urls["issuer"]
         'https://custom.com'
     """
-    base_urls = _get_oauth_urls_for_environment(environment)
+    # An overridden ``authorizationUri`` is published verbatim — the SDK cannot know
+    # whether it is the Nevermined web app or a foreign AS, so an operator who
+    # points it at the web app includes ``?network=`` themselves.
+    base_urls = _get_oauth_urls_for_environment(
+        environment, (overrides or {}).get("tokenUri")
+    )
     if overrides:
         base_urls.update(overrides)  # type: ignore
     return base_urls

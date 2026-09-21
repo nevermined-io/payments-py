@@ -23,12 +23,16 @@ Examples:
 
 # OAuth metadata generators
 from .oauth_metadata import (
+    OAUTH_TIER_PARAM,
+    OAUTH_TIERS,
+    OAuthTier,
     build_authorization_server_metadata,
     build_mcp_protected_resource_metadata,
     build_oidc_configuration,
     build_protected_resource_metadata,
     build_server_info_response,
     get_oauth_urls,
+    resolve_oauth_tier,
 )
 
 # Client registration
@@ -69,6 +73,10 @@ from .mcp_handler import (
 __all__ = [
     # OAuth metadata
     "get_oauth_urls",
+    "resolve_oauth_tier",
+    "OAUTH_TIER_PARAM",
+    "OAUTH_TIERS",
+    "OAuthTier",
     "build_protected_resource_metadata",
     "build_mcp_protected_resource_metadata",
     "build_authorization_server_metadata",

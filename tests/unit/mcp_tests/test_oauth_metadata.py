@@ -6,7 +6,9 @@ following RFC 8414, RFC 9728, and OpenID Connect Discovery standards.
 """
 
 import pytest
+from urllib.parse import parse_qsl, urlsplit
 
+from payments_py.environments import EnvironmentInfo, Environments
 from payments_py.mcp.http.oauth_metadata import (
     build_authorization_server_metadata,
     build_mcp_protected_resource_metadata,
@@ -14,6 +16,9 @@ from payments_py.mcp.http.oauth_metadata import (
     build_protected_resource_metadata,
     build_server_info_response,
     get_oauth_urls,
+    OAUTH_TIER_PARAM,
+    _with_tier_param,
+    resolve_oauth_tier,
 )
 
 
@@ -364,3 +369,186 @@ class TestGetOAuthUrls:
         urls = get_oauth_urls("sandbox", custom_urls)
 
         assert urls == custom_urls
+
+
+class TestAuthorizationEndpointCarriesTheTier:
+    """nvm-monorepo#3430 / payments-py#277: the authorize URL this server advertises
+    must name the API tier, because one Nevermined web app serves both tiers'
+    consent screens and boots on Live by default — a bare URL sent a sandbox
+    server's users to the LIVE consent screen ("Connector not authorized").
+    Same param name + values as the API's own RFC 8414 document (``network``)."""
+
+    @pytest.mark.parametrize(
+        "environment,expected",
+        [
+            ("sandbox", "https://nevermined.app/oauth/authorize?network=sandbox"),
+            (
+                "staging_sandbox",
+                "https://nevermined.dev/oauth/authorize?network=sandbox",
+            ),
+            ("live", "https://nevermined.app/oauth/authorize?network=live"),
+            ("staging_live", "https://nevermined.dev/oauth/authorize?network=live"),
+        ],
+    )
+    def test_named_environments_advertise_their_tier_in_every_document(
+        self, base_config, environment, expected
+    ):
+        assert get_oauth_urls(environment)["authorizationUri"] == expected
+        config = {**base_config, "environment": environment}
+        assert (
+            build_authorization_server_metadata(config)["authorization_endpoint"]
+            == expected
+        )
+        assert build_oidc_configuration(config)["authorization_endpoint"] == expected
+        assert (
+            build_server_info_response(config)["oauth"]["authorization_endpoint"]
+            == expected
+        )
+
+    def test_param_is_network_and_the_url_has_one_query_string(self):
+        assert OAUTH_TIER_PARAM == "network"
+        uri = get_oauth_urls("sandbox")["authorizationUri"]
+        assert uri.count("?") == 1
+        parts = urlsplit(uri)
+        assert parts.path == "/oauth/authorize"
+        assert parse_qsl(parts.query) == [("network", "sandbox")]
+
+    def test_tier_is_not_stamped_on_token_jwks_userinfo_or_issuer(self):
+        urls = get_oauth_urls("sandbox")
+        for key in ("tokenUri", "jwksUri", "userinfoUri", "issuer"):
+            assert "network=" not in urls[key]
+
+    def test_explicit_authorization_uri_override_passes_through_untouched(self):
+        urls = get_oauth_urls(
+            "sandbox", {"authorizationUri": "https://custom-issuer.com/oauth/authorize"}
+        )
+        assert urls["authorizationUri"] == "https://custom-issuer.com/oauth/authorize"
+
+    def test_resolve_oauth_tier_named_custom_and_unclassifiable(self):
+        assert resolve_oauth_tier("sandbox", "ignored") == "sandbox"
+        assert resolve_oauth_tier("staging_sandbox", "ignored") == "sandbox"
+        assert resolve_oauth_tier("live", "ignored") == "live"
+        assert resolve_oauth_tier("staging_live", "ignored") == "live"
+        assert (
+            resolve_oauth_tier("custom", "https://api.sandbox.nevermined.app/")
+            == "sandbox"
+        )
+        assert resolve_oauth_tier("custom", "https://api.live.nevermined.dev") == "live"
+        # Every host shape the API actually serves: branded per-org subdomains, the
+        # Commerce MCP; and ``hostname`` lowercases + strips port/credentials/path.
+        assert (
+            resolve_oauth_tier("custom", "https://acme.api.sandbox.nevermined.app")
+            == "sandbox"
+        )
+        assert (
+            resolve_oauth_tier("custom", "https://mcp.api.live.nevermined.dev")
+            == "live"
+        )
+        assert (
+            resolve_oauth_tier("custom", "https://API.Sandbox.nevermined.app:8443/x")
+            == "sandbox"
+        )
+        # Anchored on the ``api.<tier>`` label pair — a bare ``sandbox`` label elsewhere
+        # is NOT a tier.
+        assert resolve_oauth_tier("custom", "https://sandbox.nevermined.app") is None
+        assert (
+            resolve_oauth_tier("custom", "https://api.nevermined.app/sandbox") is None
+        )
+        # Unclassifiable: a local stack, no hostname, or the one input urlsplit refuses
+        # (an unbalanced IPv6 literal) — no guessed tier.
+        assert resolve_oauth_tier("custom", "http://localhost:3001") is None
+        assert resolve_oauth_tier("custom", "not a url") is None
+        assert resolve_oauth_tier("custom", "http://[::1") is None
+
+    @pytest.mark.parametrize(
+        "backend,expected",
+        [
+            (
+                "https://api.sandbox.nevermined.app",
+                "https://nevermined.app/oauth/authorize?network=sandbox",
+            ),
+            (
+                "https://api.live.nevermined.app/",
+                "https://nevermined.app/oauth/authorize?network=live",
+            ),
+            ("http://localhost:3001", "https://nevermined.app/oauth/authorize"),
+        ],
+    )
+    def test_custom_derives_the_tier_through_the_public_surface(
+        self, monkeypatch, backend, expected
+    ):
+        # ``Environments["custom"]`` holds values read from the env at import, but the
+        # LOOKUP is call-time on the same dict object — so swapping the entry drives
+        # the public ``get_oauth_urls("custom")`` path (the one production uses).
+        monkeypatch.setitem(
+            Environments,
+            "custom",
+            EnvironmentInfo(
+                frontend="https://nevermined.app",
+                backend=backend,
+                proxy="",
+                helicone_url="",
+            ),
+        )
+        assert get_oauth_urls("custom")["authorizationUri"] == expected
+
+    def test_custom_tier_follows_the_backend_the_document_publishes(self, monkeypatch):
+        # ``custom`` + a ``tokenUri`` override pointing at a real tier used to publish a
+        # sandbox token_endpoint next to a BARE authorize URL — the #277 bug, silently.
+        monkeypatch.setitem(
+            Environments,
+            "custom",
+            EnvironmentInfo(
+                frontend="https://nevermined.app",
+                backend="http://localhost:3001",
+                proxy="",
+                helicone_url="",
+            ),
+        )
+        sandbox = get_oauth_urls(
+            "custom", {"tokenUri": "https://api.sandbox.nevermined.app/oauth/token"}
+        )
+        assert sandbox["authorizationUri"].endswith("?network=sandbox")
+        live = get_oauth_urls(
+            "custom", {"tokenUri": "https://api.live.nevermined.app/oauth/token"}
+        )
+        assert live["authorizationUri"].endswith("?network=live")
+        # A local override keeps the bare URL.
+        local = get_oauth_urls(
+            "custom", {"tokenUri": "http://localhost:3001/oauth/token"}
+        )
+        assert "network=" not in local["authorizationUri"]
+
+    def test_unknown_environment_falls_back_to_sandbox_including_the_tier(self):
+        # Pre-existing fallback (``environment`` is a hand-typed string in
+        # ``create_oauth_router``); the document is now internally consistent.
+        urls = get_oauth_urls("staging")  # type: ignore[arg-type]
+        assert urls["tokenUri"] == "https://api.sandbox.nevermined.app/oauth/token"
+        assert (
+            urls["authorizationUri"]
+            == "https://nevermined.app/oauth/authorize?network=sandbox"
+        )
+
+    @pytest.mark.parametrize(
+        "base,expected",
+        [
+            (
+                "https://nevermined.app/oauth/authorize",
+                "https://nevermined.app/oauth/authorize?network=sandbox",
+            ),
+            # An existing query (blank value kept), port and fragment round-trip; an
+            # existing ``network`` is replaced, not duplicated.
+            (
+                "https://x.example:8443/oauth/authorize?foo=&network=live#frag",
+                "https://x.example:8443/oauth/authorize?foo=&network=sandbox#frag",
+            ),
+            # The one input urlsplit refuses falls back to concatenation (TS parity).
+            (
+                "http://[::1:3000/oauth/authorize",
+                "http://[::1:3000/oauth/authorize?network=sandbox",
+            ),
+        ],
+    )
+    def test_with_tier_param_keeps_one_query_string(self, base, expected):
+        assert _with_tier_param(base, "sandbox") == expected
+        assert _with_tier_param(base, None) == base
