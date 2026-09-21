@@ -1866,6 +1866,12 @@
 <td>No</td>
 <td>Server description</td>
 </tr>
+<tr>
+<td><code>oauthUrls</code></td>
+<td><code>dict</code></td>
+<td>No</td>
+<td>Overrides for the OAuth URLs the discovery documents publish (<code>authorizationUri</code>, <code>tokenUri</code>, <code>jwksUri</code>, <code>userinfoUri</code>, <code>issuer</code>). Set <code>authorizationUri</code> with <code>?network=sandbox\|live</code> when your <code>custom</code> backend host cannot be classified</td>
+</tr>
 </tbody>
 </table>
 <h2 id="handler-options">Handler Options<a class="headerlink" href="#handler-options" title="Permanent link">&para;</a></h2>
@@ -2012,7 +2018,7 @@ balance — each call is charged directly — so both credit fields read <code>"
 <h2 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">&para;</a></h2>
 <p>The MCP server exposes:</p>
 <ul>
-<li><code>/.well-known/oauth-authorization-server</code> - OAuth 2.1 discovery</li>
+<li><code>/.well-known/oauth-authorization-server</code> - OAuth 2.1 discovery. Its <code>authorization_endpoint</code> names the API tier your server runs against — <code>https://nevermined.app/oauth/authorize?network=sandbox</code> for <code>sandbox</code>, <code>?network=live</code> for <code>live</code> — because one Nevermined web app serves the consent screens for both tiers and boots on whatever tier the user's browser last chose. Clients keep that query string when they add their own parameters (RFC 6749 §3.1); if you configure a client by hand, copy the endpoint from the discovery document, query string included. A <code>custom</code> environment derives the tier from its backend host (<code>api.sandbox.…</code> / <code>api.live.…</code>, branded subdomains included); behind a host the SDK cannot classify — <code>localhost</code>, a proxy — no tier is stamped, so state it yourself with the <code>oauthUrls</code> option: <code>oauthUrls={"authorizationUri": "&lt;webapp&gt;/oauth/authorize?network=&lt;tier&gt;"}</code> on <code>payments.mcp.start()</code> (or <code>create_oauth_router()</code>).</li>
 <li><code>/.well-known/oauth-protected-resource</code> - Resource metadata</li>
 <li><code>/.well-known/oauth-protected-resource/mcp</code> - MCP-specific protected resource metadata</li>
 <li><code>/register</code> - Client registration</li>
