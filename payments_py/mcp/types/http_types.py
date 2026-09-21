@@ -43,7 +43,10 @@ class OAuthUrls(TypedDict):
             API's own discovery document and the web app's RFC 9207 ``iss`` use.
             Earlier releases published the web app's origin here (tier-blind).
             An explicit override is passed through unchanged.
-        authorizationUri: OAuth authorization endpoint URL.
+        authorizationUri: OAuth authorization endpoint URL. Overriding it also
+            withdraws the RFC 9207 ``authorization_response_iss_parameter_supported``
+            advertisement from the discovery documents — the SDK cannot vouch that an AS
+            it did not choose returns ``iss`` (payments-py#295).
         tokenUri: OAuth token endpoint URL.
         jwksUri: JSON Web Key Set endpoint URL.
         userinfoUri: OpenID Connect userinfo endpoint URL.
@@ -260,10 +263,12 @@ class AuthorizationServerMetadata(TypedDict, total=False):
         scopes_supported: Scopes supported by the authorization server.
         token_endpoint_auth_methods_supported: Token endpoint auth methods.
         subject_types_supported: Subject identifier types supported.
-        authorization_response_iss_parameter_supported: RFC 9207 — present and
-            ``True`` when every authorization response carries ``iss`` (the four
-            named environments; nvm-monorepo#3532). Absent for ``custom`` and for an
-            overridden ``authorizationUri``; never ``False``.
+        authorization_response_iss_parameter_supported: RFC 9207 §3 — present (and
+            ``True``) when every authorization response carries ``iss``: the four
+            named environments (the Nevermined web app returns it; nvm-monorepo#3532).
+            Omitted — which the RFC defines as ``False`` — for ``custom`` and for an
+            overridden ``authorizationUri``. The wire type is a boolean; this SDK
+            never publishes an explicit ``False``.
     """
 
     issuer: str
@@ -300,6 +305,9 @@ class OidcConfiguration(TypedDict, total=False):
         userinfo_endpoint: OIDC userinfo endpoint URL.
         id_token_signing_alg_values_supported: ID token signing algorithms.
         claims_supported: Claims supported in ID tokens.
+        authorization_response_iss_parameter_supported: As on
+            ``AuthorizationServerMetadata`` — present and ``True`` for the named
+            environments, omitted otherwise (RFC 9207).
     """
 
     issuer: str

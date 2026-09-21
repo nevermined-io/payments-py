@@ -398,20 +398,27 @@ def _iss_parameter_support(
 
     An authorization server that returns ``iss`` on every authorization response
     advertises the flag; §2.4 then has a client REJECT any response lacking ``iss``.
-    For the four named environments the consent page is the Nevermined web app,
-    which has returned ``iss`` (= the canonical API origin these documents publish as
-    ``issuer``) on every response since nvm-monorepo#3532 — the API's own document
-    advertises the same flag. It is OMITTED for ``custom`` (the frontend may be an
-    older or self-hosted web app that does not return ``iss``) and whenever
-    ``oauthUrls.authorizationUri`` is overridden (the consent page is then an AS this
-    SDK knows nothing about). Absent, never ``False``: a client that sees no
-    advertisement skips the check rather than failing it. payments-py#295.
+    An omitted flag DEFAULTS to ``False`` (§3), so the SDK publishes it only where it
+    is true and omits it everywhere else — never an explicit ``False``, which would
+    say the same thing louder. True where the consent page is the Nevermined web app,
+    which has returned ``iss`` (= the canonical API origin these documents publish
+    as ``issuer``) on every response since nvm-monorepo#3532 — the API's own document
+    advertises the same flag: the four NAMED environments (the decision,
+    payments-py#295). Omitted for ``custom`` — its frontend may be an older or
+    self-hosted web app and this SDK cannot tell; a ``custom`` server on a Nevermined
+    backend AND frontend is deliberately still omitted, the decision drew the line at
+    the environment name, not at a host guess — and whenever
+    ``oauthUrls.authorizationUri`` is overridden, since the consent page is then an AS
+    this SDK cannot vouch for, even when the value points at the Nevermined web app.
+    The override predicate is the same "non-empty string" rule ``get_oauth_urls``
+    applies to overrides.
     """
-    # Same effective-environment rule as ``_get_oauth_urls_for_environment``: an
-    # unknown name serves the sandbox documents, so it advertises what sandbox does.
-    effective = environment if environment in Environments else "sandbox"
-    consent_overridden = bool((overrides or {}).get("authorizationUri"))
-    if effective != "custom" and not consent_overridden:
+    raw = (overrides or {}).get("authorizationUri")
+    consent_overridden = isinstance(raw, str) and raw != ""
+    # An unknown environment name is served the sandbox documents by
+    # ``get_oauth_urls``, and is not ``custom`` — so the only name that omits is
+    # ``custom`` itself.
+    if environment != "custom" and not consent_overridden:
         return {"authorization_response_iss_parameter_supported": True}
     return {}
 

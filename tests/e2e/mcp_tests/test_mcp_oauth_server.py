@@ -307,6 +307,12 @@ class TestMcpOAuthDiscoveryEndpoints:
             auth_server_data = auth_server_res.json()
             oidc_data = oidc_res.json()
 
+            # payments-py#295: both AS-style documents advertise RFC 9207 iss support.
+            assert (
+                auth_server_data["authorization_response_iss_parameter_supported"]
+                is True
+            )
+            assert oidc_data["authorization_response_iss_parameter_supported"] is True
             # Issuer should be consistent — and (#291) it is the origin of the token
             # endpoint both documents publish, so the identifier names the server that answers.
             assert auth_server_data["issuer"] == oidc_data["issuer"]

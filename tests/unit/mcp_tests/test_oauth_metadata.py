@@ -841,117 +841,89 @@ class TestIssuerIsTheApiOriginPerTier:
 
 class TestIssParameterSupportAdvertisement:
     """payments-py#295 / RFC 9207 §3: advertise ``authorization_response_iss_parameter_supported``
-    only where it is TRUE. §2.4 has a client that sees it REJECT any response lacking ``iss``, so
-    a false advertisement is worse than none: named environments (the Nevermined web app returns
-    ``iss`` since nvm-monorepo#3532) advertise it; ``custom`` and an overridden consent endpoint
-    do not."""
+    only where it is TRUE. §2.4 has a client that sees it REJECT any response lacking ``iss``, and
+    an omitted flag defaults to ``False`` — so a false advertisement is worse than none: named
+    environments (the Nevermined web app returns ``iss`` since nvm-monorepo#3532) advertise it;
+    ``custom`` and an overridden consent endpoint do not."""
 
     BASE = {"baseUrl": "http://localhost:3000", "agentId": "a"}
+    KEY = "authorization_response_iss_parameter_supported"
+    CUSTOM_LOCAL = EnvironmentInfo(
+        frontend="https://nevermined.app",
+        backend="http://localhost:3001",
+        proxy="",
+        helicone_url="",
+    )
+    CUSTOM_NEVERMINED = EnvironmentInfo(
+        frontend="https://nevermined.app",
+        backend="https://api.sandbox.nevermined.app",
+        proxy="",
+        helicone_url="",
+    )
 
     @pytest.mark.parametrize(
         "environment", ["sandbox", "live", "staging_sandbox", "staging_live"]
     )
     def test_named_environments_advertise_on_both_documents(self, environment):
         config = {**self.BASE, "environment": environment}
-        assert (
-            build_authorization_server_metadata(config)[
-                "authorization_response_iss_parameter_supported"
-            ]
-            is True
-        )
-        assert (
-            build_oidc_configuration(config)[
-                "authorization_response_iss_parameter_supported"
-            ]
-            is True
-        )
+        assert build_authorization_server_metadata(config)[self.KEY] is True
+        assert build_oidc_configuration(config)[self.KEY] is True
 
-    def test_custom_omits_the_key_entirely(self, monkeypatch):
-        monkeypatch.setitem(
-            Environments,
-            "custom",
-            EnvironmentInfo(
-                frontend="https://nevermined.app",
-                backend="http://localhost:3001",
-                proxy="",
-                helicone_url="",
-            ),
-        )
+    @pytest.mark.parametrize("custom", ["CUSTOM_LOCAL", "CUSTOM_NEVERMINED"])
+    def test_custom_omits_the_key_even_on_a_nevermined_backend_and_frontend(
+        self, monkeypatch, custom
+    ):
+        # The decision drew the line at the environment NAME, not at a host guess — a
+        # ``custom`` server whose consent page really is the Nevermined web app still omits.
+        # Pinned so a "helpful" widening is a deliberate change.
+        monkeypatch.setitem(Environments, "custom", getattr(self, custom))
         config = {**self.BASE, "environment": "custom"}
-        assert (
-            "authorization_response_iss_parameter_supported"
-            not in build_authorization_server_metadata(config)
-        )
-        assert (
-            "authorization_response_iss_parameter_supported"
-            not in build_oidc_configuration(config)
-        )
+        assert self.KEY not in build_authorization_server_metadata(config)
+        assert self.KEY not in build_oidc_configuration(config)
 
-    def test_overridden_consent_endpoint_is_not_vouched_for(self):
-        overridden = {
-            **self.BASE,
-            "environment": "sandbox",
-            "oauthUrls": {
-                "authorizationUri": "https://custom-issuer.com/oauth/authorize"
-            },
-        }
-        assert (
-            "authorization_response_iss_parameter_supported"
-            not in build_authorization_server_metadata(overridden)
-        )
+    def test_overridden_consent_endpoint_is_not_vouched_for_on_either_document(self):
+        for uri in (
+            "https://custom-issuer.com/oauth/authorize",
+            # …even when the override points AT the Nevermined web app (the documented remedy
+            # for an unclassifiable custom host): the SDK did not choose that AS.
+            "https://nevermined.app/oauth/authorize?network=sandbox",
+        ):
+            overridden = {
+                **self.BASE,
+                "environment": "sandbox",
+                "oauthUrls": {"authorizationUri": uri},
+            }
+            assert self.KEY not in build_authorization_server_metadata(overridden)
+            assert self.KEY not in build_oidc_configuration(overridden)
         # Other overrides leave the consent page on the Nevermined web app — still advertised.
         token_only = {
             **self.BASE,
             "environment": "sandbox",
             "oauthUrls": {"tokenUri": "https://gw.corp.com/oauth/token"},
         }
-        assert (
-            build_authorization_server_metadata(token_only)[
-                "authorization_response_iss_parameter_supported"
-            ]
-            is True
-        )
-        # An empty override is no override.
-        empty = {
-            **self.BASE,
-            "environment": "sandbox",
-            "oauthUrls": {"authorizationUri": ""},
-        }
-        assert (
-            build_authorization_server_metadata(empty)[
-                "authorization_response_iss_parameter_supported"
-            ]
-            is True
-        )
+        assert build_authorization_server_metadata(token_only)[self.KEY] is True
+        assert build_oidc_configuration(token_only)[self.KEY] is True
+        # An empty or None override is no override — the same predicate as get_oauth_urls' clean.
+        for value in ("", None):
+            cfg = {
+                **self.BASE,
+                "environment": "sandbox",
+                "oauthUrls": {"authorizationUri": value},
+            }
+            assert build_authorization_server_metadata(cfg)[self.KEY] is True  # type: ignore[arg-type]
 
     def test_unknown_environment_serves_sandbox_documents_flag_included(self):
         config = {**self.BASE, "environment": "bogus"}
-        assert (
-            build_authorization_server_metadata(config)[  # type: ignore[typeddict-item]
-                "authorization_response_iss_parameter_supported"
-            ]
-            is True
-        )
+        assert build_authorization_server_metadata(config)[self.KEY] is True  # type: ignore[arg-type]
 
     def test_value_is_exactly_true_or_absent_never_false(self, monkeypatch):
-        monkeypatch.setitem(
-            Environments,
-            "custom",
-            EnvironmentInfo(
-                frontend="https://nevermined.app",
-                backend="http://localhost:3001",
-                proxy="",
-                helicone_url="",
-            ),
-        )
+        monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
         for environment in ("sandbox", "custom"):
-            doc = build_authorization_server_metadata(
-                {**self.BASE, "environment": environment}
-            )
-            assert doc.get("authorization_response_iss_parameter_supported") in (
-                True,
-                None,
-            )
-            assert (
-                doc.get("authorization_response_iss_parameter_supported") is not False
-            )
+            for doc in (
+                build_authorization_server_metadata(
+                    {**self.BASE, "environment": environment}
+                ),
+                build_oidc_configuration({**self.BASE, "environment": environment}),
+            ):
+                value = doc.get(self.KEY)
+                assert value is True or value is None
