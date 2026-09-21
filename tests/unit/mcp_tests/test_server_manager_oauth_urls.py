@@ -175,3 +175,64 @@ async def test_start_reads_the_environment_off_a_REAL_payments_instance(
         await manager.start(_base_config())
 
     assert captured["environment"] == expected
+
+
+@pytest.mark.asyncio
+async def test_start_refuses_an_unknown_config_environment_instead_of_coercing_it(
+    monkeypatch,
+):
+    # `_get_oauth_urls_for_environment` substitutes `sandbox` for any unknown name, silently — a
+    # `live` operator writing "production" would advertise sandbox documents. Refuse at start(),
+    # as `get_environment()` does, and rewind to IDLE like any other start() failure.
+    captured = {}
+    monkeypatch.setattr(sm, "create_oauth_router", _spy(captured))
+    manager = sm.McpServerManager(_payments("live"))
+
+    with pytest.raises(ValueError, match="Unknown MCP environment 'production'"):
+        await manager.start(_base_config(environment="production"))
+
+    assert captured == {}  # never reached the router
+    assert manager._state == sm.ServerState.IDLE
+
+
+@pytest.mark.asyncio
+async def test_start_warns_when_config_environment_disagrees_with_the_key(
+    monkeypatch, caplog
+):
+    # Config still wins (the documented escape hatch), but the disagreement is loud: the other
+    # MCP readers take the key's environment, so the documents and verification would split.
+    captured, lines = {}, []
+    monkeypatch.setattr(sm, "create_oauth_router", _spy(captured))
+    manager = sm.McpServerManager(_payments("sandbox"))
+
+    with caplog.at_level("WARNING", logger="payments_py.mcp.core.server_manager"):
+        with pytest.raises(_StopAtRouter):
+            await manager.start(
+                _base_config(
+                    environment="live", onLog=lambda msg, *_: lines.append(msg)
+                )
+            )
+
+    assert captured["environment"] == "live"
+    warned = [
+        r.message for r in caplog.records if "overrides the API key's" in r.message
+    ]
+    assert len(warned) == 1
+    assert "'live'" in warned[0] and "'sandbox'" in warned[0]
+    assert any("overrides the API key's" in ln for ln in lines)
+
+
+@pytest.mark.asyncio
+async def test_start_stays_quiet_when_config_environment_matches_the_key(
+    monkeypatch, caplog
+):
+    captured = {}
+    monkeypatch.setattr(sm, "create_oauth_router", _spy(captured))
+    manager = sm.McpServerManager(_payments("sandbox"))
+
+    with caplog.at_level("WARNING", logger="payments_py.mcp.core.server_manager"):
+        with pytest.raises(_StopAtRouter):
+            await manager.start(_base_config(environment="sandbox"))
+
+    assert captured["environment"] == "sandbox"
+    assert not [r for r in caplog.records if "overrides the API key's" in r.message]

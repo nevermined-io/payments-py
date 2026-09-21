@@ -36,6 +36,8 @@ from enum import Enum
 from typing import Any, Callable, Dict, Optional
 
 from fastapi import FastAPI
+
+from ...environments import Environments
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..http.mcp_handler import mount_mcp_handlers
@@ -409,9 +411,34 @@ class McpServerManager:
             # advertised staging_sandbox for every server that did not pass `environment`
             # explicitly (payments-py#293). The default stays only for an object that has
             # neither attribute.
-            environment = config.get("environment") or getattr(
-                self._payments, "environment_name", None
-            )
+            configured = config.get("environment")
+            if configured and configured not in Environments:
+                # The type is a Literal in a TypedDict — nothing checks it at runtime, and
+                # `_get_oauth_urls_for_environment` would silently substitute `sandbox`
+                # (a `live` operator writing "production" would advertise sandbox
+                # documents with no signal). Refuse, as `get_environment()` does.
+                raise ValueError(
+                    f"Unknown MCP environment {configured!r}; expected one of "
+                    f"{sorted(Environments)}"
+                )
+            key_environment = getattr(self._payments, "environment_name", None)
+            if configured and key_environment and configured != key_environment:
+                # Explicit config wins (the documented escape hatch, and what the TS SDK
+                # does) — but the other MCP readers (core/auth.py, core/paywall.py) take
+                # the key's environment directly, so a disagreement yields a server whose
+                # discovery documents name one tier while verification runs on the other.
+                # Make it loud; the key's own `environment` option was deprecated for the
+                # same disagreement (base_payments.py) and warns too.
+                message = (
+                    f"[MCP] config['environment']={configured!r} overrides the API key's "
+                    f"{key_environment!r}; the OAuth discovery documents will name "
+                    f"{configured!r} while payment verification stays on "
+                    f"{key_environment!r}."
+                )
+                logging.getLogger(__name__).warning(message)
+                if self._log:
+                    self._log(message)
+            environment = configured or key_environment
             if not environment:
                 # Unreachable on a real Payments (its constructor always sets
                 # environment_name); a double or a foreign object lands here. Say so —
