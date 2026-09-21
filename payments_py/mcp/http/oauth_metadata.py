@@ -91,8 +91,9 @@ def resolve_oauth_tier(
     # full stop. The two differ on one served shape: an org slugged ``api`` (legal
     # today) gets the branded host ``api.api.live.nevermined.app``, which
     # ``labels[labels.index("api") + 1]`` read as ``api`` and refused. Same rule as
-    # nvm-monorepo's shared ``oauthTierFromHostname`` and the TypeScript SDK
-    # (payments-py#297), so every classifier answers alike.
+    # nvm-monorepo's shared ``oauthTierFromHostname`` and the TypeScript SDK's
+    # ``tierFromHost`` (payments#469; this side is payments-py#297), so every
+    # classifier answers alike.
     for label, following in zip(labels, labels[1:]):
         if label == "api" and following in OAUTH_TIERS:
             return following  # type: ignore[return-value]
