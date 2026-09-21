@@ -409,11 +409,23 @@ class McpServerManager:
             # advertised staging_sandbox for every server that did not pass `environment`
             # explicitly (payments-py#293). The default stays only for an object that has
             # neither attribute.
-            environment = (
-                config.get("environment")
-                or getattr(self._payments, "environment_name", None)
-                or "staging_sandbox"
+            environment = config.get("environment") or getattr(
+                self._payments, "environment_name", None
             )
+            if not environment:
+                # Unreachable on a real Payments (its constructor always sets
+                # environment_name); a double or a foreign object lands here. Say so —
+                # a silent default is the exact shape that hid #293 for eight months.
+                environment = "staging_sandbox"
+                message = (
+                    "[MCP] No environment on the config or the Payments instance; "
+                    "advertising staging_sandbox discovery documents. Pass "
+                    "config['environment'] to choose the tier explicitly."
+                )
+                # `onLog` is optional; the module logger always gets it.
+                logging.getLogger(__name__).warning(message)
+                if self._log:
+                    self._log(message)
 
             oauth_router = create_oauth_router(
                 {

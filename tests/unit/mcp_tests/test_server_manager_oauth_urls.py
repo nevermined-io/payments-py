@@ -16,7 +16,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from payments_py.common.types import PaymentOptions
 from payments_py.mcp.core import server_manager as sm
+from payments_py.payments import Payments
+
+# An unsigned, offline-safe key body (the same shape tests/unit/test_base_payments_http.py uses):
+# the constructor only decodes it. The prefix decides `environment_name`.
+_OFFLINE_JWT = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJzdWIiOiIweDEyMyIsIm8xMXkiOiJoZWxpY29uZS1rZXkifQ.fake"
+)
 
 
 class _StopAtRouter(Exception):
@@ -118,10 +127,51 @@ async def test_start_defaults_to_staging_sandbox_only_when_the_object_has_no_env
     monkeypatch.setattr(sm, "create_oauth_router", _spy(captured))
     bare = MagicMock(
         spec=["mcp"]
-    )  # neither attribute, as before the key-derived environment existed
+    )  # neither attribute: a foreign object, never a real Payments
     manager = sm.McpServerManager(bare)
 
     with pytest.raises(_StopAtRouter):
         await manager.start(_base_config())
 
     assert captured["environment"] == "staging_sandbox"
+
+
+@pytest.mark.asyncio
+async def test_start_says_so_when_it_falls_back_to_the_default(monkeypatch):
+    # The fallback is never silent again: the manager's own log line names the default and
+    # the remedy. (``onLog`` is the manager's log channel; ``_log`` is set from it in start().)
+    captured, lines = {}, []
+    monkeypatch.setattr(sm, "create_oauth_router", _spy(captured))
+    manager = sm.McpServerManager(MagicMock(spec=["mcp"]))
+
+    with pytest.raises(_StopAtRouter):
+        await manager.start(_base_config(onLog=lambda msg, *_: lines.append(msg)))
+
+    assert captured["environment"] == "staging_sandbox"
+    assert any(
+        "advertising staging_sandbox" in ln and "config['environment']" in ln
+        for ln in lines
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("prefix, expected", [("sandbox", "sandbox"), ("live", "live")])
+async def test_start_reads_the_environment_off_a_REAL_payments_instance(
+    monkeypatch, prefix, expected
+):
+    # The doubles above encode the belief "the attribute is `environment_name`" a second time;
+    # this test checks it against the class itself (payments-py#293 was exactly a double and a
+    # reader agreeing on a name the class never had). Built offline: the constructor only decodes
+    # the key, and the prefix is what sets `environment_name`.
+    captured = {}
+    monkeypatch.setattr(sm, "create_oauth_router", _spy(captured))
+    payments = Payments.get_instance(
+        PaymentOptions(nvm_api_key=f"{prefix}:{_OFFLINE_JWT}")
+    )
+    assert payments.environment_name == expected  # the premise, stated
+    manager = sm.McpServerManager(payments)
+
+    with pytest.raises(_StopAtRouter):
+        await manager.start(_base_config())
+
+    assert captured["environment"] == expected
