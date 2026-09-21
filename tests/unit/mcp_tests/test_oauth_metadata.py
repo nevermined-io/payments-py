@@ -769,6 +769,43 @@ class TestIssuerIsTheApiOriginPerTier:
             get_oauth_urls("custom")  # http://localhost:3001
             assert len(proxy_warnings()) == 2
 
+    def test_named_issuer_override_off_the_canonical_origin_is_published_and_warned_once(
+        self, monkeypatch, caplog
+    ):
+        # The web app returns the canonical origin as ``iss`` from fixed per-tier config, so an
+        # override that differs can never be redeemed; with the RFC 9207 flag advertised the
+        # failure would otherwise arrive as an unexplained client-side rejection (payments#467
+        # review, mirrored). Published — the operator's word — but said, once per value.
+        from payments_py.mcp.http import oauth_metadata as om
+
+        monkeypatch.setattr(om, "_issuer_warned", set())
+
+        def override_warnings():
+            return [
+                r.message
+                for r in caplog.records
+                if "differs from the canonical issuer" in r.message
+            ]
+
+        with caplog.at_level("WARNING", logger="payments_py.mcp.http.oauth_metadata"):
+            urls = get_oauth_urls("sandbox", {"issuer": "https://custom-issuer.com"})
+            assert urls["issuer"] == "https://custom-issuer.com"
+            get_oauth_urls("sandbox", {"issuer": "https://custom-issuer.com"})
+            assert len(override_warnings()) == 1
+            msg = override_warnings()[0]
+            assert "oauthUrls.issuer 'https://custom-issuer.com'" in msg
+            assert "'sandbox' environment, 'https://api.sandbox.nevermined.app'" in msg
+            assert "set it to 'https://api.sandbox.nevermined.app'" in msg
+            # A corrected value that is still wrong is a DISTINCT value — it re-alerts …
+            get_oauth_urls("sandbox", {"issuer": "https://api.sandbox.nevermined.app/"})
+            assert len(override_warnings()) == 2
+            # … an override EQUAL to the canonical origin is not one …
+            get_oauth_urls("live", {"issuer": "https://api.live.nevermined.app"})
+            # … and ``custom`` has its own issuer arms — this one is the named environments'.
+            monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
+            get_oauth_urls("custom", {"issuer": "https://custom-issuer.com"})
+            assert len(override_warnings()) == 2
+
     def test_unknown_environment_falls_back_to_the_sandbox_issuer(self):
         assert get_oauth_urls("staging")["issuer"] == "https://api.sandbox.nevermined.app"  # type: ignore[arg-type]
 
