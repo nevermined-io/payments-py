@@ -12,10 +12,11 @@ Standards Implemented:
 Examples:
     >>> from payments_py.mcp.http import get_oauth_urls
     >>> urls = get_oauth_urls("staging_sandbox")
-    >>> print(urls["issuer"])
-    'https://nevermined.dev'
+    >>> urls["issuer"]
+    'https://api.sandbox.nevermined.dev'
 """
 
+import logging
 from typing import Dict, List, Literal, Optional
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -117,19 +118,167 @@ def _with_tier_param(authorize_url: str, tier: Optional[OAuthTier]) -> str:
     return urlunsplit(parts._replace(query=urlencode(query)))
 
 
+def _origin_of(url: str) -> Optional[str]:
+    """The origin of ``url`` — scheme + lower-cased host + non-default port — or ``None``.
+
+    ``None`` when ``urlsplit`` raises, when there is no scheme or host (a scheme-less
+    ``api.sandbox.nevermined.app`` parses as a bare path; ``localhost:3001`` parses with
+    ``localhost`` as the scheme and no host), or when ``.port`` raises on a non-numeric
+    or out-of-range port. For the ASCII hosts Nevermined serves the result equals the
+    web app's ``new URL(url).origin`` (userinfo dropped, default port dropped, IPv6
+    re-bracketed); Python does no IDNA/percent canonicalisation, which never arises
+    on those hosts.
+    """
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return None
+    scheme = parts.scheme.lower()
+    host = parts.hostname  # already lower-cased; IPv6 comes back without brackets
+    if not scheme or not host:
+        return None
+    if ":" in host:
+        host = f"[{host}]"
+    if port is not None and port != {"http": 80, "https": 443}.get(scheme):
+        host = f"{host}:{port}"
+    return f"{scheme}://{host}"
+
+
+def _canonical_nevermined_origin(backend_url: str) -> Optional[str]:
+    """The canonical Nevermined API origin a backend host stands for, else ``None``.
+
+    ``<slug>.api.live.nevermined.app`` (a branded per-org subdomain) and
+    ``mcp.api.sandbox.nevermined.dev`` serve the same API as
+    ``api.<tier>.nevermined.<tld>`` — and that canonical origin is what the two parties an
+    issuer must agree with actually use: the API's own RFC 8414 document anchors
+    ``issuer`` on ``API_HOST``, never the request host, and the web app returns RFC 9207
+    ``iss`` from its fixed per-tier config. Publishing the branded origin would fail
+    every RFC 9207 client's simple-string compare (payments-py#292 review). The suffix
+    requirement is deliberate: this derives a HOST, and only a Nevermined host has a
+    canonical form.
+    """
+    tier = resolve_oauth_tier("custom", backend_url)
+    if tier is None:
+        return None
+    try:
+        # A trailing-dot FQDN (``api.sandbox.nevermined.app.``) is the same host to DNS;
+        # keep the suffix checks from missing it and republishing a one-byte-off issuer.
+        hostname = (urlsplit(backend_url).hostname or "").rstrip(".")
+    except ValueError:
+        return None
+    environment: Optional[EnvironmentName]
+    if hostname.endswith(".nevermined.app"):
+        environment = tier
+    elif hostname.endswith(".nevermined.dev"):
+        environment = "staging_live" if tier == "live" else "staging_sandbox"
+    else:
+        environment = None
+    return _origin_of(Environments[environment].backend) if environment else None
+
+
+# Warned once per DISTINCT value (a changed typo re-alerts), never when the operator has already
+# set ``oauthUrls.issuer`` — the remedy the warning names — and not for a loopback host (a local
+# stack, not a proxy for the real API).
+_issuer_warned: set = set()
+
+
+def _warn_issuer_once(key: str, message: str) -> None:
+    if key in _issuer_warned:
+        return
+    _issuer_warned.add(key)
+    logging.getLogger(__name__).warning(message)
+
+
+def _is_loopback(origin: str) -> bool:
+    try:
+        host = urlsplit(origin).hostname
+    except ValueError:
+        return False
+    return host in ("localhost", "127.0.0.1", "::1")
+
+
+def _issuer_for(
+    effective: EnvironmentName,
+    published_backend: str,
+    env_backend: str,
+    issuer_overridden: bool = False,
+) -> str:
+    """The RFC 8414 issuer identifier of the authorization server a document describes.
+
+    It is the ORIGIN of the Nevermined API the document points at — the value the API's
+    own document publishes and the web app returns as RFC 9207 ``iss`` on every
+    authorization response, which an RFC 9207 client compares with the discovered
+    ``issuer`` by SIMPLE STRING comparison and rejects on any difference. So:
+
+    - a NAMED environment is that identity — its canonical backend origin, whatever
+      ``tokenUri`` override sits in front of it (a same-tier proxy is still the same
+      authorization server; a cross-tier override is a misconfiguration);
+    - ``custom`` follows the backend the document PUBLISHES (a ``tokenUri`` override,
+      else its own): the canonical Nevermined origin when that host classifies, else
+      the host's own origin, else — unparsable or scheme-less — the environment
+      backend's origin, else the raw string minus its trailing slash, warned once. A
+      metadata endpoint never raises.
+    """
+    if effective != "custom":
+        return _origin_of(env_backend) or env_backend.rstrip("/")
+    canonical = _canonical_nevermined_origin(published_backend)
+    if canonical:
+        return canonical
+    own = _origin_of(published_backend) or _origin_of(env_backend)
+    if own:
+        # The right value for a genuinely foreign API — and the WRONG one for a proxy/CNAME
+        # in front of the real Nevermined API (``https://gw.corp.com`` → the web app still
+        # returns ``iss = https://api.sandbox.nevermined.app``, so every RFC 9207 client
+        # rejects the code). The SDK cannot tell the two apart, so it says what it derived
+        # and names the remedy (payments-py#292 review).
+        if not issuer_overridden and not _is_loopback(own):
+            _warn_issuer_once(
+                own,
+                f"[Nevermined] OAuth issuer derived from backend host "
+                f"'{urlsplit(published_backend).netloc or published_backend}' as '{own}'. "
+                "If that host is a proxy or gateway in front of a Nevermined API rather than "
+                "the API itself, set oauthUrls.issuer (and oauthUrls.tokenUri) to that API's "
+                "real origin — otherwise the issuer will not match the iss the authorization "
+                "server returns.",
+            )
+        return own
+    raw = published_backend.rstrip("/")
+    if not issuer_overridden:
+        _warn_issuer_once(
+            raw,
+            f"[Nevermined] Could not derive an OAuth issuer from backend '{published_backend}' "
+            f"— publishing '{raw}'. Set oauthUrls.issuer (and oauthUrls.tokenUri) to the API "
+            "origin of this deployment's tier.",
+        )
+    return raw
+
+
 def _build_oauth_urls(
-    frontend_url: str, backend_url: str, tier: Optional[OAuthTier]
+    frontend_url: str,
+    backend_url: str,
+    tier: Optional[OAuthTier],
+    issuer: str,
 ) -> OAuthUrls:
     """Build OAuth URLs from frontend and backend URLs.
 
-    - issuer and authorizationUri use the frontend (user-facing); authorizationUri
-      carries the API tier (see :func:`resolve_oauth_tier`)
-    - tokenUri, jwksUri, userinfoUri use the backend (API)
+    - authorizationUri uses the frontend (the user-facing consent page) and carries
+      the API tier (see :func:`resolve_oauth_tier`)
+    - issuer, tokenUri, jwksUri, userinfoUri use the backend — the API is the
+      authorization server
+
+    ``issuer`` used to be the FRONTEND origin — identical for both tiers, since one
+    web app serves both consent screens — while ``token_endpoint`` and the API's own
+    RFC 8414 document named the backend. That was a tier-blind identifier, and once
+    the web app started returning RFC 9207 ``iss`` = the API origin
+    (nvm-monorepo#3532) it made every RFC 9207 client that discovered through this
+    server's well-known reject its authorization responses (payments-py#291).
 
     Args:
         frontend_url: The frontend URL (e.g., https://nevermined.app).
         backend_url: The backend URL (e.g., https://api.sandbox.nevermined.app).
         tier: The API tier to stamp on the authorize URL, or ``None`` to omit it.
+        issuer: The issuer identifier (see :func:`_issuer_for`).
 
     Returns:
         OAuth URLs configuration dict.
@@ -139,7 +288,7 @@ def _build_oauth_urls(
     backend = backend_url.rstrip("/")
 
     return {
-        "issuer": frontend,
+        "issuer": issuer,
         "authorizationUri": _with_tier_param(f"{frontend}/oauth/authorize", tier),
         "tokenUri": f"{backend}/oauth/token",
         "jwksUri": f"{backend}/.well-known/jwks.json",
@@ -148,7 +297,9 @@ def _build_oauth_urls(
 
 
 def _get_oauth_urls_for_environment(
-    environment: EnvironmentName, backend_for_tier: Optional[str] = None
+    environment: EnvironmentName,
+    backend_for_tier: Optional[str] = None,
+    issuer_overridden: bool = False,
 ) -> OAuthUrls:
     """Get OAuth URLs for an environment.
 
@@ -172,10 +323,12 @@ def _get_oauth_urls_for_environment(
         environment if environment in Environments else "sandbox"
     )
     env_config = Environments[effective]
+    backend = backend_for_tier or env_config.backend
     return _build_oauth_urls(
         env_config.frontend,
         env_config.backend,
-        resolve_oauth_tier(effective, backend_for_tier or env_config.backend),
+        resolve_oauth_tier(effective, backend),
+        _issuer_for(effective, backend, env_config.backend, issuer_overridden),
     )
 
 
@@ -194,7 +347,7 @@ def get_oauth_urls(
     Examples:
         >>> urls = get_oauth_urls("staging_sandbox")
         >>> urls["issuer"]
-        'https://nevermined.dev'
+        'https://api.sandbox.nevermined.dev'
 
         >>> custom_urls = get_oauth_urls("sandbox", {"issuer": "https://custom.com"})
         >>> custom_urls["issuer"]
@@ -203,11 +356,18 @@ def get_oauth_urls(
     # An overridden ``authorizationUri`` is published verbatim — the SDK cannot know
     # whether it is the Nevermined web app or a foreign AS, so an operator who
     # points it at the web app includes ``?network=`` themselves.
+    # Only a NON-EMPTY string overrides. ``{"issuer": os.getenv("OAUTH_ISSUER")}`` with the
+    # variable unset used to merge ``None`` over the computed value and publish
+    # ``"issuer": null`` in a REQUIRED RFC 8414 field — for an hour, under
+    # ``Cache-Control: public`` (payments-py#292 review). Same for ``""``.
+    clean = {
+        k: v for k, v in (overrides or {}).items() if isinstance(v, str) and v != ""
+    }
     base_urls = _get_oauth_urls_for_environment(
-        environment, (overrides or {}).get("tokenUri")
+        environment, clean.get("tokenUri"), "issuer" in clean
     )
-    if overrides:
-        base_urls.update(overrides)  # type: ignore
+    if clean:
+        base_urls.update(clean)  # type: ignore
     return base_urls
 
 
@@ -325,7 +485,7 @@ def build_authorization_server_metadata(
         ...     "environment": "staging_sandbox"
         ... })
         >>> metadata["issuer"]
-        'https://nevermined.dev'
+        'https://api.sandbox.nevermined.dev'
     """
     oauth_urls = get_oauth_urls(config["environment"], config.get("oauthUrls"))
     scopes = config.get("scopes") or list(_DEFAULT_SCOPES)
