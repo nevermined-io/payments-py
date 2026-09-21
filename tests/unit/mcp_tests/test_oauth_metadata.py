@@ -449,6 +449,39 @@ class TestAuthorizationEndpointCarriesTheTier:
             resolve_oauth_tier("custom", "https://API.Sandbox.nevermined.app:8443/x")
             == "sandbox"
         )
+        # An org slugged ``api`` (legal today): the match is the first ``api`` label a
+        # TIER follows, not the first ``api`` label — ``index("api") + 1`` read ``api``
+        # here and refused (payments-py#297).
+        assert (
+            resolve_oauth_tier("custom", "https://api.api.live.nevermined.app")
+            == "live"
+        )
+        # The pair beats a stray tier label before it; the FIRST pair beats a later one.
+        assert (
+            resolve_oauth_tier("custom", "https://live.api.sandbox.nevermined.app")
+            == "sandbox"
+        )
+        assert (
+            resolve_oauth_tier("custom", "https://api.live.api.sandbox.nevermined.app")
+            == "live"
+        )
+        # ``api`` as the LAST label has nothing after it — no tier, no IndexError.
+        assert resolve_oauth_tier("custom", "https://x.api") is None
+        assert resolve_oauth_tier("custom", "https://api") is None
+        # The anchor is the EXACT label ``api``, IMMEDIATELY before the tier. Rows whose stray
+        # tier label sits at index 0 never reach the loop as ``following``, so "any label
+        # followed by a tier" passed them all (self-review panel). ``proxy.<tier>`` is a REAL
+        # Nevermined host (the LLM proxy, ``environments.py``) that must NOT classify —
+        # it would otherwise publish the API's canonical origin as the proxy's issuer.
+        assert (
+            resolve_oauth_tier("custom", "https://proxy.sandbox.nevermined.dev") is None
+        )
+        assert resolve_oauth_tier("custom", "https://apix.live.nevermined.app") is None
+        assert (
+            resolve_oauth_tier("custom", "https://api.foo.live.nevermined.app") is None
+        )
+        # A two-label host is the shortest pair.
+        assert resolve_oauth_tier("custom", "https://api.live") == "live"
         # Anchored on the ``api.<tier>`` label pair — a bare ``sandbox`` label elsewhere
         # is NOT a tier.
         assert resolve_oauth_tier("custom", "https://sandbox.nevermined.app") is None
@@ -650,6 +683,13 @@ class TestIssuerIsTheApiOriginPerTier:
                 "https://acme.api.live.nevermined.app/oauth/token",
                 "https://api.live.nevermined.app",
             ),
+            # An org slugged ``api``: the SERVED effect of payments-py#297 — before it, this
+            # published the branded origin as ``issuer`` (which no RFC 9207 client's compare
+            # accepts) plus the "derived from backend host" warning.
+            (
+                "https://api.api.live.nevermined.app/oauth/token",
+                "https://api.live.nevermined.app",
+            ),
             (
                 "https://mcp.api.sandbox.nevermined.dev/oauth/token",
                 "https://api.sandbox.nevermined.dev",
@@ -684,7 +724,12 @@ class TestIssuerIsTheApiOriginPerTier:
         self, monkeypatch, token_uri, issuer
     ):
         monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
-        assert get_oauth_urls("custom", {"tokenUri": token_uri})["issuer"] == issuer
+        urls = get_oauth_urls("custom", {"tokenUri": token_uri})
+        assert urls["issuer"] == issuer
+        # The tier the issuer names is the one stamped on the authorize URL — one derivation.
+        if issuer.startswith("https://api."):
+            tier = issuer.split(".")[1]
+            assert urls["authorizationUri"].endswith(f"?network={tier}")
 
     def test_custom_local_stack_issuer_is_its_own_backend(self, monkeypatch):
         monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
