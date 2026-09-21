@@ -41,7 +41,7 @@ class PaymentsMock:
     """Mock Payments for E2E server tests."""
 
     def __init__(self):
-        self._environment_name = "sandbox"
+        self.environment_name = "sandbox"  # the attribute the real class sets
         self.facilitator = MagicMock()
         self.facilitator.verify_permissions = AsyncMock(
             return_value=make_verify_response(is_valid=True)
