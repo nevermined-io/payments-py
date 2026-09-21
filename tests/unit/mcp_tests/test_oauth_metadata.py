@@ -449,6 +449,25 @@ class TestAuthorizationEndpointCarriesTheTier:
             resolve_oauth_tier("custom", "https://API.Sandbox.nevermined.app:8443/x")
             == "sandbox"
         )
+        # An org slugged ``api`` (legal today): the match is the first ``api`` label a
+        # TIER follows, not the first ``api`` label — ``index("api") + 1`` read ``api``
+        # here and refused (payments-py#297).
+        assert (
+            resolve_oauth_tier("custom", "https://api.api.live.nevermined.app")
+            == "live"
+        )
+        # The pair beats a stray tier label before it; the FIRST pair beats a later one.
+        assert (
+            resolve_oauth_tier("custom", "https://live.api.sandbox.nevermined.app")
+            == "sandbox"
+        )
+        assert (
+            resolve_oauth_tier("custom", "https://api.live.api.sandbox.nevermined.app")
+            == "live"
+        )
+        # ``api`` as the LAST label has nothing after it — no tier, no IndexError.
+        assert resolve_oauth_tier("custom", "https://x.api") is None
+        assert resolve_oauth_tier("custom", "https://api") is None
         # Anchored on the ``api.<tier>`` label pair — a bare ``sandbox`` label elsewhere
         # is NOT a tier.
         assert resolve_oauth_tier("custom", "https://sandbox.nevermined.app") is None
