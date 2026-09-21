@@ -18,6 +18,7 @@ from payments_py.mcp.http.oauth_metadata import (
     get_oauth_urls,
     OAUTH_TIER_PARAM,
     _with_tier_param,
+    _origin_of,
     resolve_oauth_tier,
 )
 
@@ -552,3 +553,287 @@ class TestAuthorizationEndpointCarriesTheTier:
     def test_with_tier_param_keeps_one_query_string(self, base, expected):
         assert _with_tier_param(base, "sandbox") == expected
         assert _with_tier_param(base, None) == base
+
+
+class TestIssuerIsTheApiOriginPerTier:
+    """payments-py#291: ``issuer`` used to be the frontend origin — the same string for both
+    tiers — while ``token_endpoint`` and the API's own RFC 8414 document named the backend.
+    Since nvm-monorepo#3532 the web app returns RFC 9207 ``iss`` = the CANONICAL API origin of
+    the tier, which an RFC 9207 client compares with the discovered ``issuer`` by simple string
+    comparison — so the frontend value made every RFC 9207 client that discovered through this
+    server reject its codes. Hardcoded per environment so a regression to the frontend, or to
+    the request host, cannot pass by mirroring the implementation."""
+
+    CUSTOM_LOCAL = EnvironmentInfo(
+        frontend="https://nevermined.app",
+        backend="http://localhost:3001",
+        proxy="",
+        helicone_url="",
+    )
+
+    @pytest.mark.parametrize(
+        "environment, backend, frontend",
+        [
+            ("sandbox", "https://api.sandbox.nevermined.app", "https://nevermined.app"),
+            (
+                "staging_sandbox",
+                "https://api.sandbox.nevermined.dev",
+                "https://nevermined.dev",
+            ),
+            ("live", "https://api.live.nevermined.app", "https://nevermined.app"),
+            (
+                "staging_live",
+                "https://api.live.nevermined.dev",
+                "https://nevermined.dev",
+            ),
+        ],
+    )
+    def test_issuer_is_the_backend_origin_never_the_frontend(
+        self, environment, backend, frontend
+    ):
+        urls = get_oauth_urls(environment)
+        assert urls["issuer"] == backend
+        assert urls["issuer"] != frontend
+        # Every document that describes this AS agrees on its identifier.
+        config = {
+            "baseUrl": "http://localhost:3000",
+            "agentId": "a",
+            "environment": environment,
+        }
+        assert build_authorization_server_metadata(config)["issuer"] == backend
+        assert build_oidc_configuration(config)["issuer"] == backend
+
+    def test_the_two_tiers_now_publish_different_issuers(self):
+        assert get_oauth_urls("sandbox")["issuer"] != get_oauth_urls("live")["issuer"]
+        assert (
+            get_oauth_urls("staging_sandbox")["issuer"]
+            != get_oauth_urls("staging_live")["issuer"]
+        )
+
+    @pytest.mark.parametrize(
+        "environment, canonical",
+        [
+            ("sandbox", "https://api.sandbox.nevermined.app"),
+            ("live", "https://api.live.nevermined.app"),
+            ("staging_sandbox", "https://api.sandbox.nevermined.dev"),
+            ("staging_live", "https://api.live.nevermined.dev"),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "token_uri",
+        [
+            "https://gw.corp.com/oauth/token",  # same-tier proxy: still the same AS
+            "https://api.live.nevermined.app/oauth/token",  # cross-tier: a misconfiguration
+            "https://api.sandbox.nevermined.dev/oauth/token",
+            "api.sandbox.nevermined.app/oauth/token",  # malformed: never a raw string
+            "/oauth/token",
+        ],
+    )
+    def test_named_environment_keeps_its_canonical_issuer_under_any_token_uri_override(
+        self, environment, canonical, token_uri
+    ):
+        # The environment IS the identity: the web app returns ``iss`` for that tier from fixed
+        # config, so a proxy in front of the token endpoint must not move the issuer — and neither
+        # may a cross-tier or malformed override. (Every row is a genuine override for at least
+        # three of the four environments; the tier match is what makes the cross-tier rows.)
+        urls = get_oauth_urls(environment, {"tokenUri": token_uri})
+        assert urls["issuer"] == canonical
+        assert urls["tokenUri"] == token_uri
+
+    @pytest.mark.parametrize(
+        "token_uri, issuer",
+        [
+            # A branded per-org subdomain and the Commerce MCP host serve the same API as
+            # ``api.<tier>.nevermined.<tld>``; the API's own document and the web app's ``iss``
+            # both say the canonical origin — the only value that passes the RFC 9207 compare.
+            (
+                "https://acme.api.live.nevermined.app/oauth/token",
+                "https://api.live.nevermined.app",
+            ),
+            (
+                "https://mcp.api.sandbox.nevermined.dev/oauth/token",
+                "https://api.sandbox.nevermined.dev",
+            ),
+            (
+                "https://mcp.api.live.nevermined.dev/oauth/token",
+                "https://api.live.nevermined.dev",
+            ),
+            # A trailing-dot FQDN is the same host to DNS — canonicalised, never one byte off.
+            (
+                "https://api.sandbox.nevermined.app./oauth/token",
+                "https://api.sandbox.nevermined.app",
+            ),
+            (
+                "HTTPS://API.Sandbox.Nevermined.app:443/oauth/token",
+                "https://api.sandbox.nevermined.app",
+            ),
+            # A foreign host that happens to classify keeps its OWN origin — no canonical form.
+            (
+                "https://api.live.example.com/oauth/token",
+                "https://api.live.example.com",
+            ),
+            (
+                "https://x.api.live.example.com:8443/oauth/token",
+                "https://x.api.live.example.com:8443",
+            ),
+            # Unclassifiable: its own origin.
+            ("https://gw.corp.com/oauth/token", "https://gw.corp.com"),
+        ],
+    )
+    def test_custom_follows_the_published_backend_canonicalised_for_nevermined_hosts(
+        self, monkeypatch, token_uri, issuer
+    ):
+        monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
+        assert get_oauth_urls("custom", {"tokenUri": token_uri})["issuer"] == issuer
+
+    def test_custom_local_stack_issuer_is_its_own_backend(self, monkeypatch):
+        monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
+        assert get_oauth_urls("custom")["issuer"] == "http://localhost:3001"
+
+    def test_custom_unparsable_override_falls_back_to_the_environment_backend_origin(
+        self, monkeypatch
+    ):
+        monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
+        assert (
+            get_oauth_urls("custom", {"tokenUri": "not a url"})["issuer"]
+            == "http://localhost:3001"
+        )
+
+    def test_custom_with_nothing_parsable_publishes_the_raw_string_and_warns_once(
+        self, monkeypatch, caplog
+    ):
+        # ``localhost:3001`` parses with ``localhost`` as the SCHEME and no host: no origin
+        # anywhere, so the raw string minus its trailing slash is served — loudly, once.
+        from payments_py.mcp.http import oauth_metadata as om
+
+        monkeypatch.setattr(om, "_issuer_warned", set())
+        monkeypatch.setitem(
+            Environments,
+            "custom",
+            EnvironmentInfo(
+                frontend="https://nevermined.app",
+                backend="localhost:3001/",
+                proxy="",
+                helicone_url="",
+            ),
+        )
+        with caplog.at_level("WARNING", logger="payments_py.mcp.http.oauth_metadata"):
+            assert get_oauth_urls("custom")["issuer"] == "localhost:3001"
+            assert get_oauth_urls("custom")["issuer"] == "localhost:3001"
+        warnings = [
+            r for r in caplog.records if "Could not derive an OAuth issuer" in r.message
+        ]
+        assert len(warnings) == 1
+        assert "oauthUrls.issuer" in warnings[0].message
+
+    def test_custom_non_nevermined_host_warns_once_per_value_unless_overridden(
+        self, monkeypatch, caplog
+    ):
+        # ``gw.corp.com`` / ``api.live.example.com`` have no canonical form; the derived origin is
+        # right for a foreign API and WRONG for a proxy in front of the real API — the SDK cannot
+        # tell, so it says what it derived and names ``oauthUrls.issuer``.
+        from payments_py.mcp.http import oauth_metadata as om
+
+        monkeypatch.setattr(om, "_issuer_warned", set())
+        monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
+
+        def proxy_warnings():
+            return [
+                r.message for r in caplog.records if "proxy or gateway" in r.message
+            ]
+
+        with caplog.at_level("WARNING", logger="payments_py.mcp.http.oauth_metadata"):
+            urls = get_oauth_urls(
+                "custom", {"tokenUri": "https://gw.corp.com/oauth/token"}
+            )
+            assert urls["issuer"] == "https://gw.corp.com"
+            get_oauth_urls("custom", {"tokenUri": "https://gw.corp.com/oauth/token"})
+            assert len(proxy_warnings()) == 1
+            assert "'gw.corp.com'" in proxy_warnings()[0]
+            assert "oauthUrls.issuer" in proxy_warnings()[0]
+            # A DIFFERENT non-canonical value warns again (a changed typo re-alerts) …
+            get_oauth_urls(
+                "custom", {"tokenUri": "https://api.live.example.com/oauth/token"}
+            )
+            assert len(proxy_warnings()) == 2
+            # … an operator who already set ``oauthUrls.issuer`` is not told to set it …
+            get_oauth_urls(
+                "custom",
+                {
+                    "tokenUri": "https://other.example.com/oauth/token",
+                    "issuer": "https://api.live.nevermined.app",
+                },
+            )
+            assert len(proxy_warnings()) == 2
+            # … and a loopback stack is not a proxy.
+            get_oauth_urls("custom")  # http://localhost:3001
+            assert len(proxy_warnings()) == 2
+
+    def test_unknown_environment_falls_back_to_the_sandbox_issuer(self):
+        assert get_oauth_urls("staging")["issuer"] == "https://api.sandbox.nevermined.app"  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        "backend, expected",
+        [
+            # RFC 9207 §2.4 is a simple string comparison against the ``iss`` the web app
+            # returns — ``new URL(backendUrl).origin`` — so this side reduces the same way.
+            (
+                "HTTPS://API.Sandbox.Nevermined.app/oauth/token",
+                "https://api.sandbox.nevermined.app",
+            ),
+            ("https://api.live.nevermined.app/", "https://api.live.nevermined.app"),
+            (
+                "https://api.live.nevermined.app:443/x",
+                "https://api.live.nevermined.app",
+            ),
+            ("http://host.example:80/x", "http://host.example"),
+            (
+                "https://host.example:80/x",
+                "https://host.example:80",
+            ),  # not https's default
+            ("http://host.example:443/x", "http://host.example:443"),
+            (
+                "https://user:pw@host.example/x",
+                "https://host.example",
+            ),  # never publish credentials
+            ("http://localhost:3001/api/v1", "http://localhost:3001"),
+            ("http://[::1]:3001/", "http://[::1]:3001"),
+            # No origin: unparsable, scheme-less, scheme-only, bad port.
+            ("http://[::1/", None),
+            ("not a url/", None),
+            ("api.sandbox.nevermined.app/oauth/token", None),
+            ("localhost:3001", None),
+            ("https://host.example:99999/", None),
+        ],
+    )
+    def test_origin_of_reduces_to_a_whatwg_origin_or_none(self, backend, expected):
+        assert _origin_of(backend) == expected
+
+    def test_explicit_issuer_override_still_passes_through_untouched(self):
+        urls = get_oauth_urls("sandbox", {"issuer": "https://custom-issuer.com"})
+        assert urls["issuer"] == "https://custom-issuer.com"
+        assert urls["tokenUri"] == "https://api.sandbox.nevermined.app/oauth/token"
+
+    def test_override_hygiene_none_and_empty_never_replace_a_computed_value(self):
+        assert (
+            get_oauth_urls("sandbox", {"issuer": None})["issuer"]  # type: ignore[dict-item]
+            == "https://api.sandbox.nevermined.app"
+        )
+        assert (
+            get_oauth_urls("sandbox", {"issuer": ""})["issuer"]
+            == "https://api.sandbox.nevermined.app"
+        )
+        assert (
+            get_oauth_urls("sandbox", {"tokenUri": ""})["tokenUri"]
+            == "https://api.sandbox.nevermined.app/oauth/token"
+        )
+        config = {
+            "baseUrl": "http://localhost:3000",
+            "agentId": "a",
+            "environment": "sandbox",
+            "oauthUrls": {"issuer": None},
+        }
+        assert (
+            build_authorization_server_metadata(config)["issuer"]
+            == "https://api.sandbox.nevermined.app"
+        )
