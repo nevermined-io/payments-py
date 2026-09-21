@@ -208,6 +208,10 @@ class TestMcpOAuthDiscoveryEndpoints:
 
             # Required fields per RFC 8414
             assert "issuer" in data
+            # payments-py#291: the issuer is the API ORIGIN of the tier this server runs
+            # against — the value the web app returns as RFC 9207 ``iss``, which clients
+            # string-compare against this field. Exact, on the sandbox mock.
+            assert data["issuer"] == "https://api.sandbox.nevermined.app"
             assert "authorization_endpoint" in data
             # payments-py#277: the SERVED document names the API tier — the wiring
             # (server_manager → create_oauth_router → builders) on a sandbox mock.
@@ -301,8 +305,12 @@ class TestMcpOAuthDiscoveryEndpoints:
             auth_server_data = auth_server_res.json()
             oidc_data = oidc_res.json()
 
-            # Issuer should be consistent
+            # Issuer should be consistent — and (#291) it is the origin of the token
+            # endpoint both documents publish, so the identifier names the server that answers.
             assert auth_server_data["issuer"] == oidc_data["issuer"]
+            assert auth_server_data["token_endpoint"].startswith(
+                auth_server_data["issuer"] + "/"
+            )
 
             # Endpoints should also be consistent
             assert (
