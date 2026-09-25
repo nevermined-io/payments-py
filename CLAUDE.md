@@ -37,7 +37,7 @@ To format manually (matches what the hook does):
 
 ```bash
 poetry run black .
-poetry run black --check .      # CI check; no changes
+poetry run black --check .      # same check CI's pre-commit hook runs; no changes
 ```
 
 If you skip `pre-commit install`, CI still catches unformatted code via `pre-commit run --all-files`, but the round-trip is wasteful — install it once.
@@ -157,9 +157,14 @@ E2E tests run directly against the **staging environment**. When making changes:
 
 The CI pipeline runs:
 
-1. **Lint** (`.github/workflows/lint.yml`) - Black formatting check
-2. **Unit & Integration** (`.github/workflows/test.yaml`) - Fast tests
-3. **E2E** - Slow tests (runs after unit/integration pass)
+1. **Lint** (`.github/workflows/lint.yml`) - `poetry check --lock`, then `pre-commit run --all-files` (black)
+2. **Unit & Integration** (`.github/workflows/test.yaml`) - Fast tests on Python 3.10, the declared floor
+3. **Deep Agents compatibility** (`test.yaml`, job `deepagents_compat`) - `tests/unit/x402/test_deepagents_compat.py`
+   on Python 3.11, installed with pip outside the poetry lock (deepagents needs >=3.11). Under the local
+   poetry run on 3.10 that test is skipped (`pytest.importorskip`), so after changing `payments_py/x402/langchain/`
+   reproduce the job in a 3.11 venv:
+   `pip install -e ".[langchain,langsmith]" deepagents pytest pytest-timeout pytest-asyncio && pytest tests/unit/x402/test_deepagents_compat.py`
+4. **E2E** - Slow tests (runs after unit/integration pass)
 
 `TEST_SUBSCRIBER_API_KEY` / `TEST_BUILDER_API_KEY` live in **two separate
 secret stores** — Actions and Dependabot — and which one a run reads depends on
