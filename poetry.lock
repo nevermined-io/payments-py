@@ -2,38 +2,41 @@
 
 [[package]]
 name = "a2a-sdk"
-version = "0.3.26"
+version = "1.1.4"
 description = "A2A Python SDK"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "test"]
 files = [
-    {file = "a2a_sdk-0.3.26-py3-none-any.whl", hash = "sha256:754e0573f6d33b225c1d8d51f640efa69cbbed7bdfb06ce9c3540ea9f58d4a91"},
-    {file = "a2a_sdk-0.3.26.tar.gz", hash = "sha256:44068e2d037afbb07ab899267439e9bc7eaa7ac2af94f1e8b239933c993ad52d"},
+    {file = "a2a_sdk-1.1.4-py3-none-any.whl", hash = "sha256:b91b0350e1b1a3ef996b76766244523890d6b31b5aaf3f9d69c145fa97c5e0cf"},
+    {file = "a2a_sdk-1.1.4.tar.gz", hash = "sha256:a77d7234d25e4b480626c09580c8cf4967d6beb0433ae139ac0eb15055fef128"},
 ]
 
 [package.dependencies]
-fastapi = {version = ">=0.115.2", optional = true, markers = "extra == \"http-server\""}
+culsans = {version = ">=0.11.0", markers = "python_full_version < \"3.13.0\""}
 google-api-core = ">=1.26.0"
+googleapis-common-protos = ">=1.70.0"
 httpx = ">=0.28.1"
-httpx-sse = ">=0.4.0"
-protobuf = ">=5.29.5"
+json-rpc = ">=1.15.0"
+packaging = ">=24.0"
+protobuf = ">=5.29.5,<7"
 pydantic = ">=2.11.3"
 sse-starlette = {version = "*", optional = true, markers = "extra == \"http-server\""}
 starlette = {version = "*", optional = true, markers = "extra == \"http-server\""}
 
 [package.extras]
-all = ["cryptography (>=43.0.0)", "fastapi (>=0.115.2)", "google-cloud-aiplatform (>=1.140.0)", "grpcio (>=1.60)", "grpcio-reflection (>=1.7.0)", "grpcio-tools (>=1.60)", "opentelemetry-api (>=1.33.0)", "opentelemetry-sdk (>=1.33.0)", "pyjwt (>=2.0.0)", "sqlalchemy[aiomysql,asyncio] (>=2.0.0)", "sqlalchemy[aiosqlite,asyncio] (>=2.0.0)", "sqlalchemy[asyncio,postgresql-asyncpg] (>=2.0.0)", "sse-starlette", "starlette"]
+all = ["alembic (>=1.14.0)", "cryptography (>=43.0.0)", "fastapi (>=0.115.2)", "grpcio (>=1.60)", "grpcio-reflection (>=1.7.0)", "grpcio-tools (>=1.60)", "opentelemetry-api (>=1.33.0)", "opentelemetry-sdk (>=1.33.0)", "pyjwt (>=2.0.0)", "sqlalchemy[aiomysql,asyncio] (>=2.0.0)", "sqlalchemy[aiosqlite,asyncio] (>=2.0.0)", "sqlalchemy[asyncio,postgresql-asyncpg] (>=2.0.0)", "sse-starlette", "starlette"]
+db-cli = ["alembic (>=1.14.0)"]
 encryption = ["cryptography (>=43.0.0)"]
+fastapi = ["fastapi (>=0.115.2)", "sse-starlette", "starlette"]
 grpc = ["grpcio (>=1.60)", "grpcio-reflection (>=1.7.0)", "grpcio-tools (>=1.60)"]
-http-server = ["fastapi (>=0.115.2)", "sse-starlette", "starlette"]
+http-server = ["sse-starlette", "starlette"]
 mysql = ["sqlalchemy[aiomysql,asyncio] (>=2.0.0)"]
 postgresql = ["sqlalchemy[asyncio,postgresql-asyncpg] (>=2.0.0)"]
 signing = ["pyjwt (>=2.0.0)"]
 sql = ["sqlalchemy[aiomysql,asyncio] (>=2.0.0)", "sqlalchemy[aiosqlite,asyncio] (>=2.0.0)", "sqlalchemy[asyncio,postgresql-asyncpg] (>=2.0.0)"]
 sqlite = ["sqlalchemy[aiosqlite,asyncio] (>=2.0.0)"]
 telemetry = ["opentelemetry-api (>=1.33.0)", "opentelemetry-sdk (>=1.33.0)"]
-vertex = ["google-cloud-aiplatform (>=1.140.0)"]
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -189,6 +192,32 @@ yarl = ">=1.17.0,<2.0"
 
 [package.extras]
 speedups = ["Brotli (>=1.2) ; platform_python_implementation == \"CPython\" and sys_platform != \"android\" and sys_platform != \"ios\"", "aiodns (>=3.3.0) ; sys_platform != \"android\" and sys_platform != \"ios\"", "backports.zstd ; platform_python_implementation == \"CPython\" and python_version < \"3.14\" and sys_platform != \"android\" and sys_platform != \"ios\"", "brotlicffi (>=1.2) ; platform_python_implementation != \"CPython\""]
+
+[[package]]
+name = "aiologic"
+version = "0.17.1"
+description = "GIL-powered* locking library for Python"
+optional = false
+python-versions = ">=3.8"
+groups = ["main", "test"]
+markers = "python_version < \"3.13\""
+files = [
+    {file = "aiologic-0.17.1-py3-none-any.whl", hash = "sha256:c66b319830fedb7ca3d2b2125fa6f5b653f89418c2a27ea76f259ec5f00943c0"},
+    {file = "aiologic-0.17.1.tar.gz", hash = "sha256:2e1b93b9e88ced318c2a63ad7b382688f40cbfe40e3d42258d49dc9c5aea179d"},
+]
+
+[package.dependencies]
+sniffio = ">=1.3.0"
+typing-extensions = {version = ">=4.10.0", markers = "python_version < \"3.13\""}
+wrapt = ">=1.16.0"
+
+[package.extras]
+anyio = ["anyio (>=3.0.0)"]
+curio = ["curio (>=1.4)"]
+eventlet = ["eventlet (>=0.17.0)"]
+gevent = ["gevent (>=21.1.0)"]
+trio = ["trio (>=0.23.0)"]
+trio-asyncio = ["trio-asyncio (>=0.13.0)"]
 
 [[package]]
 name = "aiosignal"
@@ -990,6 +1019,23 @@ typing-extensions = {version = ">=4.13.2", markers = "python_full_version < \"3.
 ssh = ["bcrypt (>=3.1.5)"]
 
 [[package]]
+name = "culsans"
+version = "0.11.0"
+description = "Thread-safe async-aware queue for Python"
+optional = false
+python-versions = ">=3.8"
+groups = ["main", "test"]
+markers = "python_version < \"3.13\""
+files = [
+    {file = "culsans-0.11.0-py3-none-any.whl", hash = "sha256:278d118f63fc75b9db11b664b436a1b83cc30d9577127848ba41420e66eb5a47"},
+    {file = "culsans-0.11.0.tar.gz", hash = "sha256:0b43d0d05dce6106293d114c86e3fb4bfc63088cfe8ff08ed3fe36891447fe33"},
+]
+
+[package.dependencies]
+aiologic = ">=0.16.0,<0.18.0"
+typing-extensions = {version = ">=4.10.0", markers = "python_version < \"3.13\""}
+
+[[package]]
 name = "distlib"
 version = "0.4.3"
 description = "Distribution utilities"
@@ -1442,7 +1488,7 @@ version = "0.4.3"
 description = "Consume Server-Sent Event (SSE) messages with HTTPX."
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "test"]
+groups = ["main"]
 files = [
     {file = "httpx_sse-0.4.3-py3-none-any.whl", hash = "sha256:0ac1c9fe3c0afad2e0ebb25a934a59f4c7823b60792691f779fad2c5568830fc"},
     {file = "httpx_sse-0.4.3.tar.gz", hash = "sha256:9b1ed0127459a66014aec3c56bebd93da3c1bc8bb6618c8082039a44889a755d"},
@@ -1561,6 +1607,18 @@ markers = "extra == \"strands\""
 files = [
     {file = "jmespath-1.1.0-py3-none-any.whl", hash = "sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64"},
     {file = "jmespath-1.1.0.tar.gz", hash = "sha256:472c87d80f36026ae83c6ddd0f1d05d4e510134ed462851fd5f754c8c3cbb88d"},
+]
+
+[[package]]
+name = "json-rpc"
+version = "1.15.0"
+description = "JSON-RPC transport implementation"
+optional = false
+python-versions = "*"
+groups = ["main", "test"]
+files = [
+    {file = "json-rpc-1.15.0.tar.gz", hash = "sha256:e6441d56c1dcd54241c937d0a2dcd193bdf0bdc539b5316524713f554b7f85b9"},
+    {file = "json_rpc-1.15.0-py2.py3-none-any.whl", hash = "sha256:4a4668bbbe7116feb4abbd0f54e64a4adcf4b8f648f19ffa0848ad0f6606a9bf"},
 ]
 
 [[package]]
@@ -2805,20 +2863,22 @@ testing = ["google-api-core (>=2.25.0)"]
 
 [[package]]
 name = "protobuf"
-version = "7.36.1"
+version = "6.33.6"
 description = ""
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.9"
 groups = ["main", "test"]
 files = [
-    {file = "protobuf-7.36.1-cp310-abi3-macosx_10_9_universal2.whl", hash = "sha256:3cf2ee25d006cee57294a1196ea43b37feb78e0dcd1e8af5c1aeddb777655aca"},
-    {file = "protobuf-7.36.1-cp310-abi3-manylinux2014_aarch64.whl", hash = "sha256:43d3d37b1eb24c113b9b7d02008cac44e423f00b611b7781ae998d7623972969"},
-    {file = "protobuf-7.36.1-cp310-abi3-manylinux2014_s390x.whl", hash = "sha256:39c518c05586c016d7874ff6079ee115bcec1ea5fbb1d177fbf7867ef4c67e44"},
-    {file = "protobuf-7.36.1-cp310-abi3-manylinux2014_x86_64.whl", hash = "sha256:97198b77e369a0abd8e262b8f6c7266c55ddb796a3a12c76d7b8881188ed83aa"},
-    {file = "protobuf-7.36.1-cp310-abi3-win32.whl", hash = "sha256:0b53ce95272aad50ad25d7ff03373743209822e8ba42ea7fad27d2bee1547d00"},
-    {file = "protobuf-7.36.1-cp310-abi3-win_amd64.whl", hash = "sha256:51139351435d9b43d88a55eaa49fb6f737fbb478fb0cbf2cf694d1a04a9d3363"},
-    {file = "protobuf-7.36.1-py3-none-any.whl", hash = "sha256:7d951e46b3f963d6c264c367c437921de9d5aedd9c3f9612b9077736b4e3ad5c"},
-    {file = "protobuf-7.36.1.tar.gz", hash = "sha256:d0f6470f0ce2b84e3feaea2d4b816378b37ba4d4aa08a274305373de93e2d524"},
+    {file = "protobuf-6.33.6-cp310-abi3-win32.whl", hash = "sha256:7d29d9b65f8afef196f8334e80d6bc1d5d4adedb449971fefd3723824e6e77d3"},
+    {file = "protobuf-6.33.6-cp310-abi3-win_amd64.whl", hash = "sha256:0cd27b587afca21b7cfa59a74dcbd48a50f0a6400cfb59391340ad729d91d326"},
+    {file = "protobuf-6.33.6-cp39-abi3-macosx_10_9_universal2.whl", hash = "sha256:9720e6961b251bde64edfdab7d500725a2af5280f3f4c87e57c0208376aa8c3a"},
+    {file = "protobuf-6.33.6-cp39-abi3-manylinux2014_aarch64.whl", hash = "sha256:e2afbae9b8e1825e3529f88d514754e094278bb95eadc0e199751cdd9a2e82a2"},
+    {file = "protobuf-6.33.6-cp39-abi3-manylinux2014_s390x.whl", hash = "sha256:c96c37eec15086b79762ed265d59ab204dabc53056e3443e702d2681f4b39ce3"},
+    {file = "protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:e9db7e292e0ab79dd108d7f1a94fe31601ce1ee3f7b79e0692043423020b0593"},
+    {file = "protobuf-6.33.6-cp39-cp39-win32.whl", hash = "sha256:bd56799fb262994b2c2faa1799693c95cc2e22c62f56fb43af311cae45d26f0e"},
+    {file = "protobuf-6.33.6-cp39-cp39-win_amd64.whl", hash = "sha256:f443a394af5ed23672bc6c486be138628fbe5c651ccbc536873d7da23d1868cf"},
+    {file = "protobuf-6.33.6-py3-none-any.whl", hash = "sha256:77179e006c476e69bf8e8ce866640091ec42e1beb80b213c3900006ecfba6901"},
+    {file = "protobuf-6.33.6.tar.gz", hash = "sha256:a6768d25248312c297558af96a9f9c929e8c4cee0659cb07e780731095f38135"},
 ]
 
 [[package]]
@@ -3876,7 +3936,7 @@ files = [
     {file = "sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2"},
     {file = "sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc"},
 ]
-markers = {main = "extra == \"langchain\" or extra == \"langsmith\""}
+markers = {main = "extra == \"langchain\" or extra == \"langsmith\" or python_version < \"3.13\""}
 
 [[package]]
 name = "sse-starlette"
@@ -4450,10 +4510,9 @@ markers = {main = "extra == \"langchain\" or extra == \"langsmith\""}
 name = "wrapt"
 version = "2.4.1"
 description = "Module for decorators, wrappers and monkey patching."
-optional = true
+optional = false
 python-versions = ">=3.9"
-groups = ["main"]
-markers = "extra == \"strands\""
+groups = ["main", "test"]
 files = [
     {file = "wrapt-2.4.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7aaff952dd6930fc87b52d44bf72ac8426e45e90058fe0f2da446889738eff44"},
     {file = "wrapt-2.4.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:8d67b916f2f777a6d31067e842598e059f1a0e29022c86454564fc9efb9a0c19"},
@@ -4557,6 +4616,7 @@ files = [
     {file = "wrapt-2.4.1-py3-none-any.whl", hash = "sha256:1e84ec5d89a0a07a0ef6bcd343f5c8ecdc95601d71de3058cdc63274e86c193c"},
     {file = "wrapt-2.4.1.tar.gz", hash = "sha256:fd6390aab9e8aa40c52eff3c180f098e8d9f5894b1fd4c4fd2c207067b33ed16"},
 ]
+markers = {main = "extra == \"strands\" or python_version < \"3.13\"", test = "python_version < \"3.13\""}
 
 [package.extras]
 dev = ["pytest", "setuptools"]
@@ -5042,4 +5102,4 @@ strands = ["strands-agents"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "6f2839111e889bc38bd1e739ecef70a74c46193939190b3cb25ceae488ba5ea7"
+content-hash = "0de910d0bd80e33618ac320a99b34725b7375140903bdcec9dd3f8db9374aee9"
