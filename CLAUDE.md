@@ -37,7 +37,7 @@ To format manually (matches what the hook does):
 
 ```bash
 poetry run black .
-poetry run black --check .      # CI check; no changes
+poetry run black --check .      # same check CI's pre-commit hook runs; no changes
 ```
 
 If you skip `pre-commit install`, CI still catches unformatted code via `pre-commit run --all-files`, but the round-trip is wasteful — install it once.
@@ -72,7 +72,7 @@ When modifying code in `payments_py/`, always update the corresponding tests:
 
 - **All imports must be at the top of the file** - Do not use inline imports inside functions unless absolutely necessary (e.g., to avoid circular dependencies)
 - **Remove unused imports** - Do not leave imports that are not used in the file
-- **Order imports**: standard library, third-party, local imports (Black will help organize these)
+- **Order imports**: standard library, third-party, local imports — by hand; Black does not reorder imports and no import sorter runs in pre-commit or CI
 
 ### Formatting
 
@@ -81,12 +81,7 @@ This project uses **Black** for code formatting with the following settings (fro
 - Line length: 88
 - Target Python version: 3.10+
 
-**CRITICAL:** Always run `poetry run black .` after writing or modifying any Python files (including tests). The CI will fail if code is not formatted.
-
-```bash
-poetry run black .           # Format all files (run after every change)
-poetry run black --check .   # Check formatting without changes (CI uses this)
-```
+Format every Python file you touch (source, tests, scripts) — see "Always Format Before Committing" above for the commands and the CI gate (`pre-commit run --all-files`).
 
 ## Testing
 
@@ -118,12 +113,10 @@ facilitator.settle_permissions = lambda **k: make_settle_response(transaction="0
 ```
 
 A hand-rolled class only ever carries the fields production code read the day it
-was written. All 12 such doubles in this suite had drifted from the model
-(#273), and adding two fields to `SettleResponse` turned **28 unrelated tests
-red** with `AttributeError` (#272). Building the model means every field exists,
-populated by the model's own defaults, so a new field is inert in tests that do
-not care about it — measured: the same probe produces 28 failures against the
-old doubles and 0 against these.
+was written, so it drifts from the model, and adding a field to `SettleResponse`
+turns unrelated tests red with `AttributeError`. Building the model means every
+field exists, populated by the model's own defaults, so a new field is inert in
+tests that do not care about it.
 
 Do **not** "fix" that by making production code use `getattr(result, "f", None)`
 — that bends the SDK around its fixtures and hides the drift.
@@ -164,9 +157,14 @@ E2E tests run directly against the **staging environment**. When making changes:
 
 The CI pipeline runs:
 
-1. **Lint** (`.github/workflows/lint.yml`) - Black formatting check
-2. **Unit & Integration** (`.github/workflows/test.yaml`) - Fast tests
-3. **E2E** - Slow tests (runs after unit/integration pass)
+1. **Lint** (`.github/workflows/lint.yml`) - `poetry check --lock`, then `pre-commit run --all-files` (black)
+2. **Unit & Integration** (`.github/workflows/test.yaml`) - Fast tests on Python 3.10, the declared floor
+3. **Deep Agents compatibility** (`test.yaml`, job `deepagents_compat`) - `tests/unit/x402/test_deepagents_compat.py`
+   on Python 3.11, installed with pip outside the poetry lock (deepagents needs >=3.11). Under the local
+   poetry run on 3.10 that test is skipped (`pytest.importorskip`), so after changing `payments_py/x402/langchain/`
+   reproduce the job in a 3.11 venv:
+   `pip install -e ".[langchain,langsmith]" deepagents pytest pytest-timeout pytest-asyncio && pytest tests/unit/x402/test_deepagents_compat.py`
+4. **E2E** - Slow tests (runs after unit/integration pass)
 
 `TEST_SUBSCRIBER_API_KEY` / `TEST_BUILDER_API_KEY` live in **two separate
 secret stores** — Actions and Dependabot — and which one a run reads depends on
@@ -190,15 +188,13 @@ cannot merge until something merges `main` into it, and unattended that
 something is this workflow. If it breaks, the queue stalls silently — nothing
 merges, no check goes red, the PRs just sit.
 
-It did not start that way. The first draft ran against `strict: false` and
-described itself as equivalent to strict checks, which was wrong: the sweep
-gated nothing, since `dependabot-auto-merge.yml` arms a PR the moment it opens
-and one green on its original head merged before any push woke the sweep.
-`strict` was turned on rather than the claim softened. Before describing this
-workflow as enforcing anything, re-check that `strict` is still set —
+The sweep enforces nothing on its own: without `strict`, `dependabot-auto-merge.yml`
+arms a PR the moment it opens, and one green on its original head merges before
+any push wakes the sweep. Before describing this workflow as enforcing anything,
+re-check that `strict` is still set —
 `gh api repos/nevermined-io/payments-py/branches/main/protection`.
 
-`MAX_MERGES` now bounds how fast the queue drains, not whether a PR can slip
+`MAX_MERGES` bounds how fast the queue drains, not whether a PR can slip
 through unswept; overflow waits for a later wave, and a merge is itself a push
 to `main` that starts one. This repo also sets `allow_update_branch: true`
 (`payments` does not), which only surfaces GitHub's manual "Update branch"
@@ -214,9 +210,8 @@ in the workflow, because the workflow triggers on a push to `main` and so
 cannot be exercised before it merges. `tests/unit/test_dependabot_sweeper.py`
 runs that script against a stubbed `gh` and is the only pre-merge cover the
 ordering, status handling and cap get — treat it as required when touching
-either file. The `payments` copy shipped calling `--method POST` on a PUT
-endpoint and reported a green job while updating nothing, which is the failure
-mode that suite exists to catch.
+either file. The failure it exists to catch is a job that reports green while
+updating nothing (for example, calling a GitHub endpoint with the wrong HTTP method).
 
 ## Release Process
 
@@ -237,14 +232,21 @@ payments_py/       # Source code
   x402/            # X402 payment protocol types and APIs
     strands/       # Strands agent decorator (@requires_payment)
     fastapi/       # FastAPI middleware (PaymentMiddleware)
+    langchain/     # LangChain tool decorator
+    agentcore/     # AgentCore Gateway Lambda interceptor
+    extensions/    # x402 extensions
+  a2a/             # A2A server/client integration
+  mcp/             # MCP integration
+  mpp/             # Machine Payments Protocol (MPP)
+  langsmith/       # LangSmith verify/settle spans ([langsmith] extra)
   api/             # API client implementations
   common/          # Shared types and utilities
 tests/
-  unit/            # Unit tests
-    x402/          # x402-specific tests (strands, fastapi)
+  unit/            # Unit tests (x402/, a2a/, mcp_tests/, mpp/, langsmith/ subdirs)
   integration/     # Integration tests
   e2e/             # End-to-end tests (@pytest.mark.slow)
   conftest.py      # Shared fixtures
+  x402_responses.py  # Settle/verify model factories for test doubles
 ```
 
 ## Key APIs
