@@ -479,6 +479,26 @@ def _iss_parameter_support(
     return {}
 
 
+def _resolve_authorization_server(config: OAuthConfig) -> str:
+    """The authorization-server identifier for ``authorization_servers``.
+
+    RFC 9728 §2 defines each entry as an AS **issuer identifier**, so it is, by
+    construction, the ``issuer`` this server's own AS document publishes — one
+    derivation (:func:`_issuer_for` via :func:`get_oauth_urls`), so the two can never
+    disagree: not on a ``tokenUri`` override, not on an ``issuer`` override (a foreign
+    AS named there is then also where clients are sent), not on malformed input. Mirrors
+    the TS SDK's ``resolveAuthorizationServer`` (payments#465).
+
+    It is NOT ``config["baseUrl"]`` — that is this MCP server, the protected
+    *resource*. Earlier releases advertised it, which sent RFC 9728 clients to the
+    SDK-hosted document and its ``<mcp>/register`` DCR endpoint; clients now discover
+    against the Nevermined API, whose own document offers no DCR (clients present a
+    registered or CIMD ``client_id``). The SDK-hosted documents and ``/register`` are
+    still served for clients that discover against this server directly.
+    """
+    return get_oauth_urls(config["environment"], config.get("oauthUrls"))["issuer"]
+
+
 def build_protected_resource_metadata(config: OAuthConfig) -> ProtectedResourceMetadata:
     """Build Protected Resource Metadata (RFC 9728).
 
@@ -500,12 +520,10 @@ def build_protected_resource_metadata(config: OAuthConfig) -> ProtectedResourceM
         'http://localhost:5001'
     """
     scopes = config.get("scopes") or list(_DEFAULT_SCOPES)
-    # Get OAuth URLs for validation (not used in this metadata directly)
-    _ = get_oauth_urls(config["environment"], config.get("oauthUrls"))
 
     return {
         "resource": config["baseUrl"],
-        "authorization_servers": [config["baseUrl"]],
+        "authorization_servers": [_resolve_authorization_server(config)],
         "scopes_supported": scopes,
         "bearer_methods_supported": ["header"],
         "resource_documentation": f"{config['baseUrl']}/",
@@ -536,12 +554,12 @@ def build_mcp_protected_resource_metadata(
         ['hello_world', 'weather']
     """
     scopes = config.get("scopes") or list(_DEFAULT_SCOPES)
-    # Get OAuth URLs for validation (not used in this metadata directly)
-    _ = get_oauth_urls(config["environment"], config.get("oauthUrls"))
 
     return {
         "resource": f"{config['baseUrl']}/mcp",
-        "authorization_servers": [config["baseUrl"]],
+        # See _resolve_authorization_server: the AS is the issuer this server's own AS
+        # document publishes (the backend API origin), never this MCP server (baseUrl).
+        "authorization_servers": [_resolve_authorization_server(config)],
         "scopes_supported": scopes,
         "scopes_required": scopes,
         "bearer_methods_supported": ["header"],

@@ -46,7 +46,9 @@ class TestBuildProtectedResourceMetadata:
 
         assert metadata is not None
         assert metadata["resource"] == "http://localhost:3000"
-        assert metadata["authorization_servers"] == ["http://localhost:3000"]
+        assert metadata["authorization_servers"] == [
+            "https://api.sandbox.nevermined.app"
+        ]
         assert metadata["bearer_methods_supported"] == ["header"]
         assert metadata["resource_documentation"] == "http://localhost:3000/"
 
@@ -79,7 +81,9 @@ class TestBuildMcpProtectedResourceMetadata:
 
         assert metadata is not None
         assert metadata["resource"] == "http://localhost:3000/mcp"
-        assert metadata["authorization_servers"] == ["http://localhost:3000"]
+        assert metadata["authorization_servers"] == [
+            "https://api.sandbox.nevermined.app"
+        ]
         assert metadata["bearer_methods_supported"] == ["header"]
 
     def test_includes_mcp_capabilities(self, base_config):
@@ -107,6 +111,111 @@ class TestBuildMcpProtectedResourceMetadata:
         metadata = build_mcp_protected_resource_metadata(config)
 
         assert metadata["mcp_capabilities"]["protocol_version"] == "2024-12-01"
+
+
+class TestAuthorizationServersIsTheBackendAs:
+    """payments#465: the protected-resource documents name the API origin as their
+    authorization server, as the TS SDK does — never this MCP server (``baseUrl``),
+    which used to send RFC 9728 clients to the SDK-hosted document and its DCR endpoint.
+    Hardcoded per environment so a regression to ``baseUrl`` or to the frontend cannot
+    pass by mirroring the implementation."""
+
+    CUSTOM_LOCAL = EnvironmentInfo(
+        frontend="https://nevermined.app",
+        backend="http://localhost:3001",
+        proxy="",
+        helicone_url="",
+    )
+
+    @staticmethod
+    def _both(config):
+        return [
+            build_protected_resource_metadata(config),
+            build_mcp_protected_resource_metadata(config),
+        ]
+
+    @pytest.mark.parametrize(
+        "environment, backend, frontend",
+        [
+            (
+                "staging_sandbox",
+                "https://api.sandbox.nevermined.dev",
+                "https://nevermined.dev",
+            ),
+            (
+                "staging_live",
+                "https://api.live.nevermined.dev",
+                "https://nevermined.dev",
+            ),
+            ("sandbox", "https://api.sandbox.nevermined.app", "https://nevermined.app"),
+            ("live", "https://api.live.nevermined.app", "https://nevermined.app"),
+        ],
+    )
+    def test_every_named_environment_names_its_backend_never_the_frontend_or_base_url(
+        self, environment, backend, frontend
+    ):
+        config = {"baseUrl": "http://localhost:3000", "environment": environment}
+        for metadata in self._both(config):
+            assert metadata["authorization_servers"] == [backend]
+            assert frontend not in metadata["authorization_servers"]
+            assert "http://localhost:3000" not in metadata["authorization_servers"]
+
+    @pytest.mark.parametrize("token_uri", [None, "not a url"])
+    def test_a_missing_or_malformed_token_uri_falls_back_to_the_env_default(
+        self, token_uri
+    ):
+        config = {
+            "baseUrl": "http://localhost:3000",
+            "environment": "staging_sandbox",
+            "oauthUrls": {"tokenUri": token_uri},
+        }
+        for metadata in self._both(config):
+            assert metadata["authorization_servers"] == [
+                "https://api.sandbox.nevermined.dev"
+            ]
+
+    @pytest.mark.parametrize(
+        "environment, oauth_urls",
+        [
+            ("sandbox", None),
+            ("live", {"tokenUri": "https://gw.corp.com/oauth/token"}),
+            ("sandbox", {"issuer": "https://as.example.com"}),
+            ("custom", None),
+            (
+                "custom",
+                {"tokenUri": "https://acme.api.live.nevermined.app/oauth/token"},
+            ),
+            ("custom", {"tokenUri": "https://gw.corp.com/oauth/token"}),
+            ("custom", {"tokenUri": "not a url"}),
+            ("not-an-environment", None),
+        ],
+    )
+    def test_is_exactly_the_issuer_the_as_document_publishes(
+        self, monkeypatch, environment, oauth_urls
+    ):
+        # RFC 9728 §2: each entry is an AS issuer identifier, so it must equal, byte for
+        # byte, the ``issuer`` of the AS document — one derivation, including ``custom``
+        # (which follows its backend) and an ``issuer`` override (a foreign AS named there
+        # is also where clients are sent).
+        monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
+        config = {"baseUrl": "http://localhost:3000", "environment": environment}
+        if oauth_urls is not None:
+            config["oauthUrls"] = oauth_urls
+        issuer = build_authorization_server_metadata(config)["issuer"]
+        for metadata in self._both(config):
+            assert metadata["authorization_servers"] == [issuer]
+
+    def test_custom_local_stack_names_its_own_backend(self, monkeypatch):
+        monkeypatch.setitem(Environments, "custom", self.CUSTOM_LOCAL)
+        config = {"baseUrl": "http://localhost:3000", "environment": "custom"}
+        for metadata in self._both(config):
+            assert metadata["authorization_servers"] == ["http://localhost:3001"]
+
+    def test_the_sdk_hosted_document_still_offers_dcr(self, base_config):
+        # Scope fence: only discovery moved. The SDK-hosted AS document and its
+        # ``<mcp>/register`` endpoint are still served to clients that discover here.
+        metadata = build_authorization_server_metadata(base_config)
+        assert metadata["registration_endpoint"] == "http://localhost:3000/register"
 
 
 class TestBuildAuthorizationServerMetadata:

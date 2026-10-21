@@ -174,9 +174,13 @@ class TestMcpOAuthDiscoveryEndpoints:
 
             # Required fields per RFC 9728
             assert data["resource"] == base_url
-            assert "authorization_servers" in data
-            assert isinstance(data["authorization_servers"], list)
-            assert len(data["authorization_servers"]) > 0
+            # payments#465: the authorization server is the API origin of the tier
+            # (the AS document's ``issuer``), never this MCP server. Exact, on the
+            # sandbox mock.
+            assert data["authorization_servers"] == [
+                "https://api.sandbox.nevermined.app"
+            ]
+            assert base_url not in data["authorization_servers"]
 
             # MCP-specific scopes
             assert "scopes_supported" in data
