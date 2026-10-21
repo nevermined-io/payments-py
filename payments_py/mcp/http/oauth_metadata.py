@@ -259,7 +259,8 @@ def _issuer_for(
                 "If that host is a proxy or gateway in front of a Nevermined API rather than "
                 "the API itself, set oauthUrls.issuer (and oauthUrls.tokenUri) to that API's "
                 "real origin — otherwise the issuer will not match the iss the authorization "
-                "server returns.",
+                "server returns, and MCP clients, which discover at the same value "
+                "(authorization_servers), will look for the authorization server there.",
             )
         return own
     raw = published_backend.rstrip("/")
@@ -267,8 +268,9 @@ def _issuer_for(
         _warn_issuer_once(
             raw,
             f"[Nevermined] Could not derive an OAuth issuer from backend '{published_backend}' "
-            f"— publishing '{raw}'. Set oauthUrls.issuer (and oauthUrls.tokenUri) to the API "
-            "origin of this deployment's tier.",
+            f"— publishing '{raw}' as issuer and authorization_servers, where MCP clients "
+            "discover. Set oauthUrls.issuer (and oauthUrls.tokenUri) to the API origin of "
+            "this deployment's tier.",
         )
     return raw
 
@@ -401,7 +403,8 @@ def get_oauth_urls(
             f"oauthUrls.issuer '{issuer_override}' differs from the canonical issuer of "
             f"the '{environment}' environment, '{base_urls['issuer']}' — the iss the "
             "Nevermined consent page returns on every authorization response. An RFC 9207 "
-            "client compares the two and will reject every authorization code. Remove "
+            "client compares the two and will reject every authorization code, and MCP "
+            "clients discover at it (authorization_servers). Remove "
             f"oauthUrls.issuer, or set it to '{base_urls['issuer']}'.",
         )
     if clean:
@@ -465,8 +468,10 @@ def _iss_parameter_support(
       ``iss`` unconditionally) lands in. Omitting swaps the MUST-reject for the
       SHOULD-discard; the operator docs say so.
     - It reaches only a client that discovers DIRECTLY against this server. One that
-      follows the protected-resource document's ``authorization_servers`` reads the
-      Nevermined API's own metadata, which advertises the flag unconditionally — so a
+      follows the protected-resource document's ``authorization_servers`` to a
+      Nevermined API reads that API's own metadata, which advertises the flag
+      unconditionally (true since payments#465; under an ``oauthUrls.issuer`` override
+      or a ``custom`` proxy origin it reaches that host instead) — so a
       ``custom`` deployment on a Nevermined backend with an older frontend is not
       shielded on that route, whatever this document says.
     """
@@ -492,9 +497,12 @@ def _resolve_authorization_server(config: OAuthConfig) -> str:
     It is NOT ``config["baseUrl"]`` — that is this MCP server, the protected
     *resource*. Earlier releases advertised it, which sent RFC 9728 clients to the
     SDK-hosted document and its ``<mcp>/register`` DCR endpoint; clients now discover
-    against the Nevermined API, whose own document offers no DCR (clients present a
-    registered or CIMD ``client_id``). The SDK-hosted documents and ``/register`` are
-    still served for clients that discover against this server directly.
+    against the AS named by ``issuer`` — by default the Nevermined API, whose own
+    document offers no DCR (clients present a registered or CIMD ``client_id``). So a
+    ``custom`` deployment behind a proxy needs ``oauthUrls.issuer`` for discovery too,
+    not only for the RFC 9207 ``iss`` compare. The SDK-hosted documents and
+    ``/register`` are still served for clients that discover against this server
+    directly.
     """
     return get_oauth_urls(config["environment"], config.get("oauthUrls"))["issuer"]
 
@@ -558,7 +566,7 @@ def build_mcp_protected_resource_metadata(
     return {
         "resource": f"{config['baseUrl']}/mcp",
         # See _resolve_authorization_server: the AS is the issuer this server's own AS
-        # document publishes (the backend API origin), never this MCP server (baseUrl).
+        # document publishes (by default the backend API origin), not baseUrl.
         "authorization_servers": [_resolve_authorization_server(config)],
         "scopes_supported": scopes,
         "scopes_required": scopes,

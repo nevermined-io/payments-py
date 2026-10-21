@@ -176,10 +176,23 @@ class TestMcpOAuthDiscoveryEndpoints:
             assert data["resource"] == base_url
             # payments#465: the authorization server is the API origin of the tier
             # (the AS document's ``issuer``), never this MCP server. Exact, on the
-            # sandbox mock.
-            assert data["authorization_servers"] == [
-                "https://api.sandbox.nevermined.app"
-            ]
+            # sandbox mock, on both routes, and equal to the issuer this same server
+            # publishes (RFC 9728 §2).
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                mcp_data = (
+                    await client.get(
+                        f"{base_url}/.well-known/oauth-protected-resource/mcp"
+                    )
+                ).json()
+                issuer = (
+                    await client.get(
+                        f"{base_url}/.well-known/oauth-authorization-server"
+                    )
+                ).json()["issuer"]
+            assert issuer == "https://api.sandbox.nevermined.app"
+            assert data["authorization_servers"] == [issuer]
+            assert mcp_data["authorization_servers"] == [issuer]
+            assert mcp_data["resource"] == f"{base_url}/mcp"
             assert base_url not in data["authorization_servers"]
 
             # MCP-specific scopes

@@ -8,6 +8,9 @@ following RFC 8414, RFC 9728, and OpenID Connect Discovery standards.
 import pytest
 from urllib.parse import parse_qsl, urlsplit
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 from payments_py.environments import EnvironmentInfo, Environments
 from payments_py.mcp.http.oauth_metadata import (
     build_authorization_server_metadata,
@@ -21,6 +24,7 @@ from payments_py.mcp.http.oauth_metadata import (
     _origin_of,
     resolve_oauth_tier,
 )
+from payments_py.mcp.http.oauth_router import create_oauth_router
 
 
 @pytest.fixture
@@ -160,6 +164,34 @@ class TestAuthorizationServersIsTheBackendAs:
             assert frontend not in metadata["authorization_servers"]
             assert "http://localhost:3000" not in metadata["authorization_servers"]
 
+    @pytest.mark.parametrize(
+        "environment, token_uri, backend",
+        [
+            # A same-tier proxy in front of the token endpoint is not the AS.
+            (
+                "live",
+                "https://gw.corp.com/oauth/token",
+                "https://api.live.nevermined.app",
+            ),
+            # A cross-tier override does not move a named environment's AS either.
+            (
+                "sandbox",
+                "https://api.live.nevermined.app/oauth/token",
+                "https://api.sandbox.nevermined.app",
+            ),
+        ],
+    )
+    def test_a_token_uri_proxy_never_becomes_the_as(
+        self, environment, token_uri, backend
+    ):
+        config = {
+            "baseUrl": "http://localhost:3000",
+            "environment": environment,
+            "oauthUrls": {"tokenUri": token_uri},
+        }
+        for metadata in self._both(config):
+            assert metadata["authorization_servers"] == [backend]
+
     @pytest.mark.parametrize("token_uri", [None, "not a url"])
     def test_a_missing_or_malformed_token_uri_falls_back_to_the_env_default(
         self, token_uri
@@ -210,6 +242,30 @@ class TestAuthorizationServersIsTheBackendAs:
         config = {"baseUrl": "http://localhost:3000", "environment": "custom"}
         for metadata in self._both(config):
             assert metadata["authorization_servers"] == ["http://localhost:3001"]
+
+    def test_the_router_serves_it_on_both_routes(self):
+        # Over HTTP, through ``create_oauth_router`` — the wiring the builder tests cannot
+        # see, and the only pre-merge coverage of the served value (tests/e2e is ``slow``).
+        app = FastAPI()
+        app.include_router(
+            create_oauth_router(
+                {
+                    "baseUrl": "http://localhost:3000",
+                    "agentId": "a",
+                    "environment": "live",
+                }
+            )
+        )
+        client = TestClient(app)
+        issuer = client.get("/.well-known/oauth-authorization-server").json()["issuer"]
+        assert issuer == "https://api.live.nevermined.app"
+        for path, resource in [
+            ("/.well-known/oauth-protected-resource", "http://localhost:3000"),
+            ("/.well-known/oauth-protected-resource/mcp", "http://localhost:3000/mcp"),
+        ]:
+            data = client.get(path).json()
+            assert data["resource"] == resource
+            assert data["authorization_servers"] == [issuer]
 
     def test_the_sdk_hosted_document_still_offers_dcr(self, base_config):
         # Scope fence: only discovery moved. The SDK-hosted AS document and its

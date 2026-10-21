@@ -42,7 +42,9 @@ class OAuthUrls(TypedDict):
             ``https://api.sandbox.nevermined.app``), one per tier: the value the
             API's own discovery document and the web app's RFC 9207 ``iss`` use.
             Earlier releases published the web app's origin here (tier-blind).
-            An explicit override is passed through unchanged.
+            An explicit override is passed through unchanged — and, like the
+            derived value, is also published as the protected-resource documents'
+            ``authorization_servers``, so it is where MCP clients discover.
         authorizationUri: OAuth authorization endpoint URL. Overriding it also
             withdraws the RFC 9207 ``authorization_response_iss_parameter_supported``
             advertisement from the discovery documents — the SDK cannot vouch that an AS
