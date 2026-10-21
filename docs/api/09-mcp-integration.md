@@ -316,7 +316,7 @@ asyncio.run(main())
 | `baseUrl` | `str` | No | Base URL (default: localhost) |
 | `version` | `str` | No | Server version |
 | `description` | `str` | No | Server description |
-| `oauthUrls` | `dict` | No | Overrides for the OAuth URLs the discovery documents publish (`authorizationUri`, `tokenUri`, `jwksUri`, `userinfoUri`, `issuer`). Set `authorizationUri` with `?network=sandbox\|live` when your `custom` backend host cannot be classified. An `issuer` override is also published as the protected-resource documents' `authorization_servers`, so it is where MCP clients discover |
+| `oauthUrls` | `dict` | No | Overrides for the OAuth URLs the discovery documents publish (`authorizationUri`, `tokenUri`, `jwksUri`, `userinfoUri`, `issuer`). Set `authorizationUri` with `?network=sandbox\|live` when your `custom` backend host cannot be classified. An `issuer` override is also published as the protected-resource documents' `authorization_servers`, so it is where MCP clients discover. The other overrides appear only in the SDK-hosted documents: a client that follows `authorization_servers` uses the issuer's own endpoints, so on a named environment it exchanges codes at the Nevermined API's token endpoint, not at a `tokenUri` proxy |
 
 ## Handler Options
 
