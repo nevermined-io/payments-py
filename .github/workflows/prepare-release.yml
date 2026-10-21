@@ -45,7 +45,7 @@ jobs:
       - name: Setup Node.js (for changelog generation)
         uses: actions/setup-node@v7
         with:
-          node-version: 18
+          node-version: '24'
 
       - name: Install semver for version comparison
         run: npm install -g semver
