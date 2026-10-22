@@ -16,6 +16,7 @@ from payments_py.x402.types import (
     CreateDelegationPayload,
     CreateDelegationResponse,
     DelegationProvider,
+    UpdatePaymentMethodDto,
 )
 
 
@@ -100,7 +101,9 @@ class DelegationAPI(BasePaymentsAPI):
         return cls(options)
 
     def list_payment_methods(
-        self, provider: Optional[DelegationProvider] = None
+        self,
+        provider: Optional[DelegationProvider] = None,
+        accessible: bool = False,
     ) -> List[PaymentMethodSummary]:
         """
         List the user's enrolled payment methods for card delegation.
@@ -110,6 +113,9 @@ class DelegationAPI(BasePaymentsAPI):
                 ('stripe' | 'braintree' | 'visa' | 'erc4337'). Forwarded as a
                 ``?provider=`` query string. Omit to return methods from every
                 provider (default).
+            accessible: When True, return only methods accessible to the
+                requesting API key (``?accessible=true``). Defaults to False
+                (all of the user's methods).
 
         Returns:
             A list of payment method summaries
@@ -119,7 +125,12 @@ class DelegationAPI(BasePaymentsAPI):
         """
         url = f"{self.environment.backend}/api/v1/payment-methods"
         options = self.get_backend_http_options("GET")
-        params = {"provider": provider} if provider else None
+        params: Dict[str, Any] = {}
+        if provider:
+            params["provider"] = provider
+        if accessible:
+            params["accessible"] = "true"
+        params = params or None
 
         try:
             response = requests.get(url, params=params, **options)
@@ -180,9 +191,14 @@ class DelegationAPI(BasePaymentsAPI):
                 f"Network error while creating delegation: {str(err)}"
             ) from err
 
-    def list_delegations(self) -> List[DelegationSummary]:
+    def list_delegations(self, accessible: bool = False) -> List[DelegationSummary]:
         """
         List the user's existing card delegations.
+
+        Args:
+            accessible: When True, return only usable delegations (active,
+                non-expired, with budget) accessible to the requesting API key
+                (``?accessible=true``). Defaults to False (all delegations).
 
         Returns:
             A list of delegation summaries
@@ -192,9 +208,10 @@ class DelegationAPI(BasePaymentsAPI):
         """
         url = f"{self.environment.backend}/api/v1/delegation"
         options = self.get_backend_http_options("GET")
+        params = {"accessible": "true"} if accessible else None
 
         try:
-            response = requests.get(url, **options)
+            response = requests.get(url, params=params, **options)
             response.raise_for_status()
             data = response.json()
             return [DelegationSummary.model_validate(d) for d in data]
@@ -205,4 +222,42 @@ class DelegationAPI(BasePaymentsAPI):
         except Exception as err:
             raise PaymentsError.internal(
                 f"Network error while listing delegations: {str(err)}"
+            ) from err
+
+    def update_payment_method(
+        self, payment_method_id: str, dto: UpdatePaymentMethodDto
+    ) -> PaymentMethodSummary:
+        """
+        Update a payment method's alias and/or allowed API keys.
+
+        Only the fields set on ``dto`` are sent: pass ``alias`` to rename,
+        ``allowed_api_key_ids`` (a list) to replace the allow-list, or an
+        explicit ``allowed_api_key_ids=None`` to clear it. Mirrors the TS
+        ``DelegationAPI.updatePaymentMethod``.
+
+        Args:
+            payment_method_id: The payment method id to update.
+            dto: The fields to change.
+
+        Returns:
+            The updated payment method summary.
+
+        Raises:
+            PaymentsError: If the request fails
+        """
+        url = f"{self.environment.backend}/api/v1/payment-methods/{payment_method_id}"
+        body = dto.model_dump(by_alias=True, exclude_unset=True)
+        options = self.get_backend_http_options("PATCH", body)
+
+        try:
+            response = requests.patch(url, **options)
+            response.raise_for_status()
+            return PaymentMethodSummary.model_validate(response.json())
+        except requests.HTTPError as err:
+            raise PaymentsError.from_response(
+                response, "Failed to update payment method"
+            ) from err
+        except Exception as err:
+            raise PaymentsError.internal(
+                f"Failed to update payment method: {type(err).__name__}: {err}"
             ) from err

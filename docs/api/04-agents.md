@@ -200,6 +200,8 @@ for agent in result["agents"]:
 org_agents = payments.agents.get_user_agents(org_id="org-acme")
 ```
 
+For code ported from the TypeScript SDK, `get_agents(page, offset, sort_by, sort_order, org_id)` is a positional-argument alias of `get_user_agents` matching `agents.getAgents(...)` (same defaults: `page=1, offset=100, sort_by="created", sort_order="desc"`).
+
 ### Get a Single Agent
 
 ```python

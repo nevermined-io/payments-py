@@ -527,6 +527,29 @@ class CreateDelegationResponse(BaseModel):
     )
 
 
+class UpdatePaymentMethodDto(BaseModel):
+    """Fields to update on a payment method (alias and/or allowed API keys).
+
+    Mirrors the TS ``UpdatePaymentMethodDto``. Only the fields you set are sent
+    (``exclude_unset``), so ``UpdatePaymentMethodDto(alias="work card")`` leaves
+    ``allowed_api_key_ids`` untouched, while an explicit
+    ``UpdatePaymentMethodDto(allowed_api_key_ids=None)`` clears it (sends ``null``).
+
+    Attributes:
+        alias: Human-readable label for the payment method.
+        allowed_api_key_ids: API-key ids allowed to use this method; ``None``
+            explicitly clears the allow-list, an empty list allows none.
+    """
+
+    alias: Optional[str] = None
+    allowed_api_key_ids: Optional[List[str]] = Field(None, alias="allowedApiKeyIds")
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
 class _TokenOptionsBase(BaseModel):
     """The fields both mints take. Private: callers use one of the two public
     subclasses, which is the whole point of the split below.
