@@ -69,6 +69,8 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         push_sender: Any | None = None,
         request_context_builder: Any | None = None,
         async_execution: bool = False,
+        default_batch: bool = False,
+        default_margin_percent: float | None = None,
     ) -> None:
         super().__init__(
             agent_executor=agent_executor,
@@ -81,11 +83,20 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         self._agent_card = agent_card
         self._payments = payments_service
         self._async_execution = async_execution
+        # Server-side redemption defaults (TS parity). The agent card's
+        # redemptionConfig overrides these per request; see get_redemption_config.
+        self._default_batch = default_batch
+        self._default_margin_percent = default_margin_percent
         self._http_ctx_by_task: Dict[str, HttpRequestContext] = {}
         self._http_ctx_by_message: Dict[str, HttpRequestContext] = {}
         # Settlement receipt captured per task during finalization, so the
         # in-band x402 v2 path can emit it into the resulting task metadata.
         self._settle_receipt_by_task: Dict[str, SettleResponse] = {}
+        # Task ids whose settlement was deferred (batch redemption), so the
+        # in-band path stamps payment-verified + the deferred marker instead of
+        # payment-completed. Only populated for in-band requests (bounded like
+        # _settle_receipt_by_task; consumed by _apply_inband_settlement).
+        self._settlement_deferred_by_task: set[str] = set()
         self.latest_agent_request: Any = None
         self.latest_agent_request_id: str | None = None
 
@@ -154,6 +165,56 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                     params = vars(params) if hasattr(params, "__dict__") else {}
                 return params
         return {}
+
+    def get_redemption_config(self) -> Dict[str, Any]:
+        """Resolve the redemption config for a request (TS getRedemptionConfig).
+
+        The agent card's ``redemptionConfig`` (on the urn:nevermined:payment
+        extension) wins per field; the handler ``default_batch`` /
+        ``default_margin_percent`` fill the gaps. This is server-side config —
+        clients cannot influence it.
+
+        ``use_margin`` / ``margin_percent`` are surfaced for parity but the
+        handler does NOT apply a margin to settlement (matches TS, which
+        computes the config but never passes a margin to the facilitator).
+
+        Returns a dict ``{use_batch, use_margin, margin_percent}``.
+        """
+        params = self._get_payment_extension_params()
+        agent_config = params.get("redemptionConfig") or params.get("redemption_config")
+        if not isinstance(agent_config, dict):
+            agent_config = (
+                vars(agent_config) if hasattr(agent_config, "__dict__") else {}
+            )
+
+        def pick(camel: str, snake: str, default: Any) -> Any:
+            # `is None` fallbacks, not `or`: an explicit False in the card must
+            # override a True handler default (which `or` would discard).
+            v = agent_config.get(camel)
+            if v is None:
+                v = agent_config.get(snake)
+            return default if v is None else v
+
+        return {
+            "use_batch": bool(pick("useBatch", "use_batch", self._default_batch)),
+            "use_margin": bool(pick("useMargin", "use_margin", False)),
+            "margin_percent": pick(
+                "marginPercent", "margin_percent", self._default_margin_percent
+            ),
+        }
+
+    def get_handler_options(self) -> Dict[str, Any]:
+        """Return the handler options (TS getHandlerOptions).
+
+        ``{async_execution, default_batch, default_margin_percent}`` — the
+        server-side defaults, for middleware that needs the default redemption
+        behavior.
+        """
+        return {
+            "async_execution": self._async_execution,
+            "default_batch": self._default_batch,
+            "default_margin_percent": self._default_margin_percent,
+        }
 
     def migrate_http_ctx_from_message_to_task(
         self, message_id: str, task_id: str
@@ -744,6 +805,16 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         if not plan_id:
             return  # Cannot settle without plan_id
 
+        # Batch redemption defers on-chain settlement out-of-band: skip the
+        # inline settle (this handler never confirms it). For in-band requests,
+        # remember the task so _apply_inband_settlement stamps payment-verified
+        # + the deferred marker rather than payment-completed.
+        if self.get_redemption_config()["use_batch"]:
+            task_id = getattr(event, "task_id", None)
+            if task_id is not None and http_ctx.inband:
+                self._settlement_deferred_by_task.add(task_id)
+            return
+
         agent_request_id = self._resolve_agent_request_id(http_ctx, event.metadata)
 
         # Get agentId from agent card
@@ -888,9 +959,14 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
         its agent content is dropped so a paid result is never delivered without
         settlement landing (spec requirement).
         """
+        deferred = task_id in self._settlement_deferred_by_task
+        self._settlement_deferred_by_task.discard(task_id)
         receipt = self._settle_receipt_by_task.pop(task_id, None)
         if receipt is None:
-            # Free / no-credit call: nothing settled, nothing to stamp.
+            if deferred:
+                # Batch redemption: verified, settlement deferred out-of-band.
+                _X402_UTILS.record_payment_deferred(task)
+            # else: free / no-credit call: nothing settled, nothing to stamp.
             return
         if receipt.success:
             _X402_UTILS.record_payment_success(task, receipt)
@@ -946,7 +1022,9 @@ class PaymentsRequestHandler(DefaultRequestHandler):  # noqa: D101
                 credits_used = event.metadata["creditsUsed"]
                 plan_id = http_ctx.validation.get("plan_id")
 
-                if plan_id:
+                # Batch redemption defers settlement out-of-band: skip the
+                # inline settle (TS parity).
+                if plan_id and not self.get_redemption_config()["use_batch"]:
                     agent_request_id = self._resolve_agent_request_id(
                         http_ctx, event.metadata
                     )
