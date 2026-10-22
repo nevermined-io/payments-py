@@ -2250,6 +2250,29 @@ never asked for one.</p>
 <a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="k">else</span><span class="p">:</span>
 <a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Settlement failed: </span><span class="si">{</span><span class="n">settlement</span><span class="o">.</span><span class="n">error_reason</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
+<p><code>settle_permissions</code> also accepts two optional pricing parameters, omitted from the request unless set:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>batch</code></td>
+<td><code>bool</code></td>
+<td>Whether this is a batch request (multiple LLM calls settled under one <code>agent_request_id</code>)</td>
+</tr>
+<tr>
+<td><code>margin_percent</code></td>
+<td><code>int</code></td>
+<td>Margin percentage (0–10) for credit calculation. Mutually exclusive with <code>max_amount</code> when <code>agent_request_id</code> is provided</td>
+</tr>
+</tbody>
+</table>
+<p>A settle the backend accepts but cannot complete comes back as <code>success=False</code> with an <code>error_reason</code> (rather than raising); the SDK logs a warning in that case — do not treat the request as paid without checking <code>settlement.success</code>.</p>
 <h3 id="settlement-response">Settlement Response<a class="headerlink" href="#settlement-response" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
