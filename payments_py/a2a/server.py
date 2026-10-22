@@ -50,6 +50,8 @@ class PaymentsA2AServer:  # noqa: D101
         hooks: dict[str, Any] | None = None,
         custom_request_handler: Any | None = None,
         async_execution: bool = False,
+        default_batch: bool = False,
+        default_margin_percent: float | None = None,
         app: FastAPI | None = None,
         **kwargs: Any,
     ) -> PaymentsA2AServerResult:
@@ -101,6 +103,8 @@ class PaymentsA2AServer:  # noqa: D101
                 agent_executor=executor,
                 payments_service=payments_service,
                 async_execution=async_execution,
+                default_batch=default_batch,
+                default_margin_percent=default_margin_percent,
             )
 
         # Mount JSON-RPC routes
