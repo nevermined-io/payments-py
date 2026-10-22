@@ -39,12 +39,18 @@ uvicorn = {version = "^0.54.0", optional = true}
 strands-agents = {version = ">=1.59.0", optional = true}
 langchain-core = {version = ">=1.6.9", optional = true}
 langsmith = {version = ">=0.14.7,<1.0.0", optional = true}
+# Ceiling is <0.45: 0.45+ eagerly imports an experiment/evaluator client that
+# needs `httpx` without declaring it (packaging bug), so `from traceloop.sdk
+# import Traceloop` breaks on install. 0.40–0.44 import cleanly and carry the
+# full API used here (`Traceloop.init(exporter=...)` + `set_association_properties`).
+traceloop-sdk = {version = ">=0.40.0,<0.45.0", optional = true}
 
 [tool.poetry.extras]
 fastapi = ["fastapi", "starlette", "uvicorn"]
 strands = ["strands-agents"]
 langchain = ["langchain-core"]
 langsmith = ["langsmith", "fastapi", "starlette"]
+traceloop = ["traceloop-sdk"]
 
 [tool.poetry.group.test.dependencies]
 pytest = "^9.0.3"
