@@ -849,6 +849,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#redemption-configuration-batch-settlement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Redemption Configuration (batch settlement)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#request-validation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1448,6 +1459,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#redemption-configuration-batch-settlement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Redemption Configuration (batch settlement)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#request-validation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1814,8 +1836,57 @@
 <td>No</td>
 <td>Enable async task execution</td>
 </tr>
+<tr>
+<td><code>default_batch</code></td>
+<td><code>bool</code></td>
+<td>No</td>
+<td>Default batch redemption — defer settlement out-of-band (default: <code>False</code>)</td>
+</tr>
+<tr>
+<td><code>default_margin_percent</code></td>
+<td><code>float</code></td>
+<td>No</td>
+<td>Default margin percentage, surfaced on the redemption config (see below)</td>
+</tr>
 </tbody>
 </table>
+<h2 id="redemption-configuration-batch-settlement">Redemption Configuration (batch settlement)<a class="headerlink" href="#redemption-configuration-batch-settlement" title="Permanent link">&para;</a></h2>
+<p>By default the server settles each paid request inline — it calls the
+facilitator the moment the agent reports <code>creditsUsed</code> on its final event. With
+<strong>batch redemption</strong> the server instead <em>defers</em> on-chain settlement: it skips
+the inline settle, and an out-of-band process redeems the credits later.</p>
+<p>Redemption is <strong>server-controlled</strong> — clients cannot influence it. It is
+resolved per request from two sources, the agent card winning per field:</p>
+<ol>
+<li>The <code>redemptionConfig</code> object on the agent card's <code>urn:nevermined:payment</code>
+   extension params.</li>
+<li>The handler defaults <code>default_batch</code> / <code>default_margin_percent</code>.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">"uri"</span><span class="p">:</span><span class="w"> </span><span class="s2">"urn:nevermined:payment"</span><span class="p">,</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">"params"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="nt">"agentId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;agentId&gt;"</span><span class="p">,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="nt">"planId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;planId&gt;"</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nt">"redemptionConfig"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"useBatch"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Or set a server-wide default (the card still overrides it per request):</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">result</span> <span class="o">=</span> <span class="n">PaymentsA2AServer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">agent_card</span><span class="o">=</span><span class="n">agent_card</span><span class="p">,</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">executor</span><span class="o">=</span><span class="n">MyExecutor</span><span class="p">(),</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">payments_service</span><span class="o">=</span><span class="n">payments</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">default_batch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="p">)</span>
+</code></pre></div>
+<p>When a request is batched, an in-band x402 v2 task is marked <code>payment-verified</code>
+plus the Nevermined <code>x402.payment.settlement: "deferred"</code> marker (not
+<code>payment-completed</code>), so the client knows it will be charged out-of-band.</p>
+<blockquote>
+<p><strong>Note:</strong> <code>useMargin</code> / <code>marginPercent</code> are accepted and surfaced on the
+resolved config for parity, but the handler does <strong>not</strong> apply a margin to
+settlement.</p>
+</blockquote>
 <h2 id="request-validation">Request Validation<a class="headerlink" href="#request-validation" title="Permanent link">&para;</a></h2>
 <p>The A2A server automatically validates payments on every POST request:</p>
 <ol>
@@ -1825,10 +1896,10 @@
 <li>Rejects requests with 402 if validation fails, including a base64-encoded <code>payment-required</code> header</li>
 </ol>
 <p>When multiple plans are configured, the 402 response includes all plans in <code>accepts[]</code>, allowing the client to choose which plan to purchase.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>HTTP/1.1 402 Payment Required
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>payment-required: eyJ4NDAy... (base64-encoded X402PaymentRequired)
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>{"error": {"code": -32001, "message": "Missing bearer token."}}
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>HTTP/1.1 402 Payment Required
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>payment-required: eyJ4NDAy... (base64-encoded X402PaymentRequired)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>{"error": {"code": -32001, "message": "Missing bearer token."}}
 </code></pre></div>
 <h2 id="in-band-x402-v2-payments-standards-flow">In-Band x402 v2 Payments (Standards Flow)<a class="headerlink" href="#in-band-x402-v2-payments-standards-flow" title="Permanent link">&para;</a></h2>
 <p>Payment is signalled <strong>in band</strong> following the <a href="https://github.com/coinbase/x402/blob/main/specs/transports-v2/a2a.md">Coinbase x402 v2 A2A transport spec</a> and the official <a href="https://github.com/google-agentic-commerce/a2a-x402">a2a-x402 extension</a>. The <code>X402A2AUtils</code> helpers (see <a href="https://github.com/nevermined-io/payments-py/blob/main/payments_py/x402/README.md">x402 README</a>) now power this live server flow — <code>PaymentsA2AServer</code> stamps and reads the metadata automatically, so the executor is unchanged. The handshake rides on A2A task/message metadata, correlated by <code>taskId</code> — no HTTP 402 is exchanged.</p>
@@ -1836,18 +1907,18 @@
 <ol>
 <li><strong>Payment required</strong> — a payment-gated <code>message/send</code> arrives with no payment. The server returns a Task with <code>status.state = "input-required"</code> and <code>status.message.metadata</code>:</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">"x402.payment.status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"payment-required"</span><span class="p">,</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">"x402.payment.required"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"X402PaymentRequired (accepts[] of plans)"</span><span class="w"> </span><span class="p">}</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p">{</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">"x402.payment.status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"payment-required"</span><span class="p">,</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">"x402.payment.required"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"X402PaymentRequired (accepts[] of plans)"</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="p">}</span>
 </code></pre></div>
 <ol>
 <li><strong>Payment submitted</strong> — the client replies with a follow-up <code>message/send</code> whose <code>message.metadata</code> carries the payload, correlated via <code>message.taskId</code>:</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">"x402.payment.status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"payment-submitted"</span><span class="p">,</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">"x402.payment.payload"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"PaymentPayload"</span><span class="w"> </span><span class="p">}</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="p">{</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">"x402.payment.status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"payment-submitted"</span><span class="p">,</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nt">"x402.payment.payload"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"PaymentPayload"</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="p">}</span>
 </code></pre></div>
 <ol>
 <li><strong>Completed / failed</strong> — on success the final Task carries <code>x402.payment.status: "payment-completed"</code> plus <code>x402.payment.receipts</code>. On failure it is <code>failed</code> / <code>payment-failed</code> with the error under <code>x402.payment.error</code>, and paid content is suppressed.</li>
@@ -1859,77 +1930,77 @@
 <h2 id="client-usage">Client Usage<a class="headerlink" href="#client-usage" title="Permanent link">&para;</a></h2>
 <h3 id="discovering-plans-from-the-agent-card">Discovering Plans from the Agent Card<a class="headerlink" href="#discovering-plans-from-the-agent-card" title="Permanent link">&para;</a></h3>
 <p>Consumers can fetch the agent card to discover available plans:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="c1"># Canonical path (A2A 0.3+); /.well-known/agent.json still works as a legacy alias</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"http://agent-url/.well-known/agent-card.json"</span><span class="p">)</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">card</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">extensions</span> <span class="o">=</span> <span class="n">card</span><span class="p">[</span><span class="s2">"capabilities"</span><span class="p">][</span><span class="s2">"extensions"</span><span class="p">]</span>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="n">payment_ext</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">extensions</span> <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="s2">"uri"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"urn:nevermined:payment"</span><span class="p">)</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="n">plan_ids</span> <span class="o">=</span> <span class="n">payment_ext</span><span class="p">[</span><span class="s2">"params"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"planIds"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[</span><span class="n">payment_ext</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"planId"</span><span class="p">]]</span>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="n">agent_id</span> <span class="o">=</span> <span class="n">payment_ext</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"agentId"</span><span class="p">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="c1"># Canonical path (A2A 0.3+); /.well-known/agent.json still works as a legacy alias</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"http://agent-url/.well-known/agent-card.json"</span><span class="p">)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">card</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="n">extensions</span> <span class="o">=</span> <span class="n">card</span><span class="p">[</span><span class="s2">"capabilities"</span><span class="p">][</span><span class="s2">"extensions"</span><span class="p">]</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="n">payment_ext</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">extensions</span> <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="s2">"uri"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"urn:nevermined:payment"</span><span class="p">)</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">plan_ids</span> <span class="o">=</span> <span class="n">payment_ext</span><span class="p">[</span><span class="s2">"params"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"planIds"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[</span><span class="n">payment_ext</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"planId"</span><span class="p">]]</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="n">agent_id</span> <span class="o">=</span> <span class="n">payment_ext</span><span class="p">[</span><span class="s2">"params"</span><span class="p">][</span><span class="s2">"agentId"</span><span class="p">]</span>
 </code></pre></div>
 <h3 id="ordering-a-plan-and-sending-messages">Ordering a Plan and Sending Messages<a class="headerlink" href="#ordering-a-plan-and-sending-messages" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py</span><span class="w"> </span><span class="kn">import</span> <span class="n">Payments</span><span class="p">,</span> <span class="n">PaymentOptions</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">"nvm:subscriber-key"</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="s2">"sandbox"</span><span class="p">)</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="p">)</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># Order (purchase) the plan</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">order_plan</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="c1"># Get x402 access token</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="n">token_resp</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">x402</span><span class="o">.</span><span class="n">get_x402_access_token</span><span class="p">(</span>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="p">)</span>
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="n">access_token</span> <span class="o">=</span> <span class="n">token_resp</span><span class="p">[</span><span class="s2">"accessToken"</span><span class="p">]</span>
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="c1"># Send A2A JSON-RPC message</span>
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>    <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>        <span class="s2">"http://agent-url/"</span><span class="p">,</span>
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>        <span class="n">json</span><span class="o">=</span><span class="p">{</span>
-<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>            <span class="s2">"jsonrpc"</span><span class="p">:</span> <span class="s2">"2.0"</span><span class="p">,</span>
-<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>            <span class="s2">"id"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>            <span class="s2">"method"</span><span class="p">:</span> <span class="s2">"message/send"</span><span class="p">,</span>
-<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>            <span class="s2">"params"</span><span class="p">:</span> <span class="p">{</span>
-<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>                <span class="s2">"message"</span><span class="p">:</span> <span class="p">{</span>
-<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>                    <span class="s2">"messageId"</span><span class="p">:</span> <span class="s2">"msg-1"</span><span class="p">,</span>
-<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>                    <span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span>
-<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>                    <span class="s2">"parts"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"text"</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">:</span> <span class="s2">"Review this code"</span><span class="p">}],</span>
-<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>                <span class="p">}</span>
-<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>            <span class="p">},</span>
-<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>        <span class="p">},</span>
-<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">"Authorization"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Bearer </span><span class="si">{</span><span class="n">access_token</span><span class="si">}</span><span class="s2">"</span><span class="p">},</span>
-<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>    <span class="p">)</span>
-<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py</span><span class="w"> </span><span class="kn">import</span> <span class="n">Payments</span><span class="p">,</span> <span class="n">PaymentOptions</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">payments</span> <span class="o">=</span> <span class="n">Payments</span><span class="o">.</span><span class="n">get_instance</span><span class="p">(</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">PaymentOptions</span><span class="p">(</span><span class="n">nvm_api_key</span><span class="o">=</span><span class="s2">"nvm:subscriber-key"</span><span class="p">,</span> <span class="n">environment</span><span class="o">=</span><span class="s2">"sandbox"</span><span class="p">)</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="p">)</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># Order (purchase) the plan</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">order_plan</span><span class="p">(</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="c1"># Get x402 access token</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="n">token_resp</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">x402</span><span class="o">.</span><span class="n">get_x402_access_token</span><span class="p">(</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="p">)</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="n">access_token</span> <span class="o">=</span> <span class="n">token_resp</span><span class="p">[</span><span class="s2">"accessToken"</span><span class="p">]</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="c1"># Send A2A JSON-RPC message</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>    <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a>        <span class="s2">"http://agent-url/"</span><span class="p">,</span>
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a>        <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a>            <span class="s2">"jsonrpc"</span><span class="p">:</span> <span class="s2">"2.0"</span><span class="p">,</span>
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a>            <span class="s2">"id"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-11-24" name="__codelineno-11-24" href="#__codelineno-11-24"></a>            <span class="s2">"method"</span><span class="p">:</span> <span class="s2">"message/send"</span><span class="p">,</span>
+<a id="__codelineno-11-25" name="__codelineno-11-25" href="#__codelineno-11-25"></a>            <span class="s2">"params"</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-11-26" name="__codelineno-11-26" href="#__codelineno-11-26"></a>                <span class="s2">"message"</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-11-27" name="__codelineno-11-27" href="#__codelineno-11-27"></a>                    <span class="s2">"messageId"</span><span class="p">:</span> <span class="s2">"msg-1"</span><span class="p">,</span>
+<a id="__codelineno-11-28" name="__codelineno-11-28" href="#__codelineno-11-28"></a>                    <span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span>
+<a id="__codelineno-11-29" name="__codelineno-11-29" href="#__codelineno-11-29"></a>                    <span class="s2">"parts"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"text"</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">:</span> <span class="s2">"Review this code"</span><span class="p">}],</span>
+<a id="__codelineno-11-30" name="__codelineno-11-30" href="#__codelineno-11-30"></a>                <span class="p">}</span>
+<a id="__codelineno-11-31" name="__codelineno-11-31" href="#__codelineno-11-31"></a>            <span class="p">},</span>
+<a id="__codelineno-11-32" name="__codelineno-11-32" href="#__codelineno-11-32"></a>        <span class="p">},</span>
+<a id="__codelineno-11-33" name="__codelineno-11-33" href="#__codelineno-11-33"></a>        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">"Authorization"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Bearer </span><span class="si">{</span><span class="n">access_token</span><span class="si">}</span><span class="s2">"</span><span class="p">},</span>
+<a id="__codelineno-11-34" name="__codelineno-11-34" href="#__codelineno-11-34"></a>    <span class="p">)</span>
+<a id="__codelineno-11-35" name="__codelineno-11-35" href="#__codelineno-11-35"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 </code></pre></div>
 <h3 id="using-paymentsclient-managed-tokens">Using <code>PaymentsClient</code> (managed tokens)<a class="headerlink" href="#using-paymentsclient-managed-tokens" title="Permanent link">&para;</a></h3>
 <p><code>payments.a2a["get_client"]</code> returns a <code>PaymentsClient</code> that mints and
 attaches the access token for you:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">"get_client"</span><span class="p">](</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">agent_base_url</span><span class="o">=</span><span class="s2">"http://agent-url/"</span><span class="p">,</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="p">)</span>
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">"get_client"</span><span class="p">](</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="n">agent_base_url</span><span class="o">=</span><span class="s2">"http://agent-url/"</span><span class="p">,</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="p">)</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
 </code></pre></div>
 <p>The client mints a <strong>v2</strong> token once and caches it for its lifetime — a v2
 token is a reusable bearer credential. Pass <code>token_version=3</code> to request the
 single-use, seller/resource-bound token instead:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">"get_client"</span><span class="p">](</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="n">agent_base_url</span><span class="o">=</span><span class="s2">"http://agent-url/"</span><span class="p">,</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">token_version</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">"get_client"</span><span class="p">](</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="n">agent_base_url</span><span class="o">=</span><span class="s2">"http://agent-url/"</span><span class="p">,</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    <span class="n">token_version</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="p">)</span>
 </code></pre></div>
 <p>On a v3 request the client also <strong>binds</strong> the token, to <code>agent_base_url</code> and
 <code>POST</code>. That default assumes the seller is this SDK's A2A server, which
@@ -1937,15 +2008,15 @@ advertises <code>str(request.url)</code>; the backend compares origin + path, so
 agree. A seller that advertises something else — this SDK's FastAPI middleware
 advertises a <em>relative</em> <code>request.url.path</code> — would never match and the settle
 would fail, so pass the binding explicitly instead:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">"get_client"</span><span class="p">](</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="n">agent_base_url</span><span class="o">=</span><span class="s2">"http://agent-url/"</span><span class="p">,</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">token_version</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="n">resource</span><span class="o">=</span><span class="s2">"/a2a/"</span><span class="p">,</span>   <span class="c1"># whatever the seller advertises in its 402</span>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>    <span class="n">http_verb</span><span class="o">=</span><span class="s2">"POST"</span><span class="p">,</span>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">a2a</span><span class="p">[</span><span class="s2">"get_client"</span><span class="p">](</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    <span class="n">agent_base_url</span><span class="o">=</span><span class="s2">"http://agent-url/"</span><span class="p">,</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="n">plan_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span><span class="n">delegation_id</span><span class="o">=</span><span class="n">delegation_id</span><span class="p">),</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="n">token_version</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="n">resource</span><span class="o">=</span><span class="s2">"/a2a/"</span><span class="p">,</span>   <span class="c1"># whatever the seller advertises in its 402</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    <span class="n">http_verb</span><span class="o">=</span><span class="s2">"POST"</span><span class="p">,</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="p">)</span>
 </code></pre></div>
 <p>A v3 token is consumed by the seller's first settle, so the client mints one
 <strong>per paid request</strong> and never caches it — replaying one fails with
@@ -1956,25 +2027,25 @@ therefore a no-op on the v3 path. See
 <a href="../11-x402/#access-token-versions-v2-and-v3">Access Token Versions</a>.</p>
 <h2 id="hooks">Hooks<a class="headerlink" href="#hooks" title="Permanent link">&para;</a></h2>
 <p>Add custom logic at request lifecycle points:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Incoming request: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Request completed: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_error</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Request failed: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="n">result</span> <span class="o">=</span> <span class="n">PaymentsA2AServer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span>
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>    <span class="n">agent_card</span><span class="o">=</span><span class="n">agent_card</span><span class="p">,</span>
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    <span class="n">executor</span><span class="o">=</span><span class="n">executor</span><span class="p">,</span>
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    <span class="n">payments_service</span><span class="o">=</span><span class="n">payments</span><span class="p">,</span>
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    <span class="n">hooks</span><span class="o">=</span><span class="p">{</span>
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>        <span class="s2">"beforeRequest"</span><span class="p">:</span> <span class="n">before_request</span><span class="p">,</span>
-<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>        <span class="s2">"afterRequest"</span><span class="p">:</span> <span class="n">after_request</span><span class="p">,</span>
-<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>        <span class="s2">"onError"</span><span class="p">:</span> <span class="n">on_error</span><span class="p">,</span>
-<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    <span class="p">},</span>
-<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">before_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Incoming request: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_request</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">response</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Request completed: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_error</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">error</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Request failed: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="n">result</span> <span class="o">=</span> <span class="n">PaymentsA2AServer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>    <span class="n">agent_card</span><span class="o">=</span><span class="n">agent_card</span><span class="p">,</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>    <span class="n">executor</span><span class="o">=</span><span class="n">executor</span><span class="p">,</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>    <span class="n">payments_service</span><span class="o">=</span><span class="n">payments</span><span class="p">,</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>    <span class="n">hooks</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>        <span class="s2">"beforeRequest"</span><span class="p">:</span> <span class="n">before_request</span><span class="p">,</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>        <span class="s2">"afterRequest"</span><span class="p">:</span> <span class="n">after_request</span><span class="p">,</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>        <span class="s2">"onError"</span><span class="p">:</span> <span class="n">on_error</span><span class="p">,</span>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>    <span class="p">},</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="p">)</span>
 </code></pre></div>
 <h2 id="error-handling">Error Handling<a class="headerlink" href="#error-handling" title="Permanent link">&para;</a></h2>
 <table>
