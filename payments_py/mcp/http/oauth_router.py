@@ -23,6 +23,7 @@ Examples:
     >>> app.include_router(router)
 """
 
+import re
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -328,68 +329,120 @@ def create_json_middleware():
     return None
 
 
-def create_require_auth_middleware() -> Callable:
-    """Create a middleware that requires a Bearer token in the Authorization header.
+# A Host/X-Forwarded-Host safe enough to splice into a WWW-Authenticate
+# quoted-string: an IPv6 literal in brackets, or the host-label/IP-literal
+# characters, with an optional ``:port``. Anything else (a space, a quote, a
+# comma from a forged multi-value header) is dropped rather than emitted — else
+# ``Host: evil"; foo="bar`` would inject a second auth-param pointing
+# resource_metadata at the attacker origin (mirrors the TS SAFE_HOST_RE).
+SAFE_HOST_RE = re.compile(r"^(\[[0-9a-fA-F:]+\]|[A-Za-z0-9._-]+)(:\d{1,5})?$")
 
-    Returns HTTP 401 if the token is missing or malformed.
 
-    This is a lightweight check that only verifies presence of a token.
-    Full validation (is the token valid? does the user have access?) is handled
-    by with_paywall() when a tool is actually called.
+def create_require_auth_middleware(
+    base_url: Optional[str] = None,
+    resource_metadata_path: str = "/.well-known/oauth-protected-resource",
+) -> Callable:
+    """Create a dependency that requires a Bearer token in the Authorization header.
+
+    Raises HTTP 401 if the token is missing or malformed. This is a lightweight
+    check that only verifies the presence of a token; full validation (is the
+    token valid? does the user have access?) is handled by with_paywall() when a
+    tool is actually called.
+
+    On 401 it also emits an RFC 9728 §5.1 ``WWW-Authenticate: Bearer
+    resource_metadata="…"`` challenge so a spec-compliant MCP client can discover
+    the protected-resource metadata (and from it the authorization server) from an
+    unauthenticated call. The PRM origin is the operator-pinned ``base_url`` when
+    given — never trusting client-supplied Host/X-Forwarded-* headers — else it is
+    derived from ``X-Forwarded-Proto``/``X-Forwarded-Host`` (behind a
+    TLS-terminating proxy) or the request's own host, dropped when that host is
+    forged/broken. Ported from the TS ``createRequireAuthMiddleware``.
+
+    Args:
+        base_url: Operator base URL to pin the challenge origin to (recommended).
+        resource_metadata_path: PRM path to advertise. Defaults to the root PRM;
+            the ``/mcp`` handlers pass the ``/mcp``-scoped document.
 
     Returns:
         FastAPI dependency function for token requirement.
 
     Examples:
         >>> from fastapi import Depends
-        >>> require_auth = create_require_auth_middleware()
+        >>> require_auth = create_require_auth_middleware(base_url="https://mcp.example.com")
         >>>
         >>> @app.post("/mcp")
         >>> async def mcp_handler(request: Request, _=Depends(require_auth)):
         ...     # Handler implementation
         ...     pass
     """
+    pinned_base = base_url.rstrip("/") if base_url else None
+
+    def prm_origin(request: Request) -> Optional[str]:
+        """The origin to advertise in the PRM pointer, or None if it can't be trusted."""
+        if pinned_base:
+            return pinned_base
+        # Nullish, not falsy: a present-but-empty X-Forwarded-Host must NOT fall
+        # back to the (internal) Host header behind a proxy — it yields no
+        # challenge, matching the TS `?? req.get('host')`.
+        fwd_host = request.headers.get("x-forwarded-host")
+        raw_host = fwd_host if fwd_host is not None else request.headers.get("host")
+        host = raw_host.strip() if isinstance(raw_host, str) else None
+        if not host or not SAFE_HOST_RE.match(host):
+            return None  # forged/broken → omit
+        fwd_proto = request.headers.get("x-forwarded-proto")
+        proto = (
+            (fwd_proto.split(",")[0].strip() if fwd_proto else None)
+            or getattr(request.url, "scheme", None)
+            or "https"
+        )
+        if proto not in ("http", "https"):
+            return None
+        return f"{proto}://{host}"
 
     async def require_auth_dependency(request: Request) -> None:
-        """FastAPI dependency that checks for Bearer token.
+        """FastAPI dependency that checks for a Bearer token.
 
         Args:
             request: FastAPI request object.
 
         Raises:
-            HTTPException: If authorization is missing or invalid.
+            HTTPException: If authorization is missing or invalid, carrying the
+                RFC 9728 ``WWW-Authenticate`` challenge when an origin is derivable.
         """
         from fastapi import HTTPException
+
+        def send_401(
+            error_description: str, error: Optional[str] = None
+        ) -> HTTPException:
+            # RFC 6750 §3.1: `error` is added only when a credential WAS presented
+            # but is malformed — a request with no credential at all omits it (§3).
+            headers = {}
+            origin = prm_origin(request)
+            if origin:
+                params = [f'resource_metadata="{origin}{resource_metadata_path}"']
+                if error:
+                    params.append(f'error="{error}"')
+                headers["WWW-Authenticate"] = f"Bearer {', '.join(params)}"
+            return HTTPException(
+                status_code=401,
+                detail={
+                    "error": "unauthorized",
+                    "error_description": error_description,
+                },
+                headers=headers or None,
+            )
 
         auth_header = request.headers.get("authorization")
 
         if not auth_header:
-            raise HTTPException(
-                status_code=401,
-                detail={
-                    "error": "unauthorized",
-                    "error_description": "Authorization header required",
-                },
-            )
+            raise send_401("Authorization header required")
 
         if not auth_header.startswith("Bearer "):
-            raise HTTPException(
-                status_code=401,
-                detail={
-                    "error": "unauthorized",
-                    "error_description": "Bearer token required",
-                },
-            )
+            raise send_401("Bearer token required", "invalid_request")
 
         token = auth_header[7:].strip()
         if not token:
-            raise HTTPException(
-                status_code=401,
-                detail={
-                    "error": "unauthorized",
-                    "error_description": "Bearer token cannot be empty",
-                },
-            )
+            raise send_401("Bearer token cannot be empty", "invalid_request")
 
         # Token present and well-formed, continue
         # Full validation happens in with_paywall() when tools are called
