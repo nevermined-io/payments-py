@@ -310,6 +310,11 @@ def create_cors_middleware(origins: Union[str, List[str]] = "*") -> Dict[str, An
         ],
         "expose_headers": [
             "mcp-session-id",
+            # WWW-Authenticate is not a CORS-safelisted response header, so a
+            # cross-origin browser client (e.g. MCP Inspector in direct-connect
+            # mode) cannot read the RFC 9728 challenge on a 401 unless we expose
+            # it — without this, discovery fails for browser-hosted clients.
+            "WWW-Authenticate",
         ],
     }
 

@@ -16,7 +16,10 @@ import pytest
 from fastapi import HTTPException
 from starlette.datastructures import Headers
 
-from payments_py.mcp.http.oauth_router import create_require_auth_middleware
+from payments_py.mcp.http.oauth_router import (
+    create_cors_middleware,
+    create_require_auth_middleware,
+)
 
 
 def make_request(headers=None, host="mcp.example.com", protocol="https"):
@@ -228,6 +231,13 @@ async def test_valid_token_emits_no_challenge():
         make_request({"authorization": "Bearer good-token"}),
     )
     assert exc is None
+
+
+def test_cors_exposes_www_authenticate_header():
+    # The 401 challenge is useless to a cross-origin browser client unless
+    # WWW-Authenticate is CORS-exposed (it is not a safelisted response header).
+    cors = create_cors_middleware()
+    assert "WWW-Authenticate" in cors["expose_headers"]
 
 
 @pytest.mark.asyncio
