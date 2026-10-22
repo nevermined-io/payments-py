@@ -493,6 +493,7 @@ class McpServerManager:
                 self._session_manager,
                 require_auth=True,
                 log=self._log,
+                base_url=base_url,
             )
 
             # Start HTTP server with uvicorn
