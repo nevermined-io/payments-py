@@ -61,6 +61,7 @@ from .types import (
     DelegationConfig,
     CreateDelegationPayload,
     CreateDelegationResponse,
+    UpdatePaymentMethodDto,
     MppTokenOptions,
     X402TokenOptions,
     X402TokenVersion,
@@ -77,7 +78,13 @@ from .schemes import (
 from .resolve_scheme import resolve_scheme
 from .facilitator import NeverminedFacilitator
 from .facilitator_api import FacilitatorAPI
-from .delegation_api import DelegationAPI, DelegationSummary, PaymentMethodSummary
+from .delegation_api import (
+    DelegationAPI,
+    DelegationListResponse,
+    DelegationSummary,
+    PaymentMethodSummary,
+    PurchasingPower,
+)
 from .a2a import X402A2AUtils, X402Metadata, PaymentStatus as X402PaymentStatus
 from .token import (
     X402TokenAPI,
@@ -122,6 +129,7 @@ __all__ = [
     "DelegationConfig",
     "CreateDelegationPayload",
     "CreateDelegationResponse",
+    "UpdatePaymentMethodDto",
     "MppTokenOptions",
     "X402TokenOptions",
     "X402TokenVersion",
@@ -158,7 +166,9 @@ __all__ = [
     # Delegation API
     "DelegationAPI",
     "DelegationSummary",
+    "DelegationListResponse",
     "PaymentMethodSummary",
+    "PurchasingPower",
     # High-level facilitator
     "NeverminedFacilitator",
     # A2A Integration
