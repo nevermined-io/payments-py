@@ -11,7 +11,6 @@ import pytest
 from payments_py.api.contracts_api import ContractsAPI
 from payments_py.common.payments_error import PaymentsError
 from payments_py.common.types import PaymentOptions
-from payments_py.environments import Environments
 
 # Real deployments return every contract; the strict Contracts model requires
 # all of them, so the fixture carries the full set (PayAsYouGo / Fixed get the

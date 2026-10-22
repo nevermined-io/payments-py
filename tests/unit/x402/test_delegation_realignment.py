@@ -10,7 +10,6 @@ The backend ``GET /delegation`` returns a **paginated envelope**
 models to that wire shape and mirror ``src/x402/delegation-api.ts``.
 """
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
