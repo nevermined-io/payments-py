@@ -42,7 +42,9 @@ class OAuthUrls(TypedDict):
             ``https://api.sandbox.nevermined.app``), one per tier: the value the
             API's own discovery document and the web app's RFC 9207 ``iss`` use.
             Earlier releases published the web app's origin here (tier-blind).
-            An explicit override is passed through unchanged.
+            An explicit override is passed through unchanged — and, like the
+            derived value, is also published as the protected-resource documents'
+            ``authorization_servers``, so it is where MCP clients discover.
         authorizationUri: OAuth authorization endpoint URL. Overriding it also
             withdraws the RFC 9207 ``authorization_response_iss_parameter_supported``
             advertisement from the discovery documents — the SDK cannot vouch that an AS
@@ -52,7 +54,11 @@ class OAuthUrls(TypedDict):
             one that does not — so if the override still points at the Nevermined web
             app, which returns ``iss`` on every response, a strict client may discard
             its responses (payments-py#295).
-        tokenUri: OAuth token endpoint URL.
+        tokenUri: OAuth token endpoint URL. Published only in the SDK-hosted
+            discovery documents: a client that follows ``authorization_servers`` to
+            the issuer reads that server's own document and exchanges codes at its
+            token endpoint, so a ``tokenUri`` proxy on a named environment is
+            bypassed by such a client (payments#465).
         jwksUri: JSON Web Key Set endpoint URL.
         userinfoUri: OpenID Connect userinfo endpoint URL.
     """
