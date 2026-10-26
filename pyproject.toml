@@ -16,13 +16,13 @@ mkdocs = "^1.5.3"
 mkdocs-material = "^9.5.0"
 mkdocstrings = {version = "^1.0.6", extras = ["python"]}
 mike = "^2.1.0"
-pydantic = "^2.14.0"
+pydantic = "^2.14.1"
 pyjwt = "^2.15.1"
 python-socketio = "^5.17.0"
-aiohttp = "^3.14.4"
+aiohttp = "^3.14.5"
 pytest-asyncio = "^1.2.0"
 websocket-client = "^1.8.0"
-black = "^26.10.0"
+black = "^26.10.1"
 # Floor is 0.3.25, not 0.3.0: `ResultAggregator.consume_and_break_on_interrupt`
 # returns `(result, interrupted, background_task)` only from 0.3.25 (a2a-python
 # #775). `payments_request_handler` unpacks the triple, so 0.3.0-0.3.24 would
@@ -33,17 +33,17 @@ helicone-helpers = "^1.1.1"
 jsonschema = "^4.25.1"
 mcp = "^1.25.0"
 # Optional dependencies
-fastapi = {version = "^0.143.0", optional = true}
+fastapi = {version = "^0.161.1", optional = true}
 starlette = {version = "^1.7.0", optional = true}
 uvicorn = {version = "^0.54.0", optional = true}
-strands-agents = {version = ">=1.59.0", optional = true}
-langchain-core = {version = ">=1.6.9", optional = true}
-langsmith = {version = ">=0.14.7,<1.0.0", optional = true}
+strands-agents = {version = ">=1.62.0", optional = true}
+langchain-core = {version = ">=1.6.10", optional = true}
+langsmith = {version = ">=0.14.12,<1.0.0", optional = true}
 # Ceiling is <0.45: 0.45+ eagerly imports an experiment/evaluator client that
 # needs `httpx` without declaring it (packaging bug), so `from traceloop.sdk
 # import Traceloop` breaks on install. 0.40–0.44 import cleanly and carry the
 # full API used here (`Traceloop.init(exporter=...)` + `set_association_properties`).
-traceloop-sdk = {version = ">=0.40.0,<0.45.0", optional = true}
+traceloop-sdk = {version = ">=0.62.4,<0.63.0", optional = true}
 
 [tool.poetry.extras]
 fastapi = ["fastapi", "starlette", "uvicorn"]
@@ -59,11 +59,11 @@ pytest-timeout = "^2.2.0"
 pytest-cov = "^7.1.0"
 pytest-asyncio = "^1.2.0"
 httpx = "^0.28.1"
-fastapi = "^0.143.0"
+fastapi = "^0.161.1"
 a2a-sdk = {version = "^0.3.25", extras = ["http-server"]}
 uvicorn = "^0.54.0"
 pytest-rerunfailures = "^16.7.0"
-langgraph = "^1.2.14"
+langgraph = "^1.2.16"
 pre-commit = "^4.0.0"
 
 [build-system]
