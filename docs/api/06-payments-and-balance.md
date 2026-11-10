@@ -72,17 +72,15 @@ print(f"Order details: {result}")
 
 ### Order Fiat Plans
 
-For plans priced in fiat (USD), use Stripe checkout:
+For plans priced in fiat currency through Stripe, use `order_fiat_plan`. It creates a Stripe PaymentIntent for the plan's price and returns it:
 
 ```python
-# Get Stripe checkout session
-checkout = payments.plans.order_fiat_plan(plan_id="fiat-plan-id")
+payment_intent = payments.plans.order_fiat_plan(plan_id="fiat-plan-id")
 
-print(f"Checkout URL: {checkout['checkoutUrl']}")
-print(f"Session ID: {checkout['sessionId']}")
-
-# Redirect user to checkout['checkoutUrl'] to complete payment
+print(payment_intent.id, payment_intent.status)
 ```
+
+`payment_intent.client_secret` is what confirms the payment with the customer's card. Pass it only to the customer's browser; never log or store it.
 
 ## Mint Credits (Plan Owners)
 
