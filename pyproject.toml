@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "payments-py"
-version = "1.18.0"
+version = "1.19.0"
 description = ""
 authors = ["enrique <enrique@nevermined.io>", "Charly López <charly@nevermined.io>"]
 readme = "README.md"
