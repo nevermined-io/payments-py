@@ -742,6 +742,28 @@ class StripeAccountConnectResult(BaseModel):
     link_expires_at: int = Field(alias="linkExpiresAt")
 
 
+class StripePaymentIntent(BaseModel):
+    """Stripe PaymentIntent returned by :meth:`PlansAPI.order_fiat_plan`
+    (``POST /api/v1/fiat/stripe/payment``).
+
+    The backend answers with Stripe's own PaymentIntent object; only the fields
+    a caller needs are kept, every other field is dropped on parse.
+    """
+
+    #: PaymentIntent id (``pi_…``).
+    id: str
+    #: Confirms the payment with the customer's card. Pass it only to the
+    #: customer's browser (Stripe.js); never log or store it.
+    client_secret: Optional[str] = None
+    #: Stripe status: ``requires_payment_method``, ``requires_confirmation``,
+    #: ``requires_action``, ``processing``, ``requires_capture``, ``canceled``
+    #: or ``succeeded``.
+    status: str
+    #: Amount in the currency's smallest unit (cents for USD).
+    amount: int
+    currency: str
+
+
 class OrderStatus(str, Enum):
     """Buyer-facing lifecycle status of an Order — the wire ``WireOrderStatus``
     in nvm-monorepo ``apps/api/src/orders/order-status.ts``.
