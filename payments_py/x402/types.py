@@ -471,21 +471,22 @@ class CreateDelegationPayload(BaseModel):
     Payload for creating a new delegation via POST /api/v1/delegation/create.
 
     Attributes:
-        provider: Delegation provider ('stripe', 'braintree', or 'visa' for card,
-            'erc4337' for crypto). Note: Visa delegations require a per-delegation
+        provider: Delegation provider: 'vgs' for a card enrolled through the
+            credit/debit card form; 'stripe', 'braintree' or 'visa' for the other
+            card providers; 'erc4337' for crypto. Note: Visa delegations require a per-delegation
             device-binding ceremony (FIDO/passkey + assuranceData) that must be
             performed in the browser via the Nevermined webapp. The SDK can list
             and consume an already-created Visa delegation but cannot create one
             programmatically.
-        provider_payment_method_id: Payment method ID from the provider (Stripe
-            'pm_...', Braintree vault token, or Visa Agentic token id 'vat_...')
+        provider_payment_method_id: Payment method ID from the provider (the
+            card's 'CRD...' id for 'vgs', Stripe 'pm_...', Braintree vault token,
+            or Visa Agentic token id 'vat_...')
         spending_limit_cents: Maximum spending limit in cents
         duration_secs: Duration of the delegation in seconds
         currency: Currency code ('usd' | 'eur' | 'usdc' | 'eurc'). **Required** —
             the backend no longer applies a silent 'usd'/'usdc' default (#1677).
-        plan_id: Plan ID to scope the delegation to. Optional and plan-agnostic by
-            default (#1534) — EXCEPT provider='visa', where the backend REQUIRES it
-            (the VGS mandate is merchant-scoped, derived from the plan owner).
+        plan_id: Plan ID to scope the delegation to. Optional for every provider;
+            delegations are plan-agnostic by default (#1534).
         merchant_account_id: Merchant account ID (Stripe Connect acct_xxx or Braintree merchantId)
         max_transactions: Maximum number of transactions allowed
         api_key_id: NVM API Key ID to scope the delegation to
