@@ -1797,13 +1797,13 @@ over this same plan/credits/delegation core — see
 </tr>
 <tr>
 <td><code>nvm:card-delegation</code></td>
-<td><code>stripe</code> | <code>braintree</code> | <code>visa</code></td>
+<td><code>vgs</code> | <code>stripe</code> | <code>braintree</code> | <code>visa</code></td>
 <td>Fiat/credit card</td>
 <td>Provider charge + credit burn</td>
 </tr>
 </tbody>
 </table>
-<p>The scheme is determined by the plan's pricing configuration. Plans with <code>isCrypto: false</code> use <code>nvm:card-delegation</code>; all others use <code>nvm:erc4337</code>. The SDK auto-detects the scheme via <code>resolve_scheme()</code>. The <code>network</code> value within <code>nvm:card-delegation</code> is determined by which provider issued the delegation being consumed (<code>stripe</code>, <code>braintree</code>, or <code>visa</code>).</p>
+<p>The scheme is determined by the plan's pricing configuration. Plans with <code>isCrypto: false</code> use <code>nvm:card-delegation</code>; all others use <code>nvm:erc4337</code>. The SDK auto-detects the scheme via <code>resolve_scheme()</code>. The <code>network</code> value within <code>nvm:card-delegation</code> is determined by which provider issued the delegation being consumed (<code>vgs</code>, <code>stripe</code>, <code>braintree</code>, or <code>visa</code>).</p>
 <h3 id="visa-support">Visa support<a class="headerlink" href="#visa-support" title="Permanent link">&para;</a></h3>
 <p>Visa delegations use the same <code>nvm:card-delegation</code> scheme and SDK surface as Stripe and Braintree, but two steps must happen in a <strong>browser</strong> before the SDK can consume them:</p>
 <ol>
@@ -1880,52 +1880,54 @@ release. Create the delegation first as shown above, then pass only
 (<code>currency</code> is required), then request the token by <code>delegation_id</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">payments_py.x402</span><span class="w"> </span><span class="kn">import</span> <span class="n">X402TokenOptions</span><span class="p">,</span> <span class="n">DelegationConfig</span><span class="p">,</span> <span class="n">CreateDelegationPayload</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># Step 1 — create a USD card delegation (currency is required).</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">usd_delegation</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">delegation</span><span class="o">.</span><span class="n">create_delegation</span><span class="p">(</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">CreateDelegationPayload</span><span class="p">(</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="n">provider</span><span class="o">=</span><span class="s2">"stripe"</span><span class="p">,</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="n">provider_payment_method_id</span><span class="o">=</span><span class="s2">"pm_1AbCdEfGhIjKlM"</span><span class="p">,</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">spending_limit_cents</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>  <span class="c1"># $100.00</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="n">duration_secs</span><span class="o">=</span><span class="mi">2592000</span><span class="p">,</span>       <span class="c1"># 30 days</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="n">currency</span><span class="o">=</span><span class="s2">"usd"</span><span class="p">,</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        <span class="n">max_transactions</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="p">)</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="p">)</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1"># Step 2 — request the token referencing the delegation id.</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">x402</span><span class="o">.</span><span class="n">get_x402_access_token</span><span class="p">(</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="s2">"your-plan-id"</span><span class="p">,</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="s2">"agent-id"</span><span class="p">,</span>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    <span class="n">token_options</span><span class="o">=</span><span class="n">X402TokenOptions</span><span class="p">(</span>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>        <span class="n">scheme</span><span class="o">=</span><span class="s2">"nvm:card-delegation"</span><span class="p">,</span>
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>        <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span>
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>            <span class="n">delegation_id</span><span class="o">=</span><span class="n">usd_delegation</span><span class="o">.</span><span class="n">delegation_id</span>
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>        <span class="p">),</span>
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    <span class="p">)</span>
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="p">)</span>
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="n">access_token</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s1">'accessToken'</span><span class="p">]</span>
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="c1"># EUR card delegation — same flow, currency="eur".</span>
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="n">eur_delegation</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">delegation</span><span class="o">.</span><span class="n">create_delegation</span><span class="p">(</span>
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    <span class="n">CreateDelegationPayload</span><span class="p">(</span>
-<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>        <span class="n">provider</span><span class="o">=</span><span class="s2">"stripe"</span><span class="p">,</span>
-<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>        <span class="n">provider_payment_method_id</span><span class="o">=</span><span class="s2">"pm_1AbCdEfGhIjKlM"</span><span class="p">,</span>
-<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>        <span class="n">spending_limit_cents</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>  <span class="c1"># €100.00 (in euro cents)</span>
-<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>        <span class="n">duration_secs</span><span class="o">=</span><span class="mi">2592000</span><span class="p">,</span>       <span class="c1"># 30 days</span>
-<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>        <span class="n">currency</span><span class="o">=</span><span class="s2">"eur"</span><span class="p">,</span>
-<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>        <span class="n">max_transactions</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>    <span class="p">)</span>
-<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="p">)</span>
-<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="n">eur_result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">x402</span><span class="o">.</span><span class="n">get_x402_access_token</span><span class="p">(</span>
-<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="s2">"your-plan-id"</span><span class="p">,</span>
-<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="s2">"agent-id"</span><span class="p">,</span>
-<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>    <span class="n">token_options</span><span class="o">=</span><span class="n">X402TokenOptions</span><span class="p">(</span>
-<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>        <span class="n">scheme</span><span class="o">=</span><span class="s2">"nvm:card-delegation"</span><span class="p">,</span>
-<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>        <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span>
-<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>            <span class="n">delegation_id</span><span class="o">=</span><span class="n">eur_delegation</span><span class="o">.</span><span class="n">delegation_id</span>
-<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>        <span class="p">),</span>
-<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a>    <span class="p">)</span>
-<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="p">)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># Step 1 — create a USD card delegation (currency is required). A card enrolled</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># through the credit/debit card form has provider "vgs" and a "CRD…" id: the `id`</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># list_payment_methods(provider="vgs") returns for it.</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">usd_delegation</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">delegation</span><span class="o">.</span><span class="n">create_delegation</span><span class="p">(</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">CreateDelegationPayload</span><span class="p">(</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">provider</span><span class="o">=</span><span class="s2">"vgs"</span><span class="p">,</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="n">provider_payment_method_id</span><span class="o">=</span><span class="s2">"CRDrX94aaaJz7oTFy2i13964k"</span><span class="p">,</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="n">spending_limit_cents</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>  <span class="c1"># $100.00</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        <span class="n">duration_secs</span><span class="o">=</span><span class="mi">2592000</span><span class="p">,</span>       <span class="c1"># 30 days</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        <span class="n">currency</span><span class="o">=</span><span class="s2">"usd"</span><span class="p">,</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        <span class="n">max_transactions</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    <span class="p">)</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="p">)</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1"># Step 2 — request the token referencing the delegation id.</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="n">result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">x402</span><span class="o">.</span><span class="n">get_x402_access_token</span><span class="p">(</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="s2">"your-plan-id"</span><span class="p">,</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="s2">"agent-id"</span><span class="p">,</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    <span class="n">token_options</span><span class="o">=</span><span class="n">X402TokenOptions</span><span class="p">(</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        <span class="n">scheme</span><span class="o">=</span><span class="s2">"nvm:card-delegation"</span><span class="p">,</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>        <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>            <span class="n">delegation_id</span><span class="o">=</span><span class="n">usd_delegation</span><span class="o">.</span><span class="n">delegation_id</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>        <span class="p">),</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>    <span class="p">)</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="p">)</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="n">access_token</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s1">'accessToken'</span><span class="p">]</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="c1"># EUR card delegation — same flow, currency="eur".</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="n">eur_delegation</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">delegation</span><span class="o">.</span><span class="n">create_delegation</span><span class="p">(</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    <span class="n">CreateDelegationPayload</span><span class="p">(</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>        <span class="n">provider</span><span class="o">=</span><span class="s2">"stripe"</span><span class="p">,</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>        <span class="n">provider_payment_method_id</span><span class="o">=</span><span class="s2">"pm_1AbCdEfGhIjKlM"</span><span class="p">,</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>        <span class="n">spending_limit_cents</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>  <span class="c1"># €100.00 (in euro cents)</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>        <span class="n">duration_secs</span><span class="o">=</span><span class="mi">2592000</span><span class="p">,</span>       <span class="c1"># 30 days</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a>        <span class="n">currency</span><span class="o">=</span><span class="s2">"eur"</span><span class="p">,</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>        <span class="n">max_transactions</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a>    <span class="p">)</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="p">)</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="n">eur_result</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">x402</span><span class="o">.</span><span class="n">get_x402_access_token</span><span class="p">(</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>    <span class="n">plan_id</span><span class="o">=</span><span class="s2">"your-plan-id"</span><span class="p">,</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>    <span class="n">agent_id</span><span class="o">=</span><span class="s2">"agent-id"</span><span class="p">,</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>    <span class="n">token_options</span><span class="o">=</span><span class="n">X402TokenOptions</span><span class="p">(</span>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>        <span class="n">scheme</span><span class="o">=</span><span class="s2">"nvm:card-delegation"</span><span class="p">,</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>        <span class="n">delegation_config</span><span class="o">=</span><span class="n">DelegationConfig</span><span class="p">(</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a>            <span class="n">delegation_id</span><span class="o">=</span><span class="n">eur_delegation</span><span class="o">.</span><span class="n">delegation_id</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a>        <span class="p">),</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a>    <span class="p">)</span>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="p">)</span>
 </code></pre></div>
 <h3 id="auto-scheme-resolution">Auto Scheme Resolution<a class="headerlink" href="#auto-scheme-resolution" title="Permanent link">&para;</a></h3>
 <p>Use <code>resolve_scheme()</code> to auto-detect the correct scheme from plan metadata:</p>
