@@ -684,11 +684,12 @@ class PlansAPI(BasePaymentsAPI):
         and uses it to create the price configuration. The address is cached for subsequent calls.
 
         The price is always crypto, whatever ``token_address`` you pass: the
-        subscriber pays ``amount`` of that token on every request. Do not use it
-        for a card plan.
+        subscriber pays the plan price (``amount``, plus the fees the API adds at
+        registration) in that token on every request. Do not use it for a card
+        plan.
 
         A CARD (fiat) pay-as-you-go price is :meth:`get_fiat_price_config`
-        registered on the same template::
+        registered on the same template:
 
             price_config = payments.plans.get_fiat_price_config(amount, receiver)
             price_config.template_address = (

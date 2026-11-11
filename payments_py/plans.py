@@ -319,8 +319,8 @@ def get_pay_as_you_go_price_config(
     The payment is made when the service is consumed (settle), not when ordering.
 
     The price is always crypto, whatever ``token_address`` you pass: the
-    subscriber pays ``amount`` of that token on every request. Do not use it for
-    a card plan.
+    subscriber pays the plan price (``amount``, plus the fees the API adds at
+    registration) in that token on every request. Do not use it for a card plan.
 
     A CARD (fiat) pay-as-you-go price is :func:`get_fiat_price_config`
     registered on the same template: build the fiat price, then set its
@@ -349,6 +349,7 @@ def get_pay_as_you_go_price_config(
         ValueError: If template_address is not provided
 
     Example::
+
         from payments_py.plans import (
             get_fiat_price_config,
             get_pay_as_you_go_price_config,
@@ -401,7 +402,9 @@ def get_pay_as_you_go_credits_config() -> PlanCreditsConfig:
     only the subscriber who purchased the plan can redeem credits.
 
     **Important**: For Pay As You Go plans, no credits are minted upfront.
-    The PayAsYouGoTemplate only handles payment locking and distribution per request.
+    On a crypto plan, the PayAsYouGoTemplate only handles payment locking and
+    distribution per request; a card plan is charged on the card, off-chain, at
+    each settle.
     The credits config is required by the API and smart contracts for validation,
     but the actual payment per request comes from the `amount` in the price config,
     not from the credits config. This helper defaults all values to 1 as they are

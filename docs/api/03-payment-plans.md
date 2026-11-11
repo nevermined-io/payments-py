@@ -89,9 +89,8 @@ result = payments.plans.register_time_plan(
 
 ### Pay-As-You-Go Plans
 
-Pay-as-you-go plans charge the subscriber on every request instead of selling a balance of
-credits up front. Subscribers pay either in crypto or by card, and the two use different price
-configs: see [Pay-As-You-Go Price](#pay-as-you-go-price).
+Crypto and card pay-as-you-go plans use different price configs: see
+[Pay-As-You-Go Price](#pay-as-you-go-price).
 
 ### Trial Plans
 
@@ -243,7 +242,8 @@ price_config = payments.plans.get_fiat_price_config(
     amount=1_000_000,            # Price per request in 6-decimal units ($1.00), NOT cents
     receiver="0xBuilderAddress"  # Payment receiver
 )
-# The PayAsYouGoTemplate is what makes this fiat price pay-as-you-go
+# The PayAsYouGoTemplate is what makes this fiat price pay-as-you-go. Fetch it, never
+# hard-code it: the card rail recognizes only the current template
 price_config.template_address = payments.contracts.get_pay_as_you_go_template_address()
 credits_config = payments.plans.get_pay_as_you_go_credits_config()
 ```
@@ -258,11 +258,18 @@ result = payments.plans.register_credits_plan(
 )
 ```
 
+A plan built the wrong way still registers without an error, so check the result:
+`payments.plans.get_plan(result["planId"])["billingModel"]` must be `"pay-as-you-go"`. A
+just-registered plan can take a few seconds to read back with its template.
+
 A card pay-as-you-go plan:
 
 - is paid **per request through an x402 card delegation**: each settle charges the card the plan
   price, and the settle reports `billing_model == "pay-as-you-go"` with the charge reference in
-  `order_tx` (see [Was the buyer charged?](11-x402.md#was-the-buyer-charged));
+  `order_tx` (see [Was the buyer charged?](11-x402.md#was-the-buyer-charged)). A settle that
+  fails with `BCK.X402.0048` may already have charged the card: reconcile it, never retry it;
+- is charged in the currency of the buyer's card delegation (set when the card is enrolled), which
+  the API does not compare with the plan's `currency`: keep the two the same;
 - is **not sold through checkout**, by design: there is no balance to buy up front, so
   `order_fiat_plan` fails with `BCK.STRIPE.0041`;
 - keeps the fiat price floor: the per-request price must be at least **$1.00** (`1_000_000`),
