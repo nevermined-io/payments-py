@@ -677,18 +677,39 @@ class PlansAPI(BasePaymentsAPI):
         token_address: str = plan_utils.ZeroAddress,
     ) -> PlanPriceConfig:
         """
-        Build a pay-as-you-go price configuration using contract address from API.
+        Build a CRYPTO pay-as-you-go price configuration (``is_crypto=True``) using
+        the contract address from the API.
 
         This method fetches the PayAsYouGoTemplate contract address from the API info endpoint
         and uses it to create the price configuration. The address is cached for subsequent calls.
 
+        The price is always crypto, whatever ``token_address`` you pass: the
+        subscriber pays ``amount`` of that token on every request. Do not use it
+        for a card plan.
+
+        A CARD (fiat) pay-as-you-go price is :meth:`get_fiat_price_config`
+        registered on the same template::
+
+            price_config = payments.plans.get_fiat_price_config(amount, receiver)
+            price_config.template_address = (
+                payments.contracts.get_pay_as_you_go_template_address()
+            )
+
+        The template is what makes a plan pay-as-you-go
+        (``billingModel: 'pay-as-you-go'``); without it,
+        :meth:`get_fiat_price_config` + :meth:`get_pay_as_you_go_credits_config`
+        registers a one-credit credits plan.
+
+        Pair either price with :meth:`get_pay_as_you_go_credits_config`.
+
         Args:
-            amount: The amount per usage in the smallest unit of the token
+            amount: The price per request in the smallest unit of the token
+                (6 decimals for USDC)
             receiver: The address that will receive the payment
             token_address: The address of the token to use for payment (defaults to native token)
 
         Returns:
-            A PlanPriceConfig object configured for pay-as-you-go payments
+            A PlanPriceConfig object configured for crypto pay-as-you-go payments
 
         Raises:
             PaymentsError: If unable to fetch contract address from API
@@ -703,7 +724,15 @@ class PlansAPI(BasePaymentsAPI):
 
     @staticmethod
     def get_pay_as_you_go_credits_config() -> PlanCreditsConfig:
-        """Build a pay-as-you-go credits configuration."""
+        """
+        Build a pay-as-you-go credits configuration.
+
+        It pairs with either pay-as-you-go price:
+        :meth:`get_pay_as_you_go_price_config` for a crypto plan, or
+        :meth:`get_fiat_price_config` with the PayAsYouGoTemplate as its
+        ``template_address`` for a card plan. It does not make a plan
+        pay-as-you-go on its own: that is the price's template address.
+        """
         return get_pay_as_you_go_credits_config()
 
     def order_fiat_plan(self, plan_id: str) -> StripePaymentIntent:

@@ -4,10 +4,11 @@ This guide covers how to create and manage payment plans using the Nevermined Pa
 
 ## Overview
 
-Payment Plans define how users pay to access your AI agents and services. Nevermined supports two types of plans:
+Payment Plans define how users pay to access your AI agents and services. Nevermined supports these types of plans:
 
 - **Credits Plans**: Users purchase a fixed number of credits that are consumed with each request
 - **Time Plans**: Users purchase access for a specific duration (e.g., 1 day, 1 month)
+- **Pay-As-You-Go Plans**: Users pay on every request, in crypto or by card, without buying credits up front
 
 ## Plans API
 
@@ -85,6 +86,12 @@ result = payments.plans.register_time_plan(
     credits_config=credits_config
 )
 ```
+
+### Pay-As-You-Go Plans
+
+Pay-as-you-go plans charge the subscriber on every request instead of selling a balance of
+credits up front. Subscribers pay either in crypto or by card, and the two use different price
+configs: see [Pay-As-You-Go Price](#pay-as-you-go-price).
 
 ### Trial Plans
 
@@ -194,6 +201,76 @@ from payments_py.plans import get_free_price_config
 
 price_config = get_free_price_config()
 ```
+
+### Pay-As-You-Go Price
+
+A pay-as-you-go plan charges the subscriber on every request instead of selling a balance of
+credits up front. Its price builder decides **how** the subscriber pays, so pick it by rail:
+
+| Rail | Price config | Credits config |
+|------|--------------|----------------|
+| Crypto | `payments.plans.get_pay_as_you_go_price_config(amount, receiver[, token_address])` | `payments.plans.get_pay_as_you_go_credits_config()` |
+| Card | `payments.plans.get_fiat_price_config(amount, receiver[, currency])`, then set its `template_address` to `payments.contracts.get_pay_as_you_go_template_address()` | `payments.plans.get_pay_as_you_go_credits_config()` |
+
+> **`get_pay_as_you_go_price_config` always builds a crypto price** (`is_crypto=True`), whatever
+> token you pass. Do not use it for a plan that subscribers pay by card.
+
+What makes either plan pay-as-you-go is the **PayAsYouGoTemplate** address in its price config:
+the API reports `billingModel: 'pay-as-you-go'` (in `payments.plans.get_plan(plan_id)`, and as
+`billing_model` on each settle) only for a plan registered on that template.
+`get_pay_as_you_go_price_config` sets it for you; `get_fiat_price_config` does not, so the card
+recipe adds it.
+
+#### Crypto pay-as-you-go
+
+```python
+USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"  # USDC on Base Sepolia
+
+# Fetches the PayAsYouGoTemplate address from the API for you
+price_config = payments.plans.get_pay_as_you_go_price_config(
+    amount=1_000_000,             # Price per request in the token's smallest unit (1 USDC, 6 decimals)
+    receiver="0xBuilderAddress",  # Payment receiver
+    token_address=USDC_ADDRESS    # ERC20 token (omit for the native token)
+)
+credits_config = payments.plans.get_pay_as_you_go_credits_config()
+```
+
+#### Card pay-as-you-go
+
+```python
+# is_crypto=False: the subscriber's card is charged on every request
+price_config = payments.plans.get_fiat_price_config(
+    amount=1_000_000,            # Price per request in 6-decimal units ($1.00), NOT cents
+    receiver="0xBuilderAddress"  # Payment receiver
+)
+# The PayAsYouGoTemplate is what makes this fiat price pay-as-you-go
+price_config.template_address = payments.contracts.get_pay_as_you_go_template_address()
+credits_config = payments.plans.get_pay_as_you_go_credits_config()
+```
+
+Register either one as a credits plan:
+
+```python
+result = payments.plans.register_credits_plan(
+    plan_metadata=PlanMetadata(name="Pay per request"),
+    price_config=price_config,
+    credits_config=credits_config
+)
+```
+
+A card pay-as-you-go plan:
+
+- is paid **per request through an x402 card delegation**: each settle charges the card the plan
+  price, and the settle reports `billing_model == "pay-as-you-go"` with the charge reference in
+  `order_tx` (see [Was the buyer charged?](11-x402.md#was-the-buyer-charged));
+- is **not sold through checkout**, by design: there is no balance to buy up front, so
+  `order_fiat_plan` fails with `BCK.STRIPE.0041`;
+- keeps the fiat price floor: the per-request price must be at least **$1.00** (`1_000_000`),
+  otherwise registration fails with `BCK.PROTOCOL.0047`.
+
+> **`get_fiat_price_config` + `get_pay_as_you_go_credits_config` alone is NOT a pay-as-you-go
+> plan.** Without the template address it registers a one-credit **credits** plan: the API
+> reports it as `billingModel: 'credits'`, and each purchase buys a single credit.
 
 ## Credits Configuration
 

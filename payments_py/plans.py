@@ -313,13 +313,28 @@ def get_pay_as_you_go_price_config(
     template_address: Optional[Address] = None,
 ) -> PlanPriceConfig:
     """
-    Get a pay-as-you-go price configuration for a plan.
+    Get a CRYPTO pay-as-you-go price configuration (``is_crypto=True``) for a plan.
 
     Pay-as-you-go plans charge users per request/usage rather than upfront.
     The payment is made when the service is consumed (settle), not when ordering.
 
+    The price is always crypto, whatever ``token_address`` you pass: the
+    subscriber pays ``amount`` of that token on every request. Do not use it for
+    a card plan.
+
+    A CARD (fiat) pay-as-you-go price is :func:`get_fiat_price_config`
+    registered on the same template: build the fiat price, then set its
+    ``template_address`` to the PayAsYouGoTemplate address
+    (``payments.contracts.get_pay_as_you_go_template_address()``). The template
+    is what makes a plan pay-as-you-go (``billingModel: 'pay-as-you-go'``);
+    without it, :func:`get_fiat_price_config` +
+    :func:`get_pay_as_you_go_credits_config` registers a one-credit credits plan.
+
+    Pair either price with :func:`get_pay_as_you_go_credits_config`.
+
     Args:
-        amount: The amount per usage in the smallest unit of the token
+        amount: The price per request in the smallest unit of the token
+            (6 decimals for USDC)
         receiver: The address that will receive the payment
         token_address: The address of the token to use for payment (defaults to native token)
         template_address: PayAsYouGoTemplate contract address. Required. Use
@@ -327,14 +342,17 @@ def get_pay_as_you_go_price_config(
                          PlansAPI.get_pay_as_you_go_price_config() to get the address from the API.
 
     Returns:
-        A PlanPriceConfig object configured for pay-as-you-go payments
+        A PlanPriceConfig object configured for crypto pay-as-you-go payments
 
     Raises:
         ValueError: If the receiver address is not a valid Ethereum address
         ValueError: If template_address is not provided
 
     Example::
-        from payments_py.plans import get_pay_as_you_go_price_config
+        from payments_py.plans import (
+            get_fiat_price_config,
+            get_pay_as_you_go_price_config,
+        )
 
         # Pay-as-you-go plan with template address from API
         payments = Payments(PaymentOptions(...))
@@ -347,6 +365,11 @@ def get_pay_as_you_go_price_config(
         price_config = payments.plans.get_pay_as_you_go_price_config(
             100, builder_address, USDC_ADDRESS
         )
+
+        # CARD pay-as-you-go is NOT this function: it is the fiat price
+        # registered on the PayAsYouGoTemplate
+        card_price_config = get_fiat_price_config(1_000_000, builder_address)
+        card_price_config.template_address = template_addr
     """
     if not is_ethereum_address(receiver):
         raise ValueError(f"Receiver address {receiver} is not a valid Ethereum address")
@@ -383,6 +406,11 @@ def get_pay_as_you_go_credits_config() -> PlanCreditsConfig:
     but the actual payment per request comes from the `amount` in the price config,
     not from the credits config. This helper defaults all values to 1 as they are
     not functionally used.
+
+    It pairs with either pay-as-you-go price: :func:`get_pay_as_you_go_price_config`
+    for a crypto plan, or :func:`get_fiat_price_config` with the PayAsYouGoTemplate
+    as its ``template_address`` for a card plan. It does not make a plan
+    pay-as-you-go on its own: that is the price's template address.
 
     Returns:
         A PlanCreditsConfig object configured for pay-as-you-go credits.
