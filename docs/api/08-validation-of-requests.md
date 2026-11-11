@@ -124,6 +124,11 @@ Two things make this easy to get wrong:
 - **These fields are strings.** `"0"` is truthy while `int("0") > 0` is false, so two
   plausible-looking checks disagree. Compare numerically, and only on `credits` plans.
 
+A plan settles as `pay-as-you-go` only when its price is registered on the current
+PayAsYouGoTemplate.
+For how to build one, crypto or card, see
+[Pay-As-You-Go Price](03-payment-plans.md#pay-as-you-go-price).
+
 ## Complete Example: Flask Agent
 
 ```python
