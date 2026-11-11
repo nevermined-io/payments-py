@@ -105,30 +105,32 @@ class TestPayAsYouGoRecipesOnTheWire:
     these tests assert on the register request itself, not on the builders.
     """
 
-    def _backend(self, payments: Payments) -> str:
-        return payments.plans.environment.backend
-
-    def test_card_recipe_registers_a_fiat_price_on_the_payg_template(self):
+    def _register(self, build_price) -> dict:
+        """Build the price against a mocked backend, register it with the
+        pay-as-you-go credits config as the docs do, and return the body."""
         payments = Payments.get_instance(_opts())
-        backend = self._backend(payments)
+        backend = payments.plans.environment.backend
         with requests_mock.Mocker() as m:
             m.get(f"{backend}{API_URL_INFO}", json=_DEPLOYMENT)
             m.post(f"{backend}{API_URL_REGISTER_PLAN}", json={"planId": "pl-1"})
+            payments.plans.register_credits_plan(
+                plan_metadata=PlanMetadata(name="Pay per request"),
+                price_config=build_price(payments),
+                credits_config=payments.plans.get_pay_as_you_go_credits_config(),
+            )
+            return m.last_request.json()
 
+    def test_card_recipe_registers_a_fiat_price_on_the_payg_template(self):
+        def card_price(payments):
             price_config = payments.plans.get_fiat_price_config(
                 amount=1_000_000, receiver=RECEIVER
             )
             price_config.template_address = (
                 payments.contracts.get_pay_as_you_go_template_address()
             )
-            credits_config = payments.plans.get_pay_as_you_go_credits_config()
-            payments.plans.register_credits_plan(
-                plan_metadata=PlanMetadata(name="Pay per request"),
-                price_config=price_config,
-                credits_config=credits_config,
-            )
+            return price_config
 
-            body = m.last_request.json()
+        body = self._register(card_price)
 
         assert body["priceConfig"]["isCrypto"] is False
         assert body["priceConfig"]["templateAddress"] == (
@@ -137,28 +139,31 @@ class TestPayAsYouGoRecipesOnTheWire:
         assert body["currency"] == "USD"
         assert body["accessLimit"] == "credits"
 
-    def test_crypto_recipe_uses_the_same_template(self):
-        payments = Payments.get_instance(_opts())
-        backend = self._backend(payments)
-        with requests_mock.Mocker() as m:
-            m.get(f"{backend}{API_URL_INFO}", json=_DEPLOYMENT)
-
-            price_config = payments.plans.get_pay_as_you_go_price_config(
+    def test_crypto_recipe_registers_a_crypto_price_on_the_same_template(self):
+        body = self._register(
+            lambda payments: payments.plans.get_pay_as_you_go_price_config(
                 amount=1_000_000, receiver=RECEIVER, token_address=TEST_ERC20_TOKEN
             )
+        )
 
-        assert price_config.is_crypto is True
-        assert price_config.template_address == _CONTRACTS["PayAsYouGoTemplate"]
+        assert body["priceConfig"]["isCrypto"] is True
+        assert body["priceConfig"]["templateAddress"] == (
+            _CONTRACTS["PayAsYouGoTemplate"]
+        )
+        assert body["priceConfig"]["tokenAddress"] == TEST_ERC20_TOKEN
+        assert body["accessLimit"] == "credits"
+        assert "currency" not in body
 
     def test_fiat_price_alone_is_not_on_the_payg_template(self):
         """The trap the docs warn about: no template, so a credits plan."""
-        payments = Payments.get_instance(_opts())
-        price_config = payments.plans.get_fiat_price_config(
-            amount=1_000_000, receiver=RECEIVER
+        body = self._register(
+            lambda payments: payments.plans.get_fiat_price_config(
+                amount=1_000_000, receiver=RECEIVER
+            )
         )
 
-        assert price_config.is_crypto is False
-        assert price_config.template_address == ZeroAddress
+        assert body["priceConfig"]["isCrypto"] is False
+        assert body["priceConfig"]["templateAddress"] == ZeroAddress
 
 
 class TestPlanCreditsConfigCamelCaseAlias:
