@@ -2,14 +2,20 @@
 Unit tests for plan helper functions.
 """
 
+from unittest.mock import MagicMock
+
 import pytest
 import requests_mock
 
+import payments_py
 from payments_py.api.nvm_api import API_URL_INFO, API_URL_REGISTER_PLAN
+from payments_py.api.plans_api import PlansAPI
 from payments_py.common.types import PlanMetadata
 from payments_py.environments import ZeroAddress
 from payments_py.payments import Payments
 from payments_py.plans import (
+    get_fiat_pay_as_you_go_price_config,
+    get_fiat_price_config,
     get_pay_as_you_go_price_config,
     get_pay_as_you_go_credits_config,
 )
@@ -18,6 +24,8 @@ from tests.unit.test_contracts_accessor import _CONTRACTS, _DEPLOYMENT, _opts
 # Test ERC20 token address (USDC on Base Sepolia)
 TEST_ERC20_TOKEN = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 RECEIVER = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+TEST_RECEIVER = RECEIVER
+TEST_TEMPLATE = "0x5e852077b30099106Aa65B4d329FFF9b5C9a8e7C"
 
 
 class TestPayAsYouGoHelperFunctions:
@@ -97,8 +105,11 @@ class TestPayAsYouGoHelperFunctions:
 
 
 class TestPayAsYouGoRecipesOnTheWire:
-    """The two pay-as-you-go recipes in docs/api/03-payment-plans.md
-    (nevermined-io/docs#413), run as written against a mocked backend.
+    """The pay-as-you-go recipes in docs/api/03-payment-plans.md
+    (nevermined-io/docs#413) — the crypto builder, the card recipe (now the
+    ``get_fiat_pay_as_you_go_price_config`` shorthand, plus its manual
+    ``get_fiat_price_config`` + template form), and the credits-plan trap — run
+    against a mocked backend.
 
     The template address is what makes a plan pay-as-you-go: a fiat price
     without it registers a one-credit credits plan, and nothing errors. So
@@ -164,6 +175,135 @@ class TestPayAsYouGoRecipesOnTheWire:
 
         assert body["priceConfig"]["isCrypto"] is False
         assert body["priceConfig"]["templateAddress"] == ZeroAddress
+
+    def test_card_helper_reads_template_from_the_api(self):
+        """get_fiat_pay_as_you_go_price_config is the one-call shorthand for the
+        card recipe above: a real PlansAPI reads the PayAsYouGoTemplate from the
+        API (the deployment's 0x1111…, not a hardcoded address) and carries the
+        currency through."""
+        payments = Payments.get_instance(_opts())
+        backend = payments.plans.environment.backend
+        with requests_mock.Mocker() as m:
+            info = m.get(f"{backend}{API_URL_INFO}", json=_DEPLOYMENT)
+            price_config = payments.plans.get_fiat_pay_as_you_go_price_config(
+                amount=1_000_000, receiver=RECEIVER, currency="EUR"
+            )
+
+        assert price_config.template_address == _CONTRACTS["PayAsYouGoTemplate"]
+        assert price_config.is_crypto is False
+        assert price_config.currency == "EUR"
+        assert info.call_count == 1
+
+    def test_card_helper_registers_as_payg_over_the_wire(self):
+        """The shorthand registers as a card PAYG plan over the wire: the
+        register body carries the fiat price (isCrypto False) on the
+        PayAsYouGoTemplate — the silent-misconfiguration trap the docs warn
+        about — with the currency passed through."""
+        body = self._register(
+            lambda payments: payments.plans.get_fiat_pay_as_you_go_price_config(
+                amount=1_000_000, receiver=RECEIVER, currency="EUR"
+            )
+        )
+
+        assert body["priceConfig"]["isCrypto"] is False
+        assert body["priceConfig"]["templateAddress"] == (
+            _CONTRACTS["PayAsYouGoTemplate"]
+        )
+        assert body["currency"] == "EUR"
+        assert body["accessLimit"] == "credits"
+
+
+class TestFiatPayAsYouGoHelperFunction:
+    """Unit tests for the CARD (fiat) Pay As You Go price builder (docs#413)."""
+
+    def test_fiat_payg_is_not_crypto_and_sets_template(self):
+        """Fiat PAYG uses the card rail (is_crypto False) with the PAYG template."""
+        price_config = get_fiat_pay_as_you_go_price_config(
+            2_000_000, TEST_RECEIVER, template_address=TEST_TEMPLATE
+        )
+
+        assert price_config.is_crypto is False
+        assert price_config.template_address == TEST_TEMPLATE
+        assert price_config.amounts == [2_000_000]
+        assert price_config.receivers == [TEST_RECEIVER]
+        # Fiat is off-chain: no token, zeroed contract addresses.
+        assert price_config.token_address == ZeroAddress
+        assert price_config.contract_address == ZeroAddress
+        assert price_config.fee_controller == ZeroAddress
+        assert price_config.external_price_address == ZeroAddress
+
+    def test_fiat_payg_defaults_to_usd(self):
+        """Currency defaults to USD, matching get_fiat_price_config."""
+        price_config = get_fiat_pay_as_you_go_price_config(
+            1_000_000, TEST_RECEIVER, template_address=TEST_TEMPLATE
+        )
+
+        assert price_config.currency == "USD"
+
+    def test_fiat_payg_explicit_eur(self):
+        """An explicit EUR currency is carried through."""
+        price_config = get_fiat_pay_as_you_go_price_config(
+            5_000_000, TEST_RECEIVER, currency="EUR", template_address=TEST_TEMPLATE
+        )
+
+        assert price_config.currency == "EUR"
+        assert price_config.is_crypto is False
+        assert price_config.template_address == TEST_TEMPLATE
+
+    def test_fiat_payg_requires_template_address(self):
+        """Missing template_address raises, same as the crypto PAYG builder."""
+        with pytest.raises(ValueError, match="template_address is required"):
+            get_fiat_pay_as_you_go_price_config(1_000_000, TEST_RECEIVER)
+
+    def test_fiat_payg_invalid_receiver(self):
+        """An invalid receiver address is rejected."""
+        with pytest.raises(ValueError, match="not a valid Ethereum address"):
+            get_fiat_pay_as_you_go_price_config(
+                1_000_000, "invalid-address", template_address=TEST_TEMPLATE
+            )
+
+    def test_fiat_payg_sets_template_plain_fiat_config_does_not(self):
+        """The fiat PAYG builder sets the PayAsYouGoTemplate address; a plain
+        get_fiat_price_config leaves template_address at ZeroAddress."""
+        base = get_fiat_price_config(1_000_000, TEST_RECEIVER)
+        payg = get_fiat_pay_as_you_go_price_config(
+            1_000_000, TEST_RECEIVER, template_address=TEST_TEMPLATE
+        )
+
+        assert base.template_address == ZeroAddress
+        assert payg.template_address == TEST_TEMPLATE
+
+    def test_plans_api_resolves_template_from_contracts(self):
+        """PlansAPI.get_fiat_pay_as_you_go_price_config resolves the template
+        from the contracts API, exactly like the crypto method."""
+        api = MagicMock()
+        api.contracts_api.contracts.pay_as_you_go_template = TEST_TEMPLATE
+
+        price_config = PlansAPI.get_fiat_pay_as_you_go_price_config(
+            api, 3_000_000, TEST_RECEIVER
+        )
+
+        assert price_config.template_address == TEST_TEMPLATE
+        assert price_config.is_crypto is False
+        assert price_config.currency == "USD"
+        assert price_config.amounts == [3_000_000]
+
+    def test_fiat_payg_builder_is_exported_at_package_root(self):
+        """`from payments_py import get_fiat_pay_as_you_go_price_config` works:
+        the name __all__ advertises is actually bound on the package."""
+        assert "get_fiat_pay_as_you_go_price_config" in payments_py.__all__
+        assert hasattr(payments_py, "get_fiat_pay_as_you_go_price_config")
+
+    def test_crypto_payg_builder_output_unchanged(self):
+        """The crypto PAYG builder still produces an on-chain (is_crypto True)
+        config — the fiat addition must not alter it."""
+        crypto = get_pay_as_you_go_price_config(
+            100, TEST_RECEIVER, template_address=TEST_TEMPLATE
+        )
+
+        assert crypto.is_crypto is True
+        assert crypto.template_address == TEST_TEMPLATE
+        assert crypto.token_address == ZeroAddress
 
 
 class TestPlanCreditsConfigCamelCaseAlias:
