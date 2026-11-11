@@ -1996,7 +1996,7 @@ credits up front. Its price builder decides <strong>how</strong> the subscriber 
 </tr>
 <tr>
 <td>Card</td>
-<td><code>payments.plans.get_fiat_price_config(amount, receiver[, currency])</code>, then set its <code>template_address</code> to <code>payments.contracts.get_pay_as_you_go_template_address()</code></td>
+<td><code>payments.plans.get_fiat_pay_as_you_go_price_config(amount, receiver[, currency])</code></td>
 <td><code>payments.plans.get_pay_as_you_go_credits_config()</code></td>
 </tr>
 </tbody>
@@ -2008,8 +2008,8 @@ token you pass. Do not use it for a plan that subscribers pay by card.</p>
 <p>What makes either plan pay-as-you-go is the <strong>PayAsYouGoTemplate</strong> address in its price config:
 the API reports <code>billingModel: 'pay-as-you-go'</code> (in <code>payments.plans.get_plan(plan_id)</code>, and as
 <code>billing_model</code> on each settle) only for a plan registered on that template.
-<code>get_pay_as_you_go_price_config</code> sets it for you; <code>get_fiat_price_config</code> does not, so the card
-recipe adds it.</p>
+<code>get_pay_as_you_go_price_config</code> (crypto) and <code>get_fiat_pay_as_you_go_price_config</code> (card) set it
+for you; a plain <code>get_fiat_price_config</code> does not.</p>
 <h4 id="crypto-pay-as-you-go">Crypto pay-as-you-go<a class="headerlink" href="#crypto-pay-as-you-go" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">USDC_ADDRESS</span> <span class="o">=</span> <span class="s2">"0x036CbD53842c5426634e7929541eC2318f3dCF7e"</span>  <span class="c1"># USDC on Base Sepolia</span>
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
@@ -2022,14 +2022,14 @@ recipe adds it.</p>
 <a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_pay_as_you_go_credits_config</span><span class="p">()</span>
 </code></pre></div>
 <h4 id="card-pay-as-you-go">Card pay-as-you-go<a class="headerlink" href="#card-pay-as-you-go" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># is_crypto=False: the subscriber's card is charged on every request</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">price_config</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_fiat_price_config</span><span class="p">(</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">amount</span><span class="o">=</span><span class="mi">1_000_000</span><span class="p">,</span>            <span class="c1"># Price per request in 6-decimal units ($1.00), NOT cents</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">receiver</span><span class="o">=</span><span class="s2">"0xBuilderAddress"</span>  <span class="c1"># Payment receiver</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="p">)</span>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1"># The PayAsYouGoTemplate is what makes this fiat price pay-as-you-go. Fetch it, never</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1"># hard-code it: the card rail recognizes only the current template</span>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="n">price_config</span><span class="o">.</span><span class="n">template_address</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">contracts</span><span class="o">.</span><span class="n">get_pay_as_you_go_template_address</span><span class="p">()</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># is_crypto=False: the subscriber's card is charged on every request.</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1"># get_fiat_pay_as_you_go_price_config is the one-call shorthand for a fiat price</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="c1"># registered on the PayAsYouGoTemplate — it fetches the template from the API for you.</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="n">price_config</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_fiat_pay_as_you_go_price_config</span><span class="p">(</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">amount</span><span class="o">=</span><span class="mi">1_000_000</span><span class="p">,</span>             <span class="c1"># Price per request in 6-decimal units ($1.00), NOT cents</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    <span class="n">receiver</span><span class="o">=</span><span class="s2">"0xBuilderAddress"</span><span class="p">,</span>  <span class="c1"># Payment receiver</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="n">currency</span><span class="o">=</span><span class="s2">"USD"</span>                <span class="c1"># "USD" or "EUR"</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="p">)</span>
 <a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="n">credits_config</span> <span class="o">=</span> <span class="n">payments</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">get_pay_as_you_go_credits_config</span><span class="p">()</span>
 </code></pre></div>
 <p>Register either one as a credits plan:</p>
