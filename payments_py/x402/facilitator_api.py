@@ -55,6 +55,7 @@ Example usage:
                 print(f"Credits redeemed: {settlement.credits_redeemed}")
 """
 
+import logging
 import requests
 from typing import Optional
 from payments_py.common.payments_error import PaymentsError
@@ -66,6 +67,8 @@ from payments_py.api.nvm_api import (
 )
 from payments_py.x402.errors import x402_error_from_response
 from payments_py.x402.types import VerifyResponse, SettleResponse, X402PaymentRequired
+
+logger = logging.getLogger(__name__)
 
 
 class FacilitatorAPI(BasePaymentsAPI):
@@ -148,6 +151,8 @@ class FacilitatorAPI(BasePaymentsAPI):
         x402_access_token: str,
         max_amount: Optional[str] = None,
         agent_request_id: Optional[str] = None,
+        batch: Optional[bool] = None,
+        margin_percent: Optional[int] = None,
     ) -> SettleResponse:
         """
         Settle (burn) credits from a subscriber's payment plan.
@@ -162,6 +167,11 @@ class FacilitatorAPI(BasePaymentsAPI):
             x402_access_token: The X402 access token (contains planId, subscriberAddress, agentId)
             max_amount: The number of credits to burn (as string, optional)
             agent_request_id: Agent request ID for observability tracking (optional)
+            batch: Whether this is a batch request (multiple LLM calls under one
+                ``agent_request_id``). Optional; omitted from the request when None.
+            margin_percent: Margin percentage (0-10) for credit calculation. Mutually
+                exclusive with ``max_amount`` when ``agent_request_id`` is provided.
+                Optional; omitted from the request when None.
 
         Returns:
             SettleResponse with success boolean and transaction details
@@ -182,6 +192,12 @@ class FacilitatorAPI(BasePaymentsAPI):
         if agent_request_id is not None:
             body["agentRequestId"] = agent_request_id
 
+        if batch is not None:
+            body["batch"] = batch
+
+        if margin_percent is not None:
+            body["marginPercent"] = margin_percent
+
         # Send the NVM API-key auth header (Authorization: Bearer <nvm_api_key>).
         # The backend /settle endpoint runs an OPTIONAL guard that tolerates the
         # header's absence today, so this is non-breaking; it pre-positions for
@@ -191,7 +207,38 @@ class FacilitatorAPI(BasePaymentsAPI):
         try:
             response = requests.post(url, **options)
             response.raise_for_status()
-            return SettleResponse.model_validate(response.json())
+            result = SettleResponse.model_validate(response.json())
+            # Settlement failure has two shapes. A refused settle (a spent v3
+            # token, a forged one) arrives as a non-2xx and is raised below. A
+            # settle the backend accepted but could not complete — no credits
+            # available and the auto-order reverting, say — arrives as 200 with
+            # ``success: false`` and an ``error_reason``, and is returned verbatim
+            # because the reason, the billing model and the credit fields are what
+            # the caller needs to react. But not unremarked: of the in-tree
+            # consumers only the MCP paywall branches on ``success``, so a caller
+            # that forgets to check it would serve a request it was never paid for
+            # with nothing in the log. ``is not True`` rather than ``== False``: a
+            # 200 whose body carries no ``success`` is not a settlement either, and
+            # reading an absent field as success is the failure this warns against.
+            if result.success is not True:
+                # Deliberately claims nothing about what was charged: this layer
+                # reads ``success`` and nothing else, and on a card rail an
+                # auto-order can have charged the buyer before the burn failed.
+                logger.warning(
+                    "[x402] settle_permissions did not settle (%s). Do not treat "
+                    "the request as paid. credits_redeemed=%s, order_tx=%s, "
+                    "billing_model=%s — read those before assuming nothing was "
+                    "charged.",
+                    result.error_reason or "no reason given",
+                    (
+                        result.credits_redeemed
+                        if result.credits_redeemed is not None
+                        else "unset"
+                    ),
+                    result.order_tx or "none",
+                    result.billing_model or "unset",
+                )
+            return result
         except requests.HTTPError as err:
             # A v3 token is single-use: the FIRST settle consumes it, and a
             # replay comes back as BCK.X402.0059. x402_error_from_response

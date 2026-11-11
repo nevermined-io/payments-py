@@ -72,7 +72,7 @@ class TestPayAsYouGoFlow:
         ), "Price config should have a template address from API"
         assert (
             price_config.template_address.lower()
-            == payments_agent.contracts.pay_as_you_go_template.lower()
+            == payments_agent.contracts.get_pay_as_you_go_template_address().lower()
         ), "Price config should use contract address from API"
 
         # Configure credits (values default to 1, not functionally used for Pay As You Go)
@@ -105,7 +105,9 @@ class TestPayAsYouGoFlow:
                 registry = plan.get("registry", {})
                 price = registry.get("price", {})
                 template_addr = price.get("templateAddress", "")
-                expected_addr = payments_agent.contracts.pay_as_you_go_template
+                expected_addr = (
+                    payments_agent.contracts.get_pay_as_you_go_template_address()
+                )
                 print(f"Plan template address: {template_addr}")
                 print(f"Expected template address: {expected_addr}")
                 return template_addr.lower() == expected_addr.lower()

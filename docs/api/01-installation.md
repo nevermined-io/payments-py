@@ -47,6 +47,33 @@ pip install payments-py[fastapi]
 poetry add payments-py -E fastapi
 ```
 
+For async observability logging of LLM calls (installs `traceloop-sdk` and the
+OpenTelemetry stack):
+
+```bash
+pip install payments-py[traceloop]
+```
+
+This enables `payments.observability.with_async_logger(...)`, which
+auto-instruments your installed LLM SDKs (OpenAI, Anthropic, …) and tags every
+span with the Nevermined/Helicone properties — no per-call wrapping:
+
+```python
+# Per agent request (agent_request comes from the incoming request):
+logger = payments.observability.with_async_logger(agent_request)
+logger.init()
+
+# make LLM calls for this request — every span is exported and tagged automatically
+```
+
+`init()` sets the association properties (account, plan, agent) derived from
+`agent_request` as the active tags, so build the logger **from the request you
+are serving**. This is concurrency-safe: the tags are set on the current
+OpenTelemetry context (contextvars), so each request's thread / asyncio task
+carries only its own tags. The exporter/provider setup underneath is
+initialised once (`init()` is idempotent) — re-invoking it per request only
+refreshes that request's tags.
+
 ## Verify Installation
 
 After installation, verify the SDK is working:

@@ -44,6 +44,7 @@ The core SDK has no integration dependencies. Add one or more of the following e
 | `strands` | `strands-agents` | Strands `@requires_payment` decorator |
 | `langchain` | `langchain-core` | LangChain `@requires_payment` decorator + `create_paid_react_agent` |
 | `langsmith` | `langsmith` | Auto-emit `nvm:verify` and `nvm:settlement` spans into LangSmith traces when `LANGSMITH_TRACING=true` |
+| `traceloop` | `traceloop-sdk` (+ OpenTelemetry) | `payments.observability.with_async_logger(...)` — auto-instrument LLM calls and export tagged spans to Helicone |
 
 ```bash
 pip install "payments-py[langchain,langsmith]"

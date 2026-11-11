@@ -13,6 +13,7 @@ from payments_py.common.types import (
     PlanRedemptionType,
     PaginationOptions,
     PlanBalance,
+    StripePaymentIntent,
 )
 from payments_py.api.base_payments import BasePaymentsAPI
 from payments_py.api.organizations_api import resolve_publication_headers
@@ -353,6 +354,38 @@ class PlansAPI(BasePaymentsAPI):
             raise PaymentsError.from_backend("Unable to get user plans", error)
         return response.json()
 
+    def get_plans(
+        self,
+        page: int = 1,
+        offset: int = 100,
+        sort_by: str = "created",
+        sort_order: str = "desc",
+        org_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """TS-compatible alias of :meth:`get_user_plans`.
+
+        Mirrors the TypeScript ``plans.getPlans(page, offset, sortBy, sortOrder,
+        orgId)`` positional call shape (same defaults) for code ported from that
+        SDK. Delegates to the native :meth:`get_user_plans`, which takes a
+        :class:`PaginationOptions`.
+
+        Args:
+            page: 1-based page number.
+            offset: Page size.
+            sort_by: Field to sort by (default ``"created"``).
+            sort_order: ``"asc"`` or ``"desc"`` (default ``"desc"``).
+            org_id: Optional organization id; see :meth:`get_user_plans`.
+
+        Returns:
+            A paginated result ``{"total", "page", "offset", "plans": [...]}``.
+        """
+        return self.get_user_plans(
+            org_id=org_id,
+            pagination=PaginationOptions(
+                page=page, offset=offset, sort_by=sort_by, sort_order=sort_order
+            ),
+        )
+
     def get_plan_balance(
         self, plan_id: str, account_address: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -673,20 +706,24 @@ class PlansAPI(BasePaymentsAPI):
         """Build a pay-as-you-go credits configuration."""
         return get_pay_as_you_go_credits_config()
 
-    def order_fiat_plan(self, plan_id: str) -> Dict[str, Any]:
+    def order_fiat_plan(self, plan_id: str) -> StripePaymentIntent:
         """
-        Order a fiat plan using Stripe checkout.
+        Order a fiat plan through Stripe.
+
+        Creates a Stripe PaymentIntent for the plan's price. The customer
+        completes the payment in the browser by confirming it with
+        ``client_secret`` (Stripe.js); never log or store the secret.
 
         Args:
             plan_id: The unique identifier of the plan
 
         Returns:
-            The Stripe checkout result
+            The Stripe PaymentIntent created for the plan
 
         Raises:
             PaymentsError: If unable to order the fiat plan
         """
-        body = {"planId": plan_id, "sessionType": "embedded"}
+        body = {"planId": plan_id}
         options = self.get_backend_http_options("POST", body)
         url = f"{self.environment.backend}{API_URL_STRIPE_CHECKOUT}"
 
@@ -695,7 +732,7 @@ class PlansAPI(BasePaymentsAPI):
             raise PaymentsError.internal(
                 f"Unable to order fiat plan. {response.status_code} - {response.text}"
             )
-        return response.json()
+        return StripePaymentIntent.model_validate(response.json())
 
     def redeem_credits(
         self,

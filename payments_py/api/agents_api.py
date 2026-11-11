@@ -280,6 +280,38 @@ class AgentsAPI(BasePaymentsAPI):
             raise PaymentsError.from_backend("Unable to get user agents", error)
         return response.json()
 
+    def get_agents(
+        self,
+        page: int = 1,
+        offset: int = 100,
+        sort_by: str = "created",
+        sort_order: str = "desc",
+        org_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """TS-compatible alias of :meth:`get_user_agents`.
+
+        Mirrors the TypeScript ``agents.getAgents(page, offset, sortBy,
+        sortOrder, orgId)`` positional call shape (same defaults) for code ported
+        from that SDK. Delegates to the native :meth:`get_user_agents`, which
+        takes a :class:`PaginationOptions`.
+
+        Args:
+            page: 1-based page number.
+            offset: Page size.
+            sort_by: Field to sort by (default ``"created"``).
+            sort_order: ``"asc"`` or ``"desc"`` (default ``"desc"``).
+            org_id: Optional organization id; see :meth:`get_user_agents`.
+
+        Returns:
+            A paginated result ``{"total", "page", "offset", "agents": [...]}``.
+        """
+        return self.get_user_agents(
+            org_id=org_id,
+            pagination=PaginationOptions(
+                page=page, offset=offset, sort_by=sort_by, sort_order=sort_order
+            ),
+        )
+
     def add_plan_to_agent(self, plan_id: str, agent_id: str) -> Dict[str, Any]:
         """
         Add a plan to an agent.

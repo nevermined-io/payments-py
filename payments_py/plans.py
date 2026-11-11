@@ -323,7 +323,7 @@ def get_pay_as_you_go_price_config(
         receiver: The address that will receive the payment
         token_address: The address of the token to use for payment (defaults to native token)
         template_address: PayAsYouGoTemplate contract address. Required. Use
-                         Payments.contracts.pay_as_you_go_template or
+                         payments.contracts.get_pay_as_you_go_template_address() or
                          PlansAPI.get_pay_as_you_go_price_config() to get the address from the API.
 
     Returns:
@@ -338,7 +338,7 @@ def get_pay_as_you_go_price_config(
 
         # Pay-as-you-go plan with template address from API
         payments = Payments(PaymentOptions(...))
-        template_addr = payments.contracts.pay_as_you_go_template
+        template_addr = payments.contracts.get_pay_as_you_go_template_address()
         price_config = get_pay_as_you_go_price_config(
             100, builder_address, USDC_ADDRESS, template_address=template_addr
         )
@@ -353,7 +353,8 @@ def get_pay_as_you_go_price_config(
 
     if not template_address:
         raise ValueError(
-            "template_address is required. Use Payments.contracts.pay_as_you_go_template "
+            "template_address is required. Use "
+            "payments.contracts.get_pay_as_you_go_template_address() "
             "or PlansAPI.get_pay_as_you_go_price_config() to get the address from the API."
         )
 

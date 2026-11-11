@@ -114,17 +114,22 @@ class Payments(BasePaymentsAPI):
         self._delegation_api = None
 
     @property
-    def contracts(self):
+    def contracts(self) -> ContractsAPI:
         """
-        Get contract addresses from the deployment info endpoint.
+        The Contracts API (TS parity: ``payments.contracts`` is the
+        ``ContractsAPI``). Resolve addresses by name, fetch deployment info, or
+        reach the snake_case address model one hop in via ``.contracts``.
 
-        Returns:
-            Contracts model with all contract addresses accessible via snake_case properties
+        ``payments.contracts_api`` remains as a back-compat alias for the same
+        instance.
 
         Example::
-            template_address = payments.contracts.pay_as_you_go_template
+            template_address = payments.contracts.get_pay_as_you_go_template_address()
+            fixed = payments.contracts.get_contract_address("FixedPaymentTemplate")
+            # address data-model (snake_case properties):
+            template_address = payments.contracts.contracts.pay_as_you_go_template
         """
-        return self.contracts_api.contracts
+        return self.contracts_api
 
     @property
     def mcp(self):

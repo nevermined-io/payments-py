@@ -97,6 +97,23 @@ def test_agent_card_endpoint(agent_card, dummy_payments, base_path):  # noqa: D4
         assert resp.json()["name"] == "PyAgent"
 
 
+def test_start_forwards_redemption_defaults(agent_card, dummy_payments):  # noqa: D401
+    srv = PaymentsA2AServer.start(
+        agent_card=agent_card,
+        executor=DummyExecutor(),
+        payments_service=dummy_payments,  # type: ignore[arg-type]
+        port=0,
+        expose_default_routes=False,
+        default_batch=True,
+        default_margin_percent=12,
+    )
+    assert srv.handler.get_handler_options() == {
+        "async_execution": False,
+        "default_batch": True,
+        "default_margin_percent": 12,
+    }
+
+
 flag = {"before": False, "after": False, "error": False}
 
 

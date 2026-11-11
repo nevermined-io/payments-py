@@ -2,6 +2,7 @@
 Contracts API for accessing contract addresses from the deployment info endpoint.
 """
 
+import warnings
 from typing import Optional, Dict
 from pydantic import BaseModel, Field, ConfigDict
 from payments_py.api.base_payments import BasePaymentsAPI
@@ -50,6 +51,11 @@ class Contracts(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+# snake_case address field names on the Contracts model — the back-compat
+# surface ContractsAPI.__getattr__ forwards (see below).
+_ADDRESS_FIELDS = frozenset(Contracts.model_fields)
+
+
 class ContractsAPI(BasePaymentsAPI):
     """
     API for accessing contract addresses from the deployment info endpoint.
@@ -65,6 +71,31 @@ class ContractsAPI(BasePaymentsAPI):
         super().__init__(options)
         self._deployment_info: Optional[DeploymentInfo] = None
         self._contracts: Optional[Contracts] = None
+
+    def __getattr__(self, name: str):
+        """Back-compat: the snake_case address attributes used to live on
+        ``payments.contracts`` (the :class:`Contracts` model). ``payments.contracts``
+        is now this API, so forward those names to the model to keep the
+        previously-documented access working, with a deprecation nudge toward
+        ``get_contract_address`` / ``.contracts``.
+
+        Guarded to the known address field names so typos and ``_private`` /
+        dunder lookups still raise ``AttributeError`` (and cannot recurse into
+        the network-fetching ``contracts`` property).
+        """
+        if name in _ADDRESS_FIELDS:
+            warnings.warn(
+                "Accessing contract addresses on payments.contracts directly "
+                "(payments.contracts.%s) is deprecated; use "
+                "payments.contracts.get_contract_address(...) or "
+                "payments.contracts.contracts.%s" % (name, name),
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return getattr(self.contracts, name)
+        raise AttributeError(
+            f"{type(self).__name__!r} object has no attribute {name!r}"
+        )
 
     def get_deployment_info(self) -> DeploymentInfo:
         """
@@ -110,6 +141,34 @@ class ContractsAPI(BasePaymentsAPI):
                 f"Failed to parse deployment info: {str(e)}"
             ) from e
 
+    def get_contract_address(self, contract_name: str) -> str:
+        """
+        Get a contract address by its deployment name (e.g.
+        ``"PayAsYouGoTemplate"``). Mirrors the TS
+        ``ContractsAPI.getContractAddress``.
+
+        Args:
+            contract_name: The contract's deployment key.
+
+        Returns:
+            The contract address.
+
+        Raises:
+            PaymentsError: If the name is not present in the deployment info.
+        """
+        info = self.get_deployment_info()
+        address = info.contracts.get(contract_name)
+        if not address:
+            raise PaymentsError.internal(
+                f"Contract address not found for {contract_name}"
+            )
+        return address
+
+    def get_pay_as_you_go_template_address(self) -> str:
+        """Convenience accessor for the ``PayAsYouGoTemplate`` address. Mirrors
+        the TS ``ContractsAPI.getPayAsYouGoTemplateAddress``."""
+        return self.get_contract_address("PayAsYouGoTemplate")
+
     @property
     def contracts(self) -> Contracts:
         """
@@ -120,7 +179,7 @@ class ContractsAPI(BasePaymentsAPI):
 
         Example::
             payments = Payments(PaymentOptions(...))
-            template_address = payments.contracts.pay_as_you_go_template
+            template_address = payments.contracts.contracts.pay_as_you_go_template
         """
         if self._contracts is None:
             self.get_deployment_info()

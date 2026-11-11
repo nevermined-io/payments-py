@@ -6,7 +6,17 @@ Provides reusable utilities for wrapping API calls with Helicone logging for AI 
 import time
 import math
 import json
-from typing import Dict, Any, Optional, Callable, Awaitable, TypeVar, Generic, Union
+from typing import (
+    Dict,
+    Any,
+    Optional,
+    Callable,
+    Awaitable,
+    Set,
+    TypeVar,
+    Generic,
+    Union,
+)
 from dataclasses import dataclass
 from urllib.parse import urljoin
 from helicone_helpers import HeliconeManualLogger
@@ -374,6 +384,111 @@ def with_openai(
     )
 
 
+class AsyncLogger:
+    """Async OpenTelemetry logger for LLM calls.
+
+    Auto-instruments the installed LLM SDKs (OpenAI, Anthropic, …) via Traceloop
+    and tags **every** span with the Nevermined/Helicone association properties,
+    exporting to the Helicone OTLP endpoint — no per-call wrapping needed.
+    Mirrors the TS ``withAsyncLogger``; the TS version hand-rolls what Python's
+    ``Traceloop.set_association_properties`` does natively.
+
+    Requires the optional ``traceloop`` extra::
+
+        pip install payments-py[traceloop]
+
+    Build the logger **from the agent request you are serving** and call
+    :meth:`init`, then make that request's LLM calls — every span is tagged with
+    that request's account/plan/agent. This is safe under concurrency: the tags
+    are set on the current OpenTelemetry context (contextvars), so each request's
+    thread / asyncio task carries only its own tags, and the one-time
+    exporter/provider setup underneath is idempotent (``Traceloop.init`` no-ops
+    after the first call), so re-invoking :meth:`init` per request only refreshes
+    the per-request tags.
+    """
+
+    def __init__(
+        self,
+        helicone_api_key: str,
+        helicone_async_logging_url: str,
+        association_properties: Dict[str, str],
+        instruments: Optional[Set[Any]] = None,
+        app_name: str = "nevermined-agent",
+    ):
+        self._helicone_api_key = helicone_api_key
+        self._helicone_async_logging_url = helicone_async_logging_url
+        self._association_properties = association_properties
+        self._instruments = instruments
+        self._app_name = app_name
+
+    def init(self) -> None:
+        """Initialise Traceloop with the Helicone OTLP exporter and register the
+        association properties on the current OpenTelemetry context. Raises
+        :class:`ImportError` if the ``traceloop`` extra is not installed."""
+        try:
+            from traceloop.sdk import Traceloop
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+                OTLPSpanExporter,
+            )
+        except ImportError as err:  # pragma: no cover - import-time guard
+            raise ImportError(
+                "with_async_logger requires the optional 'traceloop' extra. "
+                "Install it with `pip install payments-py[traceloop]`."
+            ) from err
+
+        # Custom OTLP exporter with the exact Helicone URL + auth header. When an
+        # exporter is set, Traceloop ignores its own base-url/api-key/headers, so
+        # this is the clean way to target Helicone's /jawn/v1/trace/log endpoint.
+        exporter = OTLPSpanExporter(
+            endpoint=self._helicone_async_logging_url,
+            headers={"Authorization": f"Bearer {self._helicone_api_key}"},
+        )
+        Traceloop.init(
+            app_name=self._app_name,
+            exporter=exporter,
+            disable_batch=True,
+            instruments=self._instruments,
+        )
+        # Attach the Helicone-Property-* values to every span (Traceloop prefixes
+        # each with `traceloop.association.properties.`). These are set on the
+        # current OpenTelemetry context (contextvars), so they stay scoped to the
+        # calling thread / asyncio task — concurrent requests don't cross-tag.
+        Traceloop.set_association_properties(self._association_properties)
+
+
+def with_async_logger(
+    helicone_api_key: str,
+    helicone_async_logging_url: str,
+    account_address: str,
+    environment_name: str,
+    start_agent_request: StartAgentRequest,
+    custom_properties: Optional[CustomProperties] = None,
+    instruments: Optional[Set[Any]] = None,
+    app_name: str = "nevermined-agent",
+) -> AsyncLogger:
+    """Build an :class:`AsyncLogger` whose spans carry the Nevermined/Helicone
+    association properties derived from ``start_agent_request``."""
+    headers = get_default_helicone_headers(
+        helicone_api_key,
+        account_address,
+        environment_name,
+        start_agent_request,
+        custom_properties or {},
+    )
+    association_properties = {
+        key: value
+        for key, value in headers.items()
+        if key.startswith("Helicone-Property-")
+    }
+    return AsyncLogger(
+        helicone_api_key,
+        helicone_async_logging_url,
+        association_properties,
+        instruments,
+        app_name,
+    )
+
+
 class ObservabilityAPI(BasePaymentsAPI):
     """
     The ObservabilityAPI class provides methods to wrap API calls with Helicone logging
@@ -393,6 +508,11 @@ class ObservabilityAPI(BasePaymentsAPI):
         )
         self.helicone_manual_logging_url = urljoin(
             self.environment.helicone_url, "jawn/v1/trace/custom/v1/log"
+        )
+        # Full OTLP endpoint for async span logging (jawn uses /v1/trace/log,
+        # not /v1/traces).
+        self.helicone_async_logging_url = urljoin(
+            self.environment.helicone_url, "jawn/v1/trace/log"
         )
 
     @classmethod
@@ -469,6 +589,45 @@ class ObservabilityAPI(BasePaymentsAPI):
             self.environment_name,
             start_agent_request,
             custom_properties,
+        )
+
+    def with_async_logger(
+        self,
+        start_agent_request: StartAgentRequest,
+        custom_properties: Optional[CustomProperties] = None,
+        instruments: Optional[Set[Any]] = None,
+        app_name: str = "nevermined-agent",
+    ) -> AsyncLogger:
+        """Create an async logger that auto-instruments installed LLM SDKs and
+        tags every span with Nevermined/Helicone association properties.
+
+        Mirrors the TS ``observability.withAsyncLogger``. Requires the optional
+        ``traceloop`` extra (``pip install payments-py[traceloop]``).
+
+        Usage::
+
+            logger = payments.observability.with_async_logger(agent_request)
+            logger.init()
+            # make LLM calls normally — every span is tagged automatically
+
+        Args:
+            start_agent_request: The agent request used to derive the Helicone
+                association properties.
+            custom_properties: Extra Helicone properties to attach to every span.
+            instruments: Optional set of ``traceloop.sdk.instruments.Instruments``
+                to limit which SDKs are instrumented. ``None`` auto-instruments
+                every installed, supported SDK.
+            app_name: Service name reported on the spans.
+        """
+        return with_async_logger(
+            self.helicone_api_key,
+            self.helicone_async_logging_url,
+            self.account_address,
+            self.environment_name,
+            start_agent_request,
+            custom_properties,
+            instruments,
+            app_name,
         )
 
     def calculate_image_usage(self, pixels: int) -> UsageDetails:

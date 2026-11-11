@@ -158,3 +158,70 @@ class TestGetUserAgents:
             )
             with pytest.raises(PaymentsError):
                 payments.agents.get_user_agents()
+
+
+class TestTsCompatListingAliases:
+    """`get_plans` / `get_agents` mirror the TS positional call shape and
+    delegate to the native `get_user_*` methods (payments-py#308 parity)."""
+
+    def test_get_plans_defaults_match_ts(self):
+        payments = _payments()
+        with requests_mock.Mocker() as m:
+            m.get(
+                f"{BACKEND}/api/v1/protocol/plans",
+                json={"total": 0, "page": 1, "offset": 100, "plans": []},
+            )
+            payments.plans.get_plans()
+
+        qs = parse_qs(urlparse(m.last_request.url).query)
+        # TS getPlans() defaults: page=1, offset=100, sortBy='created', sortOrder='desc'
+        assert qs["page"] == ["1"]
+        assert qs["offset"] == ["100"]
+        assert qs["sortBy"] == ["created"]
+        assert qs["sortOrder"] == ["desc"]
+        assert "orgId" not in qs
+
+    def test_get_plans_forwards_positional_args_and_org(self):
+        payments = _payments()
+        with requests_mock.Mocker() as m:
+            m.get(
+                f"{BACKEND}/api/v1/protocol/plans",
+                json={"total": 0, "page": 3, "offset": 5, "plans": []},
+            )
+            payments.plans.get_plans(3, 5, "name", "asc", "org-acme")
+
+        qs = parse_qs(urlparse(m.last_request.url).query)
+        assert qs["page"] == ["3"]
+        assert qs["offset"] == ["5"]
+        assert qs["sortBy"] == ["name"]
+        assert qs["sortOrder"] == ["asc"]
+        assert qs["orgId"] == ["org-acme"]
+
+    def test_get_agents_defaults_match_ts(self):
+        payments = _payments()
+        with requests_mock.Mocker() as m:
+            m.get(
+                f"{BACKEND}/api/v1/protocol/agents",
+                json={"total": 0, "page": 1, "offset": 100, "agents": []},
+            )
+            payments.agents.get_agents()
+
+        qs = parse_qs(urlparse(m.last_request.url).query)
+        assert qs["page"] == ["1"]
+        assert qs["offset"] == ["100"]
+        assert qs["sortBy"] == ["created"]
+        assert qs["sortOrder"] == ["desc"]
+
+    def test_get_agents_forwards_positional_args_and_org(self):
+        payments = _payments()
+        with requests_mock.Mocker() as m:
+            m.get(
+                f"{BACKEND}/api/v1/protocol/agents",
+                json={"total": 0, "page": 2, "offset": 7, "agents": []},
+            )
+            payments.agents.get_agents(2, 7, "name", "asc", "org-x")
+
+        qs = parse_qs(urlparse(m.last_request.url).query)
+        assert qs["page"] == ["2"]
+        assert qs["offset"] == ["7"]
+        assert qs["orgId"] == ["org-x"]

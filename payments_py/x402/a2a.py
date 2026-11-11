@@ -70,6 +70,9 @@ class x402Metadata:
     PAYLOAD_KEY = "x402.payment.payload"  # PaymentPayload object
     RECEIPTS_KEY = "x402.payment.receipts"  # Array of SettleResponse objects
     ERROR_KEY = "x402.payment.error"  # Error code on failure
+    # Nevermined extension (not a2a-x402 spec): marks a verified payload whose
+    # on-chain settlement is deferred out-of-band (batch redemption).
+    SETTLEMENT_KEY = "x402.payment.settlement"  # "deferred" on batched redemption
 
 
 from .types import (
@@ -139,6 +142,7 @@ class X402A2AUtils:
     PAYLOAD_KEY = X402Metadata.PAYLOAD_KEY
     RECEIPTS_KEY = X402Metadata.RECEIPTS_KEY
     ERROR_KEY = X402Metadata.ERROR_KEY
+    SETTLEMENT_KEY = X402Metadata.SETTLEMENT_KEY
 
     def get_payment_status_from_message(self, message: Message) -> Optional[str]:
         """
@@ -383,6 +387,42 @@ class X402A2AUtils:
             task.status.message.metadata = {}
 
         task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_VERIFIED
+        return task
+
+    def record_payment_deferred(self, task: Task) -> Task:
+        """
+        Record a deferred (batch) settlement in task metadata.
+
+        The payload was verified but on-chain settlement is deferred out-of-band
+        (this handler never confirms it). Sets ``payment-verified`` PLUS the
+        Nevermined ``x402.payment.settlement: 'deferred'`` marker, so a client
+        can tell it will be charged out-of-band — distinct from a plain verify
+        where nothing is owed.
+
+        Args:
+            task: A2A Task object
+
+        Returns:
+            Updated task with payment verified + settlement-deferred marker
+        """
+        if not hasattr(task.status, "message") or not task.status.message:
+            task.status.message = Message(
+                messageId=f"{task.id}-status",
+                role="agent",
+                parts=[
+                    TextPart(kind="text", text="Payment verified; settlement deferred.")
+                ],
+                metadata={},
+            )
+
+        if (
+            not hasattr(task.status.message, "metadata")
+            or not task.status.message.metadata
+        ):
+            task.status.message.metadata = {}
+
+        task.status.message.metadata[self.STATUS_KEY] = PaymentStatus.PAYMENT_VERIFIED
+        task.status.message.metadata[self.SETTLEMENT_KEY] = "deferred"
         return task
 
     def record_payment_success(

@@ -704,6 +704,7 @@ def mount_mcp_handlers(
     session_manager: SessionManager,
     require_auth: bool = True,
     log: Optional[Callable[[str], None]] = None,
+    base_url: Optional[str] = None,
 ) -> None:
     """Mount all MCP handlers on a FastAPI application.
 
@@ -712,6 +713,9 @@ def mount_mcp_handlers(
         session_manager: Session manager instance.
         require_auth: Whether to require authentication. Defaults to True.
         log: Optional logging callback.
+        base_url: Operator base URL used to pin the RFC 9728 ``WWW-Authenticate``
+            challenge origin on a 401 (so it never depends on client-supplied
+            Host headers). When omitted the origin is derived from the request.
 
     Examples:
         >>> from fastapi import FastAPI
@@ -741,7 +745,12 @@ def mount_mcp_handlers(
     if require_auth:
         from .oauth_router import create_require_auth_middleware
 
-        auth_dependency = create_require_auth_middleware()
+        # These handlers protect the `/mcp` resource, so the 401 must advertise
+        # the `/mcp`-scoped PRM (resource: `<baseUrl>/mcp`), not the root one.
+        auth_dependency = create_require_auth_middleware(
+            base_url=base_url,
+            resource_metadata_path="/.well-known/oauth-protected-resource/mcp",
+        )
 
         from fastapi import Depends
 

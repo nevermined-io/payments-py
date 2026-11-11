@@ -267,6 +267,8 @@ for plan in result["plans"]:
 org_plans = payments.plans.get_user_plans(org_id="org-acme")
 ```
 
+For code ported from the TypeScript SDK, `get_plans(page, offset, sort_by, sort_order, org_id)` is a positional-argument alias of `get_user_plans` matching `plans.getPlans(...)` (same defaults: `page=1, offset=100, sort_by="created", sort_order="desc"`).
+
 ### Get a Single Plan
 
 ```python

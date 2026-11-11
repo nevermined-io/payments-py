@@ -191,6 +191,51 @@ asyncio.run(result.server.serve())
 | `expose_agent_card` | `bool` | No | Expose /.well-known/agent-card.json (+ legacy /.well-known/agent.json alias) |
 | `hooks` | `dict` | No | Request lifecycle hooks |
 | `async_execution` | `bool` | No | Enable async task execution |
+| `default_batch` | `bool` | No | Default batch redemption — defer settlement out-of-band (default: `False`) |
+| `default_margin_percent` | `float` | No | Default margin percentage, surfaced on the redemption config (see below) |
+
+## Redemption Configuration (batch settlement)
+
+By default the server settles each paid request inline — it calls the
+facilitator the moment the agent reports `creditsUsed` on its final event. With
+**batch redemption** the server instead *defers* on-chain settlement: it skips
+the inline settle, and an out-of-band process redeems the credits later.
+
+Redemption is **server-controlled** — clients cannot influence it. It is
+resolved per request from two sources, the agent card winning per field:
+
+1. The `redemptionConfig` object on the agent card's `urn:nevermined:payment`
+   extension params.
+2. The handler defaults `default_batch` / `default_margin_percent`.
+
+```json
+{
+  "uri": "urn:nevermined:payment",
+  "params": {
+    "agentId": "<agentId>",
+    "planId": "<planId>",
+    "redemptionConfig": { "useBatch": true }
+  }
+}
+```
+
+```python
+# Or set a server-wide default (the card still overrides it per request):
+result = PaymentsA2AServer.start(
+    agent_card=agent_card,
+    executor=MyExecutor(),
+    payments_service=payments,
+    default_batch=True,
+)
+```
+
+When a request is batched, an in-band x402 v2 task is marked `payment-verified`
+plus the Nevermined `x402.payment.settlement: "deferred"` marker (not
+`payment-completed`), so the client knows it will be charged out-of-band.
+
+> **Note:** `useMargin` / `marginPercent` are accepted and surfaced on the
+> resolved config for parity, but the handler does **not** apply a margin to
+> settlement.
 
 ## Request Validation
 
