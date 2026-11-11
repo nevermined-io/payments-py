@@ -34,6 +34,7 @@ from payments_py.utils import get_random_big_int, is_ethereum_address
 from payments_py import plans as plan_utils
 from payments_py.plans import (
     get_pay_as_you_go_price_config,
+    get_fiat_pay_as_you_go_price_config,
     get_pay_as_you_go_credits_config,
 )
 from payments_py.api.contracts_api import ContractsAPI
@@ -688,12 +689,12 @@ class PlansAPI(BasePaymentsAPI):
         registration) in that token on every request. Do not use it for a card
         plan.
 
-        A CARD (fiat) pay-as-you-go price is :meth:`get_fiat_price_config`
-        registered on the same template:
+        A CARD (fiat) pay-as-you-go price is built with the one-call shorthand
+        :meth:`get_fiat_pay_as_you_go_price_config` (a fiat price registered on
+        the same template)::
 
-            price_config = payments.plans.get_fiat_price_config(amount, receiver)
-            price_config.template_address = (
-                payments.contracts.get_pay_as_you_go_template_address()
+            price_config = payments.plans.get_fiat_pay_as_you_go_price_config(
+                amount, receiver
             )
 
         The template is what makes a plan pay-as-you-go
@@ -723,6 +724,42 @@ class PlansAPI(BasePaymentsAPI):
             amount, receiver, token_address, template_address=template_address
         )
 
+    def get_fiat_pay_as_you_go_price_config(
+        self,
+        amount: int,
+        receiver: str,
+        currency: str = "USD",
+    ) -> PlanPriceConfig:
+        """
+        Build a CARD (fiat) pay-as-you-go price configuration using the contract
+        address from the API.
+
+        Resolves the PayAsYouGoTemplate address from the contracts API (exactly
+        like :meth:`get_pay_as_you_go_price_config`) and builds a fiat PAYG plan
+        (``is_crypto=False``). The buyer is charged per request through a card
+        delegation (x402 ``nvm:card-delegation``); checkout / ``order_fiat_plan``
+        refuses a card PAYG plan with ``BCK.STRIPE.0041``.
+
+        Args:
+            amount: The per-request price in 6-decimal units (NOT cents). The
+                server-side minimum is $1.00 (``1_000_000``, ``BCK.PROTOCOL.0047``).
+            receiver: The address that will receive the payment.
+            currency: ``USD`` or ``EUR`` (default: ``USD``). Other currencies are
+                refused at plan registration.
+
+        Returns:
+            A PlanPriceConfig object configured for card pay-as-you-go payments.
+
+        Raises:
+            PaymentsError: If unable to fetch contract address from API
+            ValueError: If the receiver address is not a valid Ethereum address
+        """
+        template_address = self.contracts_api.contracts.pay_as_you_go_template
+
+        return get_fiat_pay_as_you_go_price_config(
+            amount, receiver, currency, template_address=template_address
+        )
+
     @staticmethod
     def get_pay_as_you_go_credits_config() -> PlanCreditsConfig:
         """
@@ -730,8 +767,9 @@ class PlansAPI(BasePaymentsAPI):
 
         It pairs with either pay-as-you-go price:
         :meth:`get_pay_as_you_go_price_config` for a crypto plan, or
+        :meth:`get_fiat_pay_as_you_go_price_config` (the one-call shorthand for
         :meth:`get_fiat_price_config` with the PayAsYouGoTemplate as its
-        ``template_address`` for a card plan. It does not make a plan
+        ``template_address``) for a card plan. It does not make a plan
         pay-as-you-go on its own: that is the price's template address.
         """
         return get_pay_as_you_go_credits_config()

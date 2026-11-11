@@ -329,6 +329,8 @@ def get_pay_as_you_go_price_config(
     is what makes a plan pay-as-you-go (``billingModel: 'pay-as-you-go'``);
     without it, :func:`get_fiat_price_config` +
     :func:`get_pay_as_you_go_credits_config` registers a one-credit credits plan.
+    :func:`get_fiat_pay_as_you_go_price_config` is the one-call shorthand for
+    that card recipe.
 
     Pair either price with :func:`get_pay_as_you_go_credits_config`.
 
@@ -350,10 +352,7 @@ def get_pay_as_you_go_price_config(
 
     Example::
 
-        from payments_py.plans import (
-            get_fiat_price_config,
-            get_pay_as_you_go_price_config,
-        )
+        from payments_py.plans import get_pay_as_you_go_price_config
 
         # Pay-as-you-go plan with template address from API
         payments = Payments(PaymentOptions(...))
@@ -367,10 +366,10 @@ def get_pay_as_you_go_price_config(
             100, builder_address, USDC_ADDRESS
         )
 
-        # CARD pay-as-you-go is NOT this function: it is the fiat price
-        # registered on the PayAsYouGoTemplate
-        card_price_config = get_fiat_price_config(1_000_000, builder_address)
-        card_price_config.template_address = template_addr
+        # CARD pay-as-you-go is a different builder — the one-call shorthand
+        card_price_config = payments.plans.get_fiat_pay_as_you_go_price_config(
+            1_000_000, builder_address
+        )
     """
     if not is_ethereum_address(receiver):
         raise ValueError(f"Receiver address {receiver} is not a valid Ethereum address")
@@ -394,6 +393,60 @@ def get_pay_as_you_go_price_config(
     )
 
 
+def get_fiat_pay_as_you_go_price_config(
+    amount: int,
+    receiver: Address,
+    currency: str = Currency.USD,
+    template_address: Optional[Address] = None,
+) -> PlanPriceConfig:
+    """
+    Get a CARD (fiat) pay-as-you-go price configuration for a plan.
+
+    Builds a fiat PAYG plan (``is_crypto=False``) by taking a plain fiat price
+    config (:func:`get_fiat_price_config`) and attaching the PayAsYouGoTemplate
+    address — the only thing the backend uses to classify a plan as PAYG
+    (``price.templateAddress == PayAsYouGoTemplate``). Without the template, and
+    paired with :func:`get_pay_as_you_go_credits_config`, a fiat price config
+    registers a 1-credit *credits* plan (bought once through checkout), not PAYG.
+
+    A card PAYG plan is paid PER REQUEST through a card delegation (x402 scheme
+    ``nvm:card-delegation``, settled by the PSP — ``stripe`` by default), never
+    through checkout: ``order_fiat_plan`` refuses a card PAYG plan with
+    ``BCK.STRIPE.0041``.
+
+    For the on-chain (crypto) variant use
+    :func:`get_pay_as_you_go_price_config`.
+
+    Args:
+        amount: The per-request price in 6-decimal units (the USDC convention,
+            NOT cents). E.g. ``1_000_000`` = $1.00, which is also the server-side
+            minimum; smaller amounts are rejected with ``BCK.PROTOCOL.0047``.
+        receiver: The address that will receive the payment.
+        currency: ``USD`` or ``EUR`` (default: ``USD``). Other currencies are
+            refused at plan registration.
+        template_address: PayAsYouGoTemplate contract address. Required. Use
+            ``payments.contracts.get_pay_as_you_go_template_address()`` or
+            ``PlansAPI.get_fiat_pay_as_you_go_price_config()`` to get it from the API.
+
+    Returns:
+        A PlanPriceConfig object configured for card pay-as-you-go payments.
+
+    Raises:
+        ValueError: If the receiver address is not a valid Ethereum address.
+        ValueError: If template_address is not provided.
+    """
+    price_config = get_fiat_price_config(amount, receiver, currency)
+
+    if not template_address:
+        raise ValueError(
+            "template_address is required. Use "
+            "payments.contracts.get_pay_as_you_go_template_address() "
+            "or PlansAPI.get_fiat_pay_as_you_go_price_config() to get the address from the API."
+        )
+
+    return price_config.model_copy(update={"template_address": template_address})
+
+
 def get_pay_as_you_go_credits_config() -> PlanCreditsConfig:
     """
     Get a pay-as-you-go credits configuration for a plan.
@@ -411,9 +464,10 @@ def get_pay_as_you_go_credits_config() -> PlanCreditsConfig:
     not functionally used.
 
     It pairs with either pay-as-you-go price: :func:`get_pay_as_you_go_price_config`
-    for a crypto plan, or :func:`get_fiat_price_config` with the PayAsYouGoTemplate
-    as its ``template_address`` for a card plan. It does not make a plan
-    pay-as-you-go on its own: that is the price's template address.
+    for a crypto plan, or :func:`get_fiat_pay_as_you_go_price_config` (the one-call
+    shorthand for :func:`get_fiat_price_config` with the PayAsYouGoTemplate as its
+    ``template_address``) for a card plan. It does not make a plan pay-as-you-go on
+    its own: that is the price's template address.
 
     Returns:
         A PlanCreditsConfig object configured for pay-as-you-go credits.
