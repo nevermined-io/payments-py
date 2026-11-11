@@ -209,7 +209,7 @@ credits up front. Its price builder decides **how** the subscriber pays, so pick
 | Rail | Price config | Credits config |
 |------|--------------|----------------|
 | Crypto | `payments.plans.get_pay_as_you_go_price_config(amount, receiver[, token_address])` | `payments.plans.get_pay_as_you_go_credits_config()` |
-| Card | `payments.plans.get_fiat_price_config(amount, receiver[, currency])`, then set its `template_address` to `payments.contracts.get_pay_as_you_go_template_address()` | `payments.plans.get_pay_as_you_go_credits_config()` |
+| Card | `payments.plans.get_fiat_pay_as_you_go_price_config(amount, receiver[, currency])` | `payments.plans.get_pay_as_you_go_credits_config()` |
 
 > **`get_pay_as_you_go_price_config` always builds a crypto price** (`is_crypto=True`), whatever
 > token you pass. Do not use it for a plan that subscribers pay by card.
@@ -217,8 +217,8 @@ credits up front. Its price builder decides **how** the subscriber pays, so pick
 What makes either plan pay-as-you-go is the **PayAsYouGoTemplate** address in its price config:
 the API reports `billingModel: 'pay-as-you-go'` (in `payments.plans.get_plan(plan_id)`, and as
 `billing_model` on each settle) only for a plan registered on that template.
-`get_pay_as_you_go_price_config` sets it for you; `get_fiat_price_config` does not, so the card
-recipe adds it.
+`get_pay_as_you_go_price_config` (crypto) and `get_fiat_pay_as_you_go_price_config` (card) set it
+for you; a plain `get_fiat_price_config` does not.
 
 #### Crypto pay-as-you-go
 
@@ -237,14 +237,14 @@ credits_config = payments.plans.get_pay_as_you_go_credits_config()
 #### Card pay-as-you-go
 
 ```python
-# is_crypto=False: the subscriber's card is charged on every request
-price_config = payments.plans.get_fiat_price_config(
-    amount=1_000_000,            # Price per request in 6-decimal units ($1.00), NOT cents
-    receiver="0xBuilderAddress"  # Payment receiver
+# is_crypto=False: the subscriber's card is charged on every request.
+# get_fiat_pay_as_you_go_price_config is the one-call shorthand for a fiat price
+# registered on the PayAsYouGoTemplate — it fetches the template from the API for you.
+price_config = payments.plans.get_fiat_pay_as_you_go_price_config(
+    amount=1_000_000,             # Price per request in 6-decimal units ($1.00), NOT cents
+    receiver="0xBuilderAddress",  # Payment receiver
+    currency="USD"                # "USD" or "EUR"
 )
-# The PayAsYouGoTemplate is what makes this fiat price pay-as-you-go. Fetch it, never
-# hard-code it: the card rail recognizes only the current template
-price_config.template_address = payments.contracts.get_pay_as_you_go_template_address()
 credits_config = payments.plans.get_pay_as_you_go_credits_config()
 ```
 

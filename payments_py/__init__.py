@@ -115,6 +115,7 @@ from payments_py.plans import (
     set_onchain_mirror,
     # Pay As You Go functions
     get_pay_as_you_go_price_config,
+    get_fiat_pay_as_you_go_price_config,
     get_pay_as_you_go_credits_config,
 )
 
@@ -232,6 +233,7 @@ __all__ = [
     "set_onchain_mirror",
     # Pay As You Go functions
     "get_pay_as_you_go_price_config",
+    "get_fiat_pay_as_you_go_price_config",
     "get_pay_as_you_go_credits_config",
     # Environment constants
     "ZeroAddress",
