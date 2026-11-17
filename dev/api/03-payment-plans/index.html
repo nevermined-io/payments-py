@@ -2048,8 +2048,10 @@ just-registered plan can take a few seconds to read back with its template.</p>
   price, and the settle reports <code>billing_model == "pay-as-you-go"</code> with the charge reference in
   <code>order_tx</code> (see <a href="../11-x402/#was-the-buyer-charged">Was the buyer charged?</a>). A settle that
   fails with <code>BCK.X402.0048</code> may already have charged the card: reconcile it, never retry it;</li>
-<li>is charged in the currency of the buyer's card delegation (set when the card is enrolled), which
-  the API does not compare with the plan's <code>currency</code>: keep the two the same;</li>
+<li>is paid only through a card delegation <strong>in the plan's <code>currency</code></strong>: the card is charged in the
+  delegation's currency and nothing converts it, so a delegation in another currency is refused with
+  <code>BCK.DELEGATION.0011</code> before any charge (already at verify, and when a delegation bound to the
+  plan is created). A plan registered without a <code>currency</code> counts as USD;</li>
 <li>is <strong>not sold through checkout</strong>, by design: there is no balance to buy up front, so
   <code>order_fiat_plan</code> fails with <code>BCK.STRIPE.0041</code>;</li>
 <li>keeps the fiat price floor: the per-request price must be at least <strong>$1.00</strong> (<code>1_000_000</code>),
