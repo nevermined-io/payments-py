@@ -268,8 +268,10 @@ A card pay-as-you-go plan:
   price, and the settle reports `billing_model == "pay-as-you-go"` with the charge reference in
   `order_tx` (see [Was the buyer charged?](11-x402.md#was-the-buyer-charged)). A settle that
   fails with `BCK.X402.0048` may already have charged the card: reconcile it, never retry it;
-- is charged in the currency of the buyer's card delegation (set when the card is enrolled), which
-  the API does not compare with the plan's `currency`: keep the two the same;
+- is paid only through a card delegation **in the plan's `currency`**: the card is charged in the
+  delegation's currency and nothing converts it, so a delegation in another currency is refused with
+  `BCK.DELEGATION.0011` before any charge (already at verify, and when a delegation bound to the
+  plan is created). A plan registered without a `currency` counts as USD;
 - is **not sold through checkout**, by design: there is no balance to buy up front, so
   `order_fiat_plan` fails with `BCK.STRIPE.0041`;
 - keeps the fiat price floor: the per-request price must be at least **$1.00** (`1_000_000`),
