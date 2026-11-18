@@ -156,7 +156,7 @@ SCOPE_PREFIX="$SCOPE_PREFIX" MINTLIFY_RC="$mintlify_rc" python3 - "$REPORT" <<'P
 import os, re, sys
 
 prefix = os.environ["SCOPE_PREFIX"]
-source_re = re.compile(r"^(\S+\.mdx)\s*$")
+source_re = re.compile(r"^(\S+\.mdx?)\s*$")  # the site also has .md pages (api-reference/cli)
 broken_re = re.compile(r"^\s*⎿\s+(.+?)\s*$")
 # Header the checker prints, e.g. "found 2 broken links in 2 files".
 header_re = re.compile(r"found\s+(\d+)\s+broken\s+links?\b")
