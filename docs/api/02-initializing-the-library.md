@@ -112,8 +112,6 @@ explicitly. The prefix-to-environment mapping is:
 |----------------|-------------|
 | `sandbox:` | `sandbox` |
 | `live:` | `live` |
-| `sandbox-staging:` | `staging_sandbox` |
-| `live-staging:` | `staging_live` |
 
 ### Sandbox Environment (Testing)
 
@@ -175,8 +173,6 @@ payments = Payments.get_instance(
 |-------------|-------------|
 | `sandbox` | Production sandbox (testing) |
 | `live` | Production mainnet |
-| `staging_sandbox` | Staging sandbox |
-| `staging_live` | Staging mainnet |
 | `custom` | Custom URLs via environment variables |
 
 ## Accessing Sub-APIs
