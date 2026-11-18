@@ -1,12 +1,16 @@
-"""The synced docs name only the public environments.
+"""The guides synced to nevermined.ai/docs name only the public environments.
 
 ``docs/api/**/*.md`` is converted by ``publish-mintlify-docs.yml`` into the docs
-site's ``api-reference/python/`` pages, which are public. The SDK still accepts
-the internal ``staging_sandbox`` / ``staging_live`` environments (and their
+site's ``api-reference/python/`` pages. The SDK still accepts the internal
+``staging_sandbox`` / ``staging_live`` environments (and their
 ``sandbox-staging:`` / ``live-staging:`` key prefixes) for Nevermined's own
-development, but public pages say only ``sandbox`` and ``live``
+development, but the docs site says only ``sandbox`` and ``live``
 (nevermined-io/nvm-monorepo#5182). The docs site cannot fix a generated page,
 so this repo guards its source.
+
+Out of scope: the mkdocs API reference (``docs/reference/``, published by
+``docs.yml``) renders ``payments_py/environments.py`` itself, which keeps the
+staging environments on purpose.
 """
 
 import re
