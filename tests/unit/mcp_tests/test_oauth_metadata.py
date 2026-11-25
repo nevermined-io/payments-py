@@ -127,7 +127,6 @@ class TestAuthorizationServersIsTheBackendAs:
     CUSTOM_LOCAL = EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="http://localhost:3001",
-        proxy="",
         helicone_url="",
     )
 
@@ -635,9 +634,9 @@ class TestAuthorizationEndpointCarriesTheTier:
         assert resolve_oauth_tier("custom", "https://api") is None
         # The anchor is the EXACT label ``api``, IMMEDIATELY before the tier. Rows whose stray
         # tier label sits at index 0 never reach the loop as ``following``, so "any label
-        # followed by a tier" passed them all (self-review panel). ``proxy.<tier>`` is a REAL
-        # Nevermined host (the LLM proxy, ``environments.py``) that must NOT classify —
-        # it would otherwise publish the API's canonical origin as the proxy's issuer.
+        # followed by a tier" passed them all (self-review panel). ``proxy.<tier>`` (the host
+        # shape of the retired Nevermined proxy) must NOT classify — it would otherwise
+        # publish the API's canonical origin as the proxy's issuer.
         assert (
             resolve_oauth_tier("custom", "https://proxy.sandbox.nevermined.dev") is None
         )
@@ -685,7 +684,6 @@ class TestAuthorizationEndpointCarriesTheTier:
             EnvironmentInfo(
                 frontend="https://nevermined.app",
                 backend=backend,
-                proxy="",
                 helicone_url="",
             ),
         )
@@ -700,7 +698,6 @@ class TestAuthorizationEndpointCarriesTheTier:
             EnvironmentInfo(
                 frontend="https://nevermined.app",
                 backend="http://localhost:3001",
-                proxy="",
                 helicone_url="",
             ),
         )
@@ -765,7 +762,6 @@ class TestIssuerIsTheApiOriginPerTier:
     CUSTOM_LOCAL = EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="http://localhost:3001",
-        proxy="",
         helicone_url="",
     )
 
@@ -923,7 +919,6 @@ class TestIssuerIsTheApiOriginPerTier:
             EnvironmentInfo(
                 frontend="https://nevermined.app",
                 backend="localhost:3001/",
-                proxy="",
                 helicone_url="",
             ),
         )
@@ -1098,13 +1093,11 @@ class TestIssParameterSupportAdvertisement:
     CUSTOM_LOCAL = EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="http://localhost:3001",
-        proxy="",
         helicone_url="",
     )
     CUSTOM_NEVERMINED = EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="https://api.sandbox.nevermined.app",
-        proxy="",
         helicone_url="",
     )
 
