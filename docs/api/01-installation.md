@@ -96,7 +96,6 @@ NVM_API_KEY=nvm:your-api-key-here
 
 # Optional (for custom environments)
 NVM_BACKEND_URL=https://api.sandbox.nevermined.app
-NVM_PROXY_URL=https://proxy.sandbox.nevermined.app
 ```
 
 ## Next Steps

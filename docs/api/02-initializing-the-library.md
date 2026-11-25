@@ -126,7 +126,6 @@ payments = Payments.get_instance(
 ```
 
 - Backend: `https://api.sandbox.nevermined.app`
-- Proxy: `https://proxy.sandbox.nevermined.app`
 - Uses test tokens and test networks
 
 ### Live Environment (Production)
@@ -142,7 +141,6 @@ payments = Payments.get_instance(
 ```
 
 - Backend: `https://api.live.nevermined.app`
-- Proxy: `https://proxy.live.nevermined.app`
 - Uses real tokens and mainnet networks
 
 ### Custom Environment
@@ -157,7 +155,6 @@ import os
 
 # Set environment variables first
 os.environ["NVM_BACKEND_URL"] = "http://localhost:3001"
-os.environ["NVM_PROXY_URL"] = "http://localhost:443"
 
 payments = Payments.get_instance(
     PaymentOptions(
