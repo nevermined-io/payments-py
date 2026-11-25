@@ -127,7 +127,6 @@ class TestAuthorizationServersIsTheBackendAs:
     CUSTOM_LOCAL = EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="http://localhost:3001",
-        proxy="",
         helicone_url="",
     )
 
@@ -685,7 +684,6 @@ class TestAuthorizationEndpointCarriesTheTier:
             EnvironmentInfo(
                 frontend="https://nevermined.app",
                 backend=backend,
-                proxy="",
                 helicone_url="",
             ),
         )
@@ -700,7 +698,6 @@ class TestAuthorizationEndpointCarriesTheTier:
             EnvironmentInfo(
                 frontend="https://nevermined.app",
                 backend="http://localhost:3001",
-                proxy="",
                 helicone_url="",
             ),
         )
@@ -765,7 +762,6 @@ class TestIssuerIsTheApiOriginPerTier:
     CUSTOM_LOCAL = EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="http://localhost:3001",
-        proxy="",
         helicone_url="",
     )
 
@@ -923,7 +919,6 @@ class TestIssuerIsTheApiOriginPerTier:
             EnvironmentInfo(
                 frontend="https://nevermined.app",
                 backend="localhost:3001/",
-                proxy="",
                 helicone_url="",
             ),
         )
@@ -1098,13 +1093,11 @@ class TestIssParameterSupportAdvertisement:
     CUSTOM_LOCAL = EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="http://localhost:3001",
-        proxy="",
         helicone_url="",
     )
     CUSTOM_NEVERMINED = EnvironmentInfo(
         frontend="https://nevermined.app",
         backend="https://api.sandbox.nevermined.app",
-        proxy="",
         helicone_url="",
     )
 
