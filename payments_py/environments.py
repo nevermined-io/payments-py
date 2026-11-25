@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Literal, Optional
 
 
-@dataclass
+@dataclass(kw_only=True)
 class EnvironmentInfo:
     """
     Data class to store environment information.

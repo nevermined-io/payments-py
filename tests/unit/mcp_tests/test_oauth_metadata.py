@@ -634,9 +634,9 @@ class TestAuthorizationEndpointCarriesTheTier:
         assert resolve_oauth_tier("custom", "https://api") is None
         # The anchor is the EXACT label ``api``, IMMEDIATELY before the tier. Rows whose stray
         # tier label sits at index 0 never reach the loop as ``following``, so "any label
-        # followed by a tier" passed them all (self-review panel). ``proxy.<tier>`` is a REAL
-        # Nevermined host (the LLM proxy, ``environments.py``) that must NOT classify —
-        # it would otherwise publish the API's canonical origin as the proxy's issuer.
+        # followed by a tier" passed them all (self-review panel). ``proxy.<tier>`` (the host
+        # shape of the retired Nevermined proxy) must NOT classify — it would otherwise
+        # publish the API's canonical origin as the proxy's issuer.
         assert (
             resolve_oauth_tier("custom", "https://proxy.sandbox.nevermined.dev") is None
         )
