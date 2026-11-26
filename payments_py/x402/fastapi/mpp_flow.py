@@ -16,7 +16,9 @@ the protocol does:
   misconfigured into an unbound challenge.
 - **Settlement runs before the body is sent.** ``BaseHTTPMiddleware`` sends
   nothing to the client until this middleware returns, so headers are never
-  already on the wire when settlement runs and the receipt always attaches.
+  already on the wire when settlement runs and the receipt can still be
+  attached (the middleware gives the response its own header list); if writing
+  it fails, the burn stands and the response is served without it.
   The cost is the other side of that: a streamed body is produced only after
   the burn (and after ``on_after_settle``), so a stream that fails or is
   abandoned midway is still charged. The TS side settles at ``res.end``, after
@@ -551,9 +553,9 @@ class MppFlow:
                 # the seller's on_after_settle record still runs.
                 logger.error(
                     "MPP settled but the receipt header could not be attached "
-                    "(agent_request_id=%s, resource=%s): %s",
+                    "(agent_request_id=%s, path=%s): %s",
                     payment_context.agent_request_id,
-                    self.resource,
+                    self.request.url.path,
                     receipt_error,
                 )
         elif not settlement.get("success"):

@@ -275,9 +275,13 @@ class TestCredentialRedemption:
         assert response.text == "ok"
         assert response.headers["payment-receipt"] == "RECEIPT-B64"
 
-    def test_a_receipt_that_cannot_be_attached_still_serves_and_reports(self, payments):
+    def test_a_receipt_that_cannot_be_attached_still_serves_and_reports(
+        self, payments, caplog
+    ):
         """The credits are burned, so neither the buyer's answer nor the
-        seller's post-settle record may be lost to a bad receipt header."""
+        seller's post-settle record may be lost to a bad receipt header. The
+        error log names the path but not the query string, which may carry a
+        seller's ids or keys."""
         payments.mpp.settle_result = {
             "success": True,
             "paymentReceipt": "☃",  # not latin-1: no header can carry it
@@ -290,12 +294,17 @@ class TestCredentialRedemption:
 
         response = client(
             payments, options=PaymentMiddlewareOptions(on_after_settle=on_after_settle)
-        ).post("/ask", json={"q": "hi"}, headers={"Authorization": CREDENTIAL})
+        ).post(
+            "/ask?key=s3cret", json={"q": "hi"}, headers={"Authorization": CREDENTIAL}
+        )
 
         assert response.status_code == 200
         assert response.json() == {"echo": '{"q":"hi"}'}
         assert "payment-receipt" not in response.headers
         assert settled == [2]
+        assert "receipt header could not be attached" in caplog.text
+        assert "/ask" in caplog.text
+        assert "s3cret" not in caplog.text
 
     def test_takes_the_mpp_path_when_the_credential_rides_beside_another_scheme(
         self, payments
