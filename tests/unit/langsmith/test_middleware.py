@@ -6,7 +6,6 @@ env-var fallback for single-plan deployments, FastAPI-style {param} path
 matching, and the settle-failure-still-returns-200 contract.
 """
 
-import asyncio
 import base64
 import json
 from importlib.metadata import PackageNotFoundError
@@ -26,6 +25,7 @@ from payments_py.langsmith import (
 )
 from payments_py.langsmith import middleware as ls_middleware
 from payments_py.x402.types import SettleResponse, VerifyResponse
+from tests.asgi_raw import required_plan, send_raw
 
 
 class QueryRequest(BaseModel):
@@ -571,39 +571,6 @@ class TestLanggraphApiVersionDetection:
         assert ls_middleware._langgraph_api_version() is None
 
 
-def _send_raw(app, method, path):
-    """Send one request with ``path`` exactly as uvicorn would deliver it.
-
-    httpx (and so ``TestClient``) removes ``.`` and ``..`` segments before
-    sending; uvicorn does not, and Starlette's router matches them as sent.
-    """
-    scope = {
-        "type": "http",
-        "asgi": {"version": "3.0"},
-        "http_version": "1.1",
-        "method": method,
-        "scheme": "http",
-        "path": path,
-        "raw_path": path.encode(),
-        "root_path": "",
-        "query_string": b"",
-        "headers": [(b"host", b"testserver")],
-        "server": ("testserver", 80),
-        "client": ("testclient", 50000),
-    }
-    messages = [{"type": "http.request", "body": b"", "more_body": False}]
-    sent = []
-
-    async def receive():
-        return messages.pop(0) if messages else {"type": "http.disconnect"}
-
-    async def send(message):
-        sent.append(message)
-
-    asyncio.run(app(scope, receive, send))
-    return sent[0]["status"]
-
-
 class TestRouteKeysMatchTheRouter:
     """The LangSmith middleware shares the FastAPI middleware's key matcher
     (#341), so the bypasses closed there are closed here too."""
@@ -639,7 +606,7 @@ class TestRouteKeysMatchTheRouter:
         app.add_api_route("/files/{file_path:path}", handler, methods=["GET"])
         app.add_api_route("/users/{user_id}", handler, methods=["GET"])
 
-        assert _send_raw(app, "GET", path) == 402
+        assert send_raw(app, "GET", path)[0] == 402
         assert app.state.handler_ran is False
 
     @pytest.mark.parametrize(
@@ -662,6 +629,44 @@ class TestRouteKeysMatchTheRouter:
             return JSONResponse({"ok": True})
 
         assert TestClient(app).post(url).status_code == 402
+
+    @pytest.mark.parametrize(
+        "path, raw_path, keys",
+        [
+            # A decoded `?` or `#` must not cut the path short.
+            (
+                "/users/me?x",
+                b"/users/me%3Fx",
+                ("GET /users/me", "GET /users/{user_id}"),
+            ),
+            (
+                "/users/me#x",
+                b"/users/me%23x",
+                ("GET /users/me", "GET /users/{user_id}"),
+            ),
+            # The router serves the path as sent; its normalised form is only
+            # a fallback, so it cannot pick a cheaper key.
+            ("/files/../public", None, ("GET /public", "GET /files/{p:path}")),
+        ],
+    )
+    def test_the_key_for_the_served_route_sets_the_price(
+        self, mock_payments, path, raw_path, keys
+    ):
+        cheap, premium = keys
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                cheap: {"plan_id": "cheap-plan"},
+                premium: {"plan_id": "premium-plan"},
+            },
+        )
+
+        status, headers = send_raw(app, "GET", path, raw_path)
+
+        assert status == 402
+        assert required_plan(headers) == "premium-plan"
 
     @pytest.mark.parametrize("key", ["POST /ask", "POST /api/ask"])
     def test_root_path_does_not_hide_the_route(self, mock_payments, key):

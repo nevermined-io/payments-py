@@ -230,15 +230,16 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         method = request.method.upper()
-        path = _normalise_path(request.url.path)
+        path = _normalise_path(request.scope["path"])
 
-        # The router matches the path as sent, dot segments included, so try
-        # that first; the dot-normalised forms are extra, for a proxy in front
-        # that normalises before the router sees the request.
+        # The router matches the path as sent, dot segments included, so that
+        # decides. The dot-normalised forms are only a fallback, for a proxy in
+        # front that normalises: they may gate more, never pick another key.
         raw_paths = request_paths(request)
-        normalised = (_normalise_path(p) for p in raw_paths)
-        paths = raw_paths + tuple(p for p in normalised if p not in raw_paths)
-        route_config = match_route(method, paths, self._compiled_routes)
+        normalised = tuple(_normalise_path(p) for p in raw_paths)
+        route_config = match_route(
+            method, raw_paths, self._compiled_routes
+        ) or match_route(method, normalised, self._compiled_routes)
         if not route_config:
             return await call_next(request)
 

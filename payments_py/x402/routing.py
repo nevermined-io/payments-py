@@ -122,9 +122,13 @@ def compile_routes(routes: Dict[str, RouteConfig]) -> Tuple[CompiledRoute, ...]:
 
 def request_paths(request: Request) -> Tuple[str, ...]:
     """The paths a key may describe a request by: as the router sees it
-    (``root_path`` stripped), then as the client sent it."""
+    (``root_path`` stripped), then with ``root_path`` in front.
+
+    Both come from the scope. ``request.url.path`` is rebuilt from a URL
+    string, so a ``%3F`` or ``%23`` the server decoded into the path cuts it
+    short, and the buyer, who writes the URL, could pick a cheaper key."""
     route_path = get_route_path(request.scope)
-    full_path = request.url.path
+    full_path = request.scope["path"]
     return (route_path,) if route_path == full_path else (route_path, full_path)
 
 
@@ -134,13 +138,13 @@ def match_route(
     """Return the config of the first route matching ``method`` and any of
     ``paths``, or ``None`` when the request is not gated.
 
-    Routes are the outer loop, so precedence comes from ``compile_routes``'
-    order alone, whichever form of the path matched. ``HEAD`` also matches
-    ``GET`` keys, because Starlette's ``Route`` serves HEAD with the GET
-    handler."""
+    Within a method, routes are the outer loop, so precedence comes from
+    ``compile_routes``' order alone, whichever form of the path matched.
+    ``HEAD`` falls back to ``GET`` keys when no ``HEAD`` key matches, because
+    Starlette's ``Route`` serves HEAD with the GET handler."""
     method = method.upper()
-    methods = (method, "GET") if method == "HEAD" else (method,)
-    for route_method, regex, config in routes:
-        if route_method in methods and any(regex.match(path) for path in paths):
-            return config
+    for candidate in (method, "GET") if method == "HEAD" else (method,):
+        for route_method, regex, config in routes:
+            if route_method == candidate and any(regex.match(p) for p in paths):
+                return config
     return None

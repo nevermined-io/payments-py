@@ -331,7 +331,7 @@ Each key is `"METHOD /path"`. Requests that match no key pass through **unpaid**
 
 - The path is matched the way Starlette's router matches it, path converters included. A `:name` segment means `{name}` and spans **one** segment, so a `{name:path}` route needs the `{name:path}` key. Parameter names are letters, digits and `_`.
 - `"POST /ask/"` and `"POST /ask"` are different keys, as they are different routes.
-- The method is case-insensitive. A `GET` key also gates `HEAD`, which Starlette's `Route` serves with the GET handler.
+- The method is case-insensitive. A `GET` key also gates `HEAD` when no `HEAD` key matches, since Starlette's `Route` serves HEAD with the GET handler.
 - Behind `uvicorn --root-path /api`, which puts `/api` in front of every request path, a key may use the route path (`"POST /ask"`) or the full path (`"POST /api/ask"`). When a proxy strips the prefix before the request reaches the app, only the route path matches.
 - A key with a literal path wins over one with parameters (`"GET /users/me"` over `"GET /users/{user_id}"`), whichever is declared first.
 

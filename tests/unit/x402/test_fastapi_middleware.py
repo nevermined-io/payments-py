@@ -22,6 +22,7 @@ from payments_py.x402.fastapi import (
     payment_middleware,
 )
 from payments_py.x402.types import VerifyResponse, SettleResponse
+from tests.asgi_raw import required_plan, send_raw
 from tests.asgi_stream import STREAMED, StreamProbe
 from tests.x402_responses import make_settle_response
 
@@ -992,6 +993,50 @@ class TestRouteKeysMatchTheRouter:
             base64.b64decode(response.headers[X402_HEADERS["PAYMENT_REQUIRED"]])
         )
         assert payment_required["accepts"][0]["planId"] == "premium-plan"
+
+    @pytest.mark.parametrize(
+        "path, raw_path",
+        [
+            ("/users/me?x", b"/users/me%3Fx"),
+            ("/users/me#x", b"/users/me%23x"),
+        ],
+    )
+    def test_a_decoded_query_mark_does_not_pick_a_cheaper_key(
+        self, mock_payments, path, raw_path
+    ):
+        """uvicorn decodes `%3F` into the path; the router serves
+        `/users/{user_id}` with `user_id="me?x"`, so that key sets the price,
+        not `/users/me`."""
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "GET /users/{user_id}": {"plan_id": "premium-plan"},
+                "GET /users/me": {"plan_id": "cheap-plan"},
+            },
+        )
+
+        status, headers = send_raw(app, "GET", path, raw_path)
+
+        assert status == 402
+        assert required_plan(headers) == "premium-plan"
+
+    def test_an_explicit_head_key_wins_over_the_get_fallback(self, mock_payments):
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "GET /x": {"plan_id": "get-plan"},
+                "HEAD /x": {"plan_id": "head-plan"},
+            },
+        )
+
+        response = TestClient(app).head("/x")
+
+        assert response.status_code == 402
+        assert required_plan(response.headers) == "head-plan"
 
     def test_head_reaches_a_starlette_get_route(self, mock_payments):
         """Starlette's `Route` serves HEAD with the GET handler, so a GET key

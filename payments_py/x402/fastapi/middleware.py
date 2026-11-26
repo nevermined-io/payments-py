@@ -242,7 +242,8 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         """Process the request through the payment middleware."""
         # Check if this route requires payment
         method = request.method.upper()
-        path = request.url.path
+        # From the scope, not `request.url`: see `request_paths`.
+        path = request.scope["path"]
 
         route_config = match_route(
             method, request_paths(request), self._compiled_routes
@@ -263,7 +264,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         # Build payment required object
         payment_required = build_payment_required(
             plan_id=route_config.plan_id,
-            endpoint=str(request.url.path),
+            endpoint=path,
             agent_id=route_config.agent_id,
             http_verb=method,
             network=resolved_network,
