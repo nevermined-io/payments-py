@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
@@ -21,6 +21,8 @@ from payments_py.x402.fastapi import (
     payment_middleware,
 )
 from payments_py.x402.types import VerifyResponse, SettleResponse
+from tests.asgi_stream import STREAMED, StreamProbe
+from tests.x402_responses import make_settle_response
 
 
 class QueryRequest(BaseModel):
@@ -377,11 +379,12 @@ class TestMiddlewareHooks:
         )
 
         assert response.status_code == 200
-        # The body, not just the status. This is the only x402 test that
-        # configures on_after_settle, so it is the one placed to notice a
-        # settled response losing its payload while every hook still fires —
-        # e.g. returning the already-drained original instead of the rebuilt
-        # one. An empty 200 with all three flags set used to pass here.
+        # The body, not just the status. This is the happy-path x402 test that
+        # configures on_after_settle (the others force a hook or receipt
+        # failure), so it is the one placed to notice a settled response losing
+        # its payload while every hook still fires — e.g. draining the body to
+        # attach the receipt and then returning the drained original. An empty
+        # 200 with all three flags set used to pass here.
         assert response.json()["result"] == "ok"
         assert hook_calls["before_verify"] is True
         assert hook_calls["after_verify"] is True
@@ -774,3 +777,125 @@ class TestSpentTokenIsNotServed:
         # Paid, so served.
         assert response.status_code == 200
         assert "Answer to: test" in response.text
+
+
+class TestSettledResponseIsPassedThrough:
+    """payments-py#339: the receipt header used to be attached by reading the
+    whole body into memory and rebuilding the response, so a large file stalled
+    and a streamed response reached the client only once the handler finished."""
+
+    @pytest.mark.asyncio
+    async def test_a_streamed_body_reaches_the_client_while_the_handler_runs(
+        self, mock_payments, valid_token
+    ):
+        probe = StreamProbe()
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"GET /stream": {"plan_id": "test-plan-123", "credits": 1}},
+        )
+
+        @app.get("/stream")
+        async def stream():
+            return StreamingResponse(probe.body(), media_type="text/event-stream")
+
+        headers, body = await probe.request(
+            app, "GET", "/stream", {X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token}
+        )
+
+        assert body == STREAMED
+        assert X402_HEADERS["PAYMENT_RESPONSE"] in headers
+        mock_payments.facilitator.settle_permissions.assert_called_once()
+
+    def test_a_repeated_response_header_keeps_every_value(
+        self, mock_payments, valid_token
+    ):
+        """Rebuilding from ``dict(response.headers)`` kept only the first value
+        of a repeated header, so a handler setting two cookies lost one."""
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+        )
+
+        @app.post("/ask")
+        async def ask():
+            response = JSONResponse({"ok": True})
+            response.set_cookie("first", "1")
+            response.set_cookie("second", "2")
+            return response
+
+        response = TestClient(app).post(
+            "/ask", headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token}
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers.get_list("set-cookie")) == 2
+        assert X402_HEADERS["PAYMENT_RESPONSE"] in response.headers
+
+    def test_a_reused_response_does_not_carry_a_previous_buyers_receipt(
+        self, mock_payments, valid_token
+    ):
+        """``call_next`` hands back the handler's own header list. Writing the
+        receipt into it put one buyer's settlement on a Response the handler
+        returns again, so the next buyer, whose settle failed, got it too."""
+        shared = JSONResponse({"ok": True})
+        mock_payments.facilitator.settle_permissions.side_effect = [
+            make_settle_response(transaction="0xalice"),
+            RuntimeError("backend down"),
+        ]
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+        )
+
+        @app.post("/ask")
+        async def ask():
+            return shared
+
+        client = TestClient(app)
+        headers = {X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token}
+        alice = client.post("/ask", headers=headers)
+        bob = client.post("/ask", headers=headers)
+
+        assert X402_HEADERS["PAYMENT_RESPONSE"] in alice.headers
+        assert bob.status_code == 200
+        assert X402_HEADERS["PAYMENT_RESPONSE"] not in bob.headers
+
+    def test_a_receipt_that_cannot_be_attached_still_runs_on_after_settle(
+        self, mock_payments, valid_token
+    ):
+        """The burn committed, so the seller's post-settle record must fire
+        even when the receipt header could not be built."""
+        settled = []
+
+        async def on_after_settle(request, credits, result):
+            settled.append(credits)
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+            options=PaymentMiddlewareOptions(on_after_settle=on_after_settle),
+        )
+
+        @app.post("/ask")
+        async def ask():
+            return JSONResponse({"ok": True})
+
+        with patch.object(
+            SettleResponse, "model_dump_json", side_effect=RuntimeError("boom")
+        ):
+            response = TestClient(app).post(
+                "/ask", headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token}
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {"ok": True}
+        assert X402_HEADERS["PAYMENT_RESPONSE"] not in response.headers
+        assert settled == [1]
