@@ -310,6 +310,13 @@ async def create_task(body: dict):
     return {"result": "Task completed"}
 ```
 
+Responses pass through the middleware unbuffered, so files and streamed
+responses (`StreamingResponse`, SSE) reach the client as the handler produces
+them, with the `payment-response` receipt header attached. Settlement runs as
+soon as the handler returns its response: a streamed body is produced after the
+credits are burned and after `on_after_settle` has run, so a stream that fails
+midway is still charged.
+
 ### Route keys
 
 Each key is `"METHOD /path"`. Requests that match no key pass through **unpaid**, so write the path exactly as the route is declared:

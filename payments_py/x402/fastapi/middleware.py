@@ -122,7 +122,9 @@ class PaymentMiddlewareOptions:
     on_before_verify: Optional[BeforeVerifyHook] = None
     # Hook called after successful verification
     on_after_verify: Optional[AfterVerifyHook] = None
-    # Hook called after successful settlement
+    # Hook called after successful settlement. For a streamed response it runs
+    # before the body is produced: do not record delivery from it, and do not
+    # release anything the body still uses.
     on_after_settle: Optional[AfterSettleHook] = None
     # Custom error handler for payment failures
     on_payment_error: Optional[PaymentErrorHook] = None
@@ -154,6 +156,27 @@ async def _resolve_credits(
     if inspect.isawaitable(result):
         return await result
     return result
+
+
+def _own_headers(
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Callable[[Request], Awaitable[Response]]:
+    """Give each ``call_next`` response a header list of its own.
+
+    The receipt is written onto the response ``call_next`` returns, but that
+    response's ``raw_headers`` is the handler's own list, passed by reference
+    through the ASGI start message. Written in place, one buyer's receipt would
+    reach the next request served from a Response the handler reuses (a cached
+    or module-level one). ASGI also allows a tuple there, which cannot be
+    appended to.
+    """
+
+    async def call_next_owning_headers(request: Request) -> Response:
+        response = await call_next(request)
+        response.raw_headers = list(response.raw_headers)
+        return response
+
+    return call_next_owning_headers
 
 
 def _send_payment_required(
@@ -216,6 +239,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         """Process the request through the payment middleware."""
         # Check if this route requires payment
         method = request.method.upper()
+        path = request.url.path
 
         route_config = match_route(
             method, request_paths(request), self._compiled_routes
@@ -223,6 +247,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         if not route_config:
             # Route not protected - pass through
             return await call_next(request)
+        call_next = _own_headers(call_next)
 
         # Resolve scheme and network (auto-detect from plan metadata if not explicit)
         resolved_scheme = resolve_scheme(
@@ -423,9 +448,10 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         # Settlement succeeded past this point, so the buyer has PAID. Nothing
         # below may withhold the body, whatever it raises.
         #
-        # The receipt goes on `response` itself: BaseHTTPMiddleware sends nothing
-        # until dispatch returns, so its headers are still editable, and its body
-        # streams through untouched — never read into memory here (#339).
+        # The receipt goes on `response` itself, whose header list is its own
+        # (`_own_headers`): BaseHTTPMiddleware sends nothing until dispatch
+        # returns, so the headers are still editable, and the body streams
+        # through untouched — never read into memory here (#339).
         try:
             # Add settlement response header (base64-encoded per x402 spec)
             settlement_json = settlement.model_dump_json(by_alias=True)
@@ -434,12 +460,14 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             ).decode()
         except Exception as receipt_error:
             # The burn committed, so the buyer is owed the answer even without
-            # its receipt.
+            # its receipt, and the seller's on_after_settle record still runs.
             logger.error(
-                "x402 settled but the receipt header could not be attached: %s",
+                "x402 settled but the receipt header could not be attached "
+                "(agent_request_id=%s, path=%s): %s",
+                payment_context.agent_request_id,
+                path,
                 receipt_error,
             )
-            return response
 
         # Hook: after settlement. Observational, and deliberately outside the
         # receipt `try`: a hook that raises must not cost the buyer the answer
@@ -447,6 +475,9 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         # spent-token branch above — for an agent that pays a downstream service
         # from this hook, AccessTokenAlreadyUsedError here is plausible, and
         # withholding then would charge the buyer and hand them nothing.
+        #
+        # For a streamed response this runs before the body is produced, so it
+        # must not record delivery or release anything the body still uses.
         if self.options.on_after_settle:
             try:
                 await self.options.on_after_settle(
