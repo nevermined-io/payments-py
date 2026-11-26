@@ -12,14 +12,13 @@ rules close that gap:
   ``{name}``. A request is tried both as the router sees it (``root_path``
   stripped) and as the client sent it, so a key written either way matches
   behind ``uvicorn --root-path``.
-- **Fail at startup, not silently.** A key the matcher cannot match — no
-  method, a non-HTTP method, a wildcard, a partial ``:param``, an unknown
-  converter, or two keys for the same requests — raises ``ValueError`` naming
-  the key.
+- **Fail loudly, not silently.** A key the matcher would get wrong raises
+  ``ValueError`` naming the key when the middleware is built: see
+  ``_compile_key`` for every check.
 """
 
 import re
-from typing import Dict, Iterable, List, Optional, Pattern, Tuple
+from typing import Dict, List, Optional, Pattern, Tuple
 
 # Private, but it is what Starlette's router matches against; reimplementing
 # it would reopen the gap this module closes. A move fails loudly at import.
@@ -36,30 +35,39 @@ HTTP_METHODS = frozenset(
 
 _COLON_PARAM = re.compile(r":([A-Za-z_][A-Za-z0-9_]*)")
 
-# Characters that never match as written: a wildcard, a query string, or a
-# brace that is not part of a `{param}`.
-_UNMATCHABLE = re.compile(r"[*?{}]")
+# Keys have no wildcard syntax: `*` and `?` would only match those literal
+# characters, so a seller who writes them expects a key to gate paths it does
+# not. A brace must belong to a `{param}`. (A route declared with a literal `*`
+# cannot be gated by a key.)
+_NOT_LITERAL = re.compile(r"[*?{}]")
 
 CompiledRoute = Tuple[str, Pattern[str], RouteConfig]
 
 
 def _invalid(key: str, reason: str) -> ValueError:
     return ValueError(
-        f"Route key {key!r} can never match a request: {reason}. Keys are "
+        f"Route key {key!r} is rejected: {reason}. Keys are "
         f'"METHOD /path", with path parameters written as in FastAPI '
-        f'("/users/{{user_id}}", "/files/{{file_path:path}}") or as ":user_id".'
+        f'("/users/{{user_id}}", "/files/{{file_path:path}}") or as '
+        f'"/users/:user_id"; parameter names are letters, digits and "_".'
     )
 
 
 def _compile_key(key: str) -> Tuple[str, Pattern[str], str]:
-    """Return the key's method, path regex, and a signature that is equal for
-    two keys exactly when they match the same requests."""
+    """Return the key's method, path regex, and a signature shared by keys that
+    differ only in parameter names and method case.
+
+    Rejected: no method or no path, a method outside ``HTTP_METHODS``, a path
+    not starting with ``/``, a ``:`` segment that is not ``:name``, ``*``,
+    ``?``, a brace outside a ``{name}`` or ``{name:converter}``, an unknown
+    converter, and a repeated parameter name.
+    """
     parts = key.split(maxsplit=1)
     if len(parts) != 2:
         raise _invalid(key, 'it is not "METHOD /path"')
     method, path = parts[0].upper(), parts[1].strip()
     if method not in HTTP_METHODS:
-        raise _invalid(key, f"{parts[0]!r} is not an HTTP method")
+        raise _invalid(key, f"{parts[0]!r} is not a standard HTTP method")
     if not path.startswith("/"):
         raise _invalid(key, "the path does not start with '/'")
 
@@ -68,13 +76,15 @@ def _compile_key(key: str) -> Tuple[str, Pattern[str], str]:
         if segment.startswith(":"):
             param = _COLON_PARAM.fullmatch(segment)
             if not param:
-                raise _invalid(key, f"{segment!r} is not a whole ':param' segment")
+                raise _invalid(key, f"{segment!r} is not a ':name' segment")
             segment = "{%s}" % param.group(1)
         segments.append(segment)
     path = "/".join(segments)
 
-    if _UNMATCHABLE.search(PARAM_REGEX.sub("", path)):
-        raise _invalid(key, "it contains '*', '?' or a stray brace")
+    if _NOT_LITERAL.search(PARAM_REGEX.sub("", path)):
+        raise _invalid(
+            key, "'*' and '?' are not wildcards, and braces must hold a parameter"
+        )
     for param in PARAM_REGEX.finditer(path):
         converter = (param.group(2) or ":str")[1:]
         if converter not in CONVERTOR_TYPES:
@@ -88,7 +98,7 @@ def _compile_key(key: str) -> Tuple[str, Pattern[str], str]:
     return method, regex, f"{method} {signature}"
 
 
-def compile_routes(routes: Dict[str, RouteConfig]) -> List[CompiledRoute]:
+def compile_routes(routes: Dict[str, RouteConfig]) -> Tuple[CompiledRoute, ...]:
     """Compile route keys, raising ``ValueError`` for any that cannot match.
 
     Literal keys come first, so ``GET /users/me`` wins over
@@ -107,7 +117,7 @@ def compile_routes(routes: Dict[str, RouteConfig]) -> List[CompiledRoute]:
         seen[signature] = key
         compiled.append((method, regex, config))
     # Stable sort: literal keys (no named groups) first, in declaration order.
-    return sorted(compiled, key=lambda route: bool(route[1].groupindex))
+    return tuple(sorted(compiled, key=lambda route: bool(route[1].groupindex)))
 
 
 def request_paths(request: Request) -> Tuple[str, ...]:
@@ -119,18 +129,18 @@ def request_paths(request: Request) -> Tuple[str, ...]:
 
 
 def match_route(
-    method: str, paths: Iterable[str], routes: List[CompiledRoute]
+    method: str, paths: Tuple[str, ...], routes: Tuple[CompiledRoute, ...]
 ) -> Optional[RouteConfig]:
     """Return the config of the first route matching ``method`` and any of
     ``paths``, or ``None`` when the request is not gated.
 
-    ``HEAD`` falls back to ``GET`` keys, because Starlette's ``Route`` serves
-    HEAD with the GET handler."""
+    Routes are the outer loop, so precedence comes from ``compile_routes``'
+    order alone, whichever form of the path matched. ``HEAD`` also matches
+    ``GET`` keys, because Starlette's ``Route`` serves HEAD with the GET
+    handler."""
     method = method.upper()
     methods = (method, "GET") if method == "HEAD" else (method,)
-    for path in paths:
-        for candidate in methods:
-            for route_method, regex, config in routes:
-                if route_method == candidate and regex.match(path):
-                    return config
+    for route_method, regex, config in routes:
+        if route_method in methods and any(regex.match(path) for path in paths):
+            return config
     return None

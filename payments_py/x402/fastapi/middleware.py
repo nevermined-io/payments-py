@@ -65,7 +65,8 @@ import inspect
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, Optional, Union
+from types import MappingProxyType
+from typing import Any, Awaitable, Callable, Dict, Mapping, Optional, Union
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -216,21 +217,23 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.payments = payments
         # Convert dict configs to RouteConfig objects
-        self.routes: Dict[str, RouteConfig] = {}
+        configs: Dict[str, RouteConfig] = {}
         for key, value in routes.items():
             if isinstance(value, RouteConfig):
-                self.routes[key] = value
+                configs[key] = value
             else:
-                self.routes[key] = RouteConfig(**value)
+                configs[key] = RouteConfig(**value)
             # Validate the nested `mpp` option HERE rather than on the first
             # request, so a typo behaves like a typo in the outer route dict:
             # `RouteConfig(**value)` above already raises at startup for an
             # unknown key, and the one thing that used to accept anything
             # silently is what turns body binding off.
-            resolve_mpp_option(self.routes[key].mpp)
-        # Same for the keys: one that can never match used to leave its route
-        # unpaid without a word (#341).
-        self._compiled_routes = compile_routes(self.routes)
+            resolve_mpp_option(configs[key].mpp)
+        # Same for the keys: one the matcher would get wrong used to leave its
+        # route unpaid without a word (#341). The gate reads only the compiled
+        # keys, so `routes` is read-only: a key added later would be ignored.
+        self._compiled_routes = compile_routes(configs)
+        self.routes: Mapping[str, RouteConfig] = MappingProxyType(configs)
         self.options = options or PaymentMiddlewareOptions()
 
     async def dispatch(
@@ -520,14 +523,20 @@ def payment_middleware(
     Args:
         payments: The Payments instance
         routes: Map of routes to protect: {"METHOD /path": {"plan_id", "credits"}}.
-            Write the path as the route is declared ("/users/{user_id}",
-            "/files/{file_path:path}", or ":user_id"). A key that can never
-            match a request raises ValueError.
+            The path is the full path the app serves the route at, router
+            prefixes included, with parameters as in FastAPI
+            ("/users/{user_id}", "/files/{file_path:path}") or as
+            "/users/:user_id". A key the matcher would get wrong raises
+            ValueError when this function is called.
         options: Optional middleware configuration
 
     Returns:
         A middleware class that can be added to FastAPI
     """
+
+    # Build it once here, so a rejected route key or config raises when this
+    # factory is called (import time), not on the app's first ASGI event.
+    PaymentMiddleware(None, payments=payments, routes=routes, options=options)
 
     class ConfiguredPaymentMiddleware(PaymentMiddleware):
         def __init__(self, app: Any):

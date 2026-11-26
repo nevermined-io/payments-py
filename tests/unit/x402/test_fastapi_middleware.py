@@ -942,6 +942,9 @@ class TestRouteKeysMatchTheRouter:
             ("GET /items/{item_id:int}", "GET", "/items/{item_id:int}", "/items/7"),
             # A lower-case method in the key.
             ("post /ask", "POST", "/ask", "/ask"),
+            # Padding around the key.
+            ("POST /ask ", "POST", "/ask", "/ask"),
+            (" POST /ask", "POST", "/ask", "/ask"),
             # A literal colon inside a segment is not a parameter.
             ("POST /v1/items:batch", "POST", "/v1/items:batch", "/v1/items:batch"),
         ],
@@ -969,6 +972,27 @@ class TestRouteKeysMatchTheRouter:
         assert response.status_code == 402
         assert app.state.handler_ran is False
 
+    def test_literal_key_wins_behind_a_root_path(self, mock_payments):
+        """Precedence comes from the keys, not from which form of the path
+        matched first: the literal full-path key keeps its request."""
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "POST /{agent}": {"plan_id": "cheap-plan"},
+                "POST /api/ask": {"plan_id": "premium-plan"},
+            },
+        )
+
+        response = TestClient(app, root_path="/api").post("/api/ask")
+
+        assert response.status_code == 402
+        payment_required = json.loads(
+            base64.b64decode(response.headers[X402_HEADERS["PAYMENT_REQUIRED"]])
+        )
+        assert payment_required["accepts"][0]["planId"] == "premium-plan"
+
     def test_head_reaches_a_starlette_get_route(self, mock_payments):
         """Starlette's `Route` serves HEAD with the GET handler, so a GET key
         must gate HEAD too. (FastAPI's `@app.get` answers HEAD with 405.)"""
@@ -990,6 +1014,39 @@ class TestRouteKeysMatchTheRouter:
 
         assert response.status_code == 402
         assert app.state.handler_ran is False
+
+    @pytest.mark.parametrize(
+        "key, method, url",
+        [
+            # Another method on a keyed path, CORS preflights included.
+            ("POST /ask", "GET", "/ask"),
+            ("POST /ask", "OPTIONS", "/ask"),
+            # Only HEAD falls back to GET keys, and only to GET keys.
+            ("POST /ask", "HEAD", "/ask"),
+            ("GET /ask", "OPTIONS", "/ask"),
+            # `:name` spans one segment, so a longer path is another route.
+            ("GET /users/:user_id", "GET", "/users/42/posts"),
+        ],
+    )
+    def test_requests_the_key_does_not_name_pass_through(
+        self, mock_payments, key, method, url
+    ):
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={key: {"plan_id": "test-plan-123"}},
+        )
+
+        async def free(request: Request):
+            return JSONResponse({"free": True})
+
+        app.router.add_route("/ask", free, methods=["GET", "OPTIONS"])
+        app.add_api_route("/users/{user_id}/posts", free, methods=["GET"])
+
+        response = TestClient(app).request(method, url)
+
+        assert response.status_code == 200
 
     def test_literal_key_wins_over_a_parameter_key(self, mock_payments):
         """`/users/me` matches both keys; the literal one is the specific one,
@@ -1028,6 +1085,7 @@ class TestRouteKeysThatCannotMatchAreRejected:
             "GET /search?q=1",  # a query string is never part of the path
             "GET /f/:name.csv",  # partial-segment `:param`
             "GET /users/{user_id",  # stray brace
+            "GET /users/user_id}",
             "GET /files/{file_path:nope}",  # unknown converter
             "GET /a/{x}/{x}",  # repeated parameter name
         ],
@@ -1038,11 +1096,48 @@ class TestRouteKeysThatCannotMatchAreRejected:
                 app=None, payments=mock_payments, routes={key: {"plan_id": "p"}}
             )
 
+    def test_routes_cannot_change_after_the_keys_are_compiled(self, mock_payments):
+        """The gate reads the keys compiled in `__init__`, so a key added to
+        `routes` later would be ignored, leaving its route unpaid."""
+        middleware = PaymentMiddleware(
+            app=None, payments=mock_payments, routes={"POST /ask": {"plan_id": "p"}}
+        )
+
+        with pytest.raises(TypeError):
+            middleware.routes["POST /other"] = RouteConfig(plan_id="p")
+
+    def test_the_factory_raises_when_called(self, mock_payments):
+        """`payment_middleware()` runs at import time, before any server, so
+        a rejected key stops the app from loading at all."""
+        with pytest.raises(ValueError, match=re.escape("GET /files/*")):
+            payment_middleware(mock_payments, {"GET /files/*": {"plan_id": "p"}})
+
+    def test_add_middleware_never_serves_a_route_with_a_rejected_key(
+        self, mock_payments
+    ):
+        """`app.add_middleware` builds the middleware on the app's first ASGI
+        event, so the error comes then, and no route is served."""
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"GET /files/*": {"plan_id": "p"}},
+        )
+
+        @app.get("/health")
+        async def health():
+            return {"ok": True}
+
+        with pytest.raises(ValueError, match=re.escape("GET /files/*")):
+            TestClient(app).get("/health")
+
     @pytest.mark.parametrize(
         "first, second",
         [
             ("GET /users/:id", "GET /users/{user_id}"),
             ("get /ask", "GET /ask"),
+            # No converter means `str`.
+            ("GET /a/{x}", "GET /a/{y:str}"),
         ],
     )
     def test_keys_that_collide_raise(self, mock_payments, first, second):

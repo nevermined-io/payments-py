@@ -6,6 +6,7 @@ env-var fallback for single-plan deployments, FastAPI-style {param} path
 matching, and the settle-failure-still-returns-200 contract.
 """
 
+import asyncio
 import base64
 import json
 from importlib.metadata import PackageNotFoundError
@@ -570,9 +571,76 @@ class TestLanggraphApiVersionDetection:
         assert ls_middleware._langgraph_api_version() is None
 
 
+def _send_raw(app, method, path):
+    """Send one request with ``path`` exactly as uvicorn would deliver it.
+
+    httpx (and so ``TestClient``) removes ``.`` and ``..`` segments before
+    sending; uvicorn does not, and Starlette's router matches them as sent.
+    """
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": method,
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "root_path": "",
+        "query_string": b"",
+        "headers": [(b"host", b"testserver")],
+        "server": ("testserver", 80),
+        "client": ("testclient", 50000),
+    }
+    messages = [{"type": "http.request", "body": b"", "more_body": False}]
+    sent = []
+
+    async def receive():
+        return messages.pop(0) if messages else {"type": "http.disconnect"}
+
+    async def send(message):
+        sent.append(message)
+
+    asyncio.run(app(scope, receive, send))
+    return sent[0]["status"]
+
+
 class TestRouteKeysMatchTheRouter:
     """The LangSmith middleware shares the FastAPI middleware's key matcher
     (#341), so the bypasses closed there are closed here too."""
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/files/x/..",
+            "/files/a/../../secret",
+            "/users/..",
+            # The dot-normalised form is still tried, for a proxy in front.
+            "/x/../users/1",
+        ],
+    )
+    def test_dot_segments_do_not_hide_the_route(self, mock_payments, path):
+        """The router matches the path as sent, dot segments included, so
+        matching only its normalised form missed a route the router serves."""
+        app = FastAPI()
+        app.state.handler_ran = False
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "GET /files/{file_path:path}": {"plan_id": "test-plan-123"},
+                "GET /users/{user_id}": {"plan_id": "test-plan-123"},
+            },
+        )
+
+        async def handler(request: Request):
+            request.app.state.handler_ran = True
+            return JSONResponse({"ok": True})
+
+        app.add_api_route("/files/{file_path:path}", handler, methods=["GET"])
+        app.add_api_route("/users/{user_id}", handler, methods=["GET"])
+
+        assert _send_raw(app, "GET", path) == 402
+        assert app.state.handler_ran is False
 
     @pytest.mark.parametrize(
         "key, route, url",
@@ -595,14 +663,39 @@ class TestRouteKeysMatchTheRouter:
 
         assert TestClient(app).post(url).status_code == 402
 
-    def test_root_path_does_not_hide_the_route(self, test_app):
+    @pytest.mark.parametrize("key", ["POST /ask", "POST /api/ask"])
+    def test_root_path_does_not_hide_the_route(self, mock_payments, key):
         """`uvicorn --root-path /api` sends `/api/ask`; the router serves it
-        as `/ask`, which the default `POST /ask` key protects."""
-        client = TestClient(test_app, root_path="/api")
+        as `/ask`. The key may name either form."""
+        app = FastAPI()
+        app.state.handler_ran = False
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={key: {"plan_id": "test-plan-123"}},
+        )
 
-        response = client.post("/api/ask", json={"query": "hi"})
+        @app.post("/ask")
+        async def ask(request: Request):
+            request.app.state.handler_ran = True
+            return JSONResponse({"ok": True})
+
+        response = TestClient(app, root_path="/api").post("/api/ask")
 
         assert response.status_code == 402
+        assert app.state.handler_ran is False
+
+    def test_routes_cannot_change_after_the_keys_are_compiled(self, mock_payments):
+        middleware = PaymentMiddleware(
+            app=None, payments=mock_payments, routes={"POST /ask": {"plan_id": "p"}}
+        )
+
+        with pytest.raises(TypeError):
+            middleware.routes["POST /other"] = RouteConfig(plan_id="p")
+
+    def test_build_payment_app_raises_when_called(self, mock_payments):
+        with pytest.raises(ValueError, match="GET /files/\\*"):
+            build_payment_app(mock_payments, routes={"GET /files/*": {"plan_id": "p"}})
 
     def test_unmatchable_key_raises(self, mock_payments):
         with pytest.raises(ValueError, match="GET /files/\\*"):

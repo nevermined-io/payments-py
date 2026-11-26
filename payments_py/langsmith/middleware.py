@@ -39,7 +39,18 @@ import time
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict, Iterator, Optional, Tuple, Union
+from types import MappingProxyType
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterator,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from fastapi import FastAPI
 from starlette.datastructures import MutableHeaders
@@ -206,12 +217,14 @@ class PaymentMiddleware(BaseHTTPMiddleware):
     ):
         super().__init__(app)
         self.payments = payments
-        self.routes: Dict[str, RouteConfig] = {
+        configs: Dict[str, RouteConfig] = {
             key: (value if isinstance(value, RouteConfig) else RouteConfig(**value))
             for key, value in (routes or {}).items()
         }
-        # Raises at startup for a key that can never match (#341).
-        self._compiled_routes = compile_routes(self.routes)
+        # Raises for a key the matcher would get wrong (#341). The gate reads
+        # only the compiled keys, so `routes` is read-only.
+        self._compiled_routes = compile_routes(configs)
+        self.routes: Mapping[str, RouteConfig] = MappingProxyType(configs)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -219,11 +232,13 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         method = request.method.upper()
         path = _normalise_path(request.url.path)
 
-        route_config = match_route(
-            method,
-            [_normalise_path(p) for p in request_paths(request)],
-            self._compiled_routes,
-        )
+        # The router matches the path as sent, dot segments included, so try
+        # that first; the dot-normalised forms are extra, for a proxy in front
+        # that normalises before the router sees the request.
+        raw_paths = request_paths(request)
+        normalised = (_normalise_path(p) for p in raw_paths)
+        paths = raw_paths + tuple(p for p in normalised if p not in raw_paths)
+        route_config = match_route(method, paths, self._compiled_routes)
         if not route_config:
             return await call_next(request)
 
@@ -241,8 +256,8 @@ class PaymentMiddleware(BaseHTTPMiddleware):
 
         payment_required = build_payment_required(
             plan_id=route_config.plan_id,
-            # Use the normalised path so the envelope reflects the canonical
-            # resource the middleware actually matched against.
+            # The full, dot-normalised path the client called (matching may
+            # have used the root-path-stripped or the raw form).
             endpoint=path,
             agent_id=route_config.agent_id,
             http_verb=method,
@@ -577,6 +592,9 @@ def build_payment_app(
             UserWarning,
             stacklevel=2,
         )
+    # Build it once here, so a rejected route key or config raises now rather
+    # than on the app's first ASGI event.
+    PaymentMiddleware(None, payments=payments, routes=routes)
     app = FastAPI()
     app.add_middleware(PaymentMiddleware, payments=payments, routes=routes or {})
     return app
