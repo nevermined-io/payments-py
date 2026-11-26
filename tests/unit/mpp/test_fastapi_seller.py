@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.testclient import TestClient
 
 from payments_py.mpp.errors import (
@@ -26,6 +26,7 @@ from payments_py.mpp.errors import (
 )
 from payments_py.x402.fastapi import PaymentMiddleware, PaymentMiddlewareOptions
 from payments_py.x402.fastapi import mpp_support
+from tests.asgi_stream import STREAMED, StreamProbe
 
 from .fixtures import mpp_credential_fixture
 
@@ -107,9 +108,11 @@ def build_app(payments, route: Dict[str, Any], options=None, handler=None) -> Fa
     return app
 
 
+ROUTE = {"plan_id": "plan-1", "credits": 2, "mpp": True}
+
+
 def client(payments, route=None, options=None, handler=None) -> TestClient:
-    route = route or {"plan_id": "plan-1", "credits": 2, "mpp": True}
-    return TestClient(build_app(payments, route, options, handler))
+    return TestClient(build_app(payments, route or ROUTE, options, handler))
 
 
 CREDENTIAL = mpp_credential_fixture("chal-1")
@@ -188,6 +191,120 @@ class TestCredentialRedemption:
         assert len(payments.mpp.settled) == 1
         assert payments.mpp.settled[0].resource == "/ask"
         assert payments.mpp.settled[0].http_verb == "POST"
+
+    @pytest.mark.asyncio
+    async def test_a_streamed_body_reaches_the_client_while_the_handler_runs(
+        self, payments
+    ):
+        """payments-py#339: the body used to be read into memory before the
+        receipt was attached, so a streamed response arrived only at the end."""
+        probe = StreamProbe()
+
+        async def handler(request):
+            return StreamingResponse(probe.body(), media_type="text/event-stream")
+
+        headers, body = await probe.request(
+            build_app(payments, ROUTE, handler=handler),
+            "POST",
+            "/ask",
+            {"Authorization": CREDENTIAL},
+        )
+
+        assert body == STREAMED
+        assert headers["payment-receipt"] == "RECEIPT-B64"
+        assert len(payments.mpp.settled) == 1
+
+    def test_a_repeated_response_header_keeps_every_value(self, payments):
+        async def handler(request):
+            response = JSONResponse({"ok": True})
+            response.set_cookie("first", "1")
+            response.set_cookie("second", "2")
+            return response
+
+        response = client(payments, handler=handler).post(
+            "/ask", json={"q": "hi"}, headers={"Authorization": CREDENTIAL}
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers.get_list("set-cookie")) == 2
+        assert response.headers["payment-receipt"] == "RECEIPT-B64"
+
+    def test_a_reused_response_does_not_carry_a_previous_buyers_receipt(self, payments):
+        """``call_next`` hands back the handler's own header list, so writing
+        the receipt into it leaked into the next request's response."""
+        shared = JSONResponse({"ok": True})
+
+        async def handler(request):
+            return shared
+
+        c = client(payments, handler=handler)
+        alice = c.post("/ask", json={"q": "hi"}, headers={"Authorization": CREDENTIAL})
+        payments.mpp.settle_error = RuntimeError("backend down")
+        bob = c.post(
+            "/ask",
+            json={"q": "hi"},
+            headers={"Authorization": mpp_credential_fixture("chal-2")},
+        )
+
+        assert alice.headers["payment-receipt"] == "RECEIPT-B64"
+        assert bob.status_code == 200
+        assert "payment-receipt" not in bob.headers
+
+    def test_attaches_the_receipt_when_the_handler_sends_tuple_headers(self, payments):
+        """ASGI allows any iterable as the start message's headers."""
+
+        class TupleHeadersResponse(Response):
+            async def __call__(self, scope, receive, send):
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": self.status_code,
+                        "headers": tuple(self.raw_headers),
+                    }
+                )
+                await send({"type": "http.response.body", "body": self.body})
+
+        async def handler(request):
+            return TupleHeadersResponse(b"ok", media_type="text/plain")
+
+        response = client(payments, handler=handler).post(
+            "/ask", json={"q": "hi"}, headers={"Authorization": CREDENTIAL}
+        )
+
+        assert response.status_code == 200
+        assert response.text == "ok"
+        assert response.headers["payment-receipt"] == "RECEIPT-B64"
+
+    def test_a_receipt_that_cannot_be_attached_still_serves_and_reports(
+        self, payments, caplog
+    ):
+        """The credits are burned, so neither the buyer's answer nor the
+        seller's post-settle record may be lost to a bad receipt header. The
+        error log names the path but not the query string, which may carry a
+        seller's ids or keys."""
+        payments.mpp.settle_result = {
+            "success": True,
+            "paymentReceipt": "☃",  # not latin-1: no header can carry it
+            "creditsRedeemed": "2",
+        }
+        settled: List[Any] = []
+
+        async def on_after_settle(request, credits, settlement):
+            settled.append(credits)
+
+        response = client(
+            payments, options=PaymentMiddlewareOptions(on_after_settle=on_after_settle)
+        ).post(
+            "/ask?key=s3cret", json={"q": "hi"}, headers={"Authorization": CREDENTIAL}
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"echo": '{"q":"hi"}'}
+        assert "payment-receipt" not in response.headers
+        assert settled == [2]
+        assert "receipt header could not be attached" in caplog.text
+        assert "/ask" in caplog.text
+        assert "s3cret" not in caplog.text
 
     def test_takes_the_mpp_path_when_the_credential_rides_beside_another_scheme(
         self, payments
