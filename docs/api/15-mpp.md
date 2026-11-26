@@ -86,7 +86,10 @@ counterpart here).
   nothing and settlement is idempotent, so without this guard N concurrent
   requests would each be served for a single burn.
 - **Settlement only on a 2xx.** A handler that fails or refuses is never
-  settled, and the credential stays unspent.
+  settled, and the credential stays unspent. A streamed response
+  (`StreamingResponse`, SSE) is the exception: it is settled as soon as the
+  handler returns it, before its body is produced, so a stream that fails or
+  is abandoned midway is still charged.
 
 !!! danger "Both guards are process-local"
     They live in memory. A multi-worker `uvicorn`/`gunicorn` deployment is
@@ -107,6 +110,10 @@ drown the rejections the hook exists to surface. It *is* called when an
 `Authorization` header arrives carrying no `Payment` scheme, which means an
 intermediary is rewriting it and the buyer is stuck in a silent retry loop.
 
+On both protocols, `on_after_settle` runs before a streamed body is produced.
+Do not record delivery from it, and do not release anything the body still
+uses (a DB session, an upstream client).
+
 `on_after_settle` fires for all three settlement outcomes, so a ledger built on
 it can count them apart:
 
@@ -122,7 +129,7 @@ settling request, so whenever `credits` is a callable it is free to differ from
 what the challenge sealed on the request that minted the credential — do not
 record rows two and three as if the backend had confirmed them.
 
-The third row is the one worth wiring: the resource was delivered and the seller
+The third row is the one worth wiring: the resource is served and the seller
 was not paid. Were it reported only as an absence, it would be indistinguishable
 from a request that was never an MPP request at all.
 
