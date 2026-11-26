@@ -123,12 +123,14 @@ Per-route pricing. Routes that don't match an incoming request pass through unga
 
 ### Route matching
 
-Routes are keyed as `"METHOD /path"`. Path parameters can use either Starlette `:param` or FastAPI/LangGraph `{param}` syntax — both match by position against the incoming request path. Examples that all match `POST /threads/abc-123/runs/wait`:
+Routes are keyed as `"METHOD /path"`. Path parameters can use either Express-style `:param` or FastAPI/LangGraph `{param}` syntax — both match one segment of the incoming request path. Examples that all match `POST /threads/abc-123/runs/wait`:
 
 ```python
 "POST /threads/{thread_id}/runs/wait"
 "POST /threads/:thread_id/runs/wait"
 ```
+
+Keys follow the same rules as the FastAPI middleware (see [Route keys](08-validation-of-requests.md#route-keys)): paths match the way Starlette's router does, path converters such as `{name:path}` included, the method is case-insensitive, and a key that can never match raises `ValueError` at startup instead of leaving its route unpaid.
 
 For LangSmith Deployment specifically, the only path that fits the verify-work-settle lifecycle in one HTTP cycle is `POST /threads/{thread_id}/runs/wait` (or its stateless counterpart `POST /runs/wait`). Background runs (`POST /runs`) return immediately; streaming runs (`POST /runs/stream`) lose streaming due to body buffering (see Limitations).
 

@@ -568,3 +568,46 @@ class TestLanggraphApiVersionDetection:
 
         monkeypatch.setattr("importlib.metadata.version", _raise)
         assert ls_middleware._langgraph_api_version() is None
+
+
+class TestRouteKeysMatchTheRouter:
+    """The LangSmith middleware shares the FastAPI middleware's key matcher
+    (#341), so the bypasses closed there are closed here too."""
+
+    @pytest.mark.parametrize(
+        "key, route, url",
+        [
+            ("post /ask", "/ask", "/ask"),
+            ("POST /files/{file_path:path}", "/files/{file_path:path}", "/files/a/b"),
+        ],
+    )
+    def test_request_without_token_is_refused(self, mock_payments, key, route, url):
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={key: {"plan_id": "test-plan-123"}},
+        )
+
+        @app.post(route)
+        async def handler():
+            return JSONResponse({"ok": True})
+
+        assert TestClient(app).post(url).status_code == 402
+
+    def test_root_path_does_not_hide_the_route(self, test_app):
+        """`uvicorn --root-path /api` sends `/api/ask`; the router serves it
+        as `/ask`, which the default `POST /ask` key protects."""
+        client = TestClient(test_app, root_path="/api")
+
+        response = client.post("/api/ask", json={"query": "hi"})
+
+        assert response.status_code == 402
+
+    def test_unmatchable_key_raises(self, mock_payments):
+        with pytest.raises(ValueError, match="GET /files/\\*"):
+            PaymentMiddleware(
+                app=None,
+                payments=mock_payments,
+                routes={"GET /files/*": {"plan_id": "p"}},
+            )

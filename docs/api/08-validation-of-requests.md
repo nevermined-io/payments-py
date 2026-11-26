@@ -296,7 +296,7 @@ app.add_middleware(
     PaymentMiddleware,
     payments=payments,
     routes={
-        "/api/tasks": {
+        "POST /api/tasks": {
             "plan_id": "your-plan-id",
             "agent_id": "your-agent-id",
         }
@@ -309,6 +309,24 @@ async def create_task(body: dict):
     # Just process the request
     return {"result": "Task completed"}
 ```
+
+### Route keys
+
+Each key is `"METHOD /path"`. Requests that match no key pass through **unpaid**, so write the path exactly as the route is declared:
+
+| Route | Key |
+|---|---|
+| `@app.post("/ask")` | `"POST /ask"` |
+| `@app.get("/users/{user_id}")` | `"GET /users/{user_id}"` (or `"GET /users/:user_id"`) |
+| `@app.get("/items/{item_id:int}")` | `"GET /items/{item_id:int}"` |
+| `@app.get("/files/{file_path:path}")` | `"GET /files/{file_path:path}"` |
+
+- The path is matched the way Starlette's router matches it, path converters included. A `:name` segment means `{name}` and spans **one** segment, so a `{name:path}` route needs the `{name:path}` key.
+- The method is case-insensitive. A `GET` key also gates `HEAD`, which Starlette's `Route` serves with the GET handler.
+- Behind a proxy (`uvicorn --root-path /api`), a key may use the route path (`"POST /ask"`) or the full path (`"POST /api/ask"`).
+- A key with a literal path wins over one with parameters (`"GET /users/me"` over `"GET /users/{user_id}"`).
+
+A key that can never match a request raises `ValueError` when the middleware is built, instead of leaving its route unpaid: a missing or unknown HTTP method, a path that does not start with `/`, `*`, `?`, a partial `:param` segment (`/f/:name.csv`), an unknown path converter, or two keys that match the same requests (`"GET /users/:id"` and `"GET /users/{user_id}"`).
 
 ## Verification Response
 

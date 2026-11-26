@@ -56,6 +56,7 @@ from payments_py.langsmith.spans import (
 )
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
+from payments_py.x402.routing import compile_routes, match_route, request_paths
 from payments_py.x402.types import (
     CreditsCallable,
     PaymentContext,
@@ -87,39 +88,6 @@ X402_HEADERS = {
 
 def _extract_token(request: Request) -> Optional[str]:
     return request.headers.get(X402_HEADERS["PAYMENT_SIGNATURE"]) or None
-
-
-def _match_route(
-    method: str, path: str, routes: Dict[str, RouteConfig]
-) -> Optional[RouteConfig]:
-    """Match a request method+path against the configured routes.
-
-    Supports exact matches ("POST /runs") and path parameters in either
-    Starlette-style (":id") or FastAPI/LangGraph-style ("{thread_id}").
-    """
-    exact_key = f"{method} {path}"
-    if exact_key in routes:
-        return routes[exact_key]
-
-    for route_key, config in routes.items():
-        parts = route_key.split(" ", 1)
-        if len(parts) != 2:
-            continue
-        route_method, route_path = parts
-        if route_method != method:
-            continue
-        route_parts = route_path.split("/")
-        path_parts = path.split("/")
-        if len(route_parts) != len(path_parts):
-            continue
-        if all(
-            seg.startswith(":")
-            or (seg.startswith("{") and seg.endswith("}"))
-            or seg == path_seg
-            for seg, path_seg in zip(route_parts, path_parts)
-        ):
-            return config
-    return None
 
 
 async def _resolve_credits(
@@ -242,9 +210,8 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             key: (value if isinstance(value, RouteConfig) else RouteConfig(**value))
             for key, value in (routes or {}).items()
         }
-
-    def _resolve_route_config(self, method: str, path: str) -> Optional[RouteConfig]:
-        return _match_route(method, path, self.routes)
+        # Raises at startup for a key that can never match (#341).
+        self._compiled_routes = compile_routes(self.routes)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -252,7 +219,11 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         method = request.method.upper()
         path = _normalise_path(request.url.path)
 
-        route_config = self._resolve_route_config(method, path)
+        route_config = match_route(
+            method,
+            [_normalise_path(p) for p in request_paths(request)],
+            self._compiled_routes,
+        )
         if not route_config:
             return await call_next(request)
 

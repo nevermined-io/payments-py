@@ -79,6 +79,7 @@ from payments_py.x402.fastapi.mpp_support import (
 from payments_py.x402.errors import is_access_token_already_used
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
+from payments_py.x402.routing import compile_routes, match_route, request_paths
 from payments_py.x402.types import (
     CreditsCallable,
     PaymentContext,
@@ -135,49 +136,6 @@ def _extract_token(request: Request, header_names: Union[str, list]) -> Optional
         header_value = request.headers.get(header_name.lower())
         if header_value and isinstance(header_value, str):
             return header_value
-
-    return None
-
-
-def _match_route(
-    method: str, path: str, routes: Dict[str, RouteConfig]
-) -> Optional[RouteConfig]:
-    """
-    Match a request to a route config.
-    Returns the config if found, None otherwise.
-    """
-    # Try exact match first: "POST /ask"
-    exact_key = f"{method} {path}"
-    if exact_key in routes:
-        return routes[exact_key]
-
-    # Try pattern matching with path parameters
-    for route_key, config in routes.items():
-        parts = route_key.split(" ", 1)
-        if len(parts) != 2:
-            continue
-
-        route_method, route_path = parts
-        if route_method != method:
-            continue
-
-        # Simple pattern matching: /users/:id -> /users/123
-        route_parts = route_path.split("/")
-        path_parts = path.split("/")
-
-        if len(route_parts) != len(path_parts):
-            continue
-
-        match = True
-        for i in range(len(route_parts)):
-            if route_parts[i].startswith(":"):
-                continue  # Parameter - always matches
-            if route_parts[i] != path_parts[i]:
-                match = False
-                break
-
-        if match:
-            return config
 
     return None
 
@@ -247,6 +205,9 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             # unknown key, and the one thing that used to accept anything
             # silently is what turns body binding off.
             resolve_mpp_option(self.routes[key].mpp)
+        # Same for the keys: one that can never match used to leave its route
+        # unpaid without a word (#341).
+        self._compiled_routes = compile_routes(self.routes)
         self.options = options or PaymentMiddlewareOptions()
 
     async def dispatch(
@@ -255,9 +216,10 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         """Process the request through the payment middleware."""
         # Check if this route requires payment
         method = request.method.upper()
-        path = request.url.path
 
-        route_config = _match_route(method, path, self.routes)
+        route_config = match_route(
+            method, request_paths(request), self._compiled_routes
+        )
         if not route_config:
             # Route not protected - pass through
             return await call_next(request)
@@ -526,7 +488,10 @@ def payment_middleware(
 
     Args:
         payments: The Payments instance
-        routes: Map of routes to protect: {"METHOD /path": {"plan_id", "credits"}}
+        routes: Map of routes to protect: {"METHOD /path": {"plan_id", "credits"}}.
+            Write the path as the route is declared ("/users/{user_id}",
+            "/files/{file_path:path}", or ":user_id"). A key that can never
+            match a request raises ValueError.
         options: Optional middleware configuration
 
     Returns:

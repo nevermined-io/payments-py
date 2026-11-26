@@ -4,6 +4,7 @@ Unit tests for FastAPI x402 payment middleware.
 
 import base64
 import json
+import re
 from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
@@ -833,3 +834,156 @@ class TestSettledResponseIsPassedThrough:
         assert response.status_code == 200
         assert len(response.headers.get_list("set-cookie")) == 2
         assert X402_HEADERS["PAYMENT_RESPONSE"] in response.headers
+
+
+def _gated_app(mock_payments, key, method, route):
+    """One route, gated by one key, with a flag recording whether it ran."""
+    app = FastAPI()
+    app.state.handler_ran = False
+    app.add_middleware(
+        PaymentMiddleware,
+        payments=mock_payments,
+        routes={key: {"plan_id": "test-plan-123", "credits": 1}},
+    )
+
+    async def handler(request: Request):
+        request.app.state.handler_ran = True
+        return JSONResponse({"ok": True})
+
+    app.add_api_route(route, handler, methods=[method])
+    return app
+
+
+class TestRouteKeysMatchTheRouter:
+    """A key that names a route must gate every request the router sends to it
+    (#341). A request without a token must get a 402 and never reach the
+    handler."""
+
+    @pytest.mark.parametrize(
+        "key, method, route, url",
+        [
+            # Express-style parameter, the syntax that already worked.
+            ("GET /users/:user_id", "GET", "/users/{user_id}", "/users/42"),
+            # FastAPI's own parameter syntax, copied from the decorator.
+            ("GET /users/{user_id}", "GET", "/users/{user_id}", "/users/42"),
+            # A path converter spans several segments.
+            (
+                "GET /files/{file_path:path}",
+                "GET",
+                "/files/{file_path:path}",
+                "/files/a/b.csv",
+            ),
+            ("GET /items/{item_id:int}", "GET", "/items/{item_id:int}", "/items/7"),
+            # A lower-case method in the key.
+            ("post /ask", "POST", "/ask", "/ask"),
+            # A literal colon inside a segment is not a parameter.
+            ("POST /v1/items:batch", "POST", "/v1/items:batch", "/v1/items:batch"),
+        ],
+    )
+    def test_request_without_token_is_refused(
+        self, mock_payments, key, method, route, url
+    ):
+        app = _gated_app(mock_payments, key, method, route)
+
+        response = TestClient(app).request(method, url)
+
+        assert response.status_code == 402
+        assert app.state.handler_ran is False
+
+    @pytest.mark.parametrize("key", ["POST /ask", "POST /api/ask"])
+    def test_root_path_does_not_hide_the_route(self, mock_payments, key):
+        """Behind a proxy (`uvicorn --root-path /api`) the server puts the
+        root path in front of the request path, and the router strips it
+        again. The key may name either form."""
+        app = _gated_app(mock_payments, key, "POST", "/ask")
+
+        # TestClient sends `root_path` and the full path, as uvicorn does.
+        response = TestClient(app, root_path="/api").post("/api/ask")
+
+        assert response.status_code == 402
+        assert app.state.handler_ran is False
+
+    def test_head_reaches_a_starlette_get_route(self, mock_payments):
+        """Starlette's `Route` serves HEAD with the GET handler, so a GET key
+        must gate HEAD too. (FastAPI's `@app.get` answers HEAD with 405.)"""
+        app = FastAPI()
+        app.state.handler_ran = False
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"GET /doc": {"plan_id": "test-plan-123"}},
+        )
+
+        async def doc(request: Request):
+            request.app.state.handler_ran = True
+            return JSONResponse({"ok": True})
+
+        app.router.add_route("/doc", doc, methods=["GET"])
+
+        response = TestClient(app).head("/doc")
+
+        assert response.status_code == 402
+        assert app.state.handler_ran is False
+
+    def test_literal_key_wins_over_a_parameter_key(self, mock_payments):
+        """`/users/me` matches both keys; the literal one is the specific one,
+        whatever order the keys are declared in."""
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "GET /users/{user_id}": {"plan_id": "param-plan"},
+                "GET /users/me": {"plan_id": "me-plan"},
+            },
+        )
+
+        response = TestClient(app).get("/users/me")
+
+        assert response.status_code == 402
+        payment_required = json.loads(
+            base64.b64decode(response.headers[X402_HEADERS["PAYMENT_REQUIRED"]])
+        )
+        assert payment_required["accepts"][0]["planId"] == "me-plan"
+
+
+class TestRouteKeysThatCannotMatchAreRejected:
+    """A key the matcher cannot match used to protect nothing, silently. It
+    must fail when the middleware is built, naming the key (#341)."""
+
+    @pytest.mark.parametrize(
+        "key",
+        [
+            "/api/tasks",  # no method
+            "ALL /ask",  # not an HTTP method
+            "FETCH /ask",
+            "GET ask",  # not a path
+            "GET /files/*",  # wildcard
+            "GET /search?q=1",  # a query string is never part of the path
+            "GET /f/:name.csv",  # partial-segment `:param`
+            "GET /users/{user_id",  # stray brace
+            "GET /files/{file_path:nope}",  # unknown converter
+            "GET /a/{x}/{x}",  # repeated parameter name
+        ],
+    )
+    def test_unmatchable_key_raises(self, mock_payments, key):
+        with pytest.raises(ValueError, match=re.escape(key)):
+            PaymentMiddleware(
+                app=None, payments=mock_payments, routes={key: {"plan_id": "p"}}
+            )
+
+    @pytest.mark.parametrize(
+        "first, second",
+        [
+            ("GET /users/:id", "GET /users/{user_id}"),
+            ("get /ask", "GET /ask"),
+        ],
+    )
+    def test_keys_that_collide_raise(self, mock_payments, first, second):
+        """Two keys for the same requests would leave one config dead."""
+        with pytest.raises(ValueError, match=re.escape(second)):
+            PaymentMiddleware(
+                app=None,
+                payments=mock_payments,
+                routes={first: {"plan_id": "a"}, second: {"plan_id": "b"}},
+            )
