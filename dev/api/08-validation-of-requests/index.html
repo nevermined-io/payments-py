@@ -795,6 +795,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Using x402 FastAPI Middleware">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#route-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Route keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1394,6 +1411,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Using x402 FastAPI Middleware">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#route-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Route keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1738,7 +1772,7 @@ For how to build one, crypto or card, see
 <a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    <span class="n">PaymentMiddleware</span><span class="p">,</span>
 <a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="n">payments</span><span class="o">=</span><span class="n">payments</span><span class="p">,</span>
 <a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    <span class="n">routes</span><span class="o">=</span><span class="p">{</span>
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>        <span class="s2">"/api/tasks"</span><span class="p">:</span> <span class="p">{</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>        <span class="s2">"POST /api/tasks"</span><span class="p">:</span> <span class="p">{</span>
 <a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>            <span class="s2">"plan_id"</span><span class="p">:</span> <span class="s2">"your-plan-id"</span><span class="p">,</span>
 <a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>            <span class="s2">"agent_id"</span><span class="p">:</span> <span class="s2">"your-agent-id"</span><span class="p">,</span>
 <a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>        <span class="p">}</span>
@@ -1757,6 +1791,56 @@ them, with the <code>payment-response</code> receipt header attached. Settlement
 soon as the handler returns its response: a streamed body is produced after the
 credits are burned and after <code>on_after_settle</code> has run, so a stream that fails
 midway is still charged.</p>
+<h3 id="route-keys">Route keys<a class="headerlink" href="#route-keys" title="Permanent link">&para;</a></h3>
+<p>Each key is <code>"METHOD /path"</code>. Requests that match no key pass through <strong>unpaid</strong>, so the key must be the full path the app serves the route at: the route's own path plus every <code>APIRouter(prefix=...)</code>, <code>include_router(..., prefix=...)</code> and <code>Mount</code> prefix in front of it, with the route's exact trailing slash.</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@app.post("/ask")</code></td>
+<td><code>"POST /ask"</code></td>
+</tr>
+<tr>
+<td><code>@app.get("/users/{user_id}")</code></td>
+<td><code>"GET /users/{user_id}"</code> (or <code>"GET /users/:user_id"</code>)</td>
+</tr>
+<tr>
+<td><code>@app.get("/items/{item_id:int}")</code></td>
+<td><code>"GET /items/{item_id:int}"</code></td>
+</tr>
+<tr>
+<td><code>@app.get("/files/{file_path:path}")</code></td>
+<td><code>"GET /files/{file_path:path}"</code></td>
+</tr>
+<tr>
+<td><code>APIRouter(prefix="/v1")</code> + <code>@router.post("/ask")</code></td>
+<td><code>"POST /v1/ask"</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The path is matched the way Starlette's router matches it, path converters included. A <code>:name</code> segment means <code>{name}</code> and spans <strong>one</strong> segment, so a <code>{name:path}</code> route needs the <code>{name:path}</code> key. Parameter names are letters, digits and <code>_</code>.</li>
+<li><code>"POST /ask/"</code> and <code>"POST /ask"</code> are different keys, as they are different routes.</li>
+<li>The method is case-insensitive. A <code>GET</code> key also gates <code>HEAD</code> when no <code>HEAD</code> key matches, since Starlette's <code>Route</code> serves HEAD with the GET handler. An explicit <code>HEAD</code> key wins over every <code>GET</code> key, literal ones included. FastAPI's <code>@app.get</code> answers HEAD with 405, so that is exact there; with Starlette <code>Route</code>s, a GET route declared before a matching HEAD route serves the HEAD request itself, so declare the HEAD route first.</li>
+<li>Behind <code>uvicorn --root-path /api</code>, which puts <code>/api</code> in front of every request path, a key may use the route path (<code>"POST /ask"</code>) or the full path (<code>"POST /api/ask"</code>). When a proxy strips the prefix before the request reaches the app, only the route path matches.</li>
+<li>A key with a literal path wins over one with parameters (<code>"GET /users/me"</code> over <code>"GET /users/{user_id}"</code>), whichever is declared first.</li>
+</ul>
+<p>A key the matcher would get wrong raises <code>ValueError</code> naming it, instead of leaving its route unpaid:</p>
+<ul>
+<li>no method, or a method that is not a standard HTTP method (<code>ALL</code>, <code>FETCH</code>, a typo);</li>
+<li>a path that does not start with <code>/</code>;</li>
+<li>a <code>*</code> wildcard or a <code>?</code> query string: keys have no wildcard syntax;</li>
+<li>a brace outside a <code>{name}</code> or <code>{name:converter}</code> parameter (<code>/users/{user_id</code>);</li>
+<li>a <code>:</code> segment that is not <code>:name</code> (<code>/f/:name.csv</code>, <code>/users/:user-id</code>);</li>
+<li>an unknown path converter or a repeated parameter name;</li>
+<li>two keys that are the same once parameter names and method case are ignored (<code>"GET /users/:id"</code> and <code>"GET /users/{user_id}"</code>). Keys that only overlap (<code>{id}</code> and <code>{id:int}</code>) are allowed.</li>
+</ul>
+<p>When that error is raised depends on how the middleware is added. <code>payment_middleware(...)</code> raises when it is called, so the app fails to import. With <code>app.add_middleware(PaymentMiddleware, ...)</code>, Starlette builds the middleware on the app's first event: under uvicorn's default <code>--lifespan auto</code> the server still starts and answers every request with a 500, so run it with <code>--lifespan on</code> to make a bad key stop the start.</p>
 <h2 id="verification-response">Verification Response<a class="headerlink" href="#verification-response" title="Permanent link">&para;</a></h2>
 <p>The <code>verify_permissions</code> method returns a <code>VerifyResponse</code>:</p>
 <table>
