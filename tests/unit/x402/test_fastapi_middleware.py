@@ -22,6 +22,7 @@ from payments_py.x402.fastapi import (
 )
 from payments_py.x402.types import VerifyResponse, SettleResponse
 from tests.asgi_stream import STREAMED, StreamProbe
+from tests.x402_responses import make_settle_response
 
 
 class QueryRequest(BaseModel):
@@ -378,12 +379,12 @@ class TestMiddlewareHooks:
         )
 
         assert response.status_code == 200
-        # The body, not just the status. This is the only x402 test that
-        # configures on_after_settle, so it is the one placed to notice a
-        # settled response losing its payload while every hook still fires —
-        # e.g. draining the body to attach the receipt and then returning the
-        # drained original. An empty 200 with all three flags set used to pass
-        # here.
+        # The body, not just the status. This is the happy-path x402 test that
+        # configures on_after_settle (the others force a hook or receipt
+        # failure), so it is the one placed to notice a settled response losing
+        # its payload while every hook still fires — e.g. draining the body to
+        # attach the receipt and then returning the drained original. An empty
+        # 200 with all three flags set used to pass here.
         assert response.json()["result"] == "ok"
         assert hook_calls["before_verify"] is True
         assert hook_calls["after_verify"] is True
@@ -833,3 +834,68 @@ class TestSettledResponseIsPassedThrough:
         assert response.status_code == 200
         assert len(response.headers.get_list("set-cookie")) == 2
         assert X402_HEADERS["PAYMENT_RESPONSE"] in response.headers
+
+    def test_a_reused_response_does_not_carry_a_previous_buyers_receipt(
+        self, mock_payments, valid_token
+    ):
+        """``call_next`` hands back the handler's own header list. Writing the
+        receipt into it put one buyer's settlement on a Response the handler
+        returns again, so the next buyer, whose settle failed, got it too."""
+        shared = JSONResponse({"ok": True})
+        mock_payments.facilitator.settle_permissions.side_effect = [
+            make_settle_response(transaction="0xalice"),
+            RuntimeError("backend down"),
+        ]
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+        )
+
+        @app.post("/ask")
+        async def ask():
+            return shared
+
+        client = TestClient(app)
+        headers = {X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token}
+        alice = client.post("/ask", headers=headers)
+        bob = client.post("/ask", headers=headers)
+
+        assert X402_HEADERS["PAYMENT_RESPONSE"] in alice.headers
+        assert bob.status_code == 200
+        assert X402_HEADERS["PAYMENT_RESPONSE"] not in bob.headers
+
+    def test_a_receipt_that_cannot_be_attached_still_runs_on_after_settle(
+        self, mock_payments, valid_token
+    ):
+        """The burn committed, so the seller's post-settle record must fire
+        even when the receipt header could not be built."""
+        settled = []
+
+        async def on_after_settle(request, credits, result):
+            settled.append(credits)
+
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+            options=PaymentMiddlewareOptions(on_after_settle=on_after_settle),
+        )
+
+        @app.post("/ask")
+        async def ask():
+            return JSONResponse({"ok": True})
+
+        with patch.object(
+            SettleResponse, "model_dump_json", side_effect=RuntimeError("boom")
+        ):
+            response = TestClient(app).post(
+                "/ask", headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token}
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {"ok": True}
+        assert X402_HEADERS["PAYMENT_RESPONSE"] not in response.headers
+        assert settled == [1]

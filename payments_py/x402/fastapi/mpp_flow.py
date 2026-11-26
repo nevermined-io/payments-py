@@ -14,11 +14,15 @@ the protocol does:
   raw bytes directly, so ``bind_body`` reads them here and replays them to the
   handler; the two refusal branches have no counterpart and no route can be
   misconfigured into an unbound challenge.
-- **No detached-settle branch.** ``BaseHTTPMiddleware`` sends nothing to the
-  client until this middleware returns, so headers are never already on the
-  wire when settlement runs: the receipt always attaches, and the delivery
-  probe the TS side needs for streamed responses has nothing to probe. A
-  streamed body starts flowing once settlement has run.
+- **Settlement runs before the body is sent.** ``BaseHTTPMiddleware`` sends
+  nothing to the client until this middleware returns, so headers are never
+  already on the wire when settlement runs and the receipt always attaches.
+  The cost is the other side of that: a streamed body is produced only after
+  the burn (and after ``on_after_settle``), so a stream that fails or is
+  abandoned midway is still charged. The TS side settles at ``res.end``, after
+  the body is written, and its delivery probe skips settlement for a buyer who
+  hung up; nothing here does. Whether streamed responses should settle after
+  delivery is a billing decision for its own issue.
 """
 
 import base64
@@ -512,12 +516,13 @@ class MppFlow:
             )
             return response
         except Exception as settle_error:  # noqa: BLE001
-            # A DEFINITE failure: the resource has been served and the seller has
-            # not been paid — the most expensive thing that can happen to them.
+            # A DEFINITE failure: the handler returned a 2xx that will be served
+            # (a streamed body has not been produced yet) and the seller has not
+            # been paid — the most expensive thing that can happen to them.
             # on_payment_error is documented as the handler for payment failures,
-            # so notify through it; this is the one MPP failure site that runs
-            # after the response, so the hook cannot answer the request and is
-            # purely a signal.
+            # so notify through it. Its return value is ignored: a 2xx whose
+            # credential is already spent is delivered regardless, so the hook
+            # is purely a signal here.
             payment_context.credits_to_settle = 0
             await self._notify_payment_error(settle_error)
             logger.error("MPP settlement failed: %s", settle_error)
@@ -535,10 +540,22 @@ class MppFlow:
 
         receipt = settlement.get("paymentReceipt")
         if settlement.get("success") and receipt:
-            # On the handler's own response: BaseHTTPMiddleware sends nothing
-            # until dispatch returns, so its headers are still editable, and its
-            # body streams through untouched — never read into memory (#339).
-            response.headers[MPP_HEADERS["RECEIPT"]] = receipt
+            # On `response` itself, whose header list is its own (the middleware's
+            # `_own_headers`): BaseHTTPMiddleware sends nothing until dispatch
+            # returns, so the headers are still editable, and the body streams
+            # through untouched — never read into memory (#339).
+            try:
+                response.headers[MPP_HEADERS["RECEIPT"]] = receipt
+            except Exception as receipt_error:  # noqa: BLE001
+                # The credits are burned: the buyer still gets the answer and
+                # the seller's on_after_settle record still runs.
+                logger.error(
+                    "MPP settled but the receipt header could not be attached "
+                    "(agent_request_id=%s, resource=%s): %s",
+                    payment_context.agent_request_id,
+                    self.resource,
+                    receipt_error,
+                )
         elif not settlement.get("success"):
             logger.error(
                 "MPP settlement failed: %s",
