@@ -65,7 +65,8 @@ import inspect
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, Optional, Union
+from types import MappingProxyType
+from typing import Any, Awaitable, Callable, Dict, Mapping, Optional, Union
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -79,6 +80,7 @@ from payments_py.x402.fastapi.mpp_support import (
 from payments_py.x402.errors import is_access_token_already_used
 from payments_py.x402.helpers import build_payment_required
 from payments_py.x402.resolve_scheme import resolve_network, resolve_scheme
+from payments_py.x402.routing import compile_routes, match_route, request_paths
 from payments_py.x402.types import (
     CreditsCallable,
     PaymentContext,
@@ -137,49 +139,6 @@ def _extract_token(request: Request, header_names: Union[str, list]) -> Optional
         header_value = request.headers.get(header_name.lower())
         if header_value and isinstance(header_value, str):
             return header_value
-
-    return None
-
-
-def _match_route(
-    method: str, path: str, routes: Dict[str, RouteConfig]
-) -> Optional[RouteConfig]:
-    """
-    Match a request to a route config.
-    Returns the config if found, None otherwise.
-    """
-    # Try exact match first: "POST /ask"
-    exact_key = f"{method} {path}"
-    if exact_key in routes:
-        return routes[exact_key]
-
-    # Try pattern matching with path parameters
-    for route_key, config in routes.items():
-        parts = route_key.split(" ", 1)
-        if len(parts) != 2:
-            continue
-
-        route_method, route_path = parts
-        if route_method != method:
-            continue
-
-        # Simple pattern matching: /users/:id -> /users/123
-        route_parts = route_path.split("/")
-        path_parts = path.split("/")
-
-        if len(route_parts) != len(path_parts):
-            continue
-
-        match = True
-        for i in range(len(route_parts)):
-            if route_parts[i].startswith(":"):
-                continue  # Parameter - always matches
-            if route_parts[i] != path_parts[i]:
-                match = False
-                break
-
-        if match:
-            return config
 
     return None
 
@@ -258,18 +217,23 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.payments = payments
         # Convert dict configs to RouteConfig objects
-        self.routes: Dict[str, RouteConfig] = {}
+        configs: Dict[str, RouteConfig] = {}
         for key, value in routes.items():
             if isinstance(value, RouteConfig):
-                self.routes[key] = value
+                configs[key] = value
             else:
-                self.routes[key] = RouteConfig(**value)
+                configs[key] = RouteConfig(**value)
             # Validate the nested `mpp` option HERE rather than on the first
             # request, so a typo behaves like a typo in the outer route dict:
             # `RouteConfig(**value)` above already raises at startup for an
             # unknown key, and the one thing that used to accept anything
             # silently is what turns body binding off.
-            resolve_mpp_option(self.routes[key].mpp)
+            resolve_mpp_option(configs[key].mpp)
+        # Same for the keys: one the matcher would get wrong used to leave its
+        # route unpaid without a word (#341). The gate reads only the compiled
+        # keys, so `routes` is read-only: a key added later would be ignored.
+        self._compiled_routes = compile_routes(configs)
+        self.routes: Mapping[str, RouteConfig] = MappingProxyType(configs)
         self.options = options or PaymentMiddlewareOptions()
 
     async def dispatch(
@@ -278,9 +242,12 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         """Process the request through the payment middleware."""
         # Check if this route requires payment
         method = request.method.upper()
-        path = request.url.path
+        # From the scope, not `request.url`: see `request_paths`.
+        path = request.scope["path"]
 
-        route_config = _match_route(method, path, self.routes)
+        route_config = match_route(
+            method, request_paths(request), self._compiled_routes
+        )
         if not route_config:
             # Route not protected - pass through
             return await call_next(request)
@@ -297,7 +264,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         # Build payment required object
         payment_required = build_payment_required(
             plan_id=route_config.plan_id,
-            endpoint=str(request.url.path),
+            endpoint=path,
             agent_id=route_config.agent_id,
             http_verb=method,
             network=resolved_network,
@@ -556,12 +523,21 @@ def payment_middleware(
 
     Args:
         payments: The Payments instance
-        routes: Map of routes to protect: {"METHOD /path": {"plan_id", "credits"}}
+        routes: Map of routes to protect: {"METHOD /path": {"plan_id", "credits"}}.
+            The path is the full path the app serves the route at, router
+            prefixes included, with parameters as in FastAPI
+            ("/users/{user_id}", "/files/{file_path:path}") or as
+            "/users/:user_id". A key the matcher would get wrong raises
+            ValueError when this function is called.
         options: Optional middleware configuration
 
     Returns:
         A middleware class that can be added to FastAPI
     """
+
+    # Build it once here, so a rejected route key or config raises when this
+    # factory is called (import time), not on the app's first ASGI event.
+    PaymentMiddleware(None, payments=payments, routes=routes, options=options)
 
     class ConfiguredPaymentMiddleware(PaymentMiddleware):
         def __init__(self, app: Any):

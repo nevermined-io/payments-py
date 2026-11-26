@@ -296,7 +296,7 @@ app.add_middleware(
     PaymentMiddleware,
     payments=payments,
     routes={
-        "/api/tasks": {
+        "POST /api/tasks": {
             "plan_id": "your-plan-id",
             "agent_id": "your-agent-id",
         }
@@ -316,6 +316,36 @@ them, with the `payment-response` receipt header attached. Settlement runs as
 soon as the handler returns its response: a streamed body is produced after the
 credits are burned and after `on_after_settle` has run, so a stream that fails
 midway is still charged.
+
+### Route keys
+
+Each key is `"METHOD /path"`. Requests that match no key pass through **unpaid**, so the key must be the full path the app serves the route at: the route's own path plus every `APIRouter(prefix=...)`, `include_router(..., prefix=...)` and `Mount` prefix in front of it, with the route's exact trailing slash.
+
+| Route | Key |
+|---|---|
+| `@app.post("/ask")` | `"POST /ask"` |
+| `@app.get("/users/{user_id}")` | `"GET /users/{user_id}"` (or `"GET /users/:user_id"`) |
+| `@app.get("/items/{item_id:int}")` | `"GET /items/{item_id:int}"` |
+| `@app.get("/files/{file_path:path}")` | `"GET /files/{file_path:path}"` |
+| `APIRouter(prefix="/v1")` + `@router.post("/ask")` | `"POST /v1/ask"` |
+
+- The path is matched the way Starlette's router matches it, path converters included. A `:name` segment means `{name}` and spans **one** segment, so a `{name:path}` route needs the `{name:path}` key. Parameter names are letters, digits and `_`.
+- `"POST /ask/"` and `"POST /ask"` are different keys, as they are different routes.
+- The method is case-insensitive. A `GET` key also gates `HEAD` when no `HEAD` key matches, since Starlette's `Route` serves HEAD with the GET handler. An explicit `HEAD` key wins over every `GET` key, literal ones included. FastAPI's `@app.get` answers HEAD with 405, so that is exact there; with Starlette `Route`s, a GET route declared before a matching HEAD route serves the HEAD request itself, so declare the HEAD route first.
+- Behind `uvicorn --root-path /api`, which puts `/api` in front of every request path, a key may use the route path (`"POST /ask"`) or the full path (`"POST /api/ask"`). When a proxy strips the prefix before the request reaches the app, only the route path matches.
+- A key with a literal path wins over one with parameters (`"GET /users/me"` over `"GET /users/{user_id}"`), whichever is declared first.
+
+A key the matcher would get wrong raises `ValueError` naming it, instead of leaving its route unpaid:
+
+- no method, or a method that is not a standard HTTP method (`ALL`, `FETCH`, a typo);
+- a path that does not start with `/`;
+- a `*` wildcard or a `?` query string: keys have no wildcard syntax;
+- a brace outside a `{name}` or `{name:converter}` parameter (`/users/{user_id`);
+- a `:` segment that is not `:name` (`/f/:name.csv`, `/users/:user-id`);
+- an unknown path converter or a repeated parameter name;
+- two keys that are the same once parameter names and method case are ignored (`"GET /users/:id"` and `"GET /users/{user_id}"`). Keys that only overlap (`{id}` and `{id:int}`) are allowed.
+
+When that error is raised depends on how the middleware is added. `payment_middleware(...)` raises when it is called, so the app fails to import. With `app.add_middleware(PaymentMiddleware, ...)`, Starlette builds the middleware on the app's first event: under uvicorn's default `--lifespan auto` the server still starts and answers every request with a 500, so run it with `--lifespan on` to make a bad key stop the start.
 
 ## Verification Response
 

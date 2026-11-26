@@ -25,6 +25,7 @@ from payments_py.langsmith import (
 )
 from payments_py.langsmith import middleware as ls_middleware
 from payments_py.x402.types import SettleResponse, VerifyResponse
+from tests.asgi_raw import payment_required, required_plan, send_raw
 
 
 class QueryRequest(BaseModel):
@@ -568,3 +569,154 @@ class TestLanggraphApiVersionDetection:
 
         monkeypatch.setattr("importlib.metadata.version", _raise)
         assert ls_middleware._langgraph_api_version() is None
+
+
+class TestRouteKeysMatchTheRouter:
+    """The LangSmith middleware shares the FastAPI middleware's key matcher
+    (#341), so the bypasses closed there are closed here too."""
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/files/x/..",
+            "/files/a/../../secret",
+            "/users/..",
+            # The dot-normalised form is still tried, for a proxy in front.
+            "/x/../users/1",
+        ],
+    )
+    def test_dot_segments_do_not_hide_the_route(self, mock_payments, path):
+        """The router matches the path as sent, dot segments included, so
+        matching only its normalised form missed a route the router serves."""
+        app = FastAPI()
+        app.state.handler_ran = False
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                "GET /files/{file_path:path}": {"plan_id": "test-plan-123"},
+                "GET /users/{user_id}": {"plan_id": "test-plan-123"},
+            },
+        )
+
+        async def handler(request: Request):
+            request.app.state.handler_ran = True
+            return JSONResponse({"ok": True})
+
+        app.add_api_route("/files/{file_path:path}", handler, methods=["GET"])
+        app.add_api_route("/users/{user_id}", handler, methods=["GET"])
+
+        assert send_raw(app, "GET", path)[0] == 402
+        assert app.state.handler_ran is False
+
+    @pytest.mark.parametrize(
+        "key, route, url",
+        [
+            ("post /ask", "/ask", "/ask"),
+            ("POST /files/{file_path:path}", "/files/{file_path:path}", "/files/a/b"),
+        ],
+    )
+    def test_request_without_token_is_refused(self, mock_payments, key, route, url):
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={key: {"plan_id": "test-plan-123"}},
+        )
+
+        @app.post(route)
+        async def handler():
+            return JSONResponse({"ok": True})
+
+        assert TestClient(app).post(url).status_code == 402
+
+    @pytest.mark.parametrize(
+        "path, raw_path, keys, endpoint",
+        [
+            # A decoded `?` or `#` must not cut the path short.
+            (
+                "/users/me?x",
+                b"/users/me%3Fx",
+                ("GET /users/me", "GET /users/{user_id}"),
+                "/users/me?x",
+            ),
+            (
+                "/users/me#x",
+                b"/users/me%23x",
+                ("GET /users/me", "GET /users/{user_id}"),
+                "/users/me#x",
+            ),
+            # The router serves the path as sent; its normalised form is only
+            # a fallback, so it cannot pick a cheaper key. The envelope
+            # reports the dot-normalised path.
+            (
+                "/files/../public",
+                None,
+                ("GET /public", "GET /files/{p:path}"),
+                "/public",
+            ),
+        ],
+    )
+    def test_the_key_for_the_served_route_sets_the_price(
+        self, mock_payments, path, raw_path, keys, endpoint
+    ):
+        cheap, premium = keys
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={
+                cheap: {"plan_id": "cheap-plan"},
+                premium: {"plan_id": "premium-plan"},
+            },
+        )
+
+        status, headers = send_raw(app, "GET", path, raw_path)
+
+        assert status == 402
+        assert required_plan(headers) == "premium-plan"
+        # The verifier compares the token's resource with this one, so a
+        # decoded `?` or `#` must not truncate it.
+        assert payment_required(headers)["resource"]["url"] == endpoint
+
+    @pytest.mark.parametrize("key", ["POST /ask", "POST /api/ask"])
+    def test_root_path_does_not_hide_the_route(self, mock_payments, key):
+        """`uvicorn --root-path /api` sends `/api/ask`; the router serves it
+        as `/ask`. The key may name either form."""
+        app = FastAPI()
+        app.state.handler_ran = False
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={key: {"plan_id": "test-plan-123"}},
+        )
+
+        @app.post("/ask")
+        async def ask(request: Request):
+            request.app.state.handler_ran = True
+            return JSONResponse({"ok": True})
+
+        response = TestClient(app, root_path="/api").post("/api/ask")
+
+        assert response.status_code == 402
+        assert app.state.handler_ran is False
+
+    def test_routes_cannot_change_after_the_keys_are_compiled(self, mock_payments):
+        middleware = PaymentMiddleware(
+            app=None, payments=mock_payments, routes={"POST /ask": {"plan_id": "p"}}
+        )
+
+        with pytest.raises(TypeError):
+            middleware.routes["POST /other"] = RouteConfig(plan_id="p")
+
+    def test_build_payment_app_raises_when_called(self, mock_payments):
+        with pytest.raises(ValueError, match="GET /files/\\*"):
+            build_payment_app(mock_payments, routes={"GET /files/*": {"plan_id": "p"}})
+
+    def test_unmatchable_key_raises(self, mock_payments):
+        with pytest.raises(ValueError, match="GET /files/\\*"):
+            PaymentMiddleware(
+                app=None,
+                payments=mock_payments,
+                routes={"GET /files/*": {"plan_id": "p"}},
+            )
