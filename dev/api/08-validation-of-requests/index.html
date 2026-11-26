@@ -1751,6 +1751,12 @@ For how to build one, crypto or card, see
 <a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>    <span class="c1"># Just process the request</span>
 <a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">"result"</span><span class="p">:</span> <span class="s2">"Task completed"</span><span class="p">}</span>
 </code></pre></div>
+<p>Responses pass through the middleware unbuffered, so files and streamed
+responses (<code>StreamingResponse</code>, SSE) reach the client as the handler produces
+them, with the <code>payment-response</code> receipt header attached. Settlement runs as
+soon as the handler returns its response: a streamed body is produced after the
+credits are burned and after <code>on_after_settle</code> has run, so a stream that fails
+midway is still charged.</p>
 <h2 id="verification-response">Verification Response<a class="headerlink" href="#verification-response" title="Permanent link">&para;</a></h2>
 <p>The <code>verify_permissions</code> method returns a <code>VerifyResponse</code>:</p>
 <table>

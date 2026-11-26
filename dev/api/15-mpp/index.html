@@ -1522,7 +1522,10 @@ counterpart here).</p>
   nothing and settlement is idempotent, so without this guard N concurrent
   requests would each be served for a single burn.</li>
 <li><strong>Settlement only on a 2xx.</strong> A handler that fails or refuses is never
-  settled, and the credential stays unspent.</li>
+  settled, and the credential stays unspent. A streamed response
+  (<code>StreamingResponse</code>, SSE) is the exception: it is settled as soon as the
+  handler returns it, before its body is produced, so a stream that fails or
+  is abandoned midway is still charged.</li>
 </ul>
 <div class="admonition danger">
 <p class="admonition-title">Both guards are process-local</p>
@@ -1541,6 +1544,9 @@ that is the first turn of every healthy payment cycle, and notifying there would
 drown the rejections the hook exists to surface. It <em>is</em> called when an
 <code>Authorization</code> header arrives carrying no <code>Payment</code> scheme, which means an
 intermediary is rewriting it and the buyer is stuck in a silent retry loop.</p>
+<p>On both protocols, <code>on_after_settle</code> runs before a streamed body is produced.
+Do not record delivery from it, and do not release anything the body still
+uses (a DB session, an upstream client).</p>
 <p><code>on_after_settle</code> fires for all three settlement outcomes, so a ledger built on
 it can count them apart:</p>
 <table>
@@ -1578,7 +1584,7 @@ it can count them apart:</p>
 settling request, so whenever <code>credits</code> is a callable it is free to differ from
 what the challenge sealed on the request that minted the credential — do not
 record rows two and three as if the backend had confirmed them.</p>
-<p>The third row is the one worth wiring: the resource was delivered and the seller
+<p>The third row is the one worth wiring: the resource is served and the seller
 was not paid. Were it reported only as an absence, it would be indistinguishable
 from a request that was never an MPP request at all.</p>
 <hr />
