@@ -14,10 +14,11 @@ the protocol does:
   raw bytes directly, so ``bind_body`` reads them here and replays them to the
   handler; the two refusal branches have no counterpart and no route can be
   misconfigured into an unbound challenge.
-- **No detached-settle branch.** ``BaseHTTPMiddleware`` buffers the handler's
-  response before this middleware returns it, so headers are never already on
-  the wire when settlement runs: the receipt always attaches, and the delivery
-  probe the TS side needs for streamed responses has nothing to probe.
+- **No detached-settle branch.** ``BaseHTTPMiddleware`` sends nothing to the
+  client until this middleware returns, so headers are never already on the
+  wire when settlement runs: the receipt always attaches, and the delivery
+  probe the TS side needs for streamed responses has nothing to probe. A
+  streamed body starts flowing once settlement has run.
 """
 
 import base64
@@ -483,16 +484,6 @@ class MppFlow:
         # claim above exists to close.
         mark_credential_spent(credential_id, mpp_credential_expires(credential))
 
-        body = b""
-        async for chunk in response.body_iterator:
-            body += chunk
-        served = Response(
-            content=body,
-            status_code=response.status_code,
-            headers=dict(response.headers),
-            media_type=response.media_type,
-        )
-
         try:
             settlement = self.payments.mpp.settle_credential(
                 RedeemMppParams(
@@ -519,7 +510,7 @@ class MppFlow:
                 self.credits_to_charge,
                 MppSettlementOutcomeUnknown(reason=settle_error.message),
             )
-            return served
+            return response
         except Exception as settle_error:  # noqa: BLE001
             # A DEFINITE failure: the resource has been served and the seller has
             # not been paid — the most expensive thing that can happen to them.
@@ -540,11 +531,14 @@ class MppFlow:
             await self._run_after_settle_hook(
                 0, MppSettlementFailed(reason=str(settle_error))
             )
-            return served
+            return response
 
         receipt = settlement.get("paymentReceipt")
         if settlement.get("success") and receipt:
-            served.headers[MPP_HEADERS["RECEIPT"]] = receipt
+            # On the handler's own response: BaseHTTPMiddleware sends nothing
+            # until dispatch returns, so its headers are still editable, and its
+            # body streams through untouched — never read into memory (#339).
+            response.headers[MPP_HEADERS["RECEIPT"]] = receipt
         elif not settlement.get("success"):
             logger.error(
                 "MPP settlement failed: %s",
@@ -557,7 +551,7 @@ class MppFlow:
             settlement, self.credits_to_charge
         )
         await self._run_after_settle_hook(payment_context.credits_to_settle, settlement)
-        return served
+        return response
 
     async def _run_after_settle_hook(self, credits: int, settlement: Any) -> None:
         """Run ``on_after_settle``, logging rather than propagating a hook bug.

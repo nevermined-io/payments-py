@@ -386,13 +386,12 @@ class PaymentMiddleware(BaseHTTPMiddleware):
         # is not their problem.
         #
         # The try is narrowed to the settle call alone. Everything after it —
-        # draining the body, building the response, the on_after_settle hook —
-        # runs when settlement has ALREADY SUCCEEDED, so a failure there must
-        # never reach the spent-token branch below: that branch withholds the
-        # body, and withholding after a successful burn charges the buyer and
-        # gives them nothing. `on_after_settle` raising
-        # AccessTokenAlreadyUsedError is not hypothetical for an agent that pays
-        # a downstream service from that hook.
+        # attaching the receipt, the on_after_settle hook — runs when settlement
+        # has ALREADY SUCCEEDED, so a failure there must never reach the
+        # spent-token branch below: that branch withholds the body, and
+        # withholding after a successful burn charges the buyer and gives them
+        # nothing. `on_after_settle` raising AccessTokenAlreadyUsedError is not
+        # hypothetical for an agent that pays a downstream service from that hook.
         try:
             settlement = self.payments.facilitator.settle_permissions(
                 payment_required=payment_required,
@@ -461,29 +460,19 @@ class PaymentMiddleware(BaseHTTPMiddleware):
 
         # Settlement succeeded past this point, so the buyer has PAID. Nothing
         # below may withhold the body, whatever it raises.
+        #
+        # The receipt goes on `response` itself: BaseHTTPMiddleware sends nothing
+        # until dispatch returns, so its headers are still editable, and its body
+        # streams through untouched — never read into memory here (#339).
         try:
             # Add settlement response header (base64-encoded per x402 spec)
             settlement_json = settlement.model_dump_json(by_alias=True)
-            settlement_base64 = base64.b64encode(settlement_json.encode()).decode()
-
-            # Create a new response with the header added
-            # We need to read the body and create a new response
-            body = b""
-            async for chunk in response.body_iterator:
-                body += chunk
-
-            new_response = Response(
-                content=body,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type=response.media_type,
-            )
-            new_response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = settlement_base64
+            response.headers[X402_HEADERS["PAYMENT_RESPONSE"]] = base64.b64encode(
+                settlement_json.encode()
+            ).decode()
         except Exception as receipt_error:
-            # The receipt header could not be attached. The burn committed, so
-            # the buyer is owed the answer — but `response`'s body_iterator may
-            # already be partially drained, which is why this is reported rather
-            # than silently returning a possibly truncated body.
+            # The burn committed, so the buyer is owed the answer even without
+            # its receipt.
             logger.error(
                 "x402 settled but the receipt header could not be attached: %s",
                 receipt_error,
@@ -491,8 +480,8 @@ class PaymentMiddleware(BaseHTTPMiddleware):
             return response
 
         # Hook: after settlement. Observational, and deliberately outside the
-        # response construction: a hook that raises must not cost the buyer the
-        # answer they already paid for. In particular it must never reach the
+        # receipt `try`: a hook that raises must not cost the buyer the answer
+        # they already paid for. In particular it must never reach the
         # spent-token branch above — for an agent that pays a downstream service
         # from this hook, AccessTokenAlreadyUsedError here is plausible, and
         # withholding then would charge the buyer and hand them nothing.
@@ -507,7 +496,7 @@ class PaymentMiddleware(BaseHTTPMiddleware):
                     hook_error,
                 )
 
-        return new_response
+        return response
 
 
 def payment_middleware(

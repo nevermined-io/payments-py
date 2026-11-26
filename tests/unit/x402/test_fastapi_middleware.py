@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
@@ -21,6 +21,7 @@ from payments_py.x402.fastapi import (
     payment_middleware,
 )
 from payments_py.x402.types import VerifyResponse, SettleResponse
+from tests.asgi_stream import STREAMED, StreamProbe
 
 
 class QueryRequest(BaseModel):
@@ -380,8 +381,9 @@ class TestMiddlewareHooks:
         # The body, not just the status. This is the only x402 test that
         # configures on_after_settle, so it is the one placed to notice a
         # settled response losing its payload while every hook still fires —
-        # e.g. returning the already-drained original instead of the rebuilt
-        # one. An empty 200 with all three flags set used to pass here.
+        # e.g. draining the body to attach the receipt and then returning the
+        # drained original. An empty 200 with all three flags set used to pass
+        # here.
         assert response.json()["result"] == "ok"
         assert hook_calls["before_verify"] is True
         assert hook_calls["after_verify"] is True
@@ -774,3 +776,60 @@ class TestSpentTokenIsNotServed:
         # Paid, so served.
         assert response.status_code == 200
         assert "Answer to: test" in response.text
+
+
+class TestSettledResponseIsPassedThrough:
+    """payments-py#339: the receipt header used to be attached by reading the
+    whole body into memory and rebuilding the response, so a large file stalled
+    and a streamed response reached the client only once the handler finished."""
+
+    @pytest.mark.asyncio
+    async def test_a_streamed_body_reaches_the_client_while_the_handler_runs(
+        self, mock_payments, valid_token
+    ):
+        probe = StreamProbe()
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"GET /stream": {"plan_id": "test-plan-123", "credits": 1}},
+        )
+
+        @app.get("/stream")
+        async def stream():
+            return StreamingResponse(probe.body(), media_type="text/event-stream")
+
+        headers, body = await probe.request(
+            app, "GET", "/stream", {X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token}
+        )
+
+        assert body == STREAMED
+        assert X402_HEADERS["PAYMENT_RESPONSE"] in headers
+        mock_payments.facilitator.settle_permissions.assert_called_once()
+
+    def test_a_repeated_response_header_keeps_every_value(
+        self, mock_payments, valid_token
+    ):
+        """Rebuilding from ``dict(response.headers)`` kept only the first value
+        of a repeated header, so a handler setting two cookies lost one."""
+        app = FastAPI()
+        app.add_middleware(
+            PaymentMiddleware,
+            payments=mock_payments,
+            routes={"POST /ask": {"plan_id": "test-plan-123", "credits": 1}},
+        )
+
+        @app.post("/ask")
+        async def ask():
+            response = JSONResponse({"ok": True})
+            response.set_cookie("first", "1")
+            response.set_cookie("second", "2")
+            return response
+
+        response = TestClient(app).post(
+            "/ask", headers={X402_HEADERS["PAYMENT_SIGNATURE"]: valid_token}
+        )
+
+        assert response.status_code == 200
+        assert len(response.headers.get_list("set-cookie")) == 2
+        assert X402_HEADERS["PAYMENT_RESPONSE"] in response.headers
