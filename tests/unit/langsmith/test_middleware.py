@@ -25,7 +25,7 @@ from payments_py.langsmith import (
 )
 from payments_py.langsmith import middleware as ls_middleware
 from payments_py.x402.types import SettleResponse, VerifyResponse
-from tests.asgi_raw import required_plan, send_raw
+from tests.asgi_raw import payment_required, required_plan, send_raw
 
 
 class QueryRequest(BaseModel):
@@ -631,26 +631,34 @@ class TestRouteKeysMatchTheRouter:
         assert TestClient(app).post(url).status_code == 402
 
     @pytest.mark.parametrize(
-        "path, raw_path, keys",
+        "path, raw_path, keys, endpoint",
         [
             # A decoded `?` or `#` must not cut the path short.
             (
                 "/users/me?x",
                 b"/users/me%3Fx",
                 ("GET /users/me", "GET /users/{user_id}"),
+                "/users/me?x",
             ),
             (
                 "/users/me#x",
                 b"/users/me%23x",
                 ("GET /users/me", "GET /users/{user_id}"),
+                "/users/me#x",
             ),
             # The router serves the path as sent; its normalised form is only
-            # a fallback, so it cannot pick a cheaper key.
-            ("/files/../public", None, ("GET /public", "GET /files/{p:path}")),
+            # a fallback, so it cannot pick a cheaper key. The envelope
+            # reports the dot-normalised path.
+            (
+                "/files/../public",
+                None,
+                ("GET /public", "GET /files/{p:path}"),
+                "/public",
+            ),
         ],
     )
     def test_the_key_for_the_served_route_sets_the_price(
-        self, mock_payments, path, raw_path, keys
+        self, mock_payments, path, raw_path, keys, endpoint
     ):
         cheap, premium = keys
         app = FastAPI()
@@ -667,6 +675,9 @@ class TestRouteKeysMatchTheRouter:
 
         assert status == 402
         assert required_plan(headers) == "premium-plan"
+        # The verifier compares the token's resource with this one, so a
+        # decoded `?` or `#` must not truncate it.
+        assert payment_required(headers)["resource"]["url"] == endpoint
 
     @pytest.mark.parametrize("key", ["POST /ask", "POST /api/ask"])
     def test_root_path_does_not_hide_the_route(self, mock_payments, key):

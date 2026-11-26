@@ -22,7 +22,7 @@ from payments_py.x402.fastapi import (
     payment_middleware,
 )
 from payments_py.x402.types import VerifyResponse, SettleResponse
-from tests.asgi_raw import required_plan, send_raw
+from tests.asgi_raw import payment_required, required_plan, send_raw
 from tests.asgi_stream import STREAMED, StreamProbe
 from tests.x402_responses import make_settle_response
 
@@ -1021,6 +1021,9 @@ class TestRouteKeysMatchTheRouter:
 
         assert status == 402
         assert required_plan(headers) == "premium-plan"
+        # The verifier compares the token's resource with this one, so it must
+        # be the path the router served, not a truncated form.
+        assert payment_required(headers)["resource"]["url"] == path
 
     def test_an_explicit_head_key_wins_over_the_get_fallback(self, mock_payments):
         app = FastAPI()

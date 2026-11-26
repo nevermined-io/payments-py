@@ -47,7 +47,11 @@ def send_raw(
     return start["status"], headers
 
 
+def payment_required(headers: Dict[str, str]) -> Dict[str, Any]:
+    """The envelope in a 402's ``payment-required`` header."""
+    return json.loads(base64.b64decode(headers["payment-required"]))
+
+
 def required_plan(headers: Dict[str, str]) -> str:
     """The plan a 402's ``payment-required`` header asks the buyer to pay."""
-    envelope = json.loads(base64.b64decode(headers["payment-required"]))
-    return envelope["accepts"][0]["planId"]
+    return payment_required(headers)["accepts"][0]["planId"]
