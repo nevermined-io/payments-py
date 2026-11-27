@@ -25,6 +25,7 @@ from payments_py.common.types import (
     MyMembership,
     OrganizationActivityEventType,
     OrganizationActivityFilters,
+    OrganizationInvitation,
     OrganizationMember,
     OrganizationMemberRole,
     OrganizationMembersResponse,
@@ -366,8 +367,112 @@ class TestPerCallOrgOverride:
             assert m.last_request.headers.get(CURRENT_ORG_ID_HEADER) == "org-d"
 
 
+def _invitation_body(**overrides):
+    """The 201 body of ``POST /organizations/account`` since nvm-monorepo#5349."""
+    invitation = {
+        "id": "oi-550e8400-e29b-41d4-a716-446655440000",
+        "email": "alice@example.com",
+        "name": None,
+        "role": "Admin",
+        "status": "pending",
+        "expiresAt": "2026-12-04T12:00:00.000Z",
+        "invitedByUserId": "us-admin",
+        "createdAt": "2026-11-27T12:00:00.000Z",
+    }
+    invitation.update(overrides)
+    return {
+        "success": True,
+        "message": "Invitation sent",
+        "walletResult": {"invitation": invitation},
+    }
+
+
 class TestCreateMember:
-    def test_posts_account_endpoint_and_flattens_wallet_result(self):
+    def test_returns_the_invitation_the_backend_created(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=201,
+                json=_invitation_body(),
+            )
+            result = payments.organizations.create_member(
+                "external-user-1",
+                "alice@example.com",
+                OrganizationMemberRole.ADMIN,
+            )
+
+            sent = m.last_request.json()
+            assert sent == {
+                "uniqueExternalId": "external-user-1",
+                "email": "alice@example.com",
+                "role": "Admin",
+            }
+
+        assert isinstance(result, OrganizationInvitation)
+        assert not isinstance(result, CreateUserResponse)
+        assert result.id == "oi-550e8400-e29b-41d4-a716-446655440000"
+        assert result.email == "alice@example.com"
+        assert result.name is None
+        assert result.role == OrganizationMemberRole.ADMIN
+        assert result.status == "pending"
+        assert result.expires_at == "2026-12-04T12:00:00.000Z"
+        assert result.invited_by_user_id == "us-admin"
+        assert result.created_at == "2026-11-27T12:00:00.000Z"
+
+    def test_invitation_keeps_the_invitee_name(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=201,
+                json=_invitation_body(name="Alice", role="Member"),
+            )
+            result = payments.organizations.create_member(
+                "external-user-1", "alice@example.com"
+            )
+
+        assert isinstance(result, OrganizationInvitation)
+        assert result.name == "Alice"
+        assert result.role == OrganizationMemberRole.MEMBER
+
+    def test_raises_when_invitation_is_malformed(self):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=201,
+                # Missing ``id`` — backend contract regression.
+                json={"walletResult": {"invitation": {"email": "a@example.com"}}},
+            )
+            with pytest.raises(PaymentsError, match="walletResult.invitation"):
+                payments.organizations.create_member("external-user-1", "a@example.com")
+
+    @pytest.mark.parametrize(
+        "status_code, code",
+        [
+            (409, "BCK.INVITATIONS.0002"),
+            (422, "BCK.INVITATIONS.0001"),
+            (503, "BCK.ORGANIZATIONS.0041"),
+        ],
+    )
+    def test_invitation_refusals_surface_the_backend_code(self, status_code, code):
+        payments = _make_payments()
+        with requests_mock.Mocker() as m:
+            m.post(
+                f"{BACKEND}/api/v1/organizations/account",
+                status_code=status_code,
+                json={"code": code, "message": "refused", "httpStatus": status_code},
+            )
+            with pytest.raises(PaymentsError) as exc_info:
+                payments.organizations.create_member(
+                    "external-user-1", "alice@example.com"
+                )
+            assert exc_info.value.code == code
+
+    def test_legacy_backend_flattens_the_provisioned_wallet(self):
+        # Backends that predate nvm-monorepo#5349 provision the account and
+        # return it; the SDK still reads that shape.
         payments = _make_payments()
         body = {
             "walletResult": {
@@ -403,9 +508,8 @@ class TestCreateMember:
         with requests_mock.Mocker() as m:
             m.post(
                 f"{BACKEND}/api/v1/organizations/account",
-                json={
-                    "walletResult": {"hash": "k", "userId": "u", "userWallet": "0x0"}
-                },
+                status_code=201,
+                json=_invitation_body(),
             )
             payments.organizations.create_member("external-user-2")
 
@@ -457,7 +561,7 @@ class TestCreateMember:
             with pytest.raises(PaymentsError, match="walletResult"):
                 payments.organizations.create_member("external-user-4")
 
-    def test_raises_when_wallet_result_missing_required_keys(self):
+    def test_raises_when_legacy_wallet_result_missing_required_keys(self):
         payments = _make_payments()
         with requests_mock.Mocker() as m:
             m.post(
