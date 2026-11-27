@@ -8,8 +8,9 @@ credits). The customer is recorded in your organization's Customers list.
 
 This is the white-label counterpart to `create_member`: a member is a person
 who logs into your organization; a customer is an end user you transact for.
-Unlike `create_member` (which returns a non-usable lookup hash), this returns
-the **real** usable key.
+`create_member` returns no key at all: it emails the person an invitation and
+returns it as an `OrganizationInvitation`, and they get an account only when
+they accept. `onboard_customer` returns a usable key.
 
 > Admin-only. The call authenticates with your organization's API key.
 
