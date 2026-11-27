@@ -681,11 +681,14 @@ class OrganizationMembersResponse(BaseModel):
 
 
 class CreateUserResponse(BaseModel):
-    """Result of :meth:`OrganizationsAPI.create_member`.
+    """Legacy result of :meth:`OrganizationsAPI.create_member`.
 
-    The backend response carries the freshly minted wallet under
-    ``walletResult``; the SDK flattens those fields and exposes the
-    wallet hash as ``nvm_api_key`` for parity with the TS SDK.
+    Returned only by backends that predate nvm-monorepo#5349, which
+    provisioned the member's account at invite time. Those responses carry
+    the freshly minted wallet under ``walletResult``; the SDK flattens those
+    fields and exposes the wallet hash as ``nvm_api_key`` for parity with the
+    TS SDK. Current backends return an :class:`OrganizationInvitation`
+    instead.
     """
 
     model_config = ConfigDict(populate_by_name=True)
@@ -694,6 +697,31 @@ class CreateUserResponse(BaseModel):
     user_id: str = Field(alias="userId")
     user_wallet: str = Field(alias="userWallet")
     already_member: bool = Field(default=False, alias="alreadyMember")
+
+
+class OrganizationInvitation(BaseModel):
+    """A member invitation, returned by :meth:`OrganizationsAPI.create_member`.
+
+    Since nvm-monorepo#5349 the backend no longer provisions the invitee's
+    account: it stores an invitation and emails the invitee a link to join.
+    The invitee becomes a member (and gets an account) only when they accept,
+    so nothing about their account is returned. Mirrors the backend's
+    ``InvitationResponseDto``.
+
+    ``status`` is ``"pending"`` for a freshly created invitation; the backend
+    also uses ``"accepted"``, ``"revoked"`` and ``"expired"``.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    id: str
+    email: str
+    name: Optional[str] = None
+    role: OrganizationMemberRole
+    status: str
+    expires_at: str = Field(alias="expiresAt")
+    invited_by_user_id: str = Field(alias="invitedByUserId")
+    created_at: str = Field(alias="createdAt")
 
 
 class CustomerOnboardingResponse(BaseModel):

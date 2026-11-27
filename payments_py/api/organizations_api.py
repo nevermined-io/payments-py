@@ -8,8 +8,8 @@ Wraps the multi-organization endpoints exposed by the Nevermined backend
 - ``GET /api/v1/organizations/{org_id}/activity`` — paginated activity
   feed (member events, customer events, subscription transitions,
   webhook deliveries).
-- ``POST /api/v1/organizations/account`` — Privy-backed member enrolment
-  (admin only).
+- ``POST /api/v1/organizations/account`` — member invitation and
+  white-label customer onboarding (admin only).
 - ``POST /api/v1/organizations/members`` — paginated member listing
   (admin only).
 - ``POST /api/v1/fiat/stripe/account`` — Stripe Connect onboarding
@@ -22,10 +22,11 @@ is selected via the inherited ``X-Current-Org-Id`` header plumbing on
 relevant publish method for a one-off override.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlencode
 
 import requests
+from pydantic import ValidationError
 
 from payments_py.api.base_payments import (
     CURRENT_ORG_ID_HEADER,
@@ -46,6 +47,7 @@ from payments_py.common.types import (
     OrganizationActivityEvent,
     OrganizationActivityFilters,
     OrganizationActivityPage,
+    OrganizationInvitation,
     OrganizationMember,
     OrganizationMemberRole,
     OrganizationMembersResponse,
@@ -172,32 +174,52 @@ class OrganizationsAPI(BasePaymentsAPI):
         user_id: str,
         user_email: Optional[str] = None,
         user_role: Optional[OrganizationMemberRole] = None,
-    ) -> CreateUserResponse:
-        """Enrol a new member in the caller's organization.
+    ) -> Union[OrganizationInvitation, CreateUserResponse]:
+        """Invite a member to the caller's organization.
 
         Wraps ``POST /api/v1/organizations/account``. Admin-only on the
         backend (``OrganizationAdminGuard`` is enforced) — non-admin
-        callers get a 403. The endpoint provisions a fresh Privy wallet
-        for ``user_id`` and binds it to the active workspace.
+        callers get a 403.
+
+        Current backends (nvm-monorepo#5349) create a pending invitation and
+        email ``user_email`` a link to join. No account is provisioned and
+        nothing about one is returned: the invitee becomes a member when they
+        accept. The result is an :class:`OrganizationInvitation`. Backends
+        that predate that change provisioned the account at once and return
+        a :class:`CreateUserResponse`; check the result's type to tell the
+        two apart.
+
+        Do not retry a call that returned an invitation: while it is
+        pending, the backend refuses another one for the same email with 409
+        ``BCK.INVITATIONS.0002``.
 
         Args:
-            user_id: Stable external id for the new member (e.g. an
-                identifier from the org admin's own user-management
-                system). The backend uses it as ``uniqueExternalId``.
-            user_email: Optional email; if omitted the backend uses the
-                wallet address as a placeholder.
-            user_role: Optional role; defaults backend-side to
-                :class:`OrganizationMemberRole.MEMBER`.
+            user_id: Caller-side identifier for the new member. Sent as
+                ``uniqueExternalId``, which current backends ignore.
+            user_email: Email address of the invitee. The backend requires
+                it: a missing one is refused with 400 ``BCK.HTTP.400``, a
+                malformed one with 400 ``BCK.INVITATIONS.0007``.
+            user_role: Optional role (``ADMIN`` or ``MEMBER``); defaults
+                backend-side to :class:`OrganizationMemberRole.MEMBER`.
 
         Returns:
-            A :class:`CreateUserResponse` with the new member's wallet
-            and NVM API key.
+            An :class:`OrganizationInvitation` from current backends, or a
+            :class:`CreateUserResponse` (the new member's wallet and key
+            hash) from backends that predate nvm-monorepo#5349.
 
         Raises:
-            PaymentsError: If ``user_id`` is empty, the backend call
-                fails (403 for non-admin callers, validation errors for
-                bad input), or the backend response is missing the
-                expected ``walletResult`` envelope.
+            PaymentsError: If ``user_id`` is empty, the backend call fails,
+                or the response matches neither shape. ``code`` carries the
+                backend error code, e.g. ``BCK.INVITATIONS.0002`` (409, a
+                pending invitation exists for this email),
+                ``BCK.ORGANIZATIONS.0008`` (403, the email belongs to an
+                active member of this organization),
+                ``BCK.INVITATIONS.0006`` (403, the organization is below the
+                Premium tier), ``BCK.INVITATIONS.0001`` (422, no free member
+                seat), ``BCK.NOTIF.0007`` (500, the backend has no mail
+                provider; a retry will not help) or ``BCK.ORGANIZATIONS.0041``
+                (503, the invitation email was not accepted for delivery and
+                nothing was created; retry after a backoff).
         """
         if not user_id:
             raise PaymentsError.validation("user_id is required")
@@ -220,16 +242,27 @@ class OrganizationsAPI(BasePaymentsAPI):
 
         data: Dict[str, Any] = response.json() or {}
         wallet = data.get("walletResult")
-        # The backend stores the new NVM API key under ``walletResult.hash``
-        # (both the TS SDK and product copy expose it as ``nvmApiKey``).
-        # Fail loudly if the envelope is missing or the required keys are
-        # absent — silent fallback to empty strings would make a contract
-        # regression look like a successful enrolment with invalid data.
         if not isinstance(wallet, dict):
             raise PaymentsError.from_backend(
                 "Unable to create member",
                 {"message": "missing walletResult in response"},
             )
+        # nvm-monorepo#5349: the backend invites rather than provisions, and
+        # ``walletResult.invitation`` is the only thing it returns. Its
+        # presence is what tells the current contract from the legacy one.
+        if "invitation" in wallet:
+            try:
+                return OrganizationInvitation.model_validate(wallet["invitation"])
+            except ValidationError as error:
+                raise PaymentsError.from_backend(
+                    "Unable to create member",
+                    {"message": f"walletResult.invitation is malformed: {error}"},
+                ) from error
+        # Legacy backends store the new NVM API key under ``walletResult.hash``
+        # (both the TS SDK and product copy expose it as ``nvmApiKey``).
+        # Fail loudly if the required keys are absent — silent fallback to
+        # empty strings would make a contract regression look like a
+        # successful enrolment with invalid data.
         required_keys = ("hash", "userId", "userWallet")
         missing = [k for k in required_keys if not wallet.get(k)]
         if missing:
@@ -256,9 +289,9 @@ class OrganizationsAPI(BasePaymentsAPI):
         Admin-only on the backend. Provisions a Nevermined account for the
         customer **without consuming a member seat** and returns a usable,
         scoped NVM API key the org can use to transparently act on the
-        customer's behalf (purchase plans / redeem credits). Like
-        :meth:`create_member`, the usable Bearer is ``walletResult.hash``
-        (``<prefix>:<jwt>``) and is surfaced as ``nvm_api_key``; the sibling
+        customer's behalf (purchase plans / redeem credits). The usable
+        Bearer is ``walletResult.hash`` (``<prefix>:<jwt>``) and is surfaced
+        as ``nvm_api_key``; the sibling
         ``walletResult.nvmApiKey`` is the encrypted server-side blob and is
         **not** a valid Bearer.
 
@@ -313,10 +346,9 @@ class OrganizationsAPI(BasePaymentsAPI):
         # backend returns the usable credential as ``walletResult.hash``
         # (``<prefix>:<jwt>``); the sibling ``nvmApiKey`` — which the
         # ``model_validate`` above mapped into ``nvm_api_key`` — is the encrypted
-        # server-side blob and is NOT a valid Bearer. Surface ``hash`` instead,
-        # exactly as create_member does. A 2xx without a hash means a
-        # partial/unexpected payload — fail loudly rather than return a "success"
-        # carrying no usable credential.
+        # server-side blob and is NOT a valid Bearer. Surface ``hash`` instead.
+        # A 2xx without a hash means a partial/unexpected payload — fail loudly
+        # rather than return a "success" carrying no usable credential.
         # ``model_copy(update=…)`` below does not validate, so assert the shape
         # here: the backend contract is ``<env>:<JWT>`` — a non-string truthy
         # ``hash`` must never reach ``Payments`` as the Bearer.
