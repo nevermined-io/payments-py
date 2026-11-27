@@ -1258,8 +1258,9 @@ organization can use to act on that customer's behalf (purchase plans, redeem
 credits). The customer is recorded in your organization's Customers list.</p>
 <p>This is the white-label counterpart to <code>create_member</code>: a member is a person
 who logs into your organization; a customer is an end user you transact for.
-Unlike <code>create_member</code> (which returns a non-usable lookup hash), this returns
-the <strong>real</strong> usable key.</p>
+<code>create_member</code> returns no key at all: it emails the person an invitation and
+returns it as an <code>OrganizationInvitation</code>, and they get an account only when
+they accept. <code>onboard_customer</code> returns a usable key.</p>
 <blockquote>
 <p>Admin-only. The call authenticates with your organization's API key.</p>
 </blockquote>
