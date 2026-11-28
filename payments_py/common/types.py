@@ -3,7 +3,7 @@ Type definitions for the Nevermined Payments protocol.
 """
 
 from typing import Optional, List, Dict, Any, Union
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_serializer, model_validator
 from enum import Enum
 
 # Address type alias
@@ -60,23 +60,33 @@ class Endpoint(BaseModel):
     """
     One entry of an agent's endpoint allowlist.
 
-    .. warning::
-       This model serializes as ``{"verb": "POST", "url": "https://…"}``, but
-       the backend types an endpoint as ``{<VERB>: <url>}`` and matches it with
-       ``Object.entries(ep)[0]`` — so it reads the verb as the literal string
-       ``"verb"``, fails to parse ``"POST"`` as a URL, and skips the entry. No
-       entry registered through this SDK can ever match, which surfaces as
-       ``BCK.PROTOCOL.0031`` on any x402 verify that carries a
-       ``resource.url``. Tracked in payments-py#274; until it lands, agents
-       that need x402 **v3** must be registered with no ``endpoints`` at all
-       (absent ⇒ allow-all).
-
-    The docstring previously described the backend's shape rather than this
-    model's, which is why the mismatch reads as correct at a glance.
+    The model is built from ``verb`` and ``url``, but on the wire the backend
+    types an endpoint as ``{<VERB>: <url>}`` and matches it with
+    ``Object.entries(ep)[0]``, so it is serialized as
+    ``{"POST": "https://…"}`` (the shape the TypeScript SDK sends). The
+    ``{<VERB>: <url>}`` form is also accepted as input, so a serialized entry
+    can be loaded back.
     """
 
     verb: str
     url: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_wire_shape(cls, data: Any) -> Any:
+        if (
+            isinstance(data, dict)
+            and len(data) == 1
+            and "verb" not in data
+            and "url" not in data
+        ):
+            ((verb, url),) = data.items()
+            return {"verb": verb, "url": url}
+        return data
+
+    @model_serializer
+    def _to_wire_shape(self) -> Dict[str, str]:
+        return {self.verb: self.url}
 
 
 class AuthType(str, Enum):
